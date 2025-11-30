@@ -1,0 +1,14 @@
+.DS_Store
+node_modules
+dist
+.turbo
+.pnpm-store
+venv
+.env
+.env.local
+.idea
+.vscode
+__pycache__
+*.pyc
+coverage
+.pytest_cache

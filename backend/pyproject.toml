@@ -1,0 +1,46 @@
+[project]
+name = "efir-budget-backend"
+version = "0.1.0"
+description = "FastAPI service for EFIR Budget Planning"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{name = "EFIR", email = "tech@efir.local"}]
+dependencies = [
+  "fastapi==0.123.0",
+  "uvicorn[standard]==0.34.0",
+  "pydantic==2.12.0",
+  "sqlalchemy==2.0.36",
+  "asyncpg==0.30.0",
+  "python-dotenv==1.0.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff==0.8.2",
+  "mypy==1.14.1",
+  "pytest==8.3.3",
+  "httpx==0.27.2",
+  "pytest-asyncio==0.24.0"
+]
+
+[tool.ruff]
+line-length = 100
+src = ["app"]
+select = ["E", "F", "B", "I", "UP", "RUF", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_optional = true
+check_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["backend/tests"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
