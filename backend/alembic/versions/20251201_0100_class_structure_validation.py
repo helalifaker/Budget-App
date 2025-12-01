@@ -1,7 +1,7 @@
 """Validate class structure averages against class size parameters.
 
-Revision ID: 005_class_structure_validation
-Revises: 004_fix_critical_issues
+Revision ID: 006_class_structure_validation
+Revises: 005_analysis_layer
 Create Date: 2025-12-01 01:00:00
 
 Adds a trigger to ensure class_structures.avg_class_size stays within the
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "005_class_structure_validation"
-down_revision: str | None = "004_fix_critical_issues"
+revision: str = "006_class_structure_validation"
+down_revision: str | None = "005_analysis_layer"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

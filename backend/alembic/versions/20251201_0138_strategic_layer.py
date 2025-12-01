@@ -30,7 +30,7 @@ from sqlalchemy.dialects import postgresql
 
 # Revision identifiers, used by Alembic.
 revision: str = "007_strategic_layer"
-down_revision: str | None = "20251201_0100_class_structure_validation"
+down_revision: str | None = "006_class_structure_validation"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -1,7 +1,7 @@
 """Analysis Layer: KPIs, Dashboards, and Budget vs Actual (Modules 15-17)
 
-Revision ID: 004_analysis_layer
-Revises: 20251201_0045_fix_critical_issues
+Revision ID: 005_analysis_layer
+Revises: 004_fix_critical_issues
 Create Date: 2025-12-01 00:57:00.000000
 
 Creates Analysis Layer tables:
@@ -29,8 +29,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # Revision identifiers, used by Alembic.
-revision: str = "004_analysis_layer"
-down_revision: str | None = "20251201_0045_fix_critical_issues"
+revision: str = "005_analysis_layer"
+down_revision: str | None = "004_fix_critical_issues"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
