@@ -1,7 +1,6 @@
 ---
-agentName: database_supabase_agent
-version: 1.0.0
-description: Responsible for PostgreSQL schema, Supabase RLS policies, migrations, seed data, table design, views, and performance optimization.
+name: database-supabase-agent
+description: Responsible for PostgreSQL schema design, Supabase RLS policies, migrations, seed data, table structures, views, and database performance optimization. Use this agent when creating database tables, defining RLS policies, writing migrations, optimizing queries, or designing data models. This agent implements the data layer for all modules following patterns from system-architect-agent. Examples when to use - Creating enrollment_data table with RLS policies for multi-tenant access, Writing migration to add budget_versions table with workflow states, Implementing RLS policies for role-based access (Admin, Finance Director, HR, Academic, Viewer), Optimizing slow queries in DHG calculation views, Creating materialized views for KPI dashboards, Adding indexes for performance optimization.
 model: sonnet
 ---
 

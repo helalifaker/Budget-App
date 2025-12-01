@@ -1,7 +1,6 @@
 ---
-agentName: reporting_statements_agent
-version: 1.0.0
-description: Creates PCG & IFRS statements, Board PDF reports, financial exports (Excel, CSV), and reporting transformations.
+name: reporting-statements-agent
+description: Creates financial statements (PCG & IFRS), board reports, PDF generation, and data exports (Excel, CSV). Use this agent when generating financial reports, creating board presentation materials, implementing statement transformations, or building export functionality. This agent calls backend-engine-agent for calculations and focuses on formatting/presentation. Examples when to use - Generating French PCG financial statements (Profit & Loss, Balance Sheet, Cash Flow), Creating IFRS-format financial statements with account code mapping, Building board-ready PDF reports with executive summaries, Implementing Excel export for budget consolidation with multiple worksheets, Creating Board Treasurer reports with KPIs and variance analysis, Generating audit-ready financial statements with supporting schedules.
 model: sonnet
 ---
 

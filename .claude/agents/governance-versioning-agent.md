@@ -1,7 +1,6 @@
 ---
-agentName: governance_versioning_agent
-version: 1.0.0
-description: Implements lifecycle - Draft → Submitted → Approved → Forecast → Archived. Manages workflows, audit logs, permissions, and status transitions.
+name: governance-versioning-agent
+description: Implements budget lifecycle management (Draft → Submitted → Approved → Locked → Forecast → Archived). Use this agent when implementing workflow state transitions, version management, audit logging, approval processes, or lifecycle permissions. This agent implements governance rules approved by product-architect-agent. Examples when to use - Implementing budget version state machine with transition rules, Creating audit trail logging for all budget modifications, Building approval workflow with role-based permissions (Finance Director approves), Implementing version locking after approval to prevent edits, Creating forecast revision workflow from approved budget, Implementing superseded version management when new budgets override old ones.
 model: sonnet
 ---
 

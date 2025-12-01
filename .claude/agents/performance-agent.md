@@ -1,7 +1,6 @@
 ---
-agentName: performance_agent
-version: 1.0.0
-description: Profiling, optimization, caching, Supabase query tuning, front-end rendering optimization, and load test scripts.
+name: performance-agent
+description: Optimizes application performance through profiling, caching, query tuning, rendering optimization, and load testing. Use this agent when investigating performance issues, optimizing slow operations, implementing caching strategies, tuning database queries, or conducting load tests. This agent analyzes but does not modify business logic. Examples when to use - Profiling slow DHG calculation performance and optimizing algorithms, Tuning Supabase queries for enrollment data retrieval with indexes, Implementing caching for frequently accessed configuration parameters, Optimizing React component rendering for large AG Grid datasets, Conducting load tests for budget consolidation with 1000+ concurrent users, Analyzing and fixing frontend bundle size issues.
 model: sonnet
 ---
 

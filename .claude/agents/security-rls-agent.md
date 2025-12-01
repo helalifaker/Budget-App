@@ -1,7 +1,6 @@
 ---
-agentName: security_rls_agent
-version: 1.0.0
-description: Implements Supabase Auth, MFA, RLS policies, permission models, backend security middleware, and API guards.
+name: security-rls-agent
+description: Implements Supabase authentication, MFA, RLS policies, permission models, security middleware, and API guards. Use this agent when implementing authentication flows, defining RLS policies, setting up role-based access control, implementing MFA, or securing API endpoints. This agent collaborates with database-supabase-agent on RLS policies. Examples when to use - Implementing Supabase Auth with email/password and MFA, Creating RLS policies for multi-tenant data isolation by organization, Defining role-based access for Admin/Finance Director/HR/Academic/Viewer roles, Implementing JWT authentication middleware for FastAPI endpoints, Securing budget version access based on workflow state (Draft/Submitted/Approved), Adding audit logging for security-sensitive operations.
 model: sonnet
 ---
 

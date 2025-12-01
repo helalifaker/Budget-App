@@ -1,7 +1,6 @@
 ---
-agentName: backend_engine_agent
-version: 1.0.0
-description: Implements ALL calculation engines - Enrollment, Class Structure, DHG, Peak Demand, Revenue, Cost, CapEx, Consolidation, Financial Statements. This is the "brains" of the application.
+name: backend-engine-agent
+description: Implements all core calculation engines using pure Python functions with Pydantic models. Use this agent when implementing calculation logic for Enrollment Planning, DHG Hours/FTE calculation, Class Structure formation, Revenue Projections, Personnel/Operational Cost Planning, CapEx Planning, Budget Consolidation, KPI calculations, or Financial Statement preparation. This agent implements business logic approved by product-architect-agent. Examples when to use - Implementing DHG hours calculation engine for secondary education, Building enrollment projection algorithms with growth rates, Creating class formation logic with min/max/target size constraints, Implementing revenue calculation with fee structures and sibling discounts, Calculating AEFE contribution costs (PRRD) in EUR and SAR, Building budget consolidation engine with version management.
 model: sonnet
 ---
 

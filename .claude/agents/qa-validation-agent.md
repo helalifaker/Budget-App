@@ -1,7 +1,6 @@
 ---
-agentName: qa_validation_agent
-version: 1.0.0
-description: Owns full test coverage. Builds automated tests - unit, integration, regression, UI snapshots, API contract tests, DHG validation tests.
+name: qa-validation-agent
+description: Owns full test coverage and quality assurance for the EFIR Budget Planning Application. Use this agent when writing tests (unit, integration, E2E), implementing test automation, validating business logic against specifications, or ensuring code quality. This agent validates all agents' outputs and enforces 80%+ test coverage requirement. Examples when to use - Writing unit tests for DHG calculation engine with real EFIR data, Creating integration tests for enrollment projection API endpoints, Implementing E2E tests for budget consolidation workflow using Playwright, Writing regression tests after bug fixes, Validating DHG formulas against product-architect-agent specifications, Setting up test fixtures and seed data for testing.
 model: sonnet
 ---
 
