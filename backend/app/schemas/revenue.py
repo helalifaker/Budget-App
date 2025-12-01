@@ -1,8 +1,8 @@
 """API schemas for Revenue endpoints."""
 
 from app.engine.revenue.models import (
-    TuitionInput,
     StudentRevenueResult,
+    TuitionInput,
 )
 
 # Reuse engine models for API layer

@@ -35,7 +35,6 @@ Capacity Utilization:
 """
 
 from decimal import Decimal
-from typing import Optional
 
 from app.engine.kpi.models import (
     KPICalculationResult,
@@ -43,7 +42,6 @@ from app.engine.kpi.models import (
     KPIResult,
     KPIType,
 )
-
 
 # Target values for EFIR school (from specifications)
 TARGET_STUDENT_TEACHER_RATIO = Decimal("12.0")
@@ -472,7 +470,7 @@ def calculate_all_kpis(kpi_input: KPIInput) -> KPICalculationResult:
         kpi_input.total_students, kpi_input.total_teacher_fte
     )
 
-    he_ratio_secondary: Optional[KPIResult] = None
+    he_ratio_secondary: KPIResult | None = None
     if kpi_input.dhg_hours_total is not None and kpi_input.secondary_students > 0:
         he_ratio_secondary = calculate_he_ratio_secondary(
             kpi_input.dhg_hours_total, kpi_input.secondary_students

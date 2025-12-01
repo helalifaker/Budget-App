@@ -7,7 +7,6 @@ All models use Pydantic for validation and type safety.
 
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -33,7 +32,7 @@ class KPIInput(BaseModel):
     and financial performance indicators.
     """
 
-    budget_id: Optional[UUID] = Field(None, description="Budget UUID (optional)")
+    budget_id: UUID | None = Field(None, description="Budget UUID (optional)")
 
     # Student metrics
     total_students: int = Field(..., ge=0, description="Total enrolled students")
@@ -46,7 +45,7 @@ class KPIInput(BaseModel):
     total_teacher_fte: Decimal = Field(
         ..., ge=Decimal("0"), description="Total teacher FTE (full-time equivalent)"
     )
-    dhg_hours_total: Optional[Decimal] = Field(
+    dhg_hours_total: Decimal | None = Field(
         None,
         ge=Decimal("0"),
         description="Total DHG hours for secondary (for H/E ratio)",
@@ -109,21 +108,21 @@ class KPIResult(BaseModel):
 
     kpi_type: KPIType = Field(..., description="Type of KPI calculated")
     value: Decimal = Field(..., description="Calculated KPI value")
-    target_value: Optional[Decimal] = Field(
+    target_value: Decimal | None = Field(
         None, description="Target/benchmark value for comparison"
     )
     unit: str = Field(..., description="Unit of measurement (ratio, SAR, %, etc.)")
-    variance_from_target: Optional[Decimal] = Field(
+    variance_from_target: Decimal | None = Field(
         None,
         description="Difference from target (positive = above target, negative = below)",
     )
-    performance_status: Optional[str] = Field(
+    performance_status: str | None = Field(
         None, description="Performance assessment (on_target, above_target, below_target)"
     )
 
     @field_validator("performance_status")
     @classmethod
-    def validate_performance_status_values(cls, v: Optional[str]) -> Optional[str]:
+    def validate_performance_status_values(cls, v: str | None) -> str | None:
         """Ensure performance status is a valid value."""
         if v is not None and v not in {"on_target", "above_target", "below_target"}:
             raise ValueError(
@@ -151,33 +150,33 @@ class KPICalculationResult(BaseModel):
     Contains all calculated KPIs for a budget or planning scenario.
     """
 
-    budget_id: Optional[UUID] = Field(None, description="Budget UUID (if applicable)")
-    calculation_date: Optional[str] = Field(
+    budget_id: UUID | None = Field(None, description="Budget UUID (if applicable)")
+    calculation_date: str | None = Field(
         None, description="ISO 8601 date when calculations were performed"
     )
 
     # Educational KPIs
-    student_teacher_ratio: Optional[KPIResult] = Field(
+    student_teacher_ratio: KPIResult | None = Field(
         None, description="Students per teacher (target: ~12.0)"
     )
-    he_ratio_secondary: Optional[KPIResult] = Field(
+    he_ratio_secondary: KPIResult | None = Field(
         None, description="Hours per student in secondary (target: ~1.35)"
     )
-    capacity_utilization: Optional[KPIResult] = Field(
+    capacity_utilization: KPIResult | None = Field(
         None, description="% of maximum capacity used (target: 90-95%)"
     )
 
     # Financial KPIs
-    revenue_per_student: Optional[KPIResult] = Field(
+    revenue_per_student: KPIResult | None = Field(
         None, description="Revenue per student in SAR (target: ~45,000)"
     )
-    cost_per_student: Optional[KPIResult] = Field(
+    cost_per_student: KPIResult | None = Field(
         None, description="Cost per student in SAR"
     )
-    margin_percentage: Optional[KPIResult] = Field(
+    margin_percentage: KPIResult | None = Field(
         None, description="Profit margin % (target: ~10%)"
     )
-    staff_cost_ratio: Optional[KPIResult] = Field(
+    staff_cost_ratio: KPIResult | None = Field(
         None, description="Personnel as % of total costs (target: ~70%)"
     )
 

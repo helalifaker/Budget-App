@@ -19,40 +19,40 @@ Key Concepts:
 from app.engine.dhg.calculator import (
     calculate_dhg_hours,
     calculate_fte_from_hours,
-    calculate_teacher_requirement,
     calculate_hsa_allocation,
+    calculate_teacher_requirement,
 )
 from app.engine.dhg.models import (
-    EducationLevel,
-    DHGInput,
-    SubjectHours,
     DHGHoursResult,
+    DHGInput,
+    EducationLevel,
     FTECalculationResult,
-    TeacherRequirement,
     HSAAllocation,
+    SubjectHours,
+    TeacherRequirement,
 )
 from app.engine.dhg.validators import (
     validate_dhg_input,
-    validate_subject_hours,
     validate_hsa_limits,
+    validate_subject_hours,
 )
 
 __all__ = [
+    "DHGHoursResult",
+    "DHGInput",
     # Models
     "EducationLevel",
-    "DHGInput",
-    "SubjectHours",
-    "DHGHoursResult",
     "FTECalculationResult",
-    "TeacherRequirement",
     "HSAAllocation",
+    "SubjectHours",
+    "TeacherRequirement",
     # Calculator functions
     "calculate_dhg_hours",
     "calculate_fte_from_hours",
-    "calculate_teacher_requirement",
     "calculate_hsa_allocation",
+    "calculate_teacher_requirement",
     # Validators
     "validate_dhg_input",
-    "validate_subject_hours",
     "validate_hsa_limits",
+    "validate_subject_hours",
 ]

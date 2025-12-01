@@ -14,13 +14,11 @@ Business Rules:
 """
 
 from decimal import Decimal
-from typing import Optional
 
 from app.engine.enrollment.models import (
     EnrollmentGrowthScenario,
     EnrollmentProjectionResult,
 )
-
 
 # EFIR School Capacity (from specifications)
 EFIR_MAX_CAPACITY = 1875  # Maximum total enrollment
@@ -70,7 +68,7 @@ def validate_capacity(
 def validate_total_capacity(
     projection_results: list[EnrollmentProjectionResult],
     capacity_limit: int = EFIR_MAX_CAPACITY,
-) -> tuple[bool, Optional[int], Optional[int]]:
+) -> tuple[bool, int | None, int | None]:
     """
     Validate total enrollment across all levels doesn't exceed capacity.
 
@@ -124,7 +122,7 @@ def validate_total_capacity(
 
 def validate_growth_rate(
     growth_rate: Decimal,
-    scenario: Optional[EnrollmentGrowthScenario] = None,
+    scenario: EnrollmentGrowthScenario | None = None,
 ) -> None:
     """
     Validate growth rate is within allowed range for scenario.

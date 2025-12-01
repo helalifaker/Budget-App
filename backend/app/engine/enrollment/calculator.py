@@ -17,7 +17,6 @@ Attrition:
 """
 
 from decimal import Decimal
-from typing import Optional
 
 from app.engine.enrollment.models import (
     EnrollmentGrowthScenario,
@@ -26,7 +25,6 @@ from app.engine.enrollment.models import (
     EnrollmentProjectionResult,
     RetentionModel,
 )
-
 
 # Growth rate mappings by scenario
 SCENARIO_GROWTH_RATES: dict[EnrollmentGrowthScenario, Decimal] = {

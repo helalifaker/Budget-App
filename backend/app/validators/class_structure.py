@@ -9,7 +9,6 @@ Business Rule (HIGH-4 from Phase 0-3 review):
 """
 
 from decimal import Decimal
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import select
@@ -90,7 +89,7 @@ async def validate_class_structure(
     level_param = level_param_result.scalar_one_or_none()
 
     # Priority 2: Cycle-level parameter (if no level-specific param)
-    cycle_param: Optional[ClassSizeParam] = None
+    cycle_param: ClassSizeParam | None = None
     if not level_param and level.cycle_id:
         cycle_param_query = (
             select(ClassSizeParam)

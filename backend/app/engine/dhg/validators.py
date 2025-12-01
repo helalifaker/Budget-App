@@ -15,13 +15,12 @@ Business Rules:
 """
 
 from decimal import Decimal
-from typing import List
 
 from app.engine.dhg.models import (
-    EducationLevel,
     DHGInput,
-    SubjectHours,
+    EducationLevel,
     HSAAllocation,
+    SubjectHours,
 )
 
 
@@ -333,7 +332,7 @@ def validate_dhg_hours_non_negative(dhg_hours: Decimal) -> None:
 
 
 def validate_subject_hours_list_consistency(
-    subject_hours_list: List[SubjectHours],
+    subject_hours_list: list[SubjectHours],
 ) -> None:
     """
     Validate that subject hours list is consistent.

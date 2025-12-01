@@ -1,8 +1,8 @@
 """API schemas for DHG endpoints."""
 
 from app.engine.dhg.models import (
-    DHGInput,
     DHGHoursResult,
+    DHGInput,
 )
 
 # Reuse engine models for API layer

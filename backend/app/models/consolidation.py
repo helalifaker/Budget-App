@@ -10,6 +10,8 @@ Date: 2025-12-01
 Version: 3.0.0
 """
 
+from __future__ import annotations
+
 import enum
 import uuid
 from decimal import Decimal

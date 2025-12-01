@@ -33,21 +33,18 @@ HSA (Overtime) Allocation:
 
 import math
 from decimal import Decimal
-from typing import Dict, List
 
 from app.engine.dhg.models import (
-    EducationLevel,
-    DHGInput,
     DHGHoursResult,
+    DHGInput,
+    EducationLevel,
     FTECalculationResult,
-    TeacherRequirement,
     HSAAllocation,
-    SubjectHours,
+    TeacherRequirement,
 )
 
-
 # Standard teaching hours by education level
-STANDARD_HOURS: Dict[EducationLevel, Decimal] = {
+STANDARD_HOURS: dict[EducationLevel, Decimal] = {
     EducationLevel.PRIMARY: Decimal("24.0"),  # Primary: 24h/week
     EducationLevel.SECONDARY: Decimal("18.0"),  # Secondary: 18h/week
 }
@@ -102,7 +99,7 @@ def calculate_dhg_hours(dhg_input: DHGInput) -> DHGHoursResult:
         >>> result.subject_breakdown["MATH"]
         Decimal('27.0')
     """
-    subject_breakdown: Dict[str, Decimal] = {}
+    subject_breakdown: dict[str, Decimal] = {}
     total_hours = Decimal("0")
 
     for subject_hours in dhg_input.subject_hours_list:
@@ -188,7 +185,7 @@ def calculate_fte_from_hours(
 def calculate_teacher_requirement(
     subject_code: str,
     subject_name: str,
-    dhg_hours_list: List[DHGHoursResult],
+    dhg_hours_list: list[DHGHoursResult],
     education_level: EducationLevel,
 ) -> TeacherRequirement:
     """
@@ -338,7 +335,7 @@ def calculate_hsa_allocation(
 
 
 def calculate_aggregated_dhg_hours(
-    dhg_hours_list: List[DHGHoursResult],
+    dhg_hours_list: list[DHGHoursResult],
 ) -> Decimal:
     """
     Calculate total aggregated DHG hours across all levels.

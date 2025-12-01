@@ -12,30 +12,37 @@ These modules handle operational planning and budget calculations:
 All planning data is versioned and drives financial projections.
 """
 
+from __future__ import annotations
+
 import uuid
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
-from enum import Enum as PyEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    UUID,
     Boolean,
     CheckConstraint,
-    Column,
     Date,
-    DateTime,
-    Enum,
     ForeignKey,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
-    UUID,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.models.base import BaseModel, VersionedMixin
 
+if TYPE_CHECKING:
+    from app.models.configuration import (
+        AcademicCycle,
+        AcademicLevel,
+        NationalityType,
+        Subject,
+        TeacherCategory,
+    )
 
 # ==============================================================================
 # Module 7: Enrollment Planning
@@ -96,8 +103,8 @@ class EnrollmentPlan(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    level: Mapped["AcademicLevel"] = relationship("AcademicLevel")
-    nationality_type: Mapped["NationalityType"] = relationship("NationalityType")
+    level: Mapped[AcademicLevel] = relationship("AcademicLevel")
+    nationality_type: Mapped[NationalityType] = relationship("NationalityType")
 
 
 # ==============================================================================
@@ -218,7 +225,7 @@ class ClassStructure(BaseModel, VersionedMixin):
         return value
 
     # Relationships
-    level: Mapped["AcademicLevel"] = relationship("AcademicLevel")
+    level: Mapped[AcademicLevel] = relationship("AcademicLevel")
 
 
 # ==============================================================================
@@ -302,8 +309,8 @@ class DHGSubjectHours(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    subject: Mapped["Subject"] = relationship("Subject")
-    level: Mapped["AcademicLevel"] = relationship("AcademicLevel")
+    subject: Mapped[Subject] = relationship("Subject")
+    level: Mapped[AcademicLevel] = relationship("AcademicLevel")
 
 
 class DHGTeacherRequirement(BaseModel, VersionedMixin):
@@ -389,7 +396,7 @@ class DHGTeacherRequirement(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    subject: Mapped["Subject"] = relationship("Subject")
+    subject: Mapped[Subject] = relationship("Subject")
 
 
 class TeacherAllocation(BaseModel, VersionedMixin):
@@ -462,9 +469,9 @@ class TeacherAllocation(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    subject: Mapped["Subject"] = relationship("Subject")
-    cycle: Mapped["AcademicCycle"] = relationship("AcademicCycle")
-    category: Mapped["TeacherCategory"] = relationship("TeacherCategory")
+    subject: Mapped[Subject] = relationship("Subject")
+    cycle: Mapped[AcademicCycle] = relationship("AcademicCycle")
+    category: Mapped[TeacherCategory] = relationship("TeacherCategory")
 
 
 # ==============================================================================
@@ -678,8 +685,8 @@ class PersonnelCostPlan(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    category: Mapped["TeacherCategory"] = relationship("TeacherCategory")
-    cycle: Mapped["AcademicCycle"] = relationship("AcademicCycle")
+    category: Mapped[TeacherCategory] = relationship("TeacherCategory")
+    cycle: Mapped[AcademicCycle] = relationship("AcademicCycle")
 
 
 class OperatingCostPlan(BaseModel, VersionedMixin):

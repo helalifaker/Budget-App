@@ -9,15 +9,15 @@ configured min/max bounds from class_size_params (level-specific preferred,
 else cycle-level).
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "005_class_structure_validation"
-down_revision: Union[str, None] = "004_fix_critical_issues"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "004_fix_critical_issues"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

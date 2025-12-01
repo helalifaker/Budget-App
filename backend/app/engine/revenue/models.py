@@ -14,7 +14,6 @@ EFIR Fee Structure Context:
 
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -35,7 +34,7 @@ class TuitionInput(BaseModel):
     Contains student enrollment details and fee structure.
     """
 
-    student_id: Optional[UUID] = Field(None, description="Student UUID (optional)")
+    student_id: UUID | None = Field(None, description="Student UUID (optional)")
     level_id: UUID = Field(..., description="Academic level UUID")
     level_code: str = Field(..., description="Level code (e.g., '6EME', 'TERMINALE')")
     fee_category: FeeCategory = Field(..., description="Fee category by nationality")
@@ -89,7 +88,7 @@ class TuitionRevenue(BaseModel):
     Contains base tuition, discounts applied, and net tuition.
     """
 
-    student_id: Optional[UUID] = Field(None, description="Student UUID")
+    student_id: UUID | None = Field(None, description="Student UUID")
     level_code: str = Field(..., description="Level code")
     fee_category: FeeCategory = Field(..., description="Fee category")
 
@@ -207,7 +206,7 @@ class StudentRevenueResult(BaseModel):
     Combines tuition calculation with trimester distribution.
     """
 
-    student_id: Optional[UUID] = Field(None, description="Student UUID")
+    student_id: UUID | None = Field(None, description="Student UUID")
     level_code: str = Field(..., description="Level code")
     fee_category: FeeCategory = Field(..., description="Fee category")
 

@@ -5,11 +5,13 @@ This module provides common base classes and mixins for all database models.
 All models include audit trails and follow consistent patterns.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Column, DateTime, String, UUID, Boolean, ForeignKey, text
+from sqlalchemy import UUID, Column, DateTime, ForeignKey, text
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -98,7 +100,7 @@ class VersionedMixin:
     """
 
     @declared_attr
-    def budget_version_id(cls):  # noqa: N805
+    def budget_version_id(cls):
         """Foreign key to budget version."""
         return Column(
             UUID(as_uuid=True),
@@ -109,7 +111,7 @@ class VersionedMixin:
         )
 
     @declared_attr
-    def budget_version(cls):  # noqa: N805
+    def budget_version(cls):
         """Relationship to budget version."""
         return relationship(
             "BudgetVersion",
@@ -143,7 +145,7 @@ class BaseModel(Base, AuditMixin, SoftDeleteMixin):
     )
 
     @declared_attr.directive
-    def __table_args__(cls):  # noqa: N805
+    def __table_args__(cls):
         """Set all tables to efir_budget schema."""
         return {"schema": "efir_budget", "comment": cls.__doc__}
 
@@ -206,7 +208,7 @@ class ReferenceDataModel(Base, TimestampMixin):
     )
 
     @declared_attr.directive
-    def __table_args__(cls):  # noqa: N805
+    def __table_args__(cls):
         """Set all tables to efir_budget schema."""
         return {"schema": "efir_budget", "comment": cls.__doc__}
 

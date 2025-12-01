@@ -7,7 +7,6 @@ Tests the class structure validation logic (HIGH-4 from Phase 0-3 review).
 from decimal import Decimal
 
 import pytest
-
 from app.validators.class_structure import (
     ClassStructureValidationError,
     validate_class_structure_sync,

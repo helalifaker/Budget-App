@@ -14,12 +14,11 @@ Business Rules:
 """
 
 from decimal import Decimal
-from typing import Optional
 
 from app.engine.revenue.models import (
     FeeCategory,
-    TuitionInput,
     TrimesterDistribution,
+    TuitionInput,
 )
 
 
@@ -268,7 +267,7 @@ def validate_fee_non_negative(fee_amount: Decimal, fee_name: str = "Fee") -> Non
 
 def validate_fee_category(
     fee_category: FeeCategory,
-    allowed_categories: Optional[list[FeeCategory]] = None,
+    allowed_categories: list[FeeCategory] | None = None,
 ) -> None:
     """
     Validate fee category is allowed.

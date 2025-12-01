@@ -18,41 +18,40 @@ Test Categories:
 11. Edge cases and error handling
 """
 
-import pytest
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
 from app.engine.kpi import (
-    KPIType,
     KPIInput,
     KPIResult,
-    KPICalculationResult,
-    calculate_student_teacher_ratio,
-    calculate_he_ratio_secondary,
-    calculate_revenue_per_student,
-    calculate_cost_per_student,
-    calculate_margin_percentage,
-    calculate_staff_cost_ratio,
+    KPIType,
     calculate_capacity_utilization,
+    calculate_cost_per_student,
+    calculate_he_ratio_secondary,
+    calculate_margin_percentage,
+    calculate_revenue_per_student,
+    calculate_staff_cost_ratio,
+    calculate_student_teacher_ratio,
     validate_kpi_input,
     validate_ratio_bounds,
 )
 from app.engine.kpi.calculator import (
-    calculate_all_kpis,
-    TARGET_STUDENT_TEACHER_RATIO,
     TARGET_HE_RATIO_SECONDARY,
-    TARGET_REVENUE_PER_STUDENT,
     TARGET_MARGIN_PERCENTAGE,
+    TARGET_REVENUE_PER_STUDENT,
     TARGET_STAFF_COST_RATIO,
+    TARGET_STUDENT_TEACHER_RATIO,
+    calculate_all_kpis,
 )
 from app.engine.kpi.validators import (
     InvalidKPIInputError,
     InvalidRatioBoundsError,
-    validate_student_teacher_ratio,
+    validate_capacity_utilization,
     validate_he_ratio_secondary,
     validate_margin_percentage,
     validate_staff_cost_ratio,
-    validate_capacity_utilization,
+    validate_student_teacher_ratio,
 )
 
 

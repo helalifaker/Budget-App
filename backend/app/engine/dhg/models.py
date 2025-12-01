@@ -13,7 +13,6 @@ French Education System Context:
 
 from decimal import Decimal
 from enum import Enum
-from typing import Dict, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -133,7 +132,7 @@ class DHGHoursResult(BaseModel):
     education_level: EducationLevel = Field(..., description="Education level")
     number_of_classes: int = Field(..., description="Number of classes")
     total_hours: Decimal = Field(..., description="Total DHG hours per week")
-    subject_breakdown: Dict[str, Decimal] = Field(
+    subject_breakdown: dict[str, Decimal] = Field(
         ..., description="Hours breakdown by subject code"
     )
 
@@ -201,7 +200,7 @@ class TeacherRequirement(BaseModel):
     standard_hours: Decimal = Field(..., description="Standard teaching hours per week")
     simple_fte: Decimal = Field(..., description="Simple FTE required")
     rounded_fte: int = Field(..., description="Rounded FTE (teachers needed)")
-    hsa_hours: Optional[Decimal] = Field(
+    hsa_hours: Decimal | None = Field(
         None, description="HSA (overtime) hours needed if any"
     )
 

@@ -5,17 +5,17 @@ This file provides common fixtures and configuration for all tests.
 """
 
 import asyncio
-from typing import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Generator
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import create_engine, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Session, sessionmaker
 
 # Import all models to ensure they're registered with SQLAlchemy
-from app.models import *  # noqa: F403, F401
+from app.models import *  # noqa: F403
 from app.models.base import Base
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture(scope="session")

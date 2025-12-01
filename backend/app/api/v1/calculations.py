@@ -5,9 +5,17 @@ All calculation endpoints are stateless and perform pure calculations
 without database I/O.
 """
 
-from fastapi import APIRouter, HTTPException, status
-from typing import List
 
+from fastapi import APIRouter, HTTPException, status
+
+from app.engine.dhg import calculate_dhg_hours, validate_dhg_input
+from app.engine.enrollment import calculate_enrollment_projection
+from app.engine.kpi import calculate_all_kpis, validate_kpi_input
+from app.engine.revenue import calculate_total_student_revenue, validate_tuition_input
+from app.schemas.dhg import (
+    DHGCalculationRequest,
+    DHGCalculationResponse,
+)
 from app.schemas.enrollment import (
     EnrollmentProjectionRequest,
     EnrollmentProjectionResponse,
@@ -16,19 +24,10 @@ from app.schemas.kpi import (
     KPICalculationRequest,
     KPICalculationResponse,
 )
-from app.schemas.dhg import (
-    DHGCalculationRequest,
-    DHGCalculationResponse,
-)
 from app.schemas.revenue import (
     RevenueCalculationRequest,
     RevenueCalculationResponse,
 )
-
-from app.engine.enrollment import calculate_enrollment_projection, validate_capacity
-from app.engine.kpi import calculate_all_kpis, validate_kpi_input
-from app.engine.dhg import calculate_dhg_hours, validate_dhg_input
-from app.engine.revenue import calculate_total_student_revenue, validate_tuition_input
 
 router = APIRouter(prefix="/api/v1/calculations", tags=["calculations"])
 
@@ -69,7 +68,7 @@ async def calculate_enrollment(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Enrollment calculation failed: {str(e)}",
+            detail=f"Enrollment calculation failed: {e!s}",
         )
 
 
@@ -115,12 +114,12 @@ async def calculate_kpis(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid KPI input: {str(e)}",
+            detail=f"Invalid KPI input: {e!s}",
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"KPI calculation failed: {str(e)}",
+            detail=f"KPI calculation failed: {e!s}",
         )
 
 
@@ -172,12 +171,12 @@ async def calculate_dhg(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid DHG input: {str(e)}",
+            detail=f"Invalid DHG input: {e!s}",
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"DHG calculation failed: {str(e)}",
+            detail=f"DHG calculation failed: {e!s}",
         )
 
 
@@ -222,12 +221,12 @@ async def calculate_revenue(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid revenue input: {str(e)}",
+            detail=f"Invalid revenue input: {e!s}",
         )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Revenue calculation failed: {str(e)}",
+            detail=f"Revenue calculation failed: {e!s}",
         )
 
 

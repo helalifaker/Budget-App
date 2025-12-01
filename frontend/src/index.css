@@ -11,100 +11,101 @@
  */
 @theme {
   /* Sahara Twilight Color Palette */
-  --color-sand-50: #FBF8F3;
-  --color-sand-100: #F4EDE2;
-  --color-sand-200: #E8DCC8;
-  --color-sand-300: #DCC9AD;
-  --color-sand-400: #CFB691;
-  --color-sand-500: #C2A375;
-  --color-sand-600: #B5905A;
-  --color-sand-700: #8F7248;
-  --color-sand-800: #66482D;
-  --color-sand-900: #4A3520;
+  --color-sand-50: #fbf8f3;
+  --color-sand-100: #f4ede2;
+  --color-sand-200: #e8dcc8;
+  --color-sand-300: #dcc9ad;
+  --color-sand-400: #cfb691;
+  --color-sand-500: #c2a375;
+  --color-sand-600: #b5905a;
+  --color-sand-700: #8f7248;
+  --color-sand-800: #66482d;
+  --color-sand-900: #4a3520;
 
-  --color-gold-50: #FFF9E6;
-  --color-gold-100: #FFF3CC;
-  --color-gold-200: #FFE799;
-  --color-gold-300: #FFDA66;
-  --color-gold-400: #FFCE33;
-  --color-gold-500: #EDAD3E; /* Primary gold - vibrant desert orange for CTAs */
-  --color-gold-600: #D89B35;
-  --color-gold-700: #C3892C;
-  --color-gold-800: #AE7723;
-  --color-gold-900: #99651A;
+  --color-gold-50: #fff9e6;
+  --color-gold-100: #fff3cc;
+  --color-gold-200: #ffe799;
+  --color-gold-300: #ffda66;
+  --color-gold-400: #ffce33;
+  --color-gold-500: #edad3e; /* Primary gold - vibrant desert orange for CTAs */
+  --color-gold-600: #d89b35;
+  --color-gold-700: #c3892c;
+  --color-gold-800: #ae7723;
+  --color-gold-900: #99651a;
 
-  --color-brown-50: #F9F5F2;
-  --color-brown-100: #F2EBE5;
-  --color-brown-200: #E5D6CB;
-  --color-brown-300: #D8C1B1;
-  --color-brown-400: #CBAC97;
-  --color-brown-500: #BE977D;
-  --color-brown-600: #A67F63;
+  --color-brown-50: #f9f5f2;
+  --color-brown-100: #f2ebe5;
+  --color-brown-200: #e5d6cb;
+  --color-brown-300: #d8c1b1;
+  --color-brown-400: #cbac97;
+  --color-brown-500: #be977d;
+  --color-brown-600: #a67f63;
   --color-brown-700: #876749;
-  --color-brown-800: #5C4130;
-  --color-brown-900: #3D2B20;
+  --color-brown-800: #5c4130;
+  --color-brown-900: #3d2b20;
 
-  --color-twilight-50: #F5F7F9;
-  --color-twilight-100: #E8ECF0;
-  --color-twilight-200: #D1D9E1;
-  --color-twilight-300: #B9C6D2;
-  --color-twilight-400: #A2B3C3;
-  --color-twilight-500: #8BA0B4;
-  --color-twilight-600: #748DA5;
-  --color-twilight-700: #61707F; /* Professional grey-blue for body text */
-  --color-twilight-800: #4E5A67;
-  --color-twilight-900: #3B444F;
+  --color-twilight-50: #f5f7f9;
+  --color-twilight-100: #e8ecf0;
+  --color-twilight-200: #d1d9e1;
+  --color-twilight-300: #b9c6d2;
+  --color-twilight-400: #a2b3c3;
+  --color-twilight-500: #8ba0b4;
+  --color-twilight-600: #748da5;
+  --color-twilight-700: #61707f; /* Professional grey-blue for body text */
+  --color-twilight-800: #4e5a67;
+  --color-twilight-900: #3b444f;
 
   /* Semantic colors */
-  --color-success-50: #F4F7F4;
-  --color-success-100: #E9F0E9;
-  --color-success-200: #D3E1D3;
-  --color-success-300: #BDD2BD;
-  --color-success-400: #A7C3A7;
-  --color-success-500: #8B9D83; /* Green sage */
-  --color-success-600: #7A8A73;
+  --color-success-50: #f4f7f4;
+  --color-success-100: #e9f0e9;
+  --color-success-200: #d3e1d3;
+  --color-success-300: #bdd2bd;
+  --color-success-400: #a7c3a7;
+  --color-success-500: #8b9d83; /* Green sage */
+  --color-success-600: #7a8a73;
   --color-success-700: #697763;
   --color-success-800: #586453;
   --color-success-900: #475143;
 
-  --color-warning-50: #FFF5F0;
-  --color-warning-100: #FEEAE1;
-  --color-warning-200: #FDD5C3;
-  --color-warning-300: #FCC0A5;
-  --color-warning-400: #FBAB87;
-  --color-warning-500: #C75B39; /* Terracotta */
-  --color-warning-600: #B35232;
-  --color-warning-700: #9F492B;
-  --color-warning-800: #8B4024;
-  --color-warning-900: #77371D;
+  --color-warning-50: #fff5f0;
+  --color-warning-100: #feeae1;
+  --color-warning-200: #fdd5c3;
+  --color-warning-300: #fcc0a5;
+  --color-warning-400: #fbab87;
+  --color-warning-500: #c75b39; /* Terracotta */
+  --color-warning-600: #b35232;
+  --color-warning-700: #9f492b;
+  --color-warning-800: #8b4024;
+  --color-warning-900: #77371d;
 
-  --color-error-50: #F9F4F7;
-  --color-error-100: #F3E9EF;
-  --color-error-200: #E7D3DF;
-  --color-error-300: #DBBDCF;
-  --color-error-400: #CFA7BF;
-  --color-error-500: #8B4C6F; /* Deep mauve */
-  --color-error-600: #7A4262;
+  --color-error-50: #f9f4f7;
+  --color-error-100: #f3e9ef;
+  --color-error-200: #e7d3df;
+  --color-error-300: #dbbdcf;
+  --color-error-400: #cfa7bf;
+  --color-error-500: #8b4c6f; /* Deep mauve */
+  --color-error-600: #7a4262;
   --color-error-700: #693855;
-  --color-error-800: #582E48;
-  --color-error-900: #47243B;
+  --color-error-800: #582e48;
+  --color-error-900: #47243b;
 
-  --color-info-50: #F5F8FB;
-  --color-info-100: #EBF1F7;
-  --color-info-200: #D7E3EF;
-  --color-info-300: #C3D5E7;
-  --color-info-400: #AFC7DF;
-  --color-info-500: #A9C6E6; /* Pale sky */
-  --color-info-600: #98B2D0;
-  --color-info-700: #879EBA;
-  --color-info-800: #768AA4;
-  --color-info-900: #65768E;
+  --color-info-50: #f5f8fb;
+  --color-info-100: #ebf1f7;
+  --color-info-200: #d7e3ef;
+  --color-info-300: #c3d5e7;
+  --color-info-400: #afc7df;
+  --color-info-500: #a9c6e6; /* Pale sky */
+  --color-info-600: #98b2d0;
+  --color-info-700: #879eba;
+  --color-info-800: #768aa4;
+  --color-info-900: #65768e;
 
   /* Custom box shadows */
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-kpi: 0 4px 6px -1px rgba(237, 173, 62, 0.1), 0 2px 4px -2px rgba(237, 173, 62, 0.1);
-  --shadow-kpi-hover: 0 10px 20px -3px rgba(237, 173, 62, 0.2), 0 4px 8px -4px rgba(237, 173, 62, 0.2);
+  --shadow-kpi-hover: 0 10px 20px -3px rgba(237, 173, 62, 0.2),
+    0 4px 8px -4px rgba(237, 173, 62, 0.2);
 
   /* Border radius */
   --radius-card: 0.75rem;
@@ -134,18 +135,34 @@
   --animate-scale-in: scaleIn 0.2s ease-out;
 
   @keyframes fadeIn {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
   }
 
   @keyframes slideIn {
-    0% { transform: translateY(-10px); opacity: 0; }
-    100% { transform: translateY(0); opacity: 1; }
+    0% {
+      transform: translateY(-10px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 
   @keyframes scaleIn {
-    0% { transform: scale(0.95); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
   }
 }
 
@@ -164,7 +181,11 @@
 
   body {
     @apply bg-sand-50 text-twilight-700;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family:
+      'Inter',
+      system-ui,
+      -apple-system,
+      sans-serif;
   }
 
   /* Heading styles */
@@ -275,23 +296,23 @@
 
   /* Gradient backgrounds */
   .bg-gradient-sand {
-    background: linear-gradient(135deg, #FBF8F3 0%, #F4EDE2 100%);
+    background: linear-gradient(135deg, #fbf8f3 0%, #f4ede2 100%);
   }
 
   .bg-gradient-gold {
-    background: linear-gradient(135deg, #FFDA66 0%, #EDAD3E 100%);
+    background: linear-gradient(135deg, #ffda66 0%, #edad3e 100%);
   }
 }
 
 /* AG Grid Theme Customization (Sahara Twilight) */
 .ag-theme-quartz {
-  --ag-header-background-color: #F4EDE2;
-  --ag-odd-row-background-color: #FFFFFF;
-  --ag-row-hover-color: #FBF8F3;
-  --ag-selected-row-background-color: #FFF9E6;
-  --ag-border-color: #E8DCC8;
-  --ag-header-foreground-color: #66482D;
-  --ag-data-color: #61707F;
+  --ag-header-background-color: #f4ede2;
+  --ag-odd-row-background-color: #ffffff;
+  --ag-row-hover-color: #fbf8f3;
+  --ag-selected-row-background-color: #fff9e6;
+  --ag-border-color: #e8dcc8;
+  --ag-header-foreground-color: #66482d;
+  --ag-data-color: #61707f;
   --ag-font-family: 'Inter', system-ui, sans-serif;
 }
 
@@ -301,9 +322,9 @@
 }
 
 .recharts-text {
-  fill: #61707F;
+  fill: #61707f;
 }
 
 .recharts-legend-item-text {
-  color: #61707F;
+  color: #61707f;
 }

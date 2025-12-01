@@ -16,39 +16,37 @@ Test Categories:
 9. Edge cases and error handling
 """
 
-import pytest
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
 from app.engine.dhg import (
-    EducationLevel,
-    DHGInput,
-    SubjectHours,
     DHGHoursResult,
-    FTECalculationResult,
-    TeacherRequirement,
+    DHGInput,
+    EducationLevel,
     HSAAllocation,
+    SubjectHours,
     calculate_dhg_hours,
     calculate_fte_from_hours,
-    calculate_teacher_requirement,
     calculate_hsa_allocation,
+    calculate_teacher_requirement,
     validate_dhg_input,
-    validate_subject_hours,
     validate_hsa_limits,
+    validate_subject_hours,
 )
 from app.engine.dhg.calculator import (
-    STANDARD_HOURS,
     DEFAULT_MAX_HSA_PER_TEACHER,
+    STANDARD_HOURS,
     calculate_aggregated_dhg_hours,
 )
 from app.engine.dhg.validators import (
     InvalidDHGInputError,
-    InvalidSubjectHoursError,
     InvalidHSAAllocationError,
-    validate_max_hsa_per_teacher,
+    InvalidSubjectHoursError,
+    validate_dhg_hours_non_negative,
     validate_education_level_standard_hours,
     validate_fte_non_negative,
-    validate_dhg_hours_non_negative,
+    validate_max_hsa_per_teacher,
     validate_subject_hours_list_consistency,
 )
 

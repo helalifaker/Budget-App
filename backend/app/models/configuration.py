@@ -12,15 +12,17 @@ These modules provide master data and parameters that drive budget calculations:
 All configuration data is versioned to support multiple budget scenarios.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum as PyEnum
 
 from sqlalchemy import (
+    UUID,
     Boolean,
     CheckConstraint,
-    Column,
     DateTime,
     Enum,
     ForeignKey,
@@ -29,13 +31,11 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    UUID,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel, ReferenceDataModel, VersionedMixin
-
 
 # ==============================================================================
 # Module 1: System Configuration

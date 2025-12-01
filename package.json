@@ -18,8 +18,8 @@
   },
   "lint-staged": {
     "frontend/src/**/*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
+      "cd frontend && npx eslint --fix",
+      "cd frontend && npx prettier --write"
     ],
     "backend/**/*.py": [
       "cd backend && .venv/bin/ruff check --fix",

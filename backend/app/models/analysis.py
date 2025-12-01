@@ -11,6 +11,8 @@ Date: 2025-12-01
 Version: 4.0.0
 """
 
+from __future__ import annotations
+
 import enum
 import uuid
 from datetime import date, datetime
@@ -24,12 +26,12 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
     Text,
     UniqueConstraint,
-    Index,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship

@@ -26,17 +26,15 @@ Total Revenue:
 """
 
 from decimal import Decimal
-from typing import Optional
 
 from app.engine.revenue.models import (
     FeeCategory,
+    SiblingDiscount,
+    StudentRevenueResult,
+    TrimesterDistribution,
     TuitionInput,
     TuitionRevenue,
-    SiblingDiscount,
-    TrimesterDistribution,
-    StudentRevenueResult,
 )
-
 
 # Sibling discount configuration
 SIBLING_DISCOUNT_THRESHOLD = 3  # Discount applies to 3rd+ child

@@ -4,7 +4,6 @@ Sanity checks on migration files for critical business rules.
 
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 

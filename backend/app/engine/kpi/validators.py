@@ -13,7 +13,6 @@ Validation Rules:
 """
 
 from decimal import Decimal
-from typing import Optional
 
 from app.engine.kpi.models import KPIInput, KPIResult
 
@@ -140,8 +139,8 @@ def validate_kpi_input(kpi_input: KPIInput) -> None:
 
 def validate_ratio_bounds(
     kpi_result: KPIResult,
-    min_value: Optional[Decimal] = None,
-    max_value: Optional[Decimal] = None,
+    min_value: Decimal | None = None,
+    max_value: Decimal | None = None,
 ) -> None:
     """
     Validate that a calculated KPI ratio is within reasonable bounds.

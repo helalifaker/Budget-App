@@ -7,7 +7,6 @@ All models use Pydantic for validation and type safety.
 
 from decimal import Decimal
 from enum import Enum
-from typing import Dict, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -33,11 +32,11 @@ class EnrollmentInput(BaseModel):
     level_code: str = Field(..., description="Level code (e.g., 'CP', '6EME', 'TERMINALE')")
     nationality: str = Field(..., description="Nationality category (French, Saudi, Other)")
     current_enrollment: int = Field(..., ge=0, description="Current student count")
-    growth_scenario: Optional[EnrollmentGrowthScenario] = Field(
+    growth_scenario: EnrollmentGrowthScenario | None = Field(
         default=EnrollmentGrowthScenario.BASE,
         description="Growth scenario (conservative, base, optimistic)",
     )
-    custom_growth_rate: Optional[Decimal] = Field(
+    custom_growth_rate: Decimal | None = Field(
         default=None,
         ge=Decimal("-0.50"),
         le=Decimal("1.00"),

@@ -8,8 +8,6 @@ Verifies that:
 4. Audit trail fields exist (CRITICAL-3)
 """
 
-import pytest
-
 from app.models.base import BaseModel, SoftDeleteMixin
 
 

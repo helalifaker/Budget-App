@@ -10,7 +10,6 @@ We verify the SQL policy file aligns with current expectations:
 import re
 from pathlib import Path
 
-
 RLS_FILE = (
     Path(__file__).resolve().parents[2] / "docs" / "DATABASE" / "sql" / "rls_policies.sql"
 )

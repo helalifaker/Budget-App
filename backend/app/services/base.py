@@ -6,11 +6,10 @@ Provides reusable async database operations for all services.
 
 import uuid
 from datetime import datetime
-from typing import Any, Generic, Type, TypeVar
+from typing import Any, Generic, TypeVar
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Query
 
 from app.models.base import BaseModel
 from app.services.exceptions import NotFoundError, ValidationError
@@ -30,7 +29,7 @@ class BaseService(Generic[ModelType]):
     Includes soft delete support and pagination utilities.
     """
 
-    def __init__(self, model: Type[ModelType], session: AsyncSession):
+    def __init__(self, model: type[ModelType], session: AsyncSession):
         """
         Initialize base service.
 
@@ -211,7 +210,7 @@ class BaseService(Generic[ModelType]):
 
             return instance
         except Exception as e:
-            raise ValidationError(f"Failed to create {self.model.__name__}: {str(e)}")
+            raise ValidationError(f"Failed to create {self.model.__name__}: {e!s}")
 
     async def update(
         self,
@@ -250,7 +249,7 @@ class BaseService(Generic[ModelType]):
 
             return instance
         except Exception as e:
-            raise ValidationError(f"Failed to update {self.model.__name__}: {str(e)}")
+            raise ValidationError(f"Failed to update {self.model.__name__}: {e!s}")
 
     async def delete(self, id: uuid.UUID) -> bool:
         """

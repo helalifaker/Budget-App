@@ -22,7 +22,7 @@ Dependencies:
 - Creates: 8 tables with 5 enum types and comprehensive constraints
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
@@ -30,9 +30,9 @@ from sqlalchemy.dialects import postgresql
 
 # Revision identifiers, used by Alembic.
 revision: str = "004_analysis_layer"
-down_revision: Union[str, None] = "20251201_0045_fix_critical_issues"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20251201_0045_fix_critical_issues"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

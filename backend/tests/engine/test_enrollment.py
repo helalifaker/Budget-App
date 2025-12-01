@@ -14,19 +14,19 @@ Test Categories:
 7. Edge cases and error handling
 """
 
-import pytest
 from decimal import Decimal
-from uuid import UUID, uuid4
+from uuid import uuid4
 
+import pytest
 from app.engine.enrollment import (
     EnrollmentGrowthScenario,
     EnrollmentInput,
     EnrollmentProjection,
     EnrollmentProjectionResult,
     RetentionModel,
-    calculate_enrollment_projection,
     apply_retention_model,
     calculate_attrition,
+    calculate_enrollment_projection,
     validate_capacity,
     validate_growth_rate,
 )
@@ -37,9 +37,9 @@ from app.engine.enrollment.calculator import (
 from app.engine.enrollment.validators import (
     CapacityExceededError,
     InvalidGrowthRateError,
-    validate_total_capacity,
-    validate_retention_rate,
     validate_attrition_rate,
+    validate_retention_rate,
+    validate_total_capacity,
 )
 
 

@@ -12,8 +12,8 @@ Creates Planning Layer tables:
 - Module 11: Cost Planning (personnel_cost_plans, operating_cost_plans)
 - Module 12: CapEx Planning (capex_plans)
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.

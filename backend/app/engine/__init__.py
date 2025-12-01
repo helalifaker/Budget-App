@@ -17,4 +17,4 @@ Design Principles:
 - Transparent: All calculations documented with formulas
 """
 
-__all__ = []
+__all__: list[str] = []

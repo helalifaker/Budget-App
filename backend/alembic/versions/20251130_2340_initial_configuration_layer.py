@@ -12,8 +12,8 @@ Creates efir_budget schema and all Configuration Layer tables:
 - Module 5: Fee Structure (fee_categories, nationality_types, fee_structure)
 - Module 6: Timetable Constraints (timetable_constraints)
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
