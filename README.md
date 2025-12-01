@@ -47,13 +47,24 @@ This application provides integrated workforce planning through annual budget an
 
 ```
 .
-├── frontend/          # React 19 + TypeScript + Vite application
-├── backend/           # FastAPI application
-├── docs/              # Documentation (to be added)
-│   └── MODULES/       # Module-specific documentation
+├── frontend/              # React 19 + TypeScript + Vite application
+├── backend/               # FastAPI application with calculation engines
+│   ├── app/               # Application code
+│   │   ├── api/           # FastAPI routes
+│   │   ├── engine/        # Calculation engines (DHG, KPI, Revenue, Enrollment)
+│   │   ├── models/        # SQLAlchemy models (18 modules)
+│   │   ├── schemas/       # Pydantic schemas
+│   │   └── services/      # Business logic services
+│   ├── alembic/           # Database migrations (7 migrations)
+│   └── tests/             # Pytest tests
+├── docs/                  # Documentation (COMPLETE)
+│   ├── MODULES/           # 18 module specifications (100% complete)
+│   └── DATABASE/          # Database design and setup guides
+├── .claude/               # Agent configuration
+│   └── agents/            # 14 specialized agents
 ├── .github/
-│   └── workflows/      # CI/CD workflows
-└── README.md          # This file
+│   └── workflows/         # CI/CD workflows
+└── README.md              # This file
 ```
 
 ## Quickstart

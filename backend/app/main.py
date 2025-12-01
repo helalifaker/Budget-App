@@ -7,7 +7,7 @@ This is the entry point for the FastAPI backend server.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import configuration
+from app.api.v1 import configuration, costs_router, planning
 from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.rbac import RBACMiddleware
 from app.routes import health
@@ -50,6 +50,8 @@ def create_app() -> FastAPI:
     # Include routers
     app.include_router(health.router)
     app.include_router(configuration.router)
+    app.include_router(planning.router)
+    app.include_router(costs_router)
 
     return app
 
