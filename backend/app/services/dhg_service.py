@@ -14,35 +14,26 @@ import uuid
 from decimal import Decimal
 from math import ceil
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.engine.dhg import (
-    calculate_dhg_hours,
-    calculate_fte_from_hours,
-    calculate_teacher_requirement,
-    DHGInput,
-    SubjectHours,
-    EducationLevel,
+from app.models.configuration import (
+    AcademicCycle,
+    AcademicLevel,
+    Subject,
+    SubjectHoursMatrix,
 )
 from app.models.planning import (
+    ClassStructure,
     DHGSubjectHours,
     DHGTeacherRequirement,
     TeacherAllocation,
-    ClassStructure,
-)
-from app.models.configuration import (
-    SubjectHoursMatrix,
-    Subject,
-    AcademicLevel,
-    AcademicCycle,
 )
 from app.services.base import BaseService
 from app.services.exceptions import (
-    NotFoundError,
-    ValidationError,
     BusinessRuleError,
+    ValidationError,
 )
 
 
@@ -621,13 +612,6 @@ class DHGService:
             if cycle_code not in allocations_by_cycle:
                 allocations_by_cycle[cycle_code] = Decimal("0.00")
             allocations_by_cycle[cycle_code] += allocation.fte_count
-
-        query = (
-            select(AcademicCycle)
-            .where(AcademicCycle.code.in_(allocations_by_cycle.keys()))
-        )
-        result = await self.session.execute(query)
-        cycles = {cycle.code: cycle for cycle in result.scalars().all()}
 
         by_cycle = {
             cycle_code: float(allocations_by_cycle.get(cycle_code, Decimal("0.00")))

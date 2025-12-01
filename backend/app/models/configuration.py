@@ -190,14 +190,14 @@ class BudgetVersion(BaseModel):
     )
 
     # Relationships
-    parent_version: Mapped["BudgetVersion"] = relationship(
+    parent_version: Mapped[BudgetVersion] = relationship(
         "BudgetVersion",
         remote_side="BudgetVersion.id",
         foreign_keys=[parent_version_id],
         back_populates="child_versions",
     )
 
-    child_versions: Mapped[list["BudgetVersion"]] = relationship(
+    child_versions: Mapped[list[BudgetVersion]] = relationship(
         "BudgetVersion",
         back_populates="parent_version",
         foreign_keys="BudgetVersion.parent_version_id",
@@ -256,7 +256,7 @@ class AcademicCycle(ReferenceDataModel):
     )
 
     # Relationships
-    levels: Mapped[list["AcademicLevel"]] = relationship(
+    levels: Mapped[list[AcademicLevel]] = relationship(
         "AcademicLevel",
         back_populates="cycle",
         order_by="AcademicLevel.sort_order",
@@ -318,7 +318,7 @@ class AcademicLevel(ReferenceDataModel):
     )
 
     # Relationships
-    cycle: Mapped["AcademicCycle"] = relationship(
+    cycle: Mapped[AcademicCycle] = relationship(
         "AcademicCycle",
         back_populates="levels",
     )
@@ -390,8 +390,8 @@ class ClassSizeParam(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    level: Mapped["AcademicLevel"] = relationship("AcademicLevel")
-    cycle: Mapped["AcademicCycle"] = relationship("AcademicCycle")
+    level: Mapped[AcademicLevel] = relationship("AcademicLevel")
+    cycle: Mapped[AcademicCycle] = relationship("AcademicCycle")
 
 
 # ==============================================================================
@@ -503,8 +503,8 @@ class SubjectHoursMatrix(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    subject: Mapped["Subject"] = relationship("Subject")
-    level: Mapped["AcademicLevel"] = relationship("AcademicLevel")
+    subject: Mapped[Subject] = relationship("Subject")
+    level: Mapped[AcademicLevel] = relationship("AcademicLevel")
 
 
 # ==============================================================================
@@ -631,8 +631,8 @@ class TeacherCostParam(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    category: Mapped["TeacherCategory"] = relationship("TeacherCategory")
-    cycle: Mapped["AcademicCycle"] = relationship("AcademicCycle")
+    category: Mapped[TeacherCategory] = relationship("TeacherCategory")
+    cycle: Mapped[AcademicCycle] = relationship("AcademicCycle")
 
 
 # ==============================================================================
@@ -806,9 +806,9 @@ class FeeStructure(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    level: Mapped["AcademicLevel"] = relationship("AcademicLevel")
-    nationality_type: Mapped["NationalityType"] = relationship("NationalityType")
-    fee_category: Mapped["FeeCategory"] = relationship("FeeCategory")
+    level: Mapped[AcademicLevel] = relationship("AcademicLevel")
+    nationality_type: Mapped[NationalityType] = relationship("NationalityType")
+    fee_category: Mapped[FeeCategory] = relationship("FeeCategory")
 
 
 # ==============================================================================
@@ -882,4 +882,4 @@ class TimetableConstraint(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    level: Mapped["AcademicLevel"] = relationship("AcademicLevel")
+    level: Mapped[AcademicLevel] = relationship("AcademicLevel")

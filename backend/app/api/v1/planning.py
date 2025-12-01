@@ -10,41 +10,35 @@ Provides REST API for managing planning operations:
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import UserDep, get_current_user
 from app.schemas.planning import (
+    ClassStructureCalculationRequest,
+    ClassStructureResponse,
+    ClassStructureUpdate,
+    DHGHoursCalculationRequest,
+    DHGSubjectHoursResponse,
+    DHGTeacherRequirementResponse,
     EnrollmentPlanCreate,
     EnrollmentPlanResponse,
     EnrollmentPlanUpdate,
-    EnrollmentSummary,
     EnrollmentProjectionRequest,
-    ClassStructureCreate,
-    ClassStructureResponse,
-    ClassStructureUpdate,
-    ClassStructureCalculationRequest,
-    DHGSubjectHoursCreate,
-    DHGSubjectHoursResponse,
-    DHGSubjectHoursUpdate,
-    DHGHoursCalculationRequest,
-    DHGTeacherRequirementCreate,
-    DHGTeacherRequirementResponse,
-    DHGTeacherRequirementUpdate,
+    EnrollmentSummary,
     FTECalculationRequest,
+    TeacherAllocationBulkUpdate,
     TeacherAllocationCreate,
     TeacherAllocationResponse,
     TeacherAllocationUpdate,
-    TeacherAllocationBulkUpdate,
     TRMDGapAnalysisResponse,
 )
-from app.services.enrollment_service import EnrollmentService
 from app.services.class_structure_service import ClassStructureService
 from app.services.dhg_service import DHGService
+from app.services.enrollment_service import EnrollmentService
 from app.services.exceptions import (
     BusinessRuleError,
-    ConflictError,
     NotFoundError,
     ValidationError,
 )

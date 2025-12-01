@@ -8,24 +8,23 @@ and driver-based cost models.
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.planning import (
-    PersonnelCostPlan,
-    OperatingCostPlan,
-    TeacherAllocation,
-    ClassStructure,
-    EnrollmentPlan,
-)
 from app.models.configuration import (
-    TeacherCostParam,
-    TeacherCategory,
     AcademicCycle,
+    TeacherCategory,
+    TeacherCostParam,
+)
+from app.models.planning import (
+    EnrollmentPlan,
+    OperatingCostPlan,
+    PersonnelCostPlan,
+    TeacherAllocation,
 )
 from app.services.base import BaseService
-from app.services.exceptions import NotFoundError, ValidationError, BusinessRuleError
+from app.services.exceptions import ValidationError
 
 
 class CostService:

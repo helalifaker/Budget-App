@@ -195,7 +195,7 @@ class BudgetConsolidation(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    budget_version: Mapped["BudgetVersion"] = relationship(
+    budget_version: Mapped[BudgetVersion] = relationship(
         "BudgetVersion",
         lazy="selectin",
     )
@@ -337,11 +337,11 @@ class FinancialStatement(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    budget_version: Mapped["BudgetVersion"] = relationship(
+    budget_version: Mapped[BudgetVersion] = relationship(
         "BudgetVersion",
         lazy="selectin",
     )
-    lines: Mapped[list["FinancialStatementLine"]] = relationship(
+    lines: Mapped[list[FinancialStatementLine]] = relationship(
         "FinancialStatementLine",
         cascade="all, delete-orphan",
         lazy="selectin",
@@ -488,7 +488,7 @@ class FinancialStatementLine(BaseModel):
     )
 
     # Relationships
-    statement: Mapped["FinancialStatement"] = relationship(
+    statement: Mapped[FinancialStatement] = relationship(
         "FinancialStatement",
         lazy="selectin",
     )

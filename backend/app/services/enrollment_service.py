@@ -8,24 +8,22 @@ enrollment projection engine for growth scenarios and capacity validation.
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.engine.enrollment import (
-    calculate_enrollment_projection,
-    validate_capacity,
-    EnrollmentInput,
     EnrollmentGrowthScenario,
+    EnrollmentInput,
     EnrollmentProjectionResult,
+    calculate_enrollment_projection,
 )
+from app.models.configuration import AcademicLevel, NationalityType
 from app.models.planning import EnrollmentPlan
-from app.models.configuration import AcademicLevel, AcademicCycle, NationalityType
 from app.services.base import BaseService
 from app.services.exceptions import (
-    NotFoundError,
-    ValidationError,
     BusinessRuleError,
+    ValidationError,
 )
 
 
@@ -138,7 +136,7 @@ class EnrollmentService:
 
         if existing:
             raise ValidationError(
-                f"Enrollment entry already exists for this level and nationality type",
+                "Enrollment entry already exists for this level and nationality type",
                 details={
                     "level_id": str(level_id),
                     "nationality_type_id": str(nationality_type_id),

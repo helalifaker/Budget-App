@@ -339,11 +339,11 @@ class KPIValue(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    kpi_definition: Mapped["KPIDefinition"] = relationship(
+    kpi_definition: Mapped[KPIDefinition] = relationship(
         "KPIDefinition",
         lazy="selectin",
     )
-    budget_version: Mapped["BudgetVersion"] = relationship(
+    budget_version: Mapped[BudgetVersion] = relationship(
         "BudgetVersion",
         lazy="selectin",
     )
@@ -483,7 +483,7 @@ class DashboardConfig(BaseModel):
     )
 
     # Relationships
-    widgets: Mapped[list["DashboardWidget"]] = relationship(
+    widgets: Mapped[list[DashboardWidget]] = relationship(
         "DashboardWidget",
         cascade="all, delete-orphan",
         lazy="selectin",
@@ -659,7 +659,7 @@ class DashboardWidget(BaseModel):
     )
 
     # Relationships
-    dashboard_config: Mapped["DashboardConfig"] = relationship(
+    dashboard_config: Mapped[DashboardConfig] = relationship(
         "DashboardConfig",
         lazy="selectin",
     )
@@ -773,7 +773,7 @@ class UserPreferences(BaseModel):
     )
 
     # Relationships
-    default_dashboard: Mapped["DashboardConfig | None"] = relationship(
+    default_dashboard: Mapped[DashboardConfig | None] = relationship(
         "DashboardConfig",
         lazy="selectin",
     )
@@ -1102,7 +1102,7 @@ class BudgetVsActual(BaseModel, VersionedMixin):
     )
 
     # Relationships
-    budget_version: Mapped["BudgetVersion"] = relationship(
+    budget_version: Mapped[BudgetVersion] = relationship(
         "BudgetVersion",
         lazy="selectin",
     )
@@ -1208,7 +1208,7 @@ class VarianceExplanation(BaseModel):
     )
 
     # Relationships
-    variance: Mapped["BudgetVsActual"] = relationship(
+    variance: Mapped[BudgetVsActual] = relationship(
         "BudgetVsActual",
         lazy="selectin",
     )

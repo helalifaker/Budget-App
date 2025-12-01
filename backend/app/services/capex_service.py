@@ -9,12 +9,11 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.planning import CapExPlan
 from app.services.base import BaseService
-from app.services.exceptions import NotFoundError, ValidationError, BusinessRuleError
+from app.services.exceptions import ValidationError
 
 
 class CapExService:

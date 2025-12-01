@@ -9,21 +9,20 @@ import uuid
 from decimal import Decimal
 from math import ceil
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.planning import ClassStructure, EnrollmentPlan
 from app.models.configuration import (
-    ClassSizeParam,
-    AcademicLevel,
     AcademicCycle,
+    AcademicLevel,
+    ClassSizeParam,
 )
+from app.models.planning import ClassStructure, EnrollmentPlan
 from app.services.base import BaseService
 from app.services.exceptions import (
-    NotFoundError,
-    ValidationError,
     BusinessRuleError,
+    ValidationError,
 )
 
 

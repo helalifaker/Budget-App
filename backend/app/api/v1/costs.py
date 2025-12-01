@@ -9,44 +9,34 @@ Provides REST API for managing revenue and cost planning:
 """
 
 import uuid
-from datetime import date
-from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.auth import UserDep, ManagerDep, get_current_user
+from app.dependencies.auth import UserDep, get_current_user
 from app.schemas.costs import (
-    RevenuePlanCreate,
-    RevenuePlanResponse,
-    RevenuePlanUpdate,
-    RevenueCalculationRequest,
-    RevenueCalculationResponse,
-    PersonnelCostPlanCreate,
-    PersonnelCostPlanResponse,
-    PersonnelCostPlanUpdate,
-    PersonnelCostCalculationRequest,
-    PersonnelCostCalculationResponse,
-    OperatingCostPlanCreate,
-    OperatingCostPlanResponse,
-    OperatingCostPlanUpdate,
-    OperatingCostCalculationRequest,
-    OperatingCostCalculationResponse,
     CapExPlanCreate,
     CapExPlanResponse,
     CapExPlanUpdate,
     DepreciationCalculationRequest,
     DepreciationCalculationResponse,
+    OperatingCostCalculationRequest,
+    OperatingCostPlanCreate,
+    OperatingCostPlanResponse,
+    PersonnelCostCalculationRequest,
+    PersonnelCostPlanCreate,
+    PersonnelCostPlanResponse,
+    RevenuePlanCreate,
+    RevenuePlanResponse,
 )
-from app.services.revenue_service import RevenueService
-from app.services.cost_service import CostService
 from app.services.capex_service import CapExService
+from app.services.cost_service import CostService
 from app.services.exceptions import (
     NotFoundError,
     ValidationError,
-    BusinessRuleError,
 )
+from app.services.revenue_service import RevenueService
 
 router = APIRouter(prefix="/api/v1/planning", tags=["revenue-costs"])
 

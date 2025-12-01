@@ -146,13 +146,13 @@ class StrategicPlan(BaseModel):
     )
 
     # Relationships
-    scenarios: Mapped[list["StrategicPlanScenario"]] = relationship(
+    scenarios: Mapped[list[StrategicPlanScenario]] = relationship(
         "StrategicPlanScenario",
         back_populates="strategic_plan",
         cascade="all, delete-orphan",
         lazy="selectin",
     )
-    initiatives: Mapped[list["StrategicInitiative"]] = relationship(
+    initiatives: Mapped[list[StrategicInitiative]] = relationship(
         "StrategicInitiative",
         back_populates="strategic_plan",
         cascade="all, delete-orphan",
@@ -293,12 +293,12 @@ class StrategicPlanScenario(BaseModel):
     )
 
     # Relationships
-    strategic_plan: Mapped["StrategicPlan"] = relationship(
+    strategic_plan: Mapped[StrategicPlan] = relationship(
         "StrategicPlan",
         back_populates="scenarios",
         lazy="selectin",
     )
-    projections: Mapped[list["StrategicPlanProjection"]] = relationship(
+    projections: Mapped[list[StrategicPlanProjection]] = relationship(
         "StrategicPlanProjection",
         back_populates="scenario",
         cascade="all, delete-orphan",
@@ -411,7 +411,7 @@ class StrategicPlanProjection(BaseModel):
     )
 
     # Relationships
-    scenario: Mapped["StrategicPlanScenario"] = relationship(
+    scenario: Mapped[StrategicPlanScenario] = relationship(
         "StrategicPlanScenario",
         back_populates="projections",
         lazy="selectin",
@@ -556,7 +556,7 @@ class StrategicInitiative(BaseModel):
     )
 
     # Relationships
-    strategic_plan: Mapped["StrategicPlan"] = relationship(
+    strategic_plan: Mapped[StrategicPlan] = relationship(
         "StrategicPlan",
         back_populates="initiatives",
         lazy="selectin",

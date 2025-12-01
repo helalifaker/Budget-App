@@ -8,21 +8,21 @@ sibling discounts, and trimester distribution.
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import select, and_, func
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.engine.revenue import (
-    calculate_total_student_revenue,
-    calculate_revenue_by_level,
-    calculate_revenue_by_category,
-    TuitionInput,
     FeeCategory as EngineFeeCategory,
 )
-from app.models.planning import RevenuePlan, EnrollmentPlan
-from app.models.configuration import FeeStructure, FeeCategory, NationalityType, AcademicLevel
+from app.engine.revenue import (
+    TuitionInput,
+    calculate_total_student_revenue,
+)
+from app.models.configuration import FeeCategory, FeeStructure
+from app.models.planning import EnrollmentPlan, RevenuePlan
 from app.services.base import BaseService
-from app.services.exceptions import NotFoundError, ValidationError, BusinessRuleError
+from app.services.exceptions import ValidationError
 
 
 class RevenueService:
@@ -269,7 +269,7 @@ class RevenueService:
             # Calculate revenue for each student in this enrollment group
             # Note: In real implementation, we'd need sibling data
             # For now, assume no siblings (sibling_order=1)
-            for student_num in range(enrollment.student_count):
+            for _student_num in range(enrollment.student_count):
                 tuition_input = TuitionInput(
                     level_id=enrollment.level_id,
                     level_code=enrollment.level.code,
