@@ -1,5 +1,5 @@
 from httpx import AsyncClient
-from backend.app.main import app
+from app.main import app
 
 
 async def test_live_health() -> None:

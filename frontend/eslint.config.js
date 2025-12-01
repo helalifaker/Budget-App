@@ -1,10 +1,14 @@
 import js from '@eslint/js';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
-import tailwind from 'eslint-plugin-tailwindcss';
+import tseslint from 'typescript-eslint';
 
-export default [
+export default tseslint.config(
+  {
+    ignores: ['dist/**', 'node_modules/**', '*.config.ts'],
+  },
   js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
@@ -16,21 +20,24 @@ export default [
       },
       parserOptions: {
         ecmaFeatures: { jsx: true },
+        project: './tsconfig.json',
       },
     },
     plugins: {
       'react-hooks': reactHooks,
-      tailwind,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      'tailwindcss/classnames-order': 'warn',
-      'tailwindcss/no-custom-classname': 'off',
-    },
-    settings: {
-      tailwindcss: {
-        whitelist: [],
-      },
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
-];
+  {
+    files: ['**/*.test.{ts,tsx}', 'src/setupTests.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.jest,
+        ...globals.node,
+      },
+    },
+  }
+);

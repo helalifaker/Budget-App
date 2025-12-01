@@ -1,0 +1,29 @@
+{
+  "name": "efir-budget-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EFIR School Budget Planning Application - Monorepo",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter frontend dev\" \"cd backend && .venv/bin/uvicorn app.main:app --reload\"",
+    "build": "pnpm --filter frontend build",
+    "lint": "pnpm --filter frontend lint && cd backend && .venv/bin/ruff check .",
+    "typecheck": "pnpm --filter frontend typecheck && cd backend && .venv/bin/mypy app",
+    "test": "pnpm --filter frontend test && cd backend && .venv/bin/pytest",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2"
+  },
+  "lint-staged": {
+    "frontend/src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "backend/**/*.py": [
+      "cd backend && .venv/bin/ruff check --fix",
+      "cd backend && .venv/bin/ruff format"
+    ]
+  }
+}

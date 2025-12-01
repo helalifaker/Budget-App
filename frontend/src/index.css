@@ -1,0 +1,309 @@
+/**
+ * EFIR Budget Planning Application - Sahara Twilight Theme
+ * Global styles and Tailwind CSS imports
+ */
+
+@import 'tailwindcss';
+
+/**
+ * Sahara Twilight Theme Configuration
+ * Color Palette inspired by desert twilight with gold, brown, and white tones.
+ */
+@theme {
+  /* Sahara Twilight Color Palette */
+  --color-sand-50: #FBF8F3;
+  --color-sand-100: #F4EDE2;
+  --color-sand-200: #E8DCC8;
+  --color-sand-300: #DCC9AD;
+  --color-sand-400: #CFB691;
+  --color-sand-500: #C2A375;
+  --color-sand-600: #B5905A;
+  --color-sand-700: #8F7248;
+  --color-sand-800: #66482D;
+  --color-sand-900: #4A3520;
+
+  --color-gold-50: #FFF9E6;
+  --color-gold-100: #FFF3CC;
+  --color-gold-200: #FFE799;
+  --color-gold-300: #FFDA66;
+  --color-gold-400: #FFCE33;
+  --color-gold-500: #EDAD3E; /* Primary gold - vibrant desert orange for CTAs */
+  --color-gold-600: #D89B35;
+  --color-gold-700: #C3892C;
+  --color-gold-800: #AE7723;
+  --color-gold-900: #99651A;
+
+  --color-brown-50: #F9F5F2;
+  --color-brown-100: #F2EBE5;
+  --color-brown-200: #E5D6CB;
+  --color-brown-300: #D8C1B1;
+  --color-brown-400: #CBAC97;
+  --color-brown-500: #BE977D;
+  --color-brown-600: #A67F63;
+  --color-brown-700: #876749;
+  --color-brown-800: #5C4130;
+  --color-brown-900: #3D2B20;
+
+  --color-twilight-50: #F5F7F9;
+  --color-twilight-100: #E8ECF0;
+  --color-twilight-200: #D1D9E1;
+  --color-twilight-300: #B9C6D2;
+  --color-twilight-400: #A2B3C3;
+  --color-twilight-500: #8BA0B4;
+  --color-twilight-600: #748DA5;
+  --color-twilight-700: #61707F; /* Professional grey-blue for body text */
+  --color-twilight-800: #4E5A67;
+  --color-twilight-900: #3B444F;
+
+  /* Semantic colors */
+  --color-success-50: #F4F7F4;
+  --color-success-100: #E9F0E9;
+  --color-success-200: #D3E1D3;
+  --color-success-300: #BDD2BD;
+  --color-success-400: #A7C3A7;
+  --color-success-500: #8B9D83; /* Green sage */
+  --color-success-600: #7A8A73;
+  --color-success-700: #697763;
+  --color-success-800: #586453;
+  --color-success-900: #475143;
+
+  --color-warning-50: #FFF5F0;
+  --color-warning-100: #FEEAE1;
+  --color-warning-200: #FDD5C3;
+  --color-warning-300: #FCC0A5;
+  --color-warning-400: #FBAB87;
+  --color-warning-500: #C75B39; /* Terracotta */
+  --color-warning-600: #B35232;
+  --color-warning-700: #9F492B;
+  --color-warning-800: #8B4024;
+  --color-warning-900: #77371D;
+
+  --color-error-50: #F9F4F7;
+  --color-error-100: #F3E9EF;
+  --color-error-200: #E7D3DF;
+  --color-error-300: #DBBDCF;
+  --color-error-400: #CFA7BF;
+  --color-error-500: #8B4C6F; /* Deep mauve */
+  --color-error-600: #7A4262;
+  --color-error-700: #693855;
+  --color-error-800: #582E48;
+  --color-error-900: #47243B;
+
+  --color-info-50: #F5F8FB;
+  --color-info-100: #EBF1F7;
+  --color-info-200: #D7E3EF;
+  --color-info-300: #C3D5E7;
+  --color-info-400: #AFC7DF;
+  --color-info-500: #A9C6E6; /* Pale sky */
+  --color-info-600: #98B2D0;
+  --color-info-700: #879EBA;
+  --color-info-800: #768AA4;
+  --color-info-900: #65768E;
+
+  /* Custom box shadows */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-kpi: 0 4px 6px -1px rgba(237, 173, 62, 0.1), 0 2px 4px -2px rgba(237, 173, 62, 0.1);
+  --shadow-kpi-hover: 0 10px 20px -3px rgba(237, 173, 62, 0.2), 0 4px 8px -4px rgba(237, 173, 62, 0.2);
+
+  /* Border radius */
+  --radius-card: 0.75rem;
+  --radius-button: 0.5rem;
+
+  /* Spacing */
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+
+  /* Font families */
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family-serif: 'DM Serif Display', Georgia, serif;
+
+  /* Font sizes */
+  --font-size-display-1: 4.5rem;
+  --font-size-display-2: 3.75rem;
+  --font-size-heading-1: 3rem;
+  --font-size-heading-2: 2.25rem;
+  --font-size-heading-3: 1.875rem;
+  --font-size-heading-4: 1.5rem;
+  --font-size-heading-5: 1.25rem;
+  --font-size-heading-6: 1.125rem;
+
+  /* Animations */
+  --animate-fade-in: fadeIn 0.3s ease-in-out;
+  --animate-slide-in: slideIn 0.3s ease-out;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    0% { transform: translateY(-10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes scaleIn {
+    0% { transform: scale(0.95); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+}
+
+@layer base {
+  /* Custom base styles */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-sand-50 text-twilight-700;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Heading styles */
+  h1,
+  h2,
+  h3 {
+    @apply font-serif text-brown-800;
+  }
+}
+
+@layer components {
+  /* KPI Card styles - Board-ready design */
+  .kpi-card {
+    @apply bg-white rounded-card shadow-kpi hover:shadow-kpi-hover transition-shadow duration-200;
+    @apply border border-sand-200 p-6;
+  }
+
+  .kpi-card-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .kpi-card-title {
+    @apply text-sm font-medium text-twilight-600 uppercase tracking-wide;
+  }
+
+  .kpi-card-value {
+    @apply text-3xl font-bold text-brown-800;
+  }
+
+  .kpi-card-trend {
+    @apply flex items-center gap-1 text-sm font-medium;
+  }
+
+  .kpi-card-trend.positive {
+    @apply text-success-600;
+  }
+
+  .kpi-card-trend.negative {
+    @apply text-error-600;
+  }
+
+  .kpi-card-trend.neutral {
+    @apply text-twilight-600;
+  }
+
+  /* Button styles */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-button font-medium transition-all duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+
+  .btn-primary {
+    @apply bg-gold-500 text-white hover:bg-gold-600 focus:ring-gold-500;
+  }
+
+  .btn-secondary {
+    @apply bg-sand-200 text-brown-800 hover:bg-sand-300 focus:ring-sand-400;
+  }
+
+  .btn-outline {
+    @apply border border-brown-400 text-brown-700 hover:bg-brown-50 focus:ring-brown-500;
+  }
+
+  /* Form input styles */
+  .input {
+    @apply block w-full px-3 py-2 border border-sand-300 rounded-button;
+    @apply text-twilight-700 placeholder-twilight-400;
+    @apply focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500;
+    @apply transition-colors duration-200;
+  }
+
+  .input-error {
+    @apply border-error-500 focus:ring-error-500 focus:border-error-500;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-white rounded-card shadow-card p-6;
+  }
+
+  .card-header {
+    @apply border-b border-sand-200 pb-4 mb-4;
+  }
+
+  .card-title {
+    @apply text-2xl font-serif text-brown-800;
+  }
+}
+
+@layer utilities {
+  /* Animation utilities */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+
+  /* Text shadow for headers */
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Gradient backgrounds */
+  .bg-gradient-sand {
+    background: linear-gradient(135deg, #FBF8F3 0%, #F4EDE2 100%);
+  }
+
+  .bg-gradient-gold {
+    background: linear-gradient(135deg, #FFDA66 0%, #EDAD3E 100%);
+  }
+}
+
+/* AG Grid Theme Customization (Sahara Twilight) */
+.ag-theme-quartz {
+  --ag-header-background-color: #F4EDE2;
+  --ag-odd-row-background-color: #FFFFFF;
+  --ag-row-hover-color: #FBF8F3;
+  --ag-selected-row-background-color: #FFF9E6;
+  --ag-border-color: #E8DCC8;
+  --ag-header-foreground-color: #66482D;
+  --ag-data-color: #61707F;
+  --ag-font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Recharts customization */
+.recharts-wrapper {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.recharts-text {
+  fill: #61707F;
+}
+
+.recharts-legend-item-text {
+  color: #61707F;
+}

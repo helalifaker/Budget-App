@@ -423,6 +423,227 @@ Key reference documents (to be migrated into the application):
   - Linting: `npm run lint` (ESLint), `ruff check .` (Python)
   - Type checking: `tsc --noEmit`, `mypy .`
 
+## MCP Tool Orchestration & Intelligence Rules
+
+This project has **6 active MCP (Model Context Protocol) servers** providing specialized capabilities. Use these tools intelligently based on context and task requirements.
+
+### Available MCP Tools
+
+1. **filesystem** - File operations in project directory
+2. **github** - GitHub repository integration
+3. **context7** - Up-to-date library documentation lookup
+4. **brave-search** - Web search for current information
+5. **sequential-thinking** - Structured problem-solving and analysis
+6. **supabase** - Supabase project management (OAuth-authenticated)
+
+### Tool Selection Rules by Context
+
+#### 🔍 Research & Learning Tasks
+
+**Use Context7** when:
+- Looking up documentation for libraries/frameworks (React, TypeScript, FastAPI, Supabase, etc.)
+- Checking latest API syntax or method signatures
+- Understanding best practices for a specific library version
+- Verifying deprecated features or migration guides
+- Example: "What's the latest syntax for React Server Components in React 19?"
+
+**Use Brave Search** when:
+- Researching general concepts or architectural patterns
+- Finding solutions to specific error messages
+- Comparing different approaches or tools
+- Looking up industry standards (AEFE guidelines, French education system)
+- Finding recent blog posts, tutorials, or documentation updates
+- Example: "Best practices for PostgreSQL Row Level Security in multi-tenant apps"
+
+**Use Sequential Thinking** when:
+- Breaking down complex problems (DHG calculation logic, multi-module workflows)
+- Analyzing multiple implementation approaches
+- Planning architectural decisions
+- Debugging complex issues spanning multiple systems
+- Scenario analysis (comparing conservative vs optimistic budget projections)
+- Example: "Design approach for implementing real-time budget collaboration with Supabase Realtime"
+
+#### 💾 Data & Database Tasks
+
+**Use Supabase MCP** when:
+- Managing database schemas, tables, or RLS policies
+- Querying project data directly
+- Setting up Edge Functions or Auth rules
+- Configuring real-time subscriptions
+- Managing Supabase project settings
+- Example: "Create RLS policies for budget version access control"
+
+**Use Filesystem** when:
+- Reading/writing local configuration files
+- Managing migration scripts
+- Accessing seed data or test fixtures
+- Working with local environment files
+- Example: "Read the Prisma schema to understand current data model"
+
+#### 🔧 Development & Code Tasks
+
+**Use GitHub MCP** when:
+- Creating or managing issues
+- Opening pull requests
+- Reviewing code changes
+- Managing project boards
+- Accessing repository metadata
+- Example: "Create an issue for implementing Module 8 (DHG Workforce Planning)"
+
+**Use Filesystem** when:
+- Reading source code files
+- Implementing new features or modules
+- Updating configuration files
+- Managing test files
+- Example: "Read existing enrollment planning module to understand data flow"
+
+#### 🧠 Complex Problem-Solving
+
+**Use Sequential Thinking + Context7** when:
+- Implementing complex business logic (DHG calculations, TRMD gap analysis)
+- Designing new module architecture
+- Optimizing performance-critical code
+- Refactoring large sections of code
+- Example: "Design the DHG hours calculation engine with proper TypeScript types"
+
+**Use Sequential Thinking + Brave Search** when:
+- Researching unfamiliar domains (French education system, AEFE guidelines)
+- Comparing multiple technical approaches
+- Troubleshooting production issues
+- Planning multi-phase implementations
+- Example: "Understand French PCG accounting standards for budget consolidation"
+
+### Workflow-Specific Tool Combinations
+
+#### Module Implementation Workflow
+
+1. **Context7**: Look up latest library documentation for dependencies
+2. **Sequential Thinking**: Break down module requirements and design approach
+3. **Filesystem**: Read related modules and specification documents
+4. **Supabase**: Design database schema and RLS policies
+5. **Filesystem**: Implement code following EFIR Development Standards
+6. **GitHub**: Create PR and document changes
+
+#### Bug Investigation Workflow
+
+1. **Sequential Thinking**: Analyze the problem systematically
+2. **Filesystem**: Read relevant source files
+3. **Brave Search**: Search for similar issues or error messages
+4. **Context7**: Verify API usage and library behavior
+5. **Filesystem**: Implement fix
+6. **GitHub**: Document fix in issue/PR
+
+#### Documentation Lookup Workflow
+
+1. **Context7** (Primary): For library-specific documentation
+2. **Brave Search** (Fallback): If Context7 doesn't have information or for general concepts
+3. **Sequential Thinking** (Analysis): To synthesize information and make decisions
+
+#### Database Design Workflow
+
+1. **Sequential Thinking**: Plan schema design considering business rules
+2. **Brave Search**: Research best practices for multi-tenant apps, RLS patterns
+3. **Supabase**: Implement schema, migrations, and RLS policies
+4. **Filesystem**: Update Prisma schema or migration files
+5. **GitHub**: Document database changes
+
+### Tool Priority Guidelines
+
+**For TypeScript/React/Frontend Tasks:**
+1. Context7 (for React 19, TypeScript 5.9, Vite 7 docs)
+2. Sequential Thinking (for complex component design)
+3. Filesystem (for reading/writing code)
+4. Brave Search (for general patterns/solutions)
+
+**For Python/FastAPI/Backend Tasks:**
+1. Context7 (for FastAPI 0.123, Pydantic 2.12 docs)
+2. Sequential Thinking (for API design)
+3. Filesystem (for reading/writing code)
+4. Brave Search (for architectural patterns)
+
+**For Database/Supabase Tasks:**
+1. Supabase MCP (for direct project management)
+2. Context7 (for Supabase library docs)
+3. Sequential Thinking (for schema design)
+4. Brave Search (for RLS patterns, multi-tenancy)
+
+**For Business Logic/Domain-Specific Tasks:**
+1. Sequential Thinking (for DHG calculations, French education rules)
+2. Filesystem (for reading specifications)
+3. Brave Search (for AEFE guidelines, PCG standards)
+4. Context7 (for implementation libraries)
+
+### Integration Best Practices
+
+**Combine Tools Intelligently:**
+- Don't search the web for library docs that Context7 can provide
+- Use Sequential Thinking for complex multi-step planning before implementation
+- Always verify current library syntax with Context7 before implementing
+- Use Brave Search for domain knowledge (AEFE, French education, accounting standards)
+- Leverage Supabase MCP for database operations instead of manual SQL
+
+**Avoid Tool Misuse:**
+- ❌ Don't use Brave Search for library documentation (use Context7)
+- ❌ Don't skip Sequential Thinking for complex problems
+- ❌ Don't manually write database queries when Supabase MCP can help
+- ❌ Don't search the web for syntax that Context7 already knows
+
+**Performance Considerations:**
+- Context7 is faster than web search for library docs
+- Sequential Thinking adds overhead but prevents mistakes in complex tasks
+- Use Filesystem for local operations instead of external tools
+- Batch related MCP calls when possible
+
+### Domain-Specific Tool Usage
+
+**For EFIR Budget App Specifically:**
+
+**DHG Workforce Planning (Module 8):**
+- Sequential Thinking: Break down the complex DHG methodology
+- Context7: Look up TypeScript utility types for calculations
+- Filesystem: Read workforce planning specifications
+- Brave Search: Research French education system hours/week standards
+
+**Financial Consolidation (Modules 13-14):**
+- Sequential Thinking: Design multi-version budget consolidation
+- Context7: AG Grid API for displaying financial data
+- Brave Search: French PCG and IFRS accounting standards
+- Supabase: Design RLS for budget version access control
+
+**Real-time Collaboration:**
+- Context7: Supabase Realtime API documentation
+- Sequential Thinking: Design conflict resolution strategy
+- Supabase: Configure realtime subscriptions and broadcast
+- Filesystem: Implement client-side sync logic
+
+**Data Import/Export (Odoo, Skolengo):**
+- Sequential Thinking: Design ETL pipeline
+- Context7: FastAPI async patterns for data processing
+- Brave Search: Odoo/Skolengo API documentation
+- Filesystem: Implement integration adapters
+
+### Emergency Fallback Rules
+
+If a tool fails or is unavailable:
+1. **Context7 down** → Use Brave Search for documentation
+2. **Brave Search down** → Use Context7 + Sequential Thinking
+3. **Supabase MCP down** → Use Filesystem for SQL scripts
+4. **Sequential Thinking unneeded** → Proceed with simpler direct implementation
+5. **GitHub MCP down** → Use git commands via bash
+
+### Tool Usage Metrics & Optimization
+
+**Track your tool usage:**
+- Favor Context7 for any library/framework documentation
+- Use Sequential Thinking for problems requiring >3 steps
+- Prefer Supabase MCP over manual database operations
+- Reserve Brave Search for domain knowledge and error troubleshooting
+
+**Continuous Improvement:**
+- If Context7 lacks information, note the gap and use Brave Search
+- Document repeated patterns to optimize future tool selection
+- Share successful tool combinations in team documentation
+
 ## Working with This Codebase
 
 When starting development:
@@ -431,3 +652,4 @@ When starting development:
 3. Use the data summary (`EFIR_Data_Summary_v2.md`) for realistic test data
 4. Implement modules in dependency order (Configuration → Planning → Consolidation → Analysis)
 5. Test calculations against the reference data in the specification documents
+6. **Leverage MCP tools intelligently** - Use Context7 for library docs, Sequential Thinking for complex problems, and Supabase MCP for database operations
