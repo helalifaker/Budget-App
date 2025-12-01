@@ -77,6 +77,10 @@ disable_error_code = ["attr-defined"]
 addopts = "-q"
 testpaths = ["backend/tests"]
 
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["alembic*", "tests*"]
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
