@@ -8,6 +8,7 @@ Enforces permissions based on user roles:
 - viewer: Read-only access
 """
 
+import re
 from collections.abc import Callable
 
 from fastapi import Request, Response
@@ -34,7 +35,57 @@ class RBACMiddleware(BaseHTTPMiddleware):
 
     MANAGER_PATHS = [
         "/api/v1/budget-versions/{id}/approve",
+        "/api/v1/budget-versions/{id}/submit",
+        "/api/v1/budget-versions/{id}/lock",
     ]
+
+    @staticmethod
+    def _path_pattern_to_regex(path_pattern: str) -> re.Pattern:
+        """
+        Convert a path pattern with {param} placeholders to a compiled regex.
+
+        Args:
+            path_pattern: Path with placeholders, e.g., "/api/v1/users/{id}/approve"
+
+        Returns:
+            Compiled regex pattern that matches paths like "/api/v1/users/123/approve"
+
+        Example:
+            pattern = _path_pattern_to_regex("/api/v1/users/{id}/approve")
+            pattern.match("/api/v1/users/123/approve")  # True
+            pattern.match("/api/v1/users/123/reject")   # False
+        """
+        # Escape special regex characters, then replace {param} with regex group
+        # {id} -> [^/]+ (matches any characters except /)
+        regex_pattern = re.escape(path_pattern).replace(r"\{[^}]+\}", "[^/]+")
+        # Use a more precise replacement for all {param} patterns
+        regex_pattern = re.sub(r"\\{[^}]+\\}", r"[^/]+", re.escape(path_pattern))
+        return re.compile(f"^{regex_pattern}$")
+
+    @classmethod
+    def _matches_any_pattern(cls, path: str, patterns: list[str]) -> bool:
+        """
+        Check if path matches any of the given patterns.
+
+        Supports both literal paths and paths with {param} placeholders.
+
+        Args:
+            path: Actual request path
+            patterns: List of path patterns
+
+        Returns:
+            True if path matches any pattern
+        """
+        for pattern in patterns:
+            # If pattern contains {param}, use regex matching
+            if "{" in pattern:
+                regex = cls._path_pattern_to_regex(pattern)
+                if regex.match(path):
+                    return True
+            # Otherwise use simple string prefix matching
+            elif path.startswith(pattern):
+                return True
+        return False
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -59,14 +110,14 @@ class RBACMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Check admin-only paths
-        if any(request.url.path.startswith(path) for path in self.ADMIN_ONLY_PATHS):
+        if self._matches_any_pattern(request.url.path, self.ADMIN_ONLY_PATHS):
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Admin access required"},
             )
 
         # Check manager paths
-        if any(request.url.path.startswith(path) for path in self.MANAGER_PATHS):
+        if self._matches_any_pattern(request.url.path, self.MANAGER_PATHS):
             if user_role not in ["admin", "manager"]:
                 return JSONResponse(
                     status_code=403,

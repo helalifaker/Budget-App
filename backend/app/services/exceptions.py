@@ -136,3 +136,68 @@ class IntegrationError(ServiceException):
         if integration_type:
             error_details["integration_type"] = integration_type
         super().__init__(message, status_code=502, details=error_details)
+
+
+class VersionConflictError(ServiceException):
+    """Optimistic locking version conflict error (HTTP 409).
+
+    Raised when a cell update fails because the cell was modified
+    by another user since it was loaded (version mismatch).
+    """
+
+    def __init__(
+        self,
+        resource: str,
+        current_version: int,
+        provided_version: int,
+        details: dict[str, Any] | None = None,
+    ):
+        """
+        Initialize version conflict error.
+
+        Args:
+            resource: Resource type (e.g., 'PlanningCell')
+            current_version: Current version in database
+            provided_version: Version provided in the update request
+            details: Additional error context
+        """
+        message = (
+            f"{resource} was modified by another user. "
+            f"Expected version {provided_version}, but current version is {current_version}. "
+            "Please refresh and try again."
+        )
+        error_details = details or {}
+        error_details["current_version"] = current_version
+        error_details["provided_version"] = provided_version
+        super().__init__(message, status_code=409, details=error_details)
+
+
+class CellLockedError(ServiceException):
+    """Cell is locked and cannot be modified (HTTP 423).
+
+    Raised when attempting to modify a cell that has been locked
+    (e.g., after budget approval).
+    """
+
+    def __init__(
+        self,
+        cell_id: str,
+        lock_reason: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        """
+        Initialize cell locked error.
+
+        Args:
+            cell_id: ID of the locked cell
+            lock_reason: Reason the cell was locked
+            details: Additional error context
+        """
+        message = f"Cell {cell_id} is locked and cannot be modified"
+        if lock_reason:
+            message = f"{message}: {lock_reason}"
+        error_details = details or {}
+        error_details["cell_id"] = cell_id
+        if lock_reason:
+            error_details["lock_reason"] = lock_reason
+        super().__init__(message, status_code=423, details=error_details)

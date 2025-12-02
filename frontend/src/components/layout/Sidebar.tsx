@@ -1,4 +1,6 @@
 import { Link } from '@tanstack/react-router'
+import { usePrefetchRoute } from '@/hooks/usePrefetchRoute'
+import { useBudgetVersions } from '@/hooks/api/useBudgetVersions'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: '📊' },
@@ -50,6 +52,14 @@ const navigation = [
 ]
 
 export function Sidebar() {
+  const { prefetchRoute } = usePrefetchRoute()
+  const { data: budgetVersionsData } = useBudgetVersions()
+
+  // Get the currently active budget version ID (first working or submitted version)
+  const activeBudgetVersionId = budgetVersionsData?.items?.find(
+    (v) => v.status === 'WORKING' || v.status === 'SUBMITTED'
+  )?.id
+
   return (
     <div className="w-64 bg-white border-r border-gray-200">
       <div className="flex flex-col h-full">
@@ -67,6 +77,7 @@ export function Sidebar() {
                   activeProps={{
                     className: 'bg-gray-100 text-primary',
                   }}
+                  onMouseEnter={() => prefetchRoute(item.href, activeBudgetVersionId)}
                 >
                   <span className="mr-3">{item.icon}</span>
                   {item.name}
@@ -87,6 +98,7 @@ export function Sidebar() {
                           activeProps={{
                             className: 'bg-gray-100 text-primary font-medium',
                           }}
+                          onMouseEnter={() => prefetchRoute(child.href, activeBudgetVersionId)}
                         >
                           {child.name}
                         </Link>

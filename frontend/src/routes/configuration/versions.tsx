@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ColDef } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { DataTable } from '@/components/DataTable'
+import { DataTableLazy } from '@/components/DataTableLazy'
 import { FormDialog } from '@/components/FormDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -128,33 +128,42 @@ function BudgetVersionsPage() {
     }
   }
 
-  const handleDelete = async (id: string, name: string) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+  const handleDelete = useCallback(
+    async (id: string, name: string) => {
+      if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+        try {
+          await deleteMutation.mutateAsync(id)
+        } catch {
+          // Error toast is handled by the mutation
+        }
+      }
+    },
+    [deleteMutation]
+  )
+
+  const handleSubmit = useCallback(
+    async (id: string) => {
       try {
-        await deleteMutation.mutateAsync(id)
+        await submitMutation.mutateAsync(id)
       } catch {
         // Error toast is handled by the mutation
       }
-    }
-  }
+    },
+    [submitMutation]
+  )
 
-  const handleSubmit = async (id: string) => {
-    try {
-      await submitMutation.mutateAsync(id)
-    } catch {
-      // Error toast is handled by the mutation
-    }
-  }
-
-  const handleApprove = async (id: string) => {
-    if (window.confirm('Are you sure you want to approve this budget version?')) {
-      try {
-        await approveMutation.mutateAsync(id)
-      } catch {
-        // Error toast is handled by the mutation
+  const handleApprove = useCallback(
+    async (id: string) => {
+      if (window.confirm('Are you sure you want to approve this budget version?')) {
+        try {
+          await approveMutation.mutateAsync(id)
+        } catch {
+          // Error toast is handled by the mutation
+        }
       }
-    }
-  }
+    },
+    [approveMutation]
+  )
 
   const columnDefs: ColDef<BudgetVersion>[] = useMemo(
     () => [
@@ -257,7 +266,14 @@ function BudgetVersionsPage() {
         },
       },
     ],
-    [deleteMutation.isPending, submitMutation.isPending, approveMutation.isPending]
+    [
+      deleteMutation.isPending,
+      submitMutation.isPending,
+      approveMutation.isPending,
+      handleApprove,
+      handleDelete,
+      handleSubmit,
+    ]
   )
 
   return (
@@ -272,7 +288,7 @@ function BudgetVersionsPage() {
           </Button>
         }
       >
-        <DataTable
+        <DataTableLazy
           rowData={rowData}
           columnDefs={columnDefs}
           loading={isLoading}

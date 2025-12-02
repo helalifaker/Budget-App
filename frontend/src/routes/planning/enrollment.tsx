@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { DataTable } from '@/components/DataTable'
+import { DataTableLazy } from '@/components/DataTableLazy'
 import { FormDialog } from '@/components/FormDialog'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ import {
 import { useLevels, useNationalityTypes } from '@/hooks/api/useConfiguration'
 import { enrollmentSchema, type EnrollmentFormData } from '@/schemas/planning'
 import { Enrollment } from '@/types/api'
-import { toast } from 'sonner'
+import { toastMessages } from '@/lib/toast-messages'
 
 export const Route = createFileRoute('/planning/enrollment')({
   component: EnrollmentPlanningPage,
@@ -70,7 +70,7 @@ function EnrollmentPlanningPage() {
 
   const handleCreate = async (formData: EnrollmentFormData) => {
     if (!selectedVersionId) {
-      toast.error('Please select a budget version first')
+      toastMessages.warning.selectVersion()
       return
     }
     try {
@@ -81,41 +81,50 @@ function EnrollmentPlanningPage() {
       setCreateDialogOpen(false)
       createForm.reset()
     } catch {
-      // Error toast is handled by the mutation
+      // Error toast is handled by the mutation's onError
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this enrollment entry?')) {
-      try {
-        await deleteMutation.mutateAsync(id)
-      } catch {
-        // Error toast is handled by the mutation
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (window.confirm('Êtes-vous sûr de vouloir supprimer cet effectif ?')) {
+        try {
+          await deleteMutation.mutateAsync(id)
+        } catch {
+          // Error toast is handled by the mutation's onError
+        }
       }
-    }
-  }
+    },
+    [deleteMutation]
+  )
 
   const handleCalculateProjections = async () => {
     if (!selectedVersionId) {
-      toast.error('Please select a budget version first')
+      toastMessages.warning.selectVersion()
       return
     }
     try {
       await calculateMutation.mutateAsync(selectedVersionId)
-      toast.success('Projections calculated successfully')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Failed to calculate projections: ${message}`)
+    } catch {
+      // Error toast is handled by the mutation's onError
     }
   }
 
-  const getLevelName = (levelId: string) => {
-    return levelsData?.find((l) => l.id === levelId)?.name || levelId
-  }
+  const getLevelName = useCallback(
+    (levelId: string) => {
+      return levelsData?.find((l) => l.id === levelId)?.name || levelId
+    },
+    [levelsData]
+  )
 
-  const getNationalityTypeName = (nationalityTypeId: string) => {
-    return nationalityTypesData?.find((n) => n.id === nationalityTypeId)?.name || nationalityTypeId
-  }
+  const getNationalityTypeName = useCallback(
+    (nationalityTypeId: string) => {
+      return (
+        nationalityTypesData?.find((n) => n.id === nationalityTypeId)?.name || nationalityTypeId
+      )
+    },
+    [nationalityTypesData]
+  )
 
   const columnDefs: ColDef<Enrollment>[] = useMemo(
     () => [
@@ -162,7 +171,7 @@ function EnrollmentPlanningPage() {
         },
       },
     ],
-    [levelsData, nationalityTypesData, deleteMutation.isPending]
+    [deleteMutation.isPending, getLevelName, getNationalityTypeName, handleDelete]
   )
 
   const onCellValueChanged = async (params: CellValueChangedEvent<Enrollment>) => {
@@ -175,8 +184,8 @@ function EnrollmentPlanningPage() {
         },
       })
     } catch {
-      // Error toast is handled by the mutation
-      // Revert the change
+      // Error toast is handled by the mutation's onError
+      // Revert the change on error
       params.node.setDataValue(params.column, params.oldValue)
     }
   }
@@ -212,7 +221,7 @@ function EnrollmentPlanningPage() {
         </div>
 
         {selectedVersionId ? (
-          <DataTable
+          <DataTableLazy
             rowData={rowData}
             columnDefs={columnDefs}
             loading={enrollmentsLoading}

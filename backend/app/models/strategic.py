@@ -32,10 +32,10 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, PortableJSON
 
 if TYPE_CHECKING:
     pass
@@ -285,9 +285,9 @@ class StrategicPlanScenario(BaseModel):
         comment="Annual operating cost inflation rate (e.g., 0.025 = 2.5% per year)",
     )
 
-    # Additional Assumptions (JSONB for flexibility)
+    # Additional Assumptions (PortableJSON for flexibility)
     additional_assumptions: Mapped[dict | None] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=True,
         comment="Additional scenario-specific assumptions (exchange rates, capacity, etc.)",
     )
@@ -403,9 +403,9 @@ class StrategicPlanProjection(BaseModel):
         comment="Projected amount in SAR for this year and category",
     )
 
-    # Calculation Metadata (JSONB for transparency)
+    # Calculation Metadata (PortableJSON for transparency)
     calculation_inputs: Mapped[dict | None] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=True,
         comment="Inputs used in projection calculation (base amount, growth rates, enrollment, etc.)",
     )
@@ -548,9 +548,9 @@ class StrategicInitiative(BaseModel):
         comment="Initiative status (planned, approved, in_progress, completed, cancelled)",
     )
 
-    # Additional Details (JSONB for flexibility)
+    # Additional Details (PortableJSON for flexibility)
     additional_details: Mapped[dict | None] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=True,
         comment="Additional initiative details (milestones, dependencies, risks, etc.)",
     )

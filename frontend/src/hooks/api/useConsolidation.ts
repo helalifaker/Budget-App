@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { consolidationService } from '@/services/consolidation'
 import type { FinancialStatement } from '@/types/api'
+import { toastMessages, handleAPIErrorToast } from '@/lib/toast-messages'
 
 export const consolidationKeys = {
   all: ['consolidation'] as const,
   status: (versionId: string) => [...consolidationKeys.all, 'status', versionId] as const,
+  summary: (versionId: string) => [...consolidationKeys.all, 'summary', versionId] as const,
   lineItems: (versionId: string) => [...consolidationKeys.all, 'line-items', versionId] as const,
+  statements: (versionId: string, format: string) =>
+    [...consolidationKeys.all, 'statements', versionId, format] as const,
   statement: (versionId: string, type: string, format: string, period: string) =>
     [...consolidationKeys.all, 'statement', versionId, type, format, period] as const,
 }
@@ -34,6 +38,10 @@ export function useConsolidate() {
     onSuccess: (_, versionId) => {
       queryClient.invalidateQueries({ queryKey: consolidationKeys.status(versionId) })
       queryClient.invalidateQueries({ queryKey: consolidationKeys.lineItems(versionId) })
+      toastMessages.success.calculated()
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -46,6 +54,10 @@ export function useSubmitForApproval() {
     onSuccess: (_, versionId) => {
       queryClient.invalidateQueries({ queryKey: ['budget-versions'] })
       queryClient.invalidateQueries({ queryKey: consolidationKeys.status(versionId) })
+      toastMessages.success.submitted()
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -58,6 +70,10 @@ export function useApproveBudget() {
     onSuccess: (_, versionId) => {
       queryClient.invalidateQueries({ queryKey: ['budget-versions'] })
       queryClient.invalidateQueries({ queryKey: consolidationKeys.status(versionId) })
+      toastMessages.success.approved()
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }

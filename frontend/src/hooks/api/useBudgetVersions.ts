@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { budgetVersionsApi } from '@/services/budget-versions'
-import { toast } from 'sonner'
+import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
 
 export const budgetVersionKeys = {
   all: ['budget-versions'] as const,
@@ -32,10 +32,10 @@ export function useCreateBudgetVersion() {
     mutationFn: budgetVersionsApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetVersionKeys.lists() })
-      toast.success('Budget version created successfully')
+      toastMessages.success.created(entityNames.budgetVersion)
     },
-    onError: (error: Error) => {
-      toast.error(`Failed to create budget version: ${error.message}`)
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -51,6 +51,10 @@ export function useUpdateBudgetVersion() {
         queryKey: budgetVersionKeys.detail(variables.id),
       })
       queryClient.invalidateQueries({ queryKey: budgetVersionKeys.lists() })
+      toastMessages.success.updated(entityNames.budgetVersion)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -62,6 +66,10 @@ export function useDeleteBudgetVersion() {
     mutationFn: budgetVersionsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetVersionKeys.lists() })
+      toastMessages.success.deleted(entityNames.budgetVersion)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -76,6 +84,10 @@ export function useSubmitBudgetVersion() {
         queryKey: budgetVersionKeys.detail(data.id),
       })
       queryClient.invalidateQueries({ queryKey: budgetVersionKeys.lists() })
+      toastMessages.success.submitted()
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -90,6 +102,10 @@ export function useApproveBudgetVersion() {
         queryKey: budgetVersionKeys.detail(data.id),
       })
       queryClient.invalidateQueries({ queryKey: budgetVersionKeys.lists() })
+      toastMessages.success.approved()
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -102,6 +118,10 @@ export function useCloneBudgetVersion() {
       budgetVersionsApi.clone(id, { name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetVersionKeys.lists() })
+      toastMessages.success.cloned()
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }

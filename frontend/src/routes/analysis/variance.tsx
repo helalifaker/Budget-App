@@ -30,7 +30,7 @@ import {
   useCreateForecastRevision,
 } from '@/hooks/api/useAnalysis'
 import { Upload, TrendingUp, AlertCircle } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastMessages } from '@/lib/toast-messages'
 
 export const Route = createFileRoute('/analysis/variance')({
   component: BudgetVsActualPage,
@@ -47,7 +47,14 @@ function BudgetVsActualPage() {
   const forecastMutation = useCreateForecastRevision()
 
   const handleImport = async () => {
-    if (!selectedFile || !selectedVersionId) return
+    if (!selectedFile) {
+      toastMessages.warning.unsavedChanges()
+      return
+    }
+    if (!selectedVersionId) {
+      toastMessages.warning.selectVersion()
+      return
+    }
 
     try {
       await importMutation.mutateAsync({
@@ -55,23 +62,24 @@ function BudgetVsActualPage() {
         period,
         file: selectedFile,
       })
-      toast.success('Actuals imported successfully')
       setImportDialogOpen(false)
       setSelectedFile(null)
     } catch {
-      toast.error('Failed to import actuals')
+      // Error toast is handled by the mutation's onError
     }
   }
 
   const handleCreateForecast = async () => {
-    if (!selectedVersionId) return
+    if (!selectedVersionId) {
+      toastMessages.warning.selectVersion()
+      return
+    }
 
     try {
       await forecastMutation.mutateAsync(selectedVersionId)
-      toast.success('Forecast revision created')
       // Navigate to new version
     } catch {
-      toast.error('Failed to create forecast revision')
+      // Error toast is handled by the mutation's onError
     }
   }
 

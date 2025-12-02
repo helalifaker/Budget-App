@@ -13,10 +13,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import UUID, Boolean, DateTime, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, PortableJSON
 
 
 class IntegrationLog(BaseModel):
@@ -70,7 +69,7 @@ class IntegrationLog(BaseModel):
     )
 
     metadata_json: Mapped[dict[str, Any] | None] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=True,
         comment="Additional metadata about the operation (parameters, file names, etc.)",
     )
@@ -109,7 +108,7 @@ class IntegrationSettings(BaseModel):
     )
 
     config: Mapped[dict[str, Any]] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=False,
         default=dict,
         comment="Integration configuration (URLs, credentials, etc.). Sensitive data should be encrypted.",

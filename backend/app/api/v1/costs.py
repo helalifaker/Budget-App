@@ -130,7 +130,7 @@ async def calculate_revenue(
     """
     try:
         result = await revenue_service.calculate_revenue_from_enrollment(
-            version_id=version_id,
+            budget_version_id=version_id,
             user_id=user.id,
         )
         return result

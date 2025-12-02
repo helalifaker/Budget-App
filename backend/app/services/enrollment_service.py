@@ -58,6 +58,11 @@ class EnrollmentService:
 
         Returns:
             List of EnrollmentPlan instances with relationships loaded
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads level, cycle, nationality_type, and audit fields
+            - Leverages idx_enrollment_version index
         """
         query = (
             select(EnrollmentPlan)
@@ -70,6 +75,9 @@ class EnrollmentService:
             .options(
                 selectinload(EnrollmentPlan.level).selectinload(AcademicLevel.cycle),
                 selectinload(EnrollmentPlan.nationality_type),
+                selectinload(EnrollmentPlan.budget_version),
+                selectinload(EnrollmentPlan.created_by),
+                selectinload(EnrollmentPlan.updated_by),
             )
             .order_by(
                 AcademicLevel.sort_order,

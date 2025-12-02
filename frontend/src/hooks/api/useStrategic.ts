@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { strategicService } from '@/services/strategic'
+import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
 
 export const strategicKeys = {
   all: ['strategic'] as const,
@@ -31,6 +32,10 @@ export function useCreateStrategicPlan() {
     mutationFn: strategicService.createPlan,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: strategicKeys.plans() })
+      toastMessages.success.created(entityNames.strategicPlan)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -52,6 +57,10 @@ export function useUpdateScenarioAssumptions() {
     }) => strategicService.updateAssumptions(planId, data),
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: strategicKeys.plan(planId) })
+      toastMessages.success.updated('Hypothèses')
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -71,6 +80,10 @@ export function useDeleteStrategicPlan() {
     mutationFn: (planId: string) => strategicService.deletePlan(planId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: strategicKeys.plans() })
+      toastMessages.success.deleted(entityNames.strategicPlan)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }

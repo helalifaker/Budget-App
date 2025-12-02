@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { classStructureApi } from '@/services/class-structure'
+import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
 
 export const classStructureKeys = {
   all: ['class-structure'] as const,
@@ -37,6 +38,10 @@ export function useCreateClassStructure() {
         queryKey: classStructureKeys.byVersion(data.budget_version_id),
       })
       queryClient.invalidateQueries({ queryKey: classStructureKeys.lists() })
+      toastMessages.success.created(entityNames.classStructure)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -60,6 +65,10 @@ export function useUpdateClassStructure() {
         queryKey: classStructureKeys.byVersion(data.budget_version_id),
       })
       queryClient.invalidateQueries({ queryKey: classStructureKeys.lists() })
+      toastMessages.success.updated(entityNames.classStructure)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -71,6 +80,10 @@ export function useDeleteClassStructure() {
     mutationFn: classStructureApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: classStructureKeys.lists() })
+      toastMessages.success.deleted(entityNames.classStructure)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -84,6 +97,10 @@ export function useCalculateClassStructure() {
       queryClient.invalidateQueries({
         queryKey: classStructureKeys.byVersion(versionId),
       })
+      toastMessages.success.calculated()
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }

@@ -1,11 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { DataTable } from '@/components/DataTable'
+import { DataTableLazy } from '@/components/DataTableLazy'
 import { FormDialog } from '@/components/FormDialog'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ import {
 import { useLevels } from '@/hooks/api/useConfiguration'
 import { classStructureSchema, type ClassStructureFormData } from '@/schemas/planning'
 import { ClassStructure } from '@/types/api'
-import { toast } from 'sonner'
+import { toastMessages } from '@/lib/toast-messages'
 
 export const Route = createFileRoute('/planning/classes')({
   component: ClassStructurePage,
@@ -69,7 +69,7 @@ function ClassStructurePage() {
 
   const handleCreate = async (formData: ClassStructureFormData) => {
     if (!selectedVersionId) {
-      toast.error('Please select a budget version first')
+      toastMessages.warning.selectVersion()
       return
     }
     try {
@@ -82,37 +82,41 @@ function ClassStructurePage() {
       setCreateDialogOpen(false)
       createForm.reset()
     } catch {
-      // Error toast is handled by the mutation
+      // Error toast is handled by the mutation's onError
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this class structure entry?')) {
-      try {
-        await deleteMutation.mutateAsync(id)
-      } catch {
-        // Error toast is handled by the mutation
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (window.confirm('Êtes-vous sûr de vouloir supprimer cette structure de classe ?')) {
+        try {
+          await deleteMutation.mutateAsync(id)
+        } catch {
+          // Error toast is handled by the mutation's onError
+        }
       }
-    }
-  }
+    },
+    [deleteMutation]
+  )
 
   const handleCalculateFromEnrollment = async () => {
     if (!selectedVersionId) {
-      toast.error('Please select a budget version first')
+      toastMessages.warning.selectVersion()
       return
     }
     try {
       await calculateMutation.mutateAsync(selectedVersionId)
-      toast.success('Class structure calculated from enrollment successfully')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      toast.error(`Failed to calculate class structure: ${message}`)
+    } catch {
+      // Error toast is handled by the mutation's onError
     }
   }
 
-  const getLevelName = (levelId: string) => {
-    return levelsData?.find((l) => l.id === levelId)?.name || levelId
-  }
+  const getLevelName = useCallback(
+    (levelId: string) => {
+      return levelsData?.find((l) => l.id === levelId)?.name || levelId
+    },
+    [levelsData]
+  )
 
   const columnDefs: ColDef<ClassStructure>[] = useMemo(
     () => [
@@ -172,7 +176,7 @@ function ClassStructurePage() {
         },
       },
     ],
-    [levelsData, deleteMutation.isPending]
+    [deleteMutation.isPending, getLevelName, handleDelete]
   )
 
   const onCellValueChanged = async (params: CellValueChangedEvent) => {
@@ -224,7 +228,7 @@ function ClassStructurePage() {
         </div>
 
         {selectedVersionId ? (
-          <DataTable
+          <DataTableLazy
             rowData={rowData}
             columnDefs={columnDefs}
             loading={classStructuresLoading}

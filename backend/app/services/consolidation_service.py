@@ -11,6 +11,7 @@ from decimal import Decimal
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.configuration import BudgetVersion, BudgetVersionStatus
 from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
@@ -63,11 +64,16 @@ class ConsolidationService:
 
         Raises:
             NotFoundError: If budget version not found
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads budget_version and audit fields
+            - Leverages idx_consolidation_version_account index
         """
         # Verify budget version exists
         await self.budget_version_service.get_by_id(budget_version_id)
 
-        # Get all consolidation entries
+        # Get all consolidation entries with eager loading
         query = (
             select(BudgetConsolidation)
             .where(
@@ -75,6 +81,11 @@ class ConsolidationService:
                     BudgetConsolidation.budget_version_id == budget_version_id,
                     BudgetConsolidation.deleted_at.is_(None),
                 )
+            )
+            .options(
+                selectinload(BudgetConsolidation.budget_version),
+                selectinload(BudgetConsolidation.created_by),
+                selectinload(BudgetConsolidation.updated_by),
             )
             .order_by(
                 BudgetConsolidation.is_revenue.desc(),

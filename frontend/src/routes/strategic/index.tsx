@@ -35,7 +35,7 @@ import {
   useDeleteStrategicPlan,
 } from '@/hooks/api/useStrategic'
 import { Plus, Edit, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastMessages } from '@/lib/toast-messages'
 
 const createPlanSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -90,39 +90,39 @@ function StrategicPlanningPage() {
   const handleCreate = async (data: CreatePlanForm) => {
     try {
       const result = await createMutation.mutateAsync(data)
-      toast.success('Strategic plan created')
       setCreateDialogOpen(false)
       setSelectedPlanId(result.id)
       createForm.reset()
     } catch {
-      toast.error('Failed to create plan')
+      // Error toast is handled by the mutation's onError
     }
   }
 
   const handleUpdateAssumptions = async (data: AssumptionsForm) => {
-    if (!selectedPlanId) return
+    if (!selectedPlanId) {
+      toastMessages.warning.selectVersion()
+      return
+    }
     try {
       await updateAssumptionsMutation.mutateAsync({
         planId: selectedPlanId,
         ...data,
       })
-      toast.success('Assumptions updated')
       setEditDialogOpen(false)
     } catch {
-      toast.error('Failed to update assumptions')
+      // Error toast is handled by the mutation's onError
     }
   }
 
   const handleDelete = async (planId: string) => {
-    if (!confirm('Are you sure you want to delete this plan?')) return
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce plan stratégique ?')) return
     try {
       await deleteMutation.mutateAsync(planId)
-      toast.success('Plan deleted')
       if (selectedPlanId === planId) {
         setSelectedPlanId('')
       }
     } catch {
-      toast.error('Failed to delete plan')
+      // Error toast is handled by the mutation's onError
     }
   }
 

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { enrollmentApi } from '@/services/enrollment'
+import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
 
 export const enrollmentKeys = {
   all: ['enrollments'] as const,
@@ -37,6 +38,10 @@ export function useCreateEnrollment() {
         queryKey: enrollmentKeys.byVersion(data.budget_version_id),
       })
       queryClient.invalidateQueries({ queryKey: enrollmentKeys.lists() })
+      toastMessages.success.created(entityNames.enrollment)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -55,6 +60,10 @@ export function useUpdateEnrollment() {
         queryKey: enrollmentKeys.byVersion(data.budget_version_id),
       })
       queryClient.invalidateQueries({ queryKey: enrollmentKeys.lists() })
+      toastMessages.success.updated(entityNames.enrollment)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -66,6 +75,10 @@ export function useDeleteEnrollment() {
     mutationFn: enrollmentApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: enrollmentKeys.lists() })
+      toastMessages.success.deleted(entityNames.enrollment)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -79,6 +92,10 @@ export function useCalculateProjections() {
       queryClient.invalidateQueries({
         queryKey: enrollmentKeys.byVersion(versionId),
       })
+      toastMessages.success.calculated()
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -103,6 +120,10 @@ export function useBulkUpdateEnrollments() {
         queryKey: enrollmentKeys.byVersion(variables.versionId),
       })
       queryClient.invalidateQueries({ queryKey: enrollmentKeys.lists() })
+      toastMessages.success.updated(entityNames.enrollment)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }

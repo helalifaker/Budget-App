@@ -47,6 +47,7 @@ from app.services.exceptions import (
     ValidationError,
 )
 from app.services.kpi_service import KPIService
+from app.services.materialized_view_service import MaterializedViewService
 from app.services.strategic_service import StrategicService
 
 router = APIRouter(prefix="/api/v1/analysis", tags=["analysis"])
@@ -658,4 +659,110 @@ async def add_initiative(
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+# ============================================================================
+# Materialized View Management Endpoints
+# ============================================================================
+
+
+@router.post(
+    "/materialized-views/refresh-all",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+)
+async def refresh_all_materialized_views(
+    current_user: UserDep = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Refresh all materialized views.
+
+    This endpoint refreshes all KPI dashboard materialized views
+    to ensure the latest data is available for queries.
+
+    Use this endpoint:
+    - After bulk data imports
+    - After budget consolidation
+    - On a scheduled basis (e.g., nightly)
+
+    Performance: ~1-3 seconds total for all views.
+    """
+    results = await MaterializedViewService.refresh_all(db)
+
+    # Count successes and failures
+    success_count = sum(1 for r in results.values() if r["status"] == "success")
+    error_count = sum(1 for r in results.values() if r["status"] == "error")
+
+    return {
+        "status": "completed",
+        "total_views": len(results),
+        "successful_refreshes": success_count,
+        "failed_refreshes": error_count,
+        "results": results,
+    }
+
+
+@router.post(
+    "/materialized-views/refresh/{view_name}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+)
+async def refresh_specific_materialized_view(
+    view_name: str,
+    current_user: UserDep = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Refresh a specific materialized view.
+
+    Args:
+        view_name: Name of the view to refresh (without schema prefix)
+            - "mv_kpi_dashboard"
+            - "mv_budget_consolidation"
+
+    Performance: ~0.5-2 seconds depending on data volume.
+    """
+    # Add schema prefix if not present
+    full_view_name = (
+        f"efir_budget.{view_name}" if "." not in view_name else view_name
+    )
+
+    try:
+        result = await MaterializedViewService.refresh_view(db, full_view_name)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get(
+    "/materialized-views/info/{view_name}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+)
+async def get_materialized_view_info(
+    view_name: str,
+    current_user: UserDep = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get information about a materialized view.
+
+    Returns row count, size, and other metadata.
+
+    Args:
+        view_name: Name of the view (without schema prefix)
+            - "mv_kpi_dashboard"
+            - "mv_budget_consolidation"
+    """
+    # Add schema prefix if not present
+    full_view_name = (
+        f"efir_budget.{view_name}" if "." not in view_name else view_name
+    )
+
+    try:
+        info = await MaterializedViewService.get_view_info(db, full_view_name)
+        return info
+    except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

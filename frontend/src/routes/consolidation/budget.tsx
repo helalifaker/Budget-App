@@ -15,7 +15,7 @@ import {
   useApproveBudget,
 } from '@/hooks/api/useConsolidation'
 import { CheckCircle2, XCircle, FileCheck, Send, CheckSquare, DollarSign } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastMessages } from '@/lib/toast-messages'
 import {
   BarChart,
   Bar,
@@ -42,32 +42,38 @@ function BudgetConsolidationPage() {
   const approveMutation = useApproveBudget()
 
   const handleConsolidate = async () => {
-    if (!selectedVersionId) return
+    if (!selectedVersionId) {
+      toastMessages.warning.selectVersion()
+      return
+    }
     try {
       await consolidateMutation.mutateAsync(selectedVersionId)
-      toast.success('Budget consolidated successfully')
     } catch {
-      toast.error('Failed to consolidate budget')
+      // Error toast is handled by the mutation's onError
     }
   }
 
   const handleSubmit = async () => {
-    if (!selectedVersionId) return
+    if (!selectedVersionId) {
+      toastMessages.warning.selectVersion()
+      return
+    }
     try {
       await submitMutation.mutateAsync(selectedVersionId)
-      toast.success('Budget submitted for approval')
     } catch {
-      toast.error('Failed to submit budget')
+      // Error toast is handled by the mutation's onError
     }
   }
 
   const handleApprove = async () => {
-    if (!selectedVersionId) return
+    if (!selectedVersionId) {
+      toastMessages.warning.selectVersion()
+      return
+    }
     try {
       await approveMutation.mutateAsync(selectedVersionId)
-      toast.success('Budget approved successfully')
     } catch {
-      toast.error('Failed to approve budget')
+      // Error toast is handled by the mutation's onError
     }
   }
 

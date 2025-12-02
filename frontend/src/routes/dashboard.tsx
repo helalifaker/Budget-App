@@ -106,11 +106,26 @@ function DashboardPage() {
       >
         <div className="space-y-6">
           {/* Version Selector */}
-          <BudgetVersionSelector
-            value={selectedVersionId}
-            onChange={setSelectedVersionId}
-            showCreateButton={true}
-          />
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <BudgetVersionSelector
+                value={selectedVersionId}
+                onChange={setSelectedVersionId}
+                showCreateButton={true}
+              />
+            </div>
+            {import.meta.env.DEV && (
+              <Button
+                onClick={() => {
+                  throw new Error('Test Sentry error from dashboard')
+                }}
+                variant="outline"
+                size="sm"
+              >
+                Test Sentry Error
+              </Button>
+            )}
+          </div>
 
           {selectedVersionId && (
             <>

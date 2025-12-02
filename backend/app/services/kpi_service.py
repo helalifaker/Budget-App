@@ -17,6 +17,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.cache import cache_kpi_dashboard
 from app.models.analysis import KPICategory, KPIDefinition, KPIValue
 from app.models.configuration import BudgetVersion
 from app.services.base import BaseService
@@ -107,6 +108,7 @@ class KPIService:
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    @cache_kpi_dashboard(ttl="5m")
     async def calculate_kpis(
         self,
         budget_version_id: uuid.UUID,
@@ -115,8 +117,10 @@ class KPIService:
         """
         Calculate all KPIs or specific KPIs for a budget version.
 
+        Results are cached for 5 minutes for dashboard performance.
+
         Args:
-            budget_version_id: Budget version UUID
+            budget_version_id: Budget version UUID (used as cache key)
             kpi_codes: Optional list of specific KPI codes to calculate
 
         Returns:
@@ -240,6 +244,11 @@ class KPIService:
 
         Returns:
             KPIValue instance or None if not found
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads kpi_definition, budget_version, and audit fields
+            - Leverages idx_kpi_values_version_def index
         """
         # Get definition first
         definition = await self.get_kpi_definition(kpi_code)
@@ -253,7 +262,12 @@ class KPIService:
                     KPIValue.deleted_at.is_(None),
                 )
             )
-            .options(selectinload(KPIValue.kpi_definition))
+            .options(
+                selectinload(KPIValue.kpi_definition),
+                selectinload(KPIValue.budget_version),
+                selectinload(KPIValue.created_by),
+                selectinload(KPIValue.updated_by),
+            )
         )
 
         result = await self.session.execute(query)
@@ -273,6 +287,11 @@ class KPIService:
 
         Returns:
             List of KPIValue instances
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads kpi_definition, budget_version, and audit fields
+            - Leverages idx_kpi_values_version_def index
         """
         query = (
             select(KPIValue)
@@ -282,7 +301,12 @@ class KPIService:
                     KPIValue.deleted_at.is_(None),
                 )
             )
-            .options(selectinload(KPIValue.kpi_definition))
+            .options(
+                selectinload(KPIValue.kpi_definition),
+                selectinload(KPIValue.budget_version),
+                selectinload(KPIValue.created_by),
+                selectinload(KPIValue.updated_by),
+            )
         )
 
         if category:

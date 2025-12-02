@@ -41,9 +41,34 @@ from app.models.planning import (
     DHGTeacherRequirement,
     EnrollmentPlan,
 )
-from sqlalchemy import text
+from sqlalchemy import UUID as SQLUUID, Column, String, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
+
+
+# ==============================================================================
+# Test-only User Model for auth.users
+# ==============================================================================
+# Production code intentionally avoids defining a User model to keep auth
+# separate from business logic. For tests, we need a minimal model so
+# SQLAlchemy can resolve foreign keys to auth.users.id
+
+
+class User(Base):
+    """
+    Minimal User model for test database only.
+
+    Simulates Supabase auth.users table structure for testing.
+    Production code uses direct queries to auth.users when needed.
+    """
+
+    __tablename__ = "users"
+    __table_args__ = {"schema": "auth"}
+
+    id: Mapped[UUID] = mapped_column(
+        SQLUUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 @pytest.fixture(scope="session")
@@ -74,7 +99,7 @@ async def engine(test_database_url: str):
     """
     Create async database engine for tests.
 
-    Creates all tables in the test database.
+    Creates all tables in the test database including auth schema.
     """
     engine = create_async_engine(
         test_database_url,
@@ -82,21 +107,13 @@ async def engine(test_database_url: str):
     )
 
     async with engine.begin() as conn:
-        # SQLite needs an attached schema name to handle "efir_budget.*" table names.
+        # SQLite needs attached schemas to handle multi-schema table names
         if test_database_url.startswith("sqlite"):
+            # Attach schemas for efir_budget.* and auth.* tables
             await conn.execute(text("ATTACH DATABASE ':memory:' AS efir_budget"))
-            # Create mock auth schema for SQLite (simulates Supabase auth.users table)
             await conn.execute(text("ATTACH DATABASE ':memory:' AS auth"))
-            await conn.execute(
-                text(
-                    """
-                    CREATE TABLE IF NOT EXISTS auth.users (
-                        id TEXT PRIMARY KEY,
-                        email TEXT
-                    )
-                    """
-                )
-            )
+
+        # Create all tables (including auth.users from User model)
         await conn.run_sync(Base.metadata.create_all)
 
     yield engine
@@ -127,9 +144,17 @@ def sample_uuid() -> UUID:
 
 
 @pytest.fixture
-def test_user_id() -> UUID:
-    """Generate a test user ID."""
-    return uuid4()
+async def test_user_id(db_session: AsyncSession) -> UUID:
+    """
+    Create a test user in auth.users and return the ID.
+
+    This ensures foreign key constraints to auth.users.id are satisfied.
+    """
+    user_id = uuid4()
+    user = User(id=user_id, email="test@efir.local")
+    db_session.add(user)
+    await db_session.flush()
+    return user_id
 
 
 # ==============================================================================

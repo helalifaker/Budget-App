@@ -32,10 +32,9 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel, ReferenceDataModel, VersionedMixin
+from app.models.base import BaseModel, PortableJSON, ReferenceDataModel, VersionedMixin
 
 # ==============================================================================
 # Module 1: System Configuration
@@ -61,9 +60,9 @@ class SystemConfig(BaseModel):
     )
 
     value: Mapped[dict] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=False,
-        comment="Configuration value (flexible JSONB structure)",
+        comment="Configuration value (flexible JSON structure)",
     )
 
     category: Mapped[str] = mapped_column(

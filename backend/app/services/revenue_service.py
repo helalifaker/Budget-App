@@ -12,6 +12,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.cache import cache_revenue_projection
 from app.engine.revenue import (
     FeeCategory as EngineFeeCategory,
 )
@@ -144,23 +145,27 @@ class RevenueService:
         else:
             return await self.revenue_plan_service.create(data, user_id=user_id)
 
+    @cache_revenue_projection(ttl="30m")
     async def calculate_revenue_from_enrollment(
         self,
-        version_id: uuid.UUID,
+        budget_version_id: uuid.UUID,
         user_id: uuid.UUID | None = None,
     ) -> dict:
         """
         Calculate revenue from enrollment and fee structure.
 
         Applies sibling discounts and trimester distribution.
+        Results are cached for 30 minutes.
 
         Args:
-            version_id: Budget version UUID
+            budget_version_id: Budget version UUID (used as cache key)
             user_id: User ID for audit trail
 
         Returns:
             Dictionary with calculation results and created revenue entries
         """
+        # Maintain compatibility with existing code
+        version_id = budget_version_id
         # Get enrollment data
         enrollment_query = (
             select(EnrollmentPlan)

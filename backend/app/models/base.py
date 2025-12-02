@@ -11,12 +11,41 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import UUID, Column, DateTime, ForeignKey, text
+from sqlalchemy import JSON, UUID, Column, DateTime, ForeignKey, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import TypeDecorator
 
 # Base class for all models
 Base = declarative_base()
+
+
+# ==============================================================================
+# Portable JSON Type (JSONB for PostgreSQL, JSON for SQLite)
+# ==============================================================================
+
+
+class PortableJSON(TypeDecorator):
+    """
+    JSON type that uses JSONB for PostgreSQL and JSON for other databases.
+
+    This allows the same model definitions to work in both production
+    (PostgreSQL with JSONB) and tests (SQLite with JSON).
+    """
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            return dialect.type_descriptor(JSONB())
+        else:
+            return dialect.type_descriptor(JSON())
+
+
+# For backward compatibility, export as JSONB-like type
+JSONBPortable = PortableJSON
 
 
 class AuditMixin:
@@ -33,14 +62,14 @@ class AuditMixin:
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("NOW()"),
+        default=datetime.utcnow,
         comment="When the record was created",
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("NOW()"),
+        default=datetime.utcnow,
         onupdate=datetime.utcnow,
         comment="When the record was last updated",
     )
@@ -175,14 +204,14 @@ class TimestampMixin:
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("NOW()"),
+        default=datetime.utcnow,
         comment="When the record was created",
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text("NOW()"),
+        default=datetime.utcnow,
         onupdate=datetime.utcnow,
         comment="When the record was last updated",
     )

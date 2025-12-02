@@ -55,6 +55,11 @@ class ClassStructureService:
 
         Returns:
             List of ClassStructure instances with relationships loaded
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads level, cycle, budget_version, and audit fields
+            - Leverages idx_class_structure_version index
         """
         query = (
             select(ClassStructure)
@@ -65,7 +70,10 @@ class ClassStructureService:
                 )
             )
             .options(
-                selectinload(ClassStructure.level).selectinload(AcademicLevel.cycle)
+                selectinload(ClassStructure.level).selectinload(AcademicLevel.cycle),
+                selectinload(ClassStructure.budget_version),
+                selectinload(ClassStructure.created_by),
+                selectinload(ClassStructure.updated_by),
             )
             .order_by(AcademicLevel.sort_order)
         )
@@ -364,6 +372,11 @@ class ClassStructureService:
 
         Returns:
             Dictionary mapping level_id to (total_students, level, cycle)
+
+        Performance Notes:
+            - Uses aggregation query for enrollment totals (single query)
+            - Eager loads levels and cycles in second query
+            - Leverages idx_enrollment_version index
         """
         query = (
             select(
@@ -380,6 +393,9 @@ class ClassStructureService:
         )
         result = await self.session.execute(query)
         enrollment_totals = {row.level_id: row.total_students for row in result}
+
+        if not enrollment_totals:
+            return {}
 
         query_levels = (
             select(AcademicLevel)

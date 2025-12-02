@@ -7,7 +7,7 @@ import { KPICard } from '@/components/KPICard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useKPIs } from '@/hooks/api/useAnalysis'
 import {
-  BarChart,
+  BarChartLazy,
   Bar,
   XAxis,
   YAxis,
@@ -15,7 +15,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts'
+} from '@/components/charts/ChartsLazy'
 
 export const Route = createFileRoute('/analysis/kpis')({
   component: KPIsPage,
@@ -90,7 +90,7 @@ function KPIsPage() {
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={400}>
-                        <BarChart
+                        <BarChartLazy
                           data={benchmarkData}
                           margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
                         >
@@ -102,7 +102,7 @@ function KPIsPage() {
                           <Bar dataKey="value" fill="#3B82F6" name="Actual Value" />
                           <Bar dataKey="min" fill="#10B981" name="Min Benchmark" />
                           <Bar dataKey="max" fill="#EF4444" name="Max Benchmark" />
-                        </BarChart>
+                        </BarChartLazy>
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>

@@ -33,10 +33,10 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel, VersionedMixin
+from app.models.base import BaseModel, PortableJSON, VersionedMixin
 
 if TYPE_CHECKING:
     from app.models.configuration import BudgetVersion
@@ -320,7 +320,7 @@ class KPIValue(BaseModel, VersionedMixin):
 
     # Audit Trail
     calculation_inputs: Mapped[dict] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=False,
         comment="Inputs used for calculation (for audit and recalc)",
     )
@@ -477,7 +477,7 @@ class DashboardConfig(BaseModel):
 
     # Layout Configuration
     layout_config: Mapped[dict] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=False,
         comment="Grid layout configuration (12×12 grid, gap size, etc.)",
     )
@@ -618,7 +618,7 @@ class DashboardWidget(BaseModel):
         comment="Query identifier or API endpoint for data",
     )
     widget_config: Mapped[dict] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=False,
         comment="Widget-specific configuration (type-dependent)",
     )
@@ -758,7 +758,7 @@ class UserPreferences(BaseModel):
         comment="User's default fiscal year filter",
     )
     display_preferences: Mapped[dict] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=False,
         default=dict,
         comment="Number format, language, timezone, date format",
@@ -766,7 +766,7 @@ class UserPreferences(BaseModel):
 
     # Notification Settings
     notification_settings: Mapped[dict] = mapped_column(
-        JSONB,
+        PortableJSON,
         nullable=False,
         default=dict,
         comment="Email alerts, dashboard notifications, weekly summary",

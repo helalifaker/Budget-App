@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { analysisService } from '@/services/analysis'
+import { toastMessages, handleAPIErrorToast } from '@/lib/toast-messages'
 
 export const analysisKeys = {
   all: ['analysis'] as const,
@@ -33,10 +34,15 @@ export function useImportActuals() {
   return useMutation({
     mutationFn: ({ versionId, period, file }: { versionId: string; period: string; file: File }) =>
       analysisService.importActuals(versionId, period, file),
-    onSuccess: (_, { versionId, period }) => {
+    onSuccess: (data, { versionId, period }) => {
       queryClient.invalidateQueries({
         queryKey: analysisKeys.variance(versionId, period as 'T1' | 'T2' | 'T3' | 'ANNUAL'),
       })
+      const count = (data as { imported_count?: number })?.imported_count ?? 0
+      toastMessages.success.imported(count)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }
@@ -48,6 +54,10 @@ export function useCreateForecastRevision() {
     mutationFn: (versionId: string) => analysisService.createForecastRevision(versionId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['budget-versions'] })
+      toastMessages.success.created('Révision de prévision')
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
     },
   })
 }

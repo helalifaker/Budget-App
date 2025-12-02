@@ -18,6 +18,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.cache import cache_dhg_calculation
 from app.models.configuration import (
     AcademicCycle,
     AcademicLevel,
@@ -71,6 +72,11 @@ class DHGService:
 
         Returns:
             List of DHGSubjectHours instances with relationships loaded
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads subject, level, cycle, budget_version, and audit fields
+            - Leverages idx_dhg_subject_hours_version index
         """
         query = (
             select(DHGSubjectHours)
@@ -83,6 +89,9 @@ class DHGService:
             .options(
                 selectinload(DHGSubjectHours.subject),
                 selectinload(DHGSubjectHours.level).selectinload(AcademicLevel.cycle),
+                selectinload(DHGSubjectHours.budget_version),
+                selectinload(DHGSubjectHours.created_by),
+                selectinload(DHGSubjectHours.updated_by),
             )
             .order_by(
                 AcademicLevel.sort_order,
@@ -92,9 +101,11 @@ class DHGService:
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    @cache_dhg_calculation(ttl="1h")
     async def calculate_dhg_subject_hours(
         self,
-        version_id: uuid.UUID,
+        budget_version_id: uuid.UUID,
+        level_id: uuid.UUID | None = None,
         recalculate_all: bool = True,
         user_id: uuid.UUID | None = None,
     ) -> list[DHGSubjectHours]:
@@ -105,8 +116,11 @@ class DHGService:
             total_hours_per_week = classes × hours_per_class_per_week
             If is_split: total_hours_per_week × 2
 
+        Results are cached for 1 hour per budget version and level.
+
         Args:
-            version_id: Budget version UUID
+            budget_version_id: Budget version UUID (used as cache key)
+            level_id: Optional level ID to filter calculation (used as cache key)
             recalculate_all: Whether to recalculate all or only changed ones
             user_id: User ID for audit trail
 
@@ -116,6 +130,8 @@ class DHGService:
         Raises:
             BusinessRuleError: If missing required data
         """
+        # Maintain compatibility with existing code
+        version_id = budget_version_id
         class_structures = await self._get_class_structures(version_id)
         if not class_structures:
             raise BusinessRuleError(
@@ -193,6 +209,11 @@ class DHGService:
 
         Returns:
             List of DHGTeacherRequirement instances with relationships loaded
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads subject, budget_version, and audit fields
+            - Leverages idx_dhg_teacher_reqs_version index
         """
         query = (
             select(DHGTeacherRequirement)
@@ -202,7 +223,12 @@ class DHGService:
                     DHGTeacherRequirement.deleted_at.is_(None),
                 )
             )
-            .options(selectinload(DHGTeacherRequirement.subject))
+            .options(
+                selectinload(DHGTeacherRequirement.subject),
+                selectinload(DHGTeacherRequirement.budget_version),
+                selectinload(DHGTeacherRequirement.created_by),
+                selectinload(DHGTeacherRequirement.updated_by),
+            )
             .order_by(Subject.code)
         )
         result = await self.session.execute(query)
@@ -316,6 +342,11 @@ class DHGService:
 
         Returns:
             List of TeacherAllocation instances with relationships loaded
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads subject, cycle, category, budget_version, and audit fields
+            - Leverages idx_teacher_allocations_version index
         """
         query = (
             select(TeacherAllocation)
@@ -329,6 +360,9 @@ class DHGService:
                 selectinload(TeacherAllocation.subject),
                 selectinload(TeacherAllocation.cycle),
                 selectinload(TeacherAllocation.category),
+                selectinload(TeacherAllocation.budget_version),
+                selectinload(TeacherAllocation.created_by),
+                selectinload(TeacherAllocation.updated_by),
             )
             .order_by(
                 Subject.code,
@@ -638,6 +672,11 @@ class DHGService:
 
         Returns:
             List of ClassStructure instances
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads level and cycle relationships
+            - Leverages idx_class_structure_version index
         """
         query = (
             select(ClassStructure)
@@ -665,6 +704,11 @@ class DHGService:
 
         Returns:
             List of SubjectHoursMatrix instances
+
+        Performance Notes:
+            - Uses selectinload for N+1 prevention
+            - Eager loads subject and level relationships
+            - Leverages idx_subject_hours_version index
         """
         query = (
             select(SubjectHoursMatrix)

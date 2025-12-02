@@ -15,6 +15,7 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import CacheInvalidator
 from app.database import get_db
 from app.dependencies.auth import ManagerDep, UserDep
 from app.schemas.consolidation import (
@@ -200,6 +201,9 @@ async def consolidate_budget(
     try:
         # Run consolidation
         await consolidation_service.consolidate_budget(version_id, user_id=user.id)
+
+        # Invalidate consolidation and dependent caches
+        await CacheInvalidator.invalidate(str(version_id), "budget_consolidation")
 
         # Return consolidated budget
         return await get_consolidated_budget(version_id, consolidation_service, user)

@@ -337,6 +337,93 @@
   --ag-font-family: 'Inter', system-ui, sans-serif;
 }
 
+/* AG Grid Cell States (Writeback Integration) */
+
+/* Locked cells - cannot be edited */
+.ag-theme-quartz .cell-locked {
+  background-color: #fee !important;
+  cursor: not-allowed !important;
+  opacity: 0.8;
+}
+
+.ag-theme-quartz .cell-locked:hover {
+  background-color: #fdd !important;
+}
+
+/* Saving cells - write in progress */
+.ag-theme-quartz .cell-saving {
+  background-color: #ffe !important;
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+/* Conflict cells - version mismatch detected */
+.ag-theme-quartz .cell-conflict {
+  background-color: #fcc !important;
+  border: 2px solid #f88 !important;
+  animation: pulse-red 1s ease-in-out 3;
+}
+
+@keyframes pulse-red {
+  0%,
+  100% {
+    background-color: #fcc;
+  }
+  50% {
+    background-color: #f88;
+  }
+}
+
+/* Cell flash animation (external changes) */
+.ag-theme-quartz .ag-cell-flash {
+  background-color: #ffa !important;
+  transition: background-color 1s ease-out;
+}
+
+/* Cell focus with custom gold ring */
+.ag-theme-quartz .ag-cell-focus {
+  border: 2px solid var(--color-gold-500) !important;
+  outline: none;
+}
+
+/* Cell inline editing state */
+.ag-theme-quartz .ag-cell-inline-editing {
+  background-color: #fff !important;
+  border: 2px solid var(--color-gold-500) !important;
+  box-shadow: 0 2px 8px rgba(237, 173, 62, 0.2);
+}
+
+/* Context menu styling */
+.ag-theme-quartz .ag-menu {
+  border: 1px solid var(--color-sand-300);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.ag-theme-quartz .ag-menu-option-active {
+  background-color: var(--color-sand-100);
+}
+
+/* Cell with comments indicator */
+.ag-theme-quartz .cell-has-comments::after {
+  content: '💬';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+/* Cell with history indicator */
+.ag-theme-quartz .cell-has-history::after {
+  content: '📋';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
 /* Recharts customization */
 .recharts-wrapper {
   font-family: 'Inter', system-ui, sans-serif;

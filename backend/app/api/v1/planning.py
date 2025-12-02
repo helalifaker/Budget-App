@@ -500,7 +500,7 @@ async def calculate_dhg_subject_hours(
     """
     try:
         subject_hours = await dhg_service.calculate_dhg_subject_hours(
-            version_id=version_id,
+            budget_version_id=version_id,
             recalculate_all=calculation_request.recalculate_all,
             user_id=user.id,
         )
