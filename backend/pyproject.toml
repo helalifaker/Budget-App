@@ -8,12 +8,15 @@ authors = [{name = "EFIR", email = "tech@efir.local"}]
 dependencies = [
   "fastapi==0.123.0",
   "uvicorn[standard]==0.34.0",
-  "pydantic==2.12.0",
-  "sqlalchemy==2.0.36",
+  "pydantic==2.12.5",
+  "sqlalchemy==2.0.44",
   "asyncpg==0.30.0",
   "python-dotenv==1.0.1",
   "passlib[bcrypt]==1.7.4",
-  "python-jose[cryptography]==3.3.0"
+  "python-jose[cryptography]==3.3.0",
+  "alembic==1.14.1",
+  "python-multipart==0.0.9",
+  "email-validator==2.2.0"
 ]
 
 [project.optional-dependencies]
@@ -22,7 +25,10 @@ dev = [
   "mypy==1.14.1",
   "pytest==8.3.3",
   "httpx==0.27.2",
-  "pytest-asyncio==0.24.0"
+  "pytest-asyncio==0.24.0",
+  "aiosqlite==0.20.0",
+  "pytest-cov==6.0.0",
+  "greenlet>=3.0.0"
 ]
 
 [tool.ruff]
@@ -70,8 +76,9 @@ ignore_errors = true
 
 [[tool.mypy.overrides]]
 module = ["app.api.v1.*"]
-# API routes may reference not-yet-exported functions
-disable_error_code = ["attr-defined"]
+# API routes: attr-defined for not-yet-exported functions
+# assignment for FastAPI Annotated[..., Depends()] with `= ...` pattern
+disable_error_code = ["attr-defined", "assignment"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
