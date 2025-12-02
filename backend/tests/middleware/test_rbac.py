@@ -11,11 +11,8 @@ Verifies role-based access control enforcement, especially for:
 from __future__ import annotations
 
 import pytest
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from app.middleware.rbac import RBACMiddleware
+from fastapi import FastAPI, Request
 
 
 class TestRBACPathMatching:

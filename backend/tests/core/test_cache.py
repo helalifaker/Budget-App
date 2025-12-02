@@ -9,10 +9,9 @@ Verifies cache invalidation patterns, especially for:
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from app.core.cache import (
     CACHE_DEPENDENCY_GRAPH,
     ENTITY_TO_CACHE_PREFIX,
@@ -137,7 +136,6 @@ class TestCacheInvalidation:
         """Test invalidation when entity name != cache prefix."""
         budget_version_id = "test-456"
         entity = "dhg_calculations"  # Entity name
-        expected_prefix = "dhg"  # Cache prefix
 
         # Mock Redis client with proper async iterator
         mock_redis = AsyncMock()
@@ -282,11 +280,10 @@ class TestCacheDependencyGraph:
 
     def test_no_circular_dependencies(self):
         """Ensure no circular dependencies in the graph."""
-        visited = set()
 
         def check_circular(entity: str, path: list[str]) -> None:
             if entity in path:
-                raise ValueError(f"Circular dependency detected: {' -> '.join(path + [entity])}")
+                raise ValueError(f"Circular dependency detected: {' -> '.join([*path, entity])}")
 
             path.append(entity)
             for dependent in CACHE_DEPENDENCY_GRAPH.get(entity, []):
@@ -341,7 +338,7 @@ class TestCachePatternMatching:
         """Verify all entities produce valid Redis patterns."""
         budget_version_id = "test-all"
 
-        for entity, cache_prefix in ENTITY_TO_CACHE_PREFIX.items():
+        for _entity, cache_prefix in ENTITY_TO_CACHE_PREFIX.items():
             pattern = f"{cache_prefix}:{budget_version_id}*"
 
             # Pattern should:

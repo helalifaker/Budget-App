@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
+import { requireAuth } from '@/lib/auth-guard'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
@@ -26,6 +27,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 
 export const Route = createFileRoute('/dashboard')({
+  beforeLoad: requireAuth,
   component: DashboardPage,
 })
 

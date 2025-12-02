@@ -43,7 +43,7 @@ class KPIInput(BaseModel):
 
     # Teacher metrics
     total_teacher_fte: Decimal = Field(
-        ..., ge=Decimal("0"), description="Total teacher FTE (full-time equivalent)"
+        ..., gt=Decimal("0"), description="Total teacher FTE (full-time equivalent)"
     )
     dhg_hours_total: Decimal | None = Field(
         None,

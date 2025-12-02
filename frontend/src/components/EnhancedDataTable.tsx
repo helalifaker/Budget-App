@@ -19,8 +19,10 @@ import type {
   CellValueChangedEvent,
   CellClassParams,
   GetContextMenuItemsParams,
-  MenuItemDef,
   GridApi,
+  CellStyle,
+  CellClickedEvent,
+  GetContextMenuItems,
 } from 'ag-grid-community'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-quartz.css'
@@ -174,8 +176,6 @@ export function EnhancedDataTable<TData = unknown>({
           ...cellData,
           [fieldName]: newValue,
           version: result.version,
-          updated_at: result.updated_at,
-          updated_by: result.updated_by,
         } as TData)
 
         // Success callback
@@ -209,7 +209,7 @@ export function EnhancedDataTable<TData = unknown>({
    * Cell style function - show locked cells, saving state, conflicts
    */
   const getCellStyle = useCallback(
-    (params: CellClassParams<TData>) => {
+    (params: CellClassParams<TData>): CellStyle | null => {
       const cellData = params.data as CellData
       if (!cellData) return null
 
@@ -219,15 +219,15 @@ export function EnhancedDataTable<TData = unknown>({
       const hasConflict = conflictCells.has(cellId)
 
       if (hasConflict) {
-        return { backgroundColor: '#fcc', border: '2px solid #f88' }
+        return { backgroundColor: '#fcc', border: '2px solid #f88' } as CellStyle
       }
 
       if (isLocked) {
-        return { backgroundColor: '#fee', cursor: 'not-allowed' }
+        return { backgroundColor: '#fee', cursor: 'not-allowed' } as CellStyle
       }
 
       if (isSaving) {
-        return { backgroundColor: '#ffe', opacity: 0.7 }
+        return { backgroundColor: '#ffe', opacity: 0.7 } as CellStyle
       }
 
       return null
@@ -259,9 +259,9 @@ export function EnhancedDataTable<TData = unknown>({
   /**
    * Context menu items
    */
-  const getContextMenuItems = useCallback(
-    (params: GetContextMenuItemsParams<TData>): (string | MenuItemDef)[] => {
-      const cellData = params.node?.data as CellData
+  const getContextMenuItems: GetContextMenuItems<TData> = useCallback(
+    (params: GetContextMenuItemsParams<TData>) => {
+      const cellData = params.node?.data as CellData | undefined
       const cellId = cellData?.id
 
       return [
@@ -310,8 +310,8 @@ export function EnhancedDataTable<TData = unknown>({
    * Cell selection handler - update presence
    */
   const onCellClicked = useCallback(
-    (event: { data: TData }) => {
-      const cellData = event.data as CellData
+    (event: CellClickedEvent<TData>) => {
+      const cellData = event.data as CellData | undefined
       if (cellData?.id) {
         broadcast({
           action: 'editing',
@@ -390,7 +390,6 @@ export function EnhancedDataTable<TData = unknown>({
           onCellClicked={onCellClicked}
           getContextMenuItems={getContextMenuItems}
           suppressCellFocus={false}
-          enableCellChangeFlash={true}
           animateRows={true}
           domLayout="normal"
           pagination={props.pagination !== undefined ? props.pagination : true}

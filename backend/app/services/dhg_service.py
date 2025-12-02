@@ -80,6 +80,8 @@ class DHGService:
         """
         query = (
             select(DHGSubjectHours)
+            .join(DHGSubjectHours.level)
+            .join(DHGSubjectHours.subject)
             .where(
                 and_(
                     DHGSubjectHours.budget_version_id == version_id,
@@ -90,8 +92,6 @@ class DHGService:
                 selectinload(DHGSubjectHours.subject),
                 selectinload(DHGSubjectHours.level).selectinload(AcademicLevel.cycle),
                 selectinload(DHGSubjectHours.budget_version),
-                selectinload(DHGSubjectHours.created_by),
-                selectinload(DHGSubjectHours.updated_by),
             )
             .order_by(
                 AcademicLevel.sort_order,
@@ -217,6 +217,7 @@ class DHGService:
         """
         query = (
             select(DHGTeacherRequirement)
+            .join(DHGTeacherRequirement.subject)  # Join for ORDER BY
             .where(
                 and_(
                     DHGTeacherRequirement.budget_version_id == version_id,
@@ -226,8 +227,6 @@ class DHGService:
             .options(
                 selectinload(DHGTeacherRequirement.subject),
                 selectinload(DHGTeacherRequirement.budget_version),
-                selectinload(DHGTeacherRequirement.created_by),
-                selectinload(DHGTeacherRequirement.updated_by),
             )
             .order_by(Subject.code)
         )
@@ -350,6 +349,8 @@ class DHGService:
         """
         query = (
             select(TeacherAllocation)
+            .join(TeacherAllocation.subject)  # Join for ORDER BY
+            .join(TeacherAllocation.cycle)  # Join for ORDER BY
             .where(
                 and_(
                     TeacherAllocation.budget_version_id == version_id,
@@ -361,8 +362,6 @@ class DHGService:
                 selectinload(TeacherAllocation.cycle),
                 selectinload(TeacherAllocation.category),
                 selectinload(TeacherAllocation.budget_version),
-                selectinload(TeacherAllocation.created_by),
-                selectinload(TeacherAllocation.updated_by),
             )
             .order_by(
                 Subject.code,

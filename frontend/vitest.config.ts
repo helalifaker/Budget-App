@@ -11,7 +11,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: ['src/setupTests.ts'],
+    setupFiles: ['tests/setup.ts', 'src/setupTests.ts'],
     globals: true,
     env: {
       VITE_SUPABASE_URL: 'https://test-project.supabase.co',

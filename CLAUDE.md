@@ -30,7 +30,7 @@ The application provides workforce planning through annual budget and 5-year str
 - No third-party dependencies, battle-tested (J.P. Morgan, MongoDB, NASA)
 
 ### Backend
-- **Runtime**: Python 3.12+ (improved performance and error messages)
+- **Runtime**: Python 3.14.0 (latest features, performance, and error messages)
 - **API Framework**: FastAPI 0.123.x (high-performance async with Pydantic v2)
 - **Validation**: Pydantic 2.12+ (data validation with JSON Schema support)
 - **Server**: Uvicorn 0.34+ (ASGI server for production deployment)

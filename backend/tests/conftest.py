@@ -41,10 +41,10 @@ from app.models.planning import (
     DHGTeacherRequirement,
     EnrollmentPlan,
 )
-from sqlalchemy import UUID as SQLUUID, Column, String, text
+from sqlalchemy import UUID as SQLUUID
+from sqlalchemy import String, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
-
 
 # ==============================================================================
 # Test-only User Model for auth.users

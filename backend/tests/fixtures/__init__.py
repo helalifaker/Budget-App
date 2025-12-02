@@ -26,8 +26,6 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.configuration import (
     AcademicCycle,
     AcademicLevel,
@@ -51,7 +49,7 @@ from app.models.planning import (
     RevenuePlan,
     TeacherAllocation,
 )
-
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # ==============================================================================
 # Test User ID (matches auth.users created in conftest.py)
@@ -239,7 +237,7 @@ async def mock_subject_hours_matrix_college(
     - 3ème: Math(3.5), FR(4), HIST(3.5), SVT(1.5), PHYS(1.5), LV1(3), LV2(2.5), EPS(3)
     """
     subject_map = {s.code: s for s in mock_subjects}
-    level_map = {l.code: l for l in mock_academic_levels}
+    level_map = {level.code: level for level in mock_academic_levels}
 
     # Hours matrix: {subject_code: {level_code: hours}}
     hours_data = {
@@ -332,7 +330,7 @@ async def mock_fee_structure(
     - DAI: Droit Annuel d'Inscription (Annual enrollment fee)
     - REGISTRATION: One-time registration fee
     """
-    level_map = {l.code: l for l in mock_academic_levels}
+    level_map = {level.code: level for level in mock_academic_levels}
 
     # Fee amounts by cycle and nationality
     fee_data = {
@@ -541,7 +539,7 @@ async def mock_enrollment_plan(
     - Collège: 260 (6ème:70, 5ème:68, 4ème:62, 3ème:60)
     - Lycée: 180 (2nde:65, 1ère:60, Term:55)
     """
-    level_map = {l.code: l for l in mock_academic_levels}
+    level_map = {level.code: level for level in mock_academic_levels}
 
     # Student counts by level and nationality
     enrollment_data = {
@@ -605,7 +603,7 @@ async def mock_class_structure(
     - Lycée: 2nde(3), 1ère(2), Term(2) = 7 classes
     Total: 36 classes
     """
-    level_map = {l.code: l for l in mock_academic_levels}
+    level_map = {level.code: level for level in mock_academic_levels}
 
     class_data = {
         # Maternelle (40 students each → 2 classes of 20)
