@@ -9,6 +9,7 @@ Provides REST API for:
 """
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -105,6 +106,12 @@ async def get_consolidated_budget(
         budget_version = await consolidation_service.budget_version_service.get_by_id(
             version_id
         )
+
+        if not budget_version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Budget version {version_id} not found",
+            )
 
         # Group items by type
         revenue_items = []
@@ -211,7 +218,7 @@ async def consolidate_budget(
 @router.post("/{version_id}/submit", response_model=WorkflowActionResponse)
 async def submit_for_approval(
     version_id: uuid.UUID,
-    request: SubmitForApprovalRequest = SubmitForApprovalRequest(),
+    request: SubmitForApprovalRequest = SubmitForApprovalRequest(notes="Submitted for approval"),
     consolidation_service: ConsolidationService = Depends(get_consolidation_service),
     user: UserDep = ...,
 ):
@@ -238,6 +245,13 @@ async def submit_for_approval(
         budget_version = await consolidation_service.budget_version_service.get_by_id(
             version_id
         )
+
+        if not budget_version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Budget version {version_id} not found",
+            )
+
         previous_status = budget_version.status
 
         # Submit for approval
@@ -250,7 +264,7 @@ async def submit_for_approval(
             previous_status=previous_status,
             new_status=updated.status,
             action_by=user.id,
-            action_at=updated.submitted_at,
+            action_at=updated.submitted_at or datetime.utcnow(),
             message=f"Budget '{updated.name}' successfully submitted for approval",
         )
 
@@ -271,7 +285,7 @@ async def submit_for_approval(
 @router.post("/{version_id}/approve", response_model=WorkflowActionResponse)
 async def approve_budget(
     version_id: uuid.UUID,
-    request: ApprovebudgetRequest = ApprovebudgetRequest(),
+    request: ApprovebudgetRequest = ApprovebudgetRequest(notes="Approved"),
     consolidation_service: ConsolidationService = Depends(get_consolidation_service),
     manager: ManagerDep = ...,  # Requires manager role
 ):
@@ -300,6 +314,13 @@ async def approve_budget(
         budget_version = await consolidation_service.budget_version_service.get_by_id(
             version_id
         )
+
+        if not budget_version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Budget version {version_id} not found",
+            )
+
         previous_status = budget_version.status
 
         # Approve budget
@@ -312,7 +333,7 @@ async def approve_budget(
             previous_status=previous_status,
             new_status=updated.status,
             action_by=manager.id,
-            action_at=updated.approved_at,
+            action_at=updated.approved_at or datetime.utcnow(),
             message=f"Budget '{updated.name}' successfully approved",
         )
 
@@ -397,6 +418,12 @@ async def get_consolidation_summary(
         budget_version = await consolidation_service.budget_version_service.get_by_id(
             version_id
         )
+
+        if not budget_version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Budget version {version_id} not found",
+            )
 
         return ConsolidationSummary(
             budget_version_id=version_id,
@@ -511,6 +538,12 @@ async def get_balance_sheet(
         budget_version = await statements_service.budget_version_service.get_by_id(
             version_id
         )
+
+        if not budget_version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Budget version {version_id} not found",
+            )
 
         return BalanceSheetResponse(
             budget_version_id=version_id,

@@ -1,8 +1,22 @@
 # EFIR Budget App - Detailed Implementation Plan
 
-**Date**: 2025-12-01  
-**Status**: Phases 1-3 Complete | Phases 4-6 Remaining  
+**Date**: 2025-12-01 (Updated: 2025-12-02)
+**Status**: Phases 1-3 Complete | Phases 4-6 Remaining
 **Purpose**: Actionable, step-by-step implementation guide
+
+> **📌 IMPORTANT UPDATE (Dec 2, 2025)**:
+>
+> A new **[FOCUSED_ENHANCEMENT_ROADMAP.md](./FOCUSED_ENHANCEMENT_ROADMAP.md)** has been created for production-ready enhancements.
+>
+> **Recommended Approach**:
+> 1. **First**: Complete core modules (Phases 4-9 below) - Get working app to production
+> 2. **Then**: Implement focused enhancements (FOCUSED_ENHANCEMENT_ROADMAP.md) - Add performance, real-time collaboration, observability
+>
+> This two-phase approach ensures:
+> - ✅ Core features working first (users can start using the app)
+> - ✅ Validate assumptions with real users before enhancing
+> - ✅ Lower risk (don't build infrastructure for unknown needs)
+> - ✅ Faster initial value delivery
 
 ---
 
@@ -1817,5 +1831,7 @@ async def calculate_dhg_hours(
 **Total Estimated Duration**: 58-87 days
 
 **Last Updated**: 2025-12-01
+
+
 
 

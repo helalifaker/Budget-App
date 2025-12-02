@@ -557,7 +557,9 @@ class TestTrimesterDistributionValidationErrors:
             t3_percentage=Decimal("0.30"),
         )
 
-        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 1.*cannot be negative"):
+        with pytest.raises(
+            InvalidTrimesterPercentagesError, match="Trimester 1.*cannot be negative"
+        ):
             validate_trimester_distribution(invalid_distribution)
 
     def test_validate_trimester_distribution_negative_t2(self):
@@ -572,7 +574,9 @@ class TestTrimesterDistributionValidationErrors:
             t3_percentage=Decimal("0.30"),
         )
 
-        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 2.*cannot be negative"):
+        with pytest.raises(
+            InvalidTrimesterPercentagesError, match="Trimester 2.*cannot be negative"
+        ):
             validate_trimester_distribution(invalid_distribution)
 
     def test_validate_trimester_distribution_negative_t3(self):
@@ -587,7 +591,9 @@ class TestTrimesterDistributionValidationErrors:
             t3_percentage=Decimal("0.30"),
         )
 
-        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 3.*cannot be negative"):
+        with pytest.raises(
+            InvalidTrimesterPercentagesError, match="Trimester 3.*cannot be negative"
+        ):
             validate_trimester_distribution(invalid_distribution)
 
     def test_validate_trimester_distribution_t1_mismatch(self):

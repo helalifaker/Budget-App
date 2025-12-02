@@ -1,0 +1,367 @@
+/**
+ * Integration Service
+ *
+ * Handles API calls for external system integrations:
+ * - Odoo (financial actuals)
+ * - Skolengo (enrollment data)
+ * - AEFE (position data)
+ */
+
+import { apiRequest } from '@/lib/api-client';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface OdooConnectionRequest {
+  url: string;
+  database: string;
+  username: string;
+  password: string;
+}
+
+export interface OdooConnectionResponse {
+  success: boolean;
+  message: string;
+  user_id: number | null;
+}
+
+export interface OdooImportActualsRequest {
+  budget_version_id: string;
+  period: 'T1' | 'T2' | 'T3';
+  fiscal_year: number;
+}
+
+export interface OdooImportActualsResponse {
+  success: boolean;
+  message: string;
+  records_imported: number;
+  batch_id: string;
+  log_id: string;
+}
+
+export interface OdooSyncRequest {
+  budget_version_id: string;
+  fiscal_year: number;
+}
+
+export interface SkolengoImportResponse {
+  success: boolean;
+  message: string;
+  records_imported: number;
+  log_id: string;
+}
+
+export interface EnrollmentVariance {
+  level: string;
+  nationality: string;
+  budget: number;
+  actual: number;
+  variance: number;
+  variance_percent: number;
+}
+
+export interface SkolengoComparisonResponse {
+  variances: EnrollmentVariance[];
+  total_budget: number;
+  total_actual: number;
+  total_variance: number;
+}
+
+export interface AEFEImportResponse {
+  success: boolean;
+  message: string;
+  records_imported: number;
+  log_id: string;
+}
+
+export interface AEFEPositionSummary {
+  category: string;
+  cycle: string;
+  count: number;
+  total_prrd: number;
+}
+
+export interface AEFEPositionListResponse {
+  positions: AEFEPositionSummary[];
+  total_positions: number;
+  total_aefe_funded: number;
+  total_prrd_contribution: number;
+}
+
+export interface IntegrationLog {
+  id: string;
+  integration_type: string;
+  action: string;
+  status: 'success' | 'failed' | 'partial';
+  records_processed: number;
+  records_failed: number;
+  error_message: string | null;
+  metadata_json: Record<string, unknown> | null;
+  batch_id: string | null;
+  created_at: string;
+  created_by_id: string | null;
+}
+
+export interface IntegrationSettings {
+  id: string;
+  integration_type: string;
+  config: Record<string, unknown>;
+  is_active: boolean;
+  last_sync_at: string | null;
+  auto_sync_enabled: boolean;
+  auto_sync_interval_minutes: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================================
+// Odoo Integration
+// ============================================================================
+
+export const odooIntegration = {
+  /**
+   * Test Odoo connection
+   */
+  async testConnection(request: OdooConnectionRequest): Promise<OdooConnectionResponse> {
+    const response = await apiRequest<OdooConnectionResponse>('/integrations/odoo/connect', request);
+    return response.data;
+  },
+
+  /**
+   * Import actuals from Odoo for specific period
+   */
+  async importActuals(request: OdooImportActualsRequest): Promise<OdooImportActualsResponse> {
+    const response = await apiRequest<OdooImportActualsResponse>(
+      '/integrations/odoo/import-actuals',
+      request
+    );
+    return response.data;
+  },
+
+  /**
+   * Auto-sync all periods from Odoo
+   */
+  async syncActuals(request: OdooSyncRequest): Promise<{ success: boolean; results: Record<string, unknown> }> {
+    const response = await apiRequest('/integrations/odoo/sync', request);
+    return response.data;
+  },
+
+  /**
+   * Get imported actuals for a version and period
+   */
+  async getActuals(versionId: string, period: string): Promise<unknown> {
+    const response = await apiRequest(`/integrations/odoo/actuals/${versionId}`, {
+      params: { period },
+    });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Skolengo Integration
+// ============================================================================
+
+export const skolengoIntegration = {
+  /**
+   * Export enrollment to CSV
+   */
+  async exportEnrollment(versionId: string): Promise<Blob> {
+    const response = await apiRequest(`/integrations/skolengo/export/${versionId}`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  /**
+   * Import enrollment from file
+   */
+  async importEnrollment(versionId: string, file: File): Promise<SkolengoImportResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiRequest<SkolengoImportResponse>(
+      `/integrations/skolengo/import?budget_version_id=${versionId}`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Sync enrollment via Skolengo API
+   */
+  async syncEnrollment(versionId: string): Promise<SkolengoImportResponse> {
+    const response = await apiRequest<SkolengoImportResponse>(
+      `/integrations/skolengo/sync/${versionId}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Compare budget vs actual enrollment
+   */
+  async compareEnrollments(versionId: string): Promise<SkolengoComparisonResponse> {
+    const response = await apiRequest<SkolengoComparisonResponse>(
+      `/integrations/skolengo/compare/${versionId}`
+    );
+    return response.data;
+  },
+};
+
+// ============================================================================
+// AEFE Integration
+// ============================================================================
+
+export const aefeIntegration = {
+  /**
+   * Import positions from Excel file
+   */
+  async importPositions(file: File): Promise<AEFEImportResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await apiRequest<AEFEImportResponse>(
+      '/integrations/aefe/import',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get list of AEFE positions
+   */
+  async getPositions(): Promise<unknown[]> {
+    const response = await apiRequest('/integrations/aefe/positions');
+    return response.data;
+  },
+
+  /**
+   * Get position summary
+   */
+  async getPositionSummary(): Promise<AEFEPositionListResponse> {
+    const response = await apiRequest<AEFEPositionListResponse>('/integrations/aefe/summary');
+    return response.data;
+  },
+
+  /**
+   * Download position import template
+   */
+  async downloadTemplate(): Promise<Blob> {
+    const response = await apiRequest('/integrations/aefe/template', {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Integration Settings
+// ============================================================================
+
+export const integrationSettings = {
+  /**
+   * Get settings for integration type
+   */
+  async getSettings(integrationType: string): Promise<IntegrationSettings> {
+    const response = await apiRequest<IntegrationSettings>(
+      `/integrations/settings/${integrationType}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Create or update settings
+   */
+  async saveSettings(
+    integrationType: string,
+    config: Record<string, unknown>,
+    autoSyncEnabled = false,
+    autoSyncIntervalMinutes: number | null = null
+  ): Promise<IntegrationSettings> {
+    const response = await apiRequest<IntegrationSettings>('/integrations/settings', {
+      integration_type: integrationType,
+      config,
+      auto_sync_enabled: autoSyncEnabled,
+      auto_sync_interval_minutes: autoSyncIntervalMinutes,
+    });
+    return response.data;
+  },
+
+  /**
+   * Update settings
+   */
+  async updateSettings(
+    integrationType: string,
+    updates: Partial<IntegrationSettings>
+  ): Promise<IntegrationSettings> {
+    const response = await apiRequestpatch<IntegrationSettings>(
+      `/integrations/settings/${integrationType}`,
+      updates
+    );
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Integration Logs
+// ============================================================================
+
+export const integrationLogs = {
+  /**
+   * Get integration logs with optional filtering
+   */
+  async getLogs(
+    integrationType?: string,
+    status?: string,
+    limit = 50,
+    offset = 0
+  ): Promise<{
+    logs: IntegrationLog[];
+    total_count: number;
+    page: number;
+    page_size: number;
+  }> {
+    const params: Record<string, string | number> = { limit, offset };
+    if (integrationType) params.integration_type = integrationType;
+    if (status) params.status_filter = status;
+
+    const response = await apiRequest('/integrations/logs', { params });
+    return response.data;
+  },
+
+  /**
+   * Get specific log by ID
+   */
+  async getLog(logId: string): Promise<IntegrationLog> {
+    const response = await apiRequest<IntegrationLog>(`/integrations/logs/${logId}`);
+    return response.data;
+  },
+};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Download file from Blob
+ */
+export function downloadFile(blob: Blob, filename: string): void {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}

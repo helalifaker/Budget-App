@@ -12,6 +12,18 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StrategicIndexRouteImport } from './routes/strategic/index'
+import { Route as PlanningRevenueRouteImport } from './routes/planning/revenue'
+import { Route as PlanningEnrollmentRouteImport } from './routes/planning/enrollment'
+import { Route as PlanningDhgRouteImport } from './routes/planning/dhg'
+import { Route as PlanningCostsRouteImport } from './routes/planning/costs'
+import { Route as PlanningClassesRouteImport } from './routes/planning/classes'
+import { Route as PlanningCapexRouteImport } from './routes/planning/capex'
+import { Route as ConsolidationStatementsRouteImport } from './routes/consolidation/statements'
+import { Route as ConsolidationBudgetRouteImport } from './routes/consolidation/budget'
+import { Route as ConfigurationVersionsRouteImport } from './routes/configuration/versions'
+import { Route as AnalysisVarianceRouteImport } from './routes/analysis/variance'
+import { Route as AnalysisKpisRouteImport } from './routes/analysis/kpis'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -28,35 +40,189 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StrategicIndexRoute = StrategicIndexRouteImport.update({
+  id: '/strategic/',
+  path: '/strategic/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningRevenueRoute = PlanningRevenueRouteImport.update({
+  id: '/planning/revenue',
+  path: '/planning/revenue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningEnrollmentRoute = PlanningEnrollmentRouteImport.update({
+  id: '/planning/enrollment',
+  path: '/planning/enrollment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningDhgRoute = PlanningDhgRouteImport.update({
+  id: '/planning/dhg',
+  path: '/planning/dhg',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningCostsRoute = PlanningCostsRouteImport.update({
+  id: '/planning/costs',
+  path: '/planning/costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningClassesRoute = PlanningClassesRouteImport.update({
+  id: '/planning/classes',
+  path: '/planning/classes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningCapexRoute = PlanningCapexRouteImport.update({
+  id: '/planning/capex',
+  path: '/planning/capex',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsolidationStatementsRoute = ConsolidationStatementsRouteImport.update({
+  id: '/consolidation/statements',
+  path: '/consolidation/statements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConsolidationBudgetRoute = ConsolidationBudgetRouteImport.update({
+  id: '/consolidation/budget',
+  path: '/consolidation/budget',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigurationVersionsRoute = ConfigurationVersionsRouteImport.update({
+  id: '/configuration/versions',
+  path: '/configuration/versions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalysisVarianceRoute = AnalysisVarianceRouteImport.update({
+  id: '/analysis/variance',
+  path: '/analysis/variance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalysisKpisRoute = AnalysisKpisRouteImport.update({
+  id: '/analysis/kpis',
+  path: '/analysis/kpis',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/analysis/kpis': typeof AnalysisKpisRoute
+  '/analysis/variance': typeof AnalysisVarianceRoute
+  '/configuration/versions': typeof ConfigurationVersionsRoute
+  '/consolidation/budget': typeof ConsolidationBudgetRoute
+  '/consolidation/statements': typeof ConsolidationStatementsRoute
+  '/planning/capex': typeof PlanningCapexRoute
+  '/planning/classes': typeof PlanningClassesRoute
+  '/planning/costs': typeof PlanningCostsRoute
+  '/planning/dhg': typeof PlanningDhgRoute
+  '/planning/enrollment': typeof PlanningEnrollmentRoute
+  '/planning/revenue': typeof PlanningRevenueRoute
+  '/strategic': typeof StrategicIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/analysis/kpis': typeof AnalysisKpisRoute
+  '/analysis/variance': typeof AnalysisVarianceRoute
+  '/configuration/versions': typeof ConfigurationVersionsRoute
+  '/consolidation/budget': typeof ConsolidationBudgetRoute
+  '/consolidation/statements': typeof ConsolidationStatementsRoute
+  '/planning/capex': typeof PlanningCapexRoute
+  '/planning/classes': typeof PlanningClassesRoute
+  '/planning/costs': typeof PlanningCostsRoute
+  '/planning/dhg': typeof PlanningDhgRoute
+  '/planning/enrollment': typeof PlanningEnrollmentRoute
+  '/planning/revenue': typeof PlanningRevenueRoute
+  '/strategic': typeof StrategicIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/analysis/kpis': typeof AnalysisKpisRoute
+  '/analysis/variance': typeof AnalysisVarianceRoute
+  '/configuration/versions': typeof ConfigurationVersionsRoute
+  '/consolidation/budget': typeof ConsolidationBudgetRoute
+  '/consolidation/statements': typeof ConsolidationStatementsRoute
+  '/planning/capex': typeof PlanningCapexRoute
+  '/planning/classes': typeof PlanningClassesRoute
+  '/planning/costs': typeof PlanningCostsRoute
+  '/planning/dhg': typeof PlanningDhgRoute
+  '/planning/enrollment': typeof PlanningEnrollmentRoute
+  '/planning/revenue': typeof PlanningRevenueRoute
+  '/strategic/': typeof StrategicIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/login'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/analysis/kpis'
+    | '/analysis/variance'
+    | '/configuration/versions'
+    | '/consolidation/budget'
+    | '/consolidation/statements'
+    | '/planning/capex'
+    | '/planning/classes'
+    | '/planning/costs'
+    | '/planning/dhg'
+    | '/planning/enrollment'
+    | '/planning/revenue'
+    | '/strategic'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/login'
-  id: '__root__' | '/' | '/dashboard' | '/login'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/analysis/kpis'
+    | '/analysis/variance'
+    | '/configuration/versions'
+    | '/consolidation/budget'
+    | '/consolidation/statements'
+    | '/planning/capex'
+    | '/planning/classes'
+    | '/planning/costs'
+    | '/planning/dhg'
+    | '/planning/enrollment'
+    | '/planning/revenue'
+    | '/strategic'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/login'
+    | '/analysis/kpis'
+    | '/analysis/variance'
+    | '/configuration/versions'
+    | '/consolidation/budget'
+    | '/consolidation/statements'
+    | '/planning/capex'
+    | '/planning/classes'
+    | '/planning/costs'
+    | '/planning/dhg'
+    | '/planning/enrollment'
+    | '/planning/revenue'
+    | '/strategic/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  AnalysisKpisRoute: typeof AnalysisKpisRoute
+  AnalysisVarianceRoute: typeof AnalysisVarianceRoute
+  ConfigurationVersionsRoute: typeof ConfigurationVersionsRoute
+  ConsolidationBudgetRoute: typeof ConsolidationBudgetRoute
+  ConsolidationStatementsRoute: typeof ConsolidationStatementsRoute
+  PlanningCapexRoute: typeof PlanningCapexRoute
+  PlanningClassesRoute: typeof PlanningClassesRoute
+  PlanningCostsRoute: typeof PlanningCostsRoute
+  PlanningDhgRoute: typeof PlanningDhgRoute
+  PlanningEnrollmentRoute: typeof PlanningEnrollmentRoute
+  PlanningRevenueRoute: typeof PlanningRevenueRoute
+  StrategicIndexRoute: typeof StrategicIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +248,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/strategic/': {
+      id: '/strategic/'
+      path: '/strategic'
+      fullPath: '/strategic'
+      preLoaderRoute: typeof StrategicIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning/revenue': {
+      id: '/planning/revenue'
+      path: '/planning/revenue'
+      fullPath: '/planning/revenue'
+      preLoaderRoute: typeof PlanningRevenueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning/enrollment': {
+      id: '/planning/enrollment'
+      path: '/planning/enrollment'
+      fullPath: '/planning/enrollment'
+      preLoaderRoute: typeof PlanningEnrollmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning/dhg': {
+      id: '/planning/dhg'
+      path: '/planning/dhg'
+      fullPath: '/planning/dhg'
+      preLoaderRoute: typeof PlanningDhgRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning/costs': {
+      id: '/planning/costs'
+      path: '/planning/costs'
+      fullPath: '/planning/costs'
+      preLoaderRoute: typeof PlanningCostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning/classes': {
+      id: '/planning/classes'
+      path: '/planning/classes'
+      fullPath: '/planning/classes'
+      preLoaderRoute: typeof PlanningClassesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning/capex': {
+      id: '/planning/capex'
+      path: '/planning/capex'
+      fullPath: '/planning/capex'
+      preLoaderRoute: typeof PlanningCapexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consolidation/statements': {
+      id: '/consolidation/statements'
+      path: '/consolidation/statements'
+      fullPath: '/consolidation/statements'
+      preLoaderRoute: typeof ConsolidationStatementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/consolidation/budget': {
+      id: '/consolidation/budget'
+      path: '/consolidation/budget'
+      fullPath: '/consolidation/budget'
+      preLoaderRoute: typeof ConsolidationBudgetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuration/versions': {
+      id: '/configuration/versions'
+      path: '/configuration/versions'
+      fullPath: '/configuration/versions'
+      preLoaderRoute: typeof ConfigurationVersionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analysis/variance': {
+      id: '/analysis/variance'
+      path: '/analysis/variance'
+      fullPath: '/analysis/variance'
+      preLoaderRoute: typeof AnalysisVarianceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analysis/kpis': {
+      id: '/analysis/kpis'
+      path: '/analysis/kpis'
+      fullPath: '/analysis/kpis'
+      preLoaderRoute: typeof AnalysisKpisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +339,18 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  AnalysisKpisRoute: AnalysisKpisRoute,
+  AnalysisVarianceRoute: AnalysisVarianceRoute,
+  ConfigurationVersionsRoute: ConfigurationVersionsRoute,
+  ConsolidationBudgetRoute: ConsolidationBudgetRoute,
+  ConsolidationStatementsRoute: ConsolidationStatementsRoute,
+  PlanningCapexRoute: PlanningCapexRoute,
+  PlanningClassesRoute: PlanningClassesRoute,
+  PlanningCostsRoute: PlanningCostsRoute,
+  PlanningDhgRoute: PlanningDhgRoute,
+  PlanningEnrollmentRoute: PlanningEnrollmentRoute,
+  PlanningRevenueRoute: PlanningRevenueRoute,
+  StrategicIndexRoute: StrategicIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

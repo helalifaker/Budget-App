@@ -1,0 +1,306 @@
+import { createFileRoute } from '@tanstack/react-router'
+import { useState, useEffect, useMemo } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
+import { MainLayout } from '@/components/layout/MainLayout'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { DataTable } from '@/components/DataTable'
+import { FormDialog } from '@/components/FormDialog'
+import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Plus, Trash2, Calculator } from 'lucide-react'
+import {
+  useClassStructures,
+  useCreateClassStructure,
+  useUpdateClassStructure,
+  useDeleteClassStructure,
+  useCalculateClassStructure,
+} from '@/hooks/api/useClassStructure'
+import { useLevels } from '@/hooks/api/useConfiguration'
+import { classStructureSchema, type ClassStructureFormData } from '@/schemas/planning'
+import { ClassStructure } from '@/types/api'
+import { toast } from 'sonner'
+
+export const Route = createFileRoute('/planning/classes')({
+  component: ClassStructurePage,
+})
+
+function ClassStructurePage() {
+  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [rowData, setRowData] = useState<ClassStructure[]>([])
+
+  const {
+    data: classStructuresData,
+    isLoading: classStructuresLoading,
+    error: classStructuresError,
+  } = useClassStructures(selectedVersionId)
+  const { data: levelsData } = useLevels()
+
+  const createMutation = useCreateClassStructure()
+  const updateMutation = useUpdateClassStructure()
+  const deleteMutation = useDeleteClassStructure()
+  const calculateMutation = useCalculateClassStructure()
+
+  const createForm = useForm<ClassStructureFormData>({
+    resolver: zodResolver(classStructureSchema),
+    defaultValues: {
+      level_id: '',
+      number_of_classes: 1,
+      avg_class_size: 25,
+    },
+  })
+
+  useEffect(() => {
+    if (classStructuresData?.items) {
+      setRowData(classStructuresData.items)
+    }
+  }, [classStructuresData])
+
+  const handleCreate = async (formData: ClassStructureFormData) => {
+    if (!selectedVersionId) {
+      toast.error('Please select a budget version first')
+      return
+    }
+    try {
+      await createMutation.mutateAsync({
+        budget_version_id: selectedVersionId,
+        level_id: formData.level_id,
+        number_of_classes: formData.number_of_classes,
+        avg_class_size: formData.avg_class_size,
+      })
+      setCreateDialogOpen(false)
+      createForm.reset()
+    } catch {
+      // Error toast is handled by the mutation
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this class structure entry?')) {
+      try {
+        await deleteMutation.mutateAsync(id)
+      } catch {
+        // Error toast is handled by the mutation
+      }
+    }
+  }
+
+  const handleCalculateFromEnrollment = async () => {
+    if (!selectedVersionId) {
+      toast.error('Please select a budget version first')
+      return
+    }
+    try {
+      await calculateMutation.mutateAsync(selectedVersionId)
+      toast.success('Class structure calculated from enrollment successfully')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      toast.error(`Failed to calculate class structure: ${message}`)
+    }
+  }
+
+  const getLevelName = (levelId: string) => {
+    return levelsData?.find((l) => l.id === levelId)?.name || levelId
+  }
+
+  const columnDefs: ColDef<ClassStructure>[] = useMemo(
+    () => [
+      {
+        field: 'level_id',
+        headerName: 'Level',
+        flex: 1,
+        valueFormatter: (params) => getLevelName(params.value),
+      },
+      {
+        field: 'number_of_classes',
+        headerName: 'Number of Classes',
+        flex: 1,
+        editable: true,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 0,
+          max: 50,
+        },
+      },
+      {
+        field: 'avg_class_size',
+        headerName: 'Avg Class Size',
+        flex: 1,
+        editable: true,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: {
+          min: 1,
+          max: 100,
+        },
+      },
+      {
+        headerName: 'Total Students',
+        flex: 1,
+        valueGetter: (params) => {
+          const data = params.data as ClassStructure
+          return data.number_of_classes * data.avg_class_size
+        },
+      },
+      {
+        headerName: 'Actions',
+        flex: 1,
+        cellRenderer: (params: { data: ClassStructure }) => {
+          const classStructure = params.data
+          return (
+            <div className="flex gap-2 py-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleDelete(classStructure.id)}
+                disabled={deleteMutation.isPending}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          )
+        },
+      },
+    ],
+    [levelsData, deleteMutation.isPending]
+  )
+
+  const onCellValueChanged = async (params: CellValueChangedEvent) => {
+    const classStructure = params.data
+    const field = params.column?.getColId()
+
+    try {
+      await updateMutation.mutateAsync({
+        id: classStructure.id,
+        data: {
+          [field]: params.newValue,
+        },
+      })
+    } catch {
+      // Error toast is handled by the mutation
+      // Revert the change
+      params.node.setDataValue(params.column, params.oldValue)
+    }
+  }
+
+  return (
+    <MainLayout>
+      <PageContainer
+        title="Class Structure"
+        description="Define class structure and average class sizes"
+        actions={
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCalculateFromEnrollment}
+              disabled={!selectedVersionId || calculateMutation.isPending}
+            >
+              <Calculator className="h-4 w-4 mr-2" />
+              Calculate from Enrollment
+            </Button>
+            <Button onClick={() => setCreateDialogOpen(true)} disabled={!selectedVersionId}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Class Structure
+            </Button>
+          </div>
+        }
+      >
+        <div className="mb-6">
+          <BudgetVersionSelector
+            value={selectedVersionId}
+            onChange={setSelectedVersionId}
+            className="max-w-md"
+          />
+        </div>
+
+        {selectedVersionId ? (
+          <DataTable
+            rowData={rowData}
+            columnDefs={columnDefs}
+            loading={classStructuresLoading}
+            error={classStructuresError}
+            pagination={true}
+            paginationPageSize={50}
+            onCellValueChanged={onCellValueChanged}
+          />
+        ) : (
+          <div className="text-center py-12 text-twilight-600">
+            Please select a budget version to view class structure data
+          </div>
+        )}
+      </PageContainer>
+
+      {/* Create Dialog */}
+      <FormDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        title="Add Class Structure Entry"
+        description="Add a new class structure entry for this budget version"
+        onSubmit={createForm.handleSubmit(handleCreate)}
+        isSubmitting={createMutation.isPending}
+      >
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="level_id">Level</Label>
+            <Select
+              onValueChange={(value) => createForm.setValue('level_id', value)}
+              value={createForm.watch('level_id')}
+            >
+              <SelectTrigger id="level_id" className="mt-1">
+                <SelectValue placeholder="Select a level" />
+              </SelectTrigger>
+              <SelectContent>
+                {levelsData?.map((level) => (
+                  <SelectItem key={level.id} value={level.id}>
+                    {level.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {createForm.formState.errors.level_id && (
+              <p className="text-sm text-error-600 mt-1">
+                {createForm.formState.errors.level_id.message}
+              </p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="number_of_classes">Number of Classes</Label>
+            <Input
+              id="number_of_classes"
+              type="number"
+              {...createForm.register('number_of_classes', { valueAsNumber: true })}
+            />
+            {createForm.formState.errors.number_of_classes && (
+              <p className="text-sm text-error-600 mt-1">
+                {createForm.formState.errors.number_of_classes.message}
+              </p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="avg_class_size">Average Class Size</Label>
+            <Input
+              id="avg_class_size"
+              type="number"
+              {...createForm.register('avg_class_size', { valueAsNumber: true })}
+            />
+            {createForm.formState.errors.avg_class_size && (
+              <p className="text-sm text-error-600 mt-1">
+                {createForm.formState.errors.avg_class_size.message}
+              </p>
+            )}
+          </div>
+        </div>
+      </FormDialog>
+    </MainLayout>
+  )
+}

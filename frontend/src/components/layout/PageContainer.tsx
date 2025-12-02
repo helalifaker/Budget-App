@@ -6,12 +6,19 @@ interface PageContainerProps {
   description?: string
   actions?: ReactNode
   children: ReactNode
+  breadcrumbs?: Array<{ label: string; href?: string }>
 }
 
-export function PageContainer({ title, description, actions, children }: PageContainerProps) {
+export function PageContainer({
+  title,
+  description,
+  actions,
+  children,
+  breadcrumbs,
+}: PageContainerProps) {
   return (
     <div>
-      <Breadcrumbs />
+      {breadcrumbs ? null : <Breadcrumbs />}
 
       <div className="mb-6">
         <div className="flex items-center justify-between">

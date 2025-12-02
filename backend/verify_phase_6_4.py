@@ -7,6 +7,7 @@ Checks that all files are properly created and importable.
 import sys
 from pathlib import Path
 
+
 def check_file_exists(filepath: str) -> bool:
     """Check if file exists."""
     path = Path(filepath)

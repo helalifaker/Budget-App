@@ -9,16 +9,13 @@ Tests for all calculation API endpoints including:
 - Health check endpoint
 """
 
-from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from app.api.v1 import calculations_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
-
-from app.api.v1 import calculations_router
-from app.engine.enrollment import EnrollmentGrowthScenario
 
 
 @pytest.fixture
@@ -348,8 +345,15 @@ class TestKPICalculationEndpoint:
         assert "student_teacher_ratio" in data or "capacity_utilization" in data
 
         # Verify at least some KPIs are present
-        kpi_keys = {"student_teacher_ratio", "he_ratio_secondary", "revenue_per_student",
-                   "cost_per_student", "margin_percentage", "staff_cost_ratio", "capacity_utilization"}
+        kpi_keys = {
+            "student_teacher_ratio",
+            "he_ratio_secondary",
+            "revenue_per_student",
+            "cost_per_student",
+            "margin_percentage",
+            "staff_cost_ratio",
+            "capacity_utilization",
+        }
         present_kpis = {k for k in kpi_keys if k in data}
         assert len(present_kpis) >= 5  # At least 5 of the 7 KPIs
 

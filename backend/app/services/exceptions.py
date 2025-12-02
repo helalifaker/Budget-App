@@ -118,3 +118,21 @@ class BusinessRuleError(ServiceException):
         error_details = details or {}
         error_details["rule"] = rule
         super().__init__(message, status_code=422, details=error_details)
+
+
+class IntegrationError(ServiceException):
+    """Integration error with external systems (HTTP 502)."""
+
+    def __init__(self, message: str, integration_type: str | None = None, details: dict[str, Any] | None = None):
+        """
+        Initialize integration error.
+
+        Args:
+            message: Integration error message
+            integration_type: Type of integration (odoo, skolengo, aefe)
+            details: Additional error context
+        """
+        error_details = details or {}
+        if integration_type:
+            error_details["integration_type"] = integration_type
+        super().__init__(message, status_code=502, details=error_details)

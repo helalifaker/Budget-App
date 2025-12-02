@@ -7,19 +7,16 @@ Tests CRUD operations and business logic for configuration management.
 COPY THIS FILE to test_configuration_service.py and implement the tests.
 """
 
-import pytest
 from decimal import Decimal
-from uuid import uuid4
 
+import pytest
+from app.models.configuration import BudgetVersionStatus
 from app.services.configuration_service import ConfigurationService
 from app.services.exceptions import (
-    ValidationError,
-    NotFoundError,
     BusinessRuleError,
     ConflictError,
+    ValidationError,
 )
-from app.models.configuration import BudgetVersionStatus
-
 
 # ==============================================================================
 # System Configuration Tests
@@ -160,7 +157,10 @@ async def test_submit_budget_version_invalid_status(
     with pytest.raises(BusinessRuleError) as exc_info:
         await service.submit_budget_version(test_budget_version.id, test_user_id)
 
-    assert "invalid_status_transition" in str(exc_info.value).lower() or "only working" in str(exc_info.value).lower()
+    assert (
+        "invalid_status_transition" in str(exc_info.value).lower()
+        or "only working" in str(exc_info.value).lower()
+    )
 
 
 @pytest.mark.asyncio
@@ -194,7 +194,10 @@ async def test_approve_budget_version_invalid_status(
     with pytest.raises(BusinessRuleError) as exc_info:
         await service.approve_budget_version(test_budget_version.id, test_user_id)
 
-    assert "invalid_status_transition" in str(exc_info.value).lower() or "only submitted" in str(exc_info.value).lower()
+    assert (
+        "invalid_status_transition" in str(exc_info.value).lower()
+        or "only submitted" in str(exc_info.value).lower()
+    )
 
 
 # ==============================================================================

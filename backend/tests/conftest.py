@@ -16,9 +16,6 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 
 # Import all models to ensure they're registered with SQLAlchemy
 from app.models import *  # noqa: F403
@@ -43,8 +40,10 @@ from app.models.planning import (
     DHGSubjectHours,
     DHGTeacherRequirement,
     EnrollmentPlan,
-    TeacherAllocation,
 )
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 
 
 @pytest.fixture(scope="session")

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { budgetVersionsApi } from '@/services/budget-versions'
+import { toast } from 'sonner'
 
 export const budgetVersionKeys = {
   all: ['budget-versions'] as const,
@@ -31,6 +32,10 @@ export function useCreateBudgetVersion() {
     mutationFn: budgetVersionsApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: budgetVersionKeys.lists() })
+      toast.success('Budget version created successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create budget version: ${error.message}`)
     },
   })
 }
