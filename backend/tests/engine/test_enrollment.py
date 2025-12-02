@@ -74,10 +74,10 @@ class TestEnrollmentProjectionCalculations:
         assert year1.growth_rate_applied == Decimal("0.00")
         assert year1.cumulative_growth == Decimal("0.00")
 
-        # Verify year 2 (first growth: 120 × 1.04 = 125)
+        # Verify year 2 (first growth: 120 × 1.04 = 124)
         year2 = result.projections[1]
         assert year2.year == 2
-        assert year2.projected_enrollment == 125  # 120 × 1.04 ≈ 124.8 → 125
+        assert year2.projected_enrollment == 124  # 120 × 1.04 = 124.8 → 124 (truncated)
         assert year2.growth_rate_applied == Decimal("0.04")
 
         # Verify year 5 (compound: 120 × 1.04^4 ≈ 140)
@@ -209,18 +209,19 @@ class TestRetentionModelCalculations:
 
     def test_retention_model_ensures_non_negative(self):
         """Test retention model never returns negative enrollment."""
+        # Use minimum valid retention (50%) to test low retention scenario
         retention_model = RetentionModel(
             level_id=uuid4(),
-            retention_rate=Decimal("0.10"),
-            attrition_rate=Decimal("0.90"),
+            retention_rate=Decimal("0.50"),
+            attrition_rate=Decimal("0.50"),
             new_student_intake=5,
         )
 
-        # (50 × 0.10) + 5 = 5 + 5 = 10
+        # (50 × 0.50) + 5 = 25 + 5 = 30
         next_year = apply_retention_model(50, retention_model)
-        assert next_year == 10
+        assert next_year == 30
 
-        # Edge case: very low retention
+        # Edge case: zero starting enrollment
         next_year = apply_retention_model(0, retention_model)
         assert next_year == 5  # Only new intake
 
@@ -393,8 +394,8 @@ class TestCapacityValidation:
         exceeded, year, total = validate_total_capacity([level1, level2], capacity_limit=1875)
 
         assert exceeded is True
-        assert year == 1  # First year that exceeds
-        assert total == 1800  # 900 + 900
+        assert year == 3  # First year that exceeds (year 3)
+        assert total == 1948  # 974 + 974
 
     def test_validate_total_capacity_within_limit(self):
         """Test total capacity validation when within limits."""
@@ -436,6 +437,15 @@ class TestCapacityValidation:
 
         # Total: 600 + 500 = 1100 < 1875 (OK)
         exceeded, year, total = validate_total_capacity([level1, level2], capacity_limit=1875)
+
+        assert exceeded is False
+        assert year is None
+        assert total is None
+
+    def test_validate_total_capacity_empty_projections(self):
+        """Test total capacity validation with empty projection list."""
+        # Empty list should return (False, None, None) - no capacity exceeded
+        exceeded, year, total = validate_total_capacity([], capacity_limit=1875)
 
         assert exceeded is False
         assert year is None

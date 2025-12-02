@@ -248,7 +248,7 @@ Backend App/
 
 ### Python Packages (backend)
 ```
-sqlalchemy==2.0.36       ✅ Installed
+sqlalchemy==2.0.44       ✅ Installed
 alembic==1.14.0          ✅ Installed
 asyncpg==0.30.0          ✅ Installed
 python-dotenv==1.0.1     ✅ Installed

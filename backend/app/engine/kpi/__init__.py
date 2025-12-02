@@ -6,6 +6,7 @@ All functions follow the pure function pattern with no side effects.
 """
 
 from app.engine.kpi.calculator import (
+    calculate_all_kpis,
     calculate_capacity_utilization,
     calculate_cost_per_student,
     calculate_he_ratio_secondary,
@@ -27,19 +28,17 @@ from app.engine.kpi.validators import (
 
 __all__ = [
     "KPICalculationResult",
-    # Models
     "KPIInput",
     "KPIResult",
     "KPIType",
+    "calculate_all_kpis",
     "calculate_capacity_utilization",
     "calculate_cost_per_student",
     "calculate_he_ratio_secondary",
     "calculate_margin_percentage",
     "calculate_revenue_per_student",
     "calculate_staff_cost_ratio",
-    # Calculator functions
     "calculate_student_teacher_ratio",
-    # Validators
     "validate_kpi_input",
     "validate_ratio_bounds",
 ]

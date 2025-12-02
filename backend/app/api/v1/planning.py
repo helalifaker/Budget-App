@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.auth import UserDep, get_current_user
+from app.dependencies.auth import UserDep
 from app.schemas.planning import (
     ClassStructureCalculationRequest,
     ClassStructureResponse,
@@ -99,7 +99,7 @@ def get_dhg_service(db: AsyncSession = Depends(get_db)) -> DHGService:
 async def get_enrollment_plan(
     version_id: uuid.UUID,
     enrollment_service: EnrollmentService = Depends(get_enrollment_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get enrollment plan for a budget version.
@@ -132,7 +132,7 @@ async def create_enrollment(
     version_id: uuid.UUID,
     enrollment_data: EnrollmentPlanCreate,
     enrollment_service: EnrollmentService = Depends(get_enrollment_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create enrollment plan entry.
@@ -176,7 +176,7 @@ async def update_enrollment(
     enrollment_id: uuid.UUID,
     enrollment_data: EnrollmentPlanUpdate,
     enrollment_service: EnrollmentService = Depends(get_enrollment_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Update enrollment plan entry.
@@ -219,7 +219,7 @@ async def update_enrollment(
 async def delete_enrollment(
     enrollment_id: uuid.UUID,
     enrollment_service: EnrollmentService = Depends(get_enrollment_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Delete enrollment plan entry.
@@ -250,7 +250,7 @@ async def delete_enrollment(
 async def get_enrollment_summary(
     version_id: uuid.UUID,
     enrollment_service: EnrollmentService = Depends(get_enrollment_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get enrollment summary statistics.
@@ -279,7 +279,7 @@ async def project_enrollment(
     version_id: uuid.UUID,
     projection_request: EnrollmentProjectionRequest,
     enrollment_service: EnrollmentService = Depends(get_enrollment_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Project enrollment growth over multiple years.
@@ -327,7 +327,7 @@ async def get_class_structure(
     class_structure_service: ClassStructureService = Depends(
         get_class_structure_service
     ),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get class structure for a budget version.
@@ -361,7 +361,7 @@ async def calculate_class_structure(
     class_structure_service: ClassStructureService = Depends(
         get_class_structure_service
     ),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Calculate class structures from enrollment data.
@@ -405,7 +405,7 @@ async def update_class_structure(
     class_structure_service: ClassStructureService = Depends(
         get_class_structure_service
     ),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Update class structure entry.
@@ -454,7 +454,7 @@ async def update_class_structure(
 async def get_dhg_subject_hours(
     version_id: uuid.UUID,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get DHG subject hours for a budget version.
@@ -484,7 +484,7 @@ async def calculate_dhg_subject_hours(
     version_id: uuid.UUID,
     calculation_request: DHGHoursCalculationRequest,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Calculate DHG subject hours from class structure and subject hours matrix.
@@ -527,7 +527,7 @@ async def calculate_dhg_subject_hours(
 async def get_teacher_requirements(
     version_id: uuid.UUID,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get teacher FTE requirements for a budget version.
@@ -557,7 +557,7 @@ async def calculate_teacher_requirements(
     version_id: uuid.UUID,
     calculation_request: FTECalculationRequest,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Calculate teacher FTE requirements from DHG subject hours.
@@ -600,7 +600,7 @@ async def calculate_teacher_requirements(
 async def get_teacher_allocations(
     version_id: uuid.UUID,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get teacher allocations for a budget version.
@@ -631,7 +631,7 @@ async def create_teacher_allocation(
     version_id: uuid.UUID,
     allocation_data: TeacherAllocationCreate,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create teacher allocation entry.
@@ -672,7 +672,7 @@ async def update_teacher_allocation(
     allocation_id: uuid.UUID,
     allocation_data: TeacherAllocationUpdate,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Update teacher allocation entry.
@@ -712,7 +712,7 @@ async def bulk_update_teacher_allocations(
     version_id: uuid.UUID,
     bulk_data: TeacherAllocationBulkUpdate,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Bulk create/update teacher allocations.
@@ -758,7 +758,7 @@ async def bulk_update_teacher_allocations(
 async def delete_teacher_allocation(
     allocation_id: uuid.UUID,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Delete teacher allocation entry.
@@ -794,7 +794,7 @@ async def delete_teacher_allocation(
 async def get_trmd_gap_analysis(
     version_id: uuid.UUID,
     dhg_service: DHGService = Depends(get_dhg_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get TRMD gap analysis (besoins vs moyens).

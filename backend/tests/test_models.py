@@ -85,7 +85,12 @@ class TestModelImports:
 
     def test_import_all_models_at_once(self):
         """Test that all models can be imported together."""
-        from app.models import *  # noqa: F403
+        import app.models as models_module
+
+        # Verify __all__ is defined and all items are importable
+        assert hasattr(models_module, "__all__"), "models module should define __all__"
+        for name in models_module.__all__:
+            assert hasattr(models_module, name), f"'{name}' not exported"
 
         # If this doesn't raise an error, all models are importable
         # and no circular dependencies or mapper errors exist

@@ -26,10 +26,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
     PUBLIC_PATHS = [
         "/",
-        "/health",
         "/docs",
         "/redoc",
         "/openapi.json",
+    ]
+
+    PUBLIC_PATH_PREFIXES = [
+        "/health",  # All health endpoints (/health/live, /health/ready)
     ]
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
@@ -46,6 +49,11 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # Skip authentication for public paths
         if request.url.path in self.PUBLIC_PATHS:
             return await call_next(request)
+
+        # Skip authentication for public path prefixes
+        for prefix in self.PUBLIC_PATH_PREFIXES:
+            if request.url.path.startswith(prefix):
+                return await call_next(request)
 
         # Extract authorization header
         auth_header = request.headers.get("Authorization")

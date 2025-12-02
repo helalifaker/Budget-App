@@ -13,10 +13,20 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 # Get database URL from environment
-DATABASE_URL = os.getenv(
+_raw_database_url = os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://postgres:password@localhost:5432/postgres",
 )
+
+# Normalize URL scheme for SQLAlchemy 2.x compatibility
+# - Convert 'postgres://' to 'postgresql://'
+# - Ensure asyncpg driver is used
+if _raw_database_url.startswith("postgres://"):
+    DATABASE_URL = _raw_database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+elif _raw_database_url.startswith("postgresql://") and "+asyncpg" not in _raw_database_url:
+    DATABASE_URL = _raw_database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+else:
+    DATABASE_URL = _raw_database_url
 
 # For migrations, use DIRECT_URL to bypass connection pooler
 DIRECT_URL = os.getenv("DIRECT_URL", DATABASE_URL)

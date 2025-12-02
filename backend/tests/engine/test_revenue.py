@@ -493,6 +493,149 @@ class TestTuitionInputValidation:
             )
 
 
+class TestTuitionInputValidationErrors:
+    """Test tuition input validation error paths."""
+
+    def test_validate_tuition_input_negative_tuition_fee(self):
+        """Test validation fails with negative tuition fee."""
+        invalid_input = TuitionInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            fee_category=FeeCategory.FRENCH_TTC,
+            tuition_fee=Decimal("-45000"),  # Invalid
+            dai_fee=Decimal("2000"),
+            registration_fee=Decimal("1000"),
+            sibling_order=1,
+        )
+
+        with pytest.raises(ValueError, match="Tuition fee cannot be negative"):
+            validate_tuition_input(invalid_input)
+
+    def test_validate_tuition_input_negative_dai_fee(self):
+        """Test validation fails with negative DAI fee."""
+        invalid_input = TuitionInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            fee_category=FeeCategory.FRENCH_TTC,
+            tuition_fee=Decimal("45000"),
+            dai_fee=Decimal("-2000"),  # Invalid
+            registration_fee=Decimal("1000"),
+            sibling_order=1,
+        )
+
+        with pytest.raises(ValueError, match="DAI fee cannot be negative"):
+            validate_tuition_input(invalid_input)
+
+    def test_validate_tuition_input_negative_registration_fee(self):
+        """Test validation fails with negative registration fee."""
+        invalid_input = TuitionInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            fee_category=FeeCategory.FRENCH_TTC,
+            tuition_fee=Decimal("45000"),
+            dai_fee=Decimal("2000"),
+            registration_fee=Decimal("-1000"),  # Invalid
+            sibling_order=1,
+        )
+
+        with pytest.raises(ValueError, match="Registration fee cannot be negative"):
+            validate_tuition_input(invalid_input)
+
+
+class TestTrimesterDistributionValidationErrors:
+    """Test trimester distribution validation error paths."""
+
+    def test_validate_trimester_distribution_negative_t1(self):
+        """Test validation fails with negative trimester 1 amount."""
+        invalid_distribution = TrimesterDistribution(
+            total_revenue=Decimal("45000"),
+            trimester_1=Decimal("-18000"),  # Invalid
+            trimester_2=Decimal("13500"),
+            trimester_3=Decimal("13500"),
+            t1_percentage=Decimal("0.40"),
+            t2_percentage=Decimal("0.30"),
+            t3_percentage=Decimal("0.30"),
+        )
+
+        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 1.*cannot be negative"):
+            validate_trimester_distribution(invalid_distribution)
+
+    def test_validate_trimester_distribution_negative_t2(self):
+        """Test validation fails with negative trimester 2 amount."""
+        invalid_distribution = TrimesterDistribution(
+            total_revenue=Decimal("45000"),
+            trimester_1=Decimal("18000"),
+            trimester_2=Decimal("-13500"),  # Invalid
+            trimester_3=Decimal("13500"),
+            t1_percentage=Decimal("0.40"),
+            t2_percentage=Decimal("0.30"),
+            t3_percentage=Decimal("0.30"),
+        )
+
+        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 2.*cannot be negative"):
+            validate_trimester_distribution(invalid_distribution)
+
+    def test_validate_trimester_distribution_negative_t3(self):
+        """Test validation fails with negative trimester 3 amount."""
+        invalid_distribution = TrimesterDistribution(
+            total_revenue=Decimal("45000"),
+            trimester_1=Decimal("18000"),
+            trimester_2=Decimal("13500"),
+            trimester_3=Decimal("-13500"),  # Invalid
+            t1_percentage=Decimal("0.40"),
+            t2_percentage=Decimal("0.30"),
+            t3_percentage=Decimal("0.30"),
+        )
+
+        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 3.*cannot be negative"):
+            validate_trimester_distribution(invalid_distribution)
+
+    def test_validate_trimester_distribution_t1_mismatch(self):
+        """Test validation fails when T1 amount doesn't match expected percentage."""
+        invalid_distribution = TrimesterDistribution(
+            total_revenue=Decimal("45000"),
+            trimester_1=Decimal("25000"),  # Should be ~18000 (45000 × 0.40)
+            trimester_2=Decimal("13500"),
+            trimester_3=Decimal("13500"),
+            t1_percentage=Decimal("0.40"),
+            t2_percentage=Decimal("0.30"),
+            t3_percentage=Decimal("0.30"),
+        )
+
+        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 1.*doesn't match"):
+            validate_trimester_distribution(invalid_distribution)
+
+    def test_validate_trimester_distribution_t2_mismatch(self):
+        """Test validation fails when T2 amount doesn't match expected percentage."""
+        invalid_distribution = TrimesterDistribution(
+            total_revenue=Decimal("45000"),
+            trimester_1=Decimal("18000"),
+            trimester_2=Decimal("20000"),  # Should be ~13500 (45000 × 0.30)
+            trimester_3=Decimal("13500"),
+            t1_percentage=Decimal("0.40"),
+            t2_percentage=Decimal("0.30"),
+            t3_percentage=Decimal("0.30"),
+        )
+
+        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 2.*doesn't match"):
+            validate_trimester_distribution(invalid_distribution)
+
+    def test_validate_trimester_distribution_t3_mismatch(self):
+        """Test validation fails when T3 amount doesn't match expected percentage."""
+        invalid_distribution = TrimesterDistribution(
+            total_revenue=Decimal("45000"),
+            trimester_1=Decimal("18000"),
+            trimester_2=Decimal("13500"),
+            trimester_3=Decimal("20000"),  # Should be ~13500 (45000 × 0.30)
+            t1_percentage=Decimal("0.40"),
+            t2_percentage=Decimal("0.30"),
+            t3_percentage=Decimal("0.30"),
+        )
+
+        with pytest.raises(InvalidTrimesterPercentagesError, match="Trimester 3.*doesn't match"):
+            validate_trimester_distribution(invalid_distribution)
+
+
 class TestSiblingOrderValidation:
     """Test sibling order validation."""
 

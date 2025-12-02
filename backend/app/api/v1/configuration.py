@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.auth import ManagerDep, UserDep, get_current_user
+from app.dependencies.auth import ManagerDep, UserDep
 from app.models.configuration import BudgetVersionStatus
 from app.schemas.configuration import (
     AcademicCycleResponse,
@@ -72,7 +72,7 @@ def get_config_service(db: AsyncSession = Depends(get_db)) -> ConfigurationServi
 async def get_system_configs(
     category: str | None = Query(None, description="Filter by category"),
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get all system configurations.
@@ -93,7 +93,7 @@ async def get_system_configs(
 async def get_system_config(
     key: str,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get system configuration by key.
@@ -126,7 +126,7 @@ async def upsert_system_config(
     key: str,
     config_data: SystemConfigCreate,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create or update system configuration.
@@ -166,7 +166,7 @@ async def get_budget_versions(
     fiscal_year: int | None = Query(None, description="Filter by fiscal year"),
     status: BudgetVersionStatus | None = Query(None, description="Filter by status"),
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get all budget versions.
@@ -191,7 +191,7 @@ async def get_budget_versions(
 async def get_budget_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get budget version by ID.
@@ -218,7 +218,7 @@ async def get_budget_version(
 async def create_budget_version(
     version_data: BudgetVersionCreate,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create a new budget version.
@@ -255,7 +255,7 @@ async def update_budget_version(
     version_id: uuid.UUID,
     version_data: BudgetVersionUpdate,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Update budget version metadata.
@@ -289,7 +289,7 @@ async def update_budget_version(
 async def submit_budget_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Submit budget version for approval.
@@ -318,7 +318,7 @@ async def submit_budget_version(
 async def approve_budget_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: ManagerDep = Depends(),
+    user: ManagerDep = ...,
 ):
     """
     Approve budget version (manager/admin only).
@@ -347,7 +347,7 @@ async def approve_budget_version(
 async def supersede_budget_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Mark budget version as superseded.
@@ -378,7 +378,7 @@ async def supersede_budget_version(
 @router.get("/academic-cycles", response_model=list[AcademicCycleResponse])
 async def get_academic_cycles(
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get all academic cycles.
@@ -398,7 +398,7 @@ async def get_academic_cycles(
 async def get_academic_levels(
     cycle_id: uuid.UUID | None = Query(None, description="Filter by cycle"),
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get all academic levels.
@@ -424,7 +424,7 @@ async def get_academic_levels(
 async def get_class_size_params(
     version_id: uuid.UUID = Query(..., description="Budget version ID"),
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get class size parameters for a budget version.
@@ -445,7 +445,7 @@ async def get_class_size_params(
 async def upsert_class_size_param(
     param_data: ClassSizeParamCreate,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create or update class size parameter.
@@ -485,7 +485,7 @@ async def upsert_class_size_param(
 @router.get("/subjects", response_model=list[SubjectResponse])
 async def get_subjects(
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get all active subjects.
@@ -505,7 +505,7 @@ async def get_subjects(
 async def get_subject_hours_matrix(
     version_id: uuid.UUID = Query(..., description="Budget version ID"),
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get subject hours matrix for a budget version.
@@ -526,7 +526,7 @@ async def get_subject_hours_matrix(
 async def upsert_subject_hours(
     hours_data: SubjectHoursCreate,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create or update subject hours configuration.
@@ -565,7 +565,7 @@ async def upsert_subject_hours(
 @router.get("/teacher-categories", response_model=list[TeacherCategoryResponse])
 async def get_teacher_categories(
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get all teacher categories.
@@ -585,7 +585,7 @@ async def get_teacher_categories(
 async def get_teacher_cost_params(
     version_id: uuid.UUID = Query(..., description="Budget version ID"),
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get teacher cost parameters for a budget version.
@@ -606,7 +606,7 @@ async def get_teacher_cost_params(
 async def upsert_teacher_cost_param(
     param_data: TeacherCostParamCreate,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create or update teacher cost parameter.
@@ -649,7 +649,7 @@ async def upsert_teacher_cost_param(
 @router.get("/fee-categories", response_model=list[FeeCategoryResponse])
 async def get_fee_categories(
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get all fee categories.
@@ -668,7 +668,7 @@ async def get_fee_categories(
 @router.get("/nationality-types", response_model=list[NationalityTypeResponse])
 async def get_nationality_types(
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get all nationality types.
@@ -688,7 +688,7 @@ async def get_nationality_types(
 async def get_fee_structure(
     version_id: uuid.UUID = Query(..., description="Budget version ID"),
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get fee structure for a budget version.
@@ -709,7 +709,7 @@ async def get_fee_structure(
 async def upsert_fee_structure(
     fee_data: FeeStructureCreate,
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create or update fee structure entry.

@@ -10,11 +10,11 @@ Provides REST API for managing revenue and cost planning:
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies.auth import UserDep, get_current_user
+from app.dependencies.auth import UserDep
 from app.schemas.costs import (
     CapExPlanCreate,
     CapExPlanResponse,
@@ -89,7 +89,7 @@ def get_capex_service(db: AsyncSession = Depends(get_db)) -> CapExService:
 async def get_revenue_plan(
     version_id: uuid.UUID,
     revenue_service: RevenueService = Depends(get_revenue_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get revenue plan for a budget version.
@@ -113,7 +113,7 @@ async def get_revenue_plan(
 async def calculate_revenue(
     version_id: uuid.UUID,
     revenue_service: RevenueService = Depends(get_revenue_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Calculate revenue from enrollment and fee structure.
@@ -145,7 +145,7 @@ async def create_revenue_entry(
     version_id: uuid.UUID,
     revenue_data: RevenuePlanCreate,
     revenue_service: RevenueService = Depends(get_revenue_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create or update revenue plan entry.
@@ -183,7 +183,7 @@ async def create_revenue_entry(
 async def get_revenue_summary(
     version_id: uuid.UUID,
     revenue_service: RevenueService = Depends(get_revenue_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get revenue summary for a budget version.
@@ -212,7 +212,7 @@ async def get_revenue_summary(
 async def get_personnel_costs(
     version_id: uuid.UUID,
     cost_service: CostService = Depends(get_cost_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get personnel cost plan for a budget version.
@@ -237,7 +237,7 @@ async def calculate_personnel_costs(
     version_id: uuid.UUID,
     calculation_request: PersonnelCostCalculationRequest,
     cost_service: CostService = Depends(get_cost_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Calculate personnel costs from DHG teacher allocations.
@@ -269,7 +269,7 @@ async def create_personnel_cost_entry(
     version_id: uuid.UUID,
     cost_data: PersonnelCostPlanCreate,
     cost_service: CostService = Depends(get_cost_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create or update personnel cost plan entry.
@@ -313,7 +313,7 @@ async def create_personnel_cost_entry(
 async def get_operating_costs(
     version_id: uuid.UUID,
     cost_service: CostService = Depends(get_cost_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get operating cost plan for a budget version.
@@ -338,7 +338,7 @@ async def calculate_operating_costs(
     version_id: uuid.UUID,
     calculation_request: OperatingCostCalculationRequest,
     cost_service: CostService = Depends(get_cost_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Calculate operating costs using driver-based models.
@@ -370,7 +370,7 @@ async def create_operating_cost_entry(
     version_id: uuid.UUID,
     cost_data: OperatingCostPlanCreate,
     cost_service: CostService = Depends(get_cost_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create or update operating cost plan entry.
@@ -407,7 +407,7 @@ async def create_operating_cost_entry(
 async def get_cost_summary(
     version_id: uuid.UUID,
     cost_service: CostService = Depends(get_cost_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get cost summary for a budget version.
@@ -436,7 +436,7 @@ async def get_cost_summary(
 async def get_capex_plan(
     version_id: uuid.UUID,
     capex_service: CapExService = Depends(get_capex_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get CapEx plan for a budget version.
@@ -461,7 +461,7 @@ async def create_capex_entry(
     version_id: uuid.UUID,
     capex_data: CapExPlanCreate,
     capex_service: CapExService = Depends(get_capex_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Create CapEx plan entry.
@@ -501,7 +501,7 @@ async def update_capex_entry(
     capex_id: uuid.UUID,
     capex_data: CapExPlanUpdate,
     capex_service: CapExService = Depends(get_capex_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Update CapEx plan entry.
@@ -543,7 +543,7 @@ async def delete_capex_entry(
     version_id: uuid.UUID,
     capex_id: uuid.UUID,
     capex_service: CapExService = Depends(get_capex_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Delete CapEx plan entry.
@@ -571,7 +571,7 @@ async def calculate_depreciation(
     capex_id: uuid.UUID,
     depreciation_request: DepreciationCalculationRequest,
     capex_service: CapExService = Depends(get_capex_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Calculate depreciation for a CapEx asset.
@@ -604,7 +604,7 @@ async def get_depreciation_schedule(
     capex_id: uuid.UUID,
     years_ahead: int = Query(10, ge=1, le=50, description="Number of years to project"),
     capex_service: CapExService = Depends(get_capex_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get multi-year depreciation schedule for an asset.
@@ -634,7 +634,7 @@ async def get_depreciation_schedule(
 async def get_capex_summary(
     version_id: uuid.UUID,
     capex_service: CapExService = Depends(get_capex_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get CapEx summary for a budget version.
@@ -657,9 +657,9 @@ async def get_capex_summary(
 @router.get("/capex/{version_id}/depreciation/{year}")
 async def get_annual_depreciation(
     version_id: uuid.UUID,
-    year: int = Query(..., ge=2020, le=2100, description="Calculation year"),
+    year: int = Path(..., ge=2020, le=2100, description="Calculation year"),
     capex_service: CapExService = Depends(get_capex_service),
-    user: UserDep = Depends(get_current_user),
+    user: UserDep = ...,
 ):
     """
     Get total annual depreciation for all assets in a version.

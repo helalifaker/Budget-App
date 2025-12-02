@@ -7,7 +7,7 @@ FastAPI 0.123 + Python 3.12 backend for the EFIR Budget Planning Application, im
 - **Framework**: FastAPI 0.123.0 (async, high-performance)
 - **Language**: Python 3.12+ (required for union types)
 - **Validation**: Pydantic 2.12.0
-- **ORM**: SQLAlchemy 2.0.36 (async with `asyncpg`)
+- **ORM**: SQLAlchemy 2.0.44 (async with `asyncpg`)
 - **Migrations**: Alembic
 - **Database**: PostgreSQL 17.x (via Supabase)
 - **Security**: Supabase Auth + Row Level Security (RLS)

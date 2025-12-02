@@ -167,10 +167,10 @@ class TrimesterDistribution(BaseModel):
     Business Rule: T1: 40%, T2: 30%, T3: 30%
     """
 
-    total_revenue: Decimal = Field(..., description="Total annual revenue (SAR)")
-    trimester_1: Decimal = Field(..., description="T1 revenue (40%)")
-    trimester_2: Decimal = Field(..., description="T2 revenue (30%)")
-    trimester_3: Decimal = Field(..., description="T3 revenue (30%)")
+    total_revenue: Decimal = Field(..., ge=Decimal("0"), description="Total annual revenue (SAR)")
+    trimester_1: Decimal = Field(..., ge=Decimal("0"), description="T1 revenue (40%)")
+    trimester_2: Decimal = Field(..., ge=Decimal("0"), description="T2 revenue (30%)")
+    trimester_3: Decimal = Field(..., ge=Decimal("0"), description="T3 revenue (30%)")
 
     # Percentages
     t1_percentage: Decimal = Field(default=Decimal("0.40"), description="T1 percentage (40%)")

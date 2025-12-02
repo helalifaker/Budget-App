@@ -480,33 +480,35 @@ class TestKPIInputValidation:
 
     def test_validate_kpi_input_secondary_exceeds_total(self):
         """Test validation fails when secondary students > total students."""
-        invalid_input = KPIInput(
-            total_students=1850,
-            secondary_students=2000,  # More than total!
-            max_capacity=1875,
-            total_teacher_fte=Decimal("154.17"),
-            total_revenue=Decimal("83272500"),
-            total_costs=Decimal("74945250"),
-            personnel_costs=Decimal("52461675"),
-        )
+        # Pydantic validator catches this during model construction
+        from pydantic import ValidationError
 
-        with pytest.raises(InvalidKPIInputError, match="cannot exceed total students"):
-            validate_kpi_input(invalid_input)
+        with pytest.raises(ValidationError, match="cannot exceed total students"):
+            KPIInput(
+                total_students=1850,
+                secondary_students=2000,  # More than total!
+                max_capacity=1875,
+                total_teacher_fte=Decimal("154.17"),
+                total_revenue=Decimal("83272500"),
+                total_costs=Decimal("74945250"),
+                personnel_costs=Decimal("52461675"),
+            )
 
     def test_validate_kpi_input_personnel_exceeds_total_costs(self):
         """Test validation fails when personnel costs > total costs."""
-        invalid_input = KPIInput(
-            total_students=1850,
-            secondary_students=650,
-            max_capacity=1875,
-            total_teacher_fte=Decimal("154.17"),
-            total_revenue=Decimal("83272500"),
-            total_costs=Decimal("74945250"),
-            personnel_costs=Decimal("80000000"),  # More than total costs!
-        )
+        # Pydantic validator catches this during model construction
+        from pydantic import ValidationError
 
-        with pytest.raises(InvalidKPIInputError, match="cannot exceed"):
-            validate_kpi_input(invalid_input)
+        with pytest.raises(ValidationError, match="cannot exceed total costs"):
+            KPIInput(
+                total_students=1850,
+                secondary_students=650,
+                max_capacity=1875,
+                total_teacher_fte=Decimal("154.17"),
+                total_revenue=Decimal("83272500"),
+                total_costs=Decimal("74945250"),
+                personnel_costs=Decimal("80000000"),  # More than total costs!
+            )
 
     def test_validate_kpi_input_students_exceed_capacity(self):
         """Test validation fails when students significantly exceed capacity."""
@@ -538,6 +540,98 @@ class TestKPIInputValidation:
 
         with pytest.raises(InvalidKPIInputError, match="must be positive when DHG hours"):
             validate_kpi_input(invalid_input)
+
+    def test_validate_kpi_input_zero_teacher_fte_error(self):
+        """Test validation fails when teacher FTE is zero."""
+        # Pydantic will catch this, so test at model level
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="greater than 0"):
+            KPIInput(
+                total_students=1850,
+                secondary_students=650,
+                max_capacity=1875,
+                total_teacher_fte=Decimal("0.0"),  # Invalid - zero
+                total_revenue=Decimal("83272500"),
+                total_costs=Decimal("74945250"),
+                personnel_costs=Decimal("52461675"),
+            )
+
+    def test_validate_kpi_input_zero_capacity_error(self):
+        """Test validation fails when max capacity is zero."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="greater than or equal to 1"):
+            KPIInput(
+                total_students=1850,
+                secondary_students=650,
+                max_capacity=0,  # Invalid - zero
+                total_teacher_fte=Decimal("154.17"),
+                total_revenue=Decimal("83272500"),
+                total_costs=Decimal("74945250"),
+                personnel_costs=Decimal("52461675"),
+            )
+
+    def test_validate_kpi_input_negative_revenue_error(self):
+        """Test validation fails when revenue is negative."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
+            KPIInput(
+                total_students=1850,
+                secondary_students=650,
+                max_capacity=1875,
+                total_teacher_fte=Decimal("154.17"),
+                total_revenue=Decimal("-1000"),  # Invalid - negative
+                total_costs=Decimal("74945250"),
+                personnel_costs=Decimal("52461675"),
+            )
+
+    def test_validate_kpi_input_negative_costs_error(self):
+        """Test validation fails when total costs are negative."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
+            KPIInput(
+                total_students=1850,
+                secondary_students=650,
+                max_capacity=1875,
+                total_teacher_fte=Decimal("154.17"),
+                total_revenue=Decimal("83272500"),
+                total_costs=Decimal("-1000"),  # Invalid - negative
+                personnel_costs=Decimal("52461675"),
+            )
+
+    def test_validate_kpi_input_negative_personnel_costs_error(self):
+        """Test validation fails when personnel costs are negative."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
+            KPIInput(
+                total_students=1850,
+                secondary_students=650,
+                max_capacity=1875,
+                total_teacher_fte=Decimal("154.17"),
+                total_revenue=Decimal("83272500"),
+                total_costs=Decimal("74945250"),
+                personnel_costs=Decimal("-1000"),  # Invalid - negative
+            )
+
+    def test_validate_kpi_input_negative_dhg_hours_error(self):
+        """Test validation fails when DHG hours are negative."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
+            KPIInput(
+                total_students=1850,
+                secondary_students=650,
+                max_capacity=1875,
+                total_teacher_fte=Decimal("154.17"),
+                dhg_hours_total=Decimal("-50"),  # Invalid - negative
+                total_revenue=Decimal("83272500"),
+                total_costs=Decimal("74945250"),
+                personnel_costs=Decimal("52461675"),
+            )
 
 
 class TestRatioBoundsValidation:

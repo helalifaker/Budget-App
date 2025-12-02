@@ -516,13 +516,62 @@ class TestDHGInputValidation:
 
     def test_validate_dhg_input_too_many_classes(self):
         """Test validation fails with too many classes."""
+        # Pydantic validator catches this during model construction
+        from pydantic import ValidationError
+
         level_id = uuid4()
 
-        invalid_input = DHGInput(
+        with pytest.raises(ValidationError, match="less than or equal to 50"):
+            DHGInput(
+                level_id=level_id,
+                level_code="6EME",
+                education_level=EducationLevel.SECONDARY,
+                number_of_classes=100,  # Too many!
+                subject_hours_list=[
+                    SubjectHours(
+                        subject_id=uuid4(),
+                        subject_code="MATH",
+                        subject_name="Mathématiques",
+                        level_id=level_id,
+                        level_code="6EME",
+                        hours_per_week=Decimal("4.5"),
+                    )
+                ],
+            )
+
+    def test_validate_dhg_input_classes_below_zero(self):
+        """Test validation fails with negative number of classes."""
+        from pydantic import ValidationError
+
+        level_id = uuid4()
+
+        with pytest.raises(ValidationError, match="greater than or equal to 0"):
+            DHGInput(
+                level_id=level_id,
+                level_code="6EME",
+                education_level=EducationLevel.SECONDARY,
+                number_of_classes=-1,  # Negative!
+                subject_hours_list=[
+                    SubjectHours(
+                        subject_id=uuid4(),
+                        subject_code="MATH",
+                        subject_name="Mathématiques",
+                        level_id=level_id,
+                        level_code="6EME",
+                        hours_per_week=Decimal("4.5"),
+                    )
+                ],
+            )
+
+    def test_validate_dhg_input_zero_classes(self):
+        """Test validation with zero classes (boundary condition)."""
+        level_id = uuid4()
+
+        valid_input = DHGInput(
             level_id=level_id,
             level_code="6EME",
             education_level=EducationLevel.SECONDARY,
-            number_of_classes=100,  # Too many!
+            number_of_classes=0,  # Zero classes (boundary)
             subject_hours_list=[
                 SubjectHours(
                     subject_id=uuid4(),
@@ -535,8 +584,7 @@ class TestDHGInputValidation:
             ],
         )
 
-        with pytest.raises(InvalidDHGInputError, match="between 0 and 50"):
-            validate_dhg_input(invalid_input)
+        validate_dhg_input(valid_input)  # Should not raise
 
     def test_validate_dhg_input_empty_subject_list(self):
         """Test validation fails with empty subject hours list."""
@@ -576,6 +624,30 @@ class TestDHGInputValidation:
         with pytest.raises(InvalidDHGInputError, match="mismatched level_id"):
             validate_dhg_input(invalid_input)
 
+    def test_validate_dhg_input_level_code_mismatch(self):
+        """Test validation fails with mismatched level codes."""
+        level_id = uuid4()
+
+        invalid_input = DHGInput(
+            level_id=level_id,
+            level_code="6EME",
+            education_level=EducationLevel.SECONDARY,
+            number_of_classes=6,
+            subject_hours_list=[
+                SubjectHours(
+                    subject_id=uuid4(),
+                    subject_code="MATH",
+                    subject_name="Mathématiques",
+                    level_id=level_id,
+                    level_code="5EME",  # Different level code!
+                    hours_per_week=Decimal("4.5"),
+                )
+            ],
+        )
+
+        with pytest.raises(InvalidDHGInputError, match="mismatched level_code"):
+            validate_dhg_input(invalid_input)
+
 
 class TestSubjectHoursValidation:
     """Test subject hours validation."""
@@ -593,19 +665,46 @@ class TestSubjectHoursValidation:
 
         validate_subject_hours(valid_hours)  # Should not raise
 
-    def test_validate_subject_hours_too_high(self):
-        """Test validation fails with hours > 10."""
-        invalid_hours = SubjectHours(
+    def test_validate_subject_hours_max_boundary(self):
+        """Test validation with maximum allowed hours (10h)."""
+        max_hours = SubjectHours(
             subject_id=uuid4(),
             subject_code="MATH",
             subject_name="Mathématiques",
             level_id=uuid4(),
             level_code="6EME",
-            hours_per_week=Decimal("15.0"),  # Too many!
+            hours_per_week=Decimal("10.0"),  # Exactly at max
         )
 
-        with pytest.raises(InvalidSubjectHoursError, match="between 0 and 10"):
-            validate_subject_hours(invalid_hours)
+        validate_subject_hours(max_hours)  # Should not raise
+
+    def test_validate_subject_hours_zero_hours(self):
+        """Test validation with zero hours (subject not taught at this level)."""
+        zero_hours = SubjectHours(
+            subject_id=uuid4(),
+            subject_code="MATH",
+            subject_name="Mathématiques",
+            level_id=uuid4(),
+            level_code="GS",  # Preschool - no math
+            hours_per_week=Decimal("0.0"),  # Zero hours
+        )
+
+        validate_subject_hours(zero_hours)  # Should not raise
+
+    def test_validate_subject_hours_too_high(self):
+        """Test validation fails with hours > 10."""
+        # Pydantic validator catches this during model construction
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError, match="less than or equal to 10"):
+            SubjectHours(
+                subject_id=uuid4(),
+                subject_code="MATH",
+                subject_name="Mathématiques",
+                level_id=uuid4(),
+                level_code="6EME",
+                hours_per_week=Decimal("15.0"),  # Too many!
+            )
 
     def test_validate_subject_hours_negative(self):
         """Test validation fails with negative hours."""
@@ -668,6 +767,22 @@ class TestHSALimitsValidation:
         with pytest.raises(ValueError, match="between 2 and 4"):
             validate_max_hsa_per_teacher(Decimal("1.0"))
 
+    def test_validate_hsa_limits_zero_available_fte(self):
+        """Test validation fails when HSA cannot be allocated with 0 FTE."""
+        invalid_hsa = HSAAllocation(
+            subject_code="MATH",
+            subject_name="Mathématiques",
+            dhg_hours_needed=Decimal("96.0"),
+            available_fte=0,  # No available positions!
+            available_hours=Decimal("0.0"),
+            hsa_hours_needed=Decimal("96.0"),
+            hsa_within_limit=False,
+            max_hsa_per_teacher=Decimal("4.0"),
+        )
+
+        with pytest.raises(InvalidHSAAllocationError, match="no available FTE"):
+            validate_hsa_limits(invalid_hsa)
+
 
 class TestEducationLevelValidation:
     """Test education level and standard hours validation."""
@@ -689,6 +804,13 @@ class TestEducationLevelValidation:
         with pytest.raises(ValueError, match="should have 18 hours"):
             validate_education_level_standard_hours(
                 EducationLevel.SECONDARY, Decimal("24.0")
+            )
+
+    def test_validate_education_level_primary_hours_mismatch(self):
+        """Test validation fails for primary level with wrong hours."""
+        with pytest.raises(ValueError, match="should have 24 hours"):
+            validate_education_level_standard_hours(
+                EducationLevel.PRIMARY, Decimal("18.0")
             )
 
 
@@ -798,6 +920,32 @@ class TestSubjectHoursListConsistency:
         ]
 
         with pytest.raises(InvalidSubjectHoursError, match="Duplicate subjects"):
+            validate_subject_hours_list_consistency(subject_list)
+
+    def test_validate_subject_hours_list_consistency_level_code_mismatch(self):
+        """Test validation fails with mismatched level codes."""
+        level_id = uuid4()
+
+        subject_list = [
+            SubjectHours(
+                subject_id=uuid4(),
+                subject_code="MATH",
+                subject_name="Mathématiques",
+                level_id=level_id,
+                level_code="6EME",
+                hours_per_week=Decimal("4.5"),
+            ),
+            SubjectHours(
+                subject_id=uuid4(),
+                subject_code="FRAN",
+                subject_name="Français",
+                level_id=level_id,
+                level_code="5EME",  # Different level code!
+                hours_per_week=Decimal("5.0"),
+            ),
+        ]
+
+        with pytest.raises(InvalidSubjectHoursError, match="same level_code"):
             validate_subject_hours_list_consistency(subject_list)
 
 
