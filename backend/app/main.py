@@ -61,11 +61,13 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
-    # Logging middleware (adds correlation IDs and structured logging)
-    # Must be added first to capture all requests
-    app.add_middleware(LoggingMiddleware)
+    # RBAC middleware (enforces role-based access control)
+    app.add_middleware(RBACMiddleware)
 
-    # CORS middleware
+    # Authentication middleware (validates JWT tokens)
+    app.add_middleware(AuthenticationMiddleware)
+
+    # CORS middleware should wrap authentication so preflight checks hit it first
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -78,11 +80,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Authentication middleware (validates JWT tokens)
-    app.add_middleware(AuthenticationMiddleware)
-
-    # RBAC middleware (enforces role-based access control)
-    app.add_middleware(RBACMiddleware)
+    # Logging middleware (adds correlation IDs and structured logging)
+    # Must be added last so it wraps every request once the stack is built
+    app.add_middleware(LoggingMiddleware)
 
     # Include routers
     app.include_router(health.router)

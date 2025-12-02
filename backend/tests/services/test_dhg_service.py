@@ -273,7 +273,7 @@ class TestDHGSubjectHoursCalculation:
         - 6 classes × 4.5 hours/week = 27 hours/week
         """
         result = await dhg_service.calculate_dhg_subject_hours(
-            version_id=mock_budget_version.id,
+            budget_version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -305,7 +305,7 @@ class TestDHGSubjectHoursCalculation:
         # No class structure created
 
         result = await dhg_service.calculate_dhg_subject_hours(
-            version_id=mock_budget_version.id,
+            budget_version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -323,7 +323,7 @@ class TestDHGSubjectHoursCalculation:
         # Class structure exists but no subject hours matrix
 
         result = await dhg_service.calculate_dhg_subject_hours(
-            version_id=mock_budget_version.id,
+            budget_version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -342,13 +342,13 @@ class TestDHGSubjectHoursCalculation:
         """Test partial recalculation (only changed levels)."""
         # First full calculation
         await dhg_service.calculate_dhg_subject_hours(
-            version_id=mock_budget_version.id,
+            budget_version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
         # Second calculation with recalculate_all=False
         result = await dhg_service.calculate_dhg_subject_hours(
-            version_id=mock_budget_version.id,
+            budget_version_id=mock_budget_version.id,
             recalculate_all=False,
         )
 
@@ -381,7 +381,7 @@ class TestTeacherRequirementCalculation:
         """
         # First calculate DHG hours
         await dhg_service.calculate_dhg_subject_hours(
-            version_id=mock_budget_version.id,
+            budget_version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -541,7 +541,7 @@ class TestDHGServiceErrorHandling:
         """Test DHG calculation with non-existent budget version."""
         with pytest.raises(NotFoundError):
             await dhg_service.calculate_dhg_subject_hours(
-                version_id=uuid.uuid4(),
+                budget_version_id=uuid.uuid4(),
                 recalculate_all=True,
             )
 
@@ -553,7 +553,7 @@ class TestDHGServiceErrorHandling:
     ):
         """Test retrieving DHG hours for version with no calculations."""
         result = await dhg_service.get_dhg_subject_hours(
-            version_id=mock_budget_version.id
+            budget_version_id=mock_budget_version.id
         )
 
         assert isinstance(result, list)
