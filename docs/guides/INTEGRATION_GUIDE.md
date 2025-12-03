@@ -1,14 +1,28 @@
 # EFIR Budget Planning Application - Integration Guide
 
-**Version**: 1.0
+**Version**: 1.1
 **Last Updated**: December 2025
+
+---
+
+> **IMPORTANT NOTICE (December 2025)**
+>
+> External integrations with Odoo, Skolengo, and AEFE have been determined to be **NOT REQUIRED** for the EFIR Budget Planning Application. The application is fully functional as a standalone system with manual data entry capabilities.
+>
+> This guide is retained for **historical reference** only. If integrations are needed in the future, this documentation provides the technical specifications.
+>
+> See `/docs/INTEGRATION_STATUS.md` for the full integration decision documentation.
+
+---
 
 ## Overview
 
-The EFIR Budget Planning Application integrates with three external systems:
-1. **Odoo**: Accounting system for actual financial data
-2. **Skolengo**: Student Information System for enrollment data
-3. **AEFE**: Position file for AEFE teacher allocations
+This guide documents the technical specifications for potential integrations with three external systems:
+1. **Odoo**: Accounting system for actual financial data (NOT REQUIRED)
+2. **Skolengo**: Student Information System for enrollment data (NOT REQUIRED)
+3. **AEFE**: Position file for AEFE teacher allocations (NOT REQUIRED)
+
+**Current Status**: All data can be entered manually in the EFIR application. Integrations are optional enhancements for future consideration.
 
 ---
 

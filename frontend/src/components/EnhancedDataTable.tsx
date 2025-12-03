@@ -83,8 +83,8 @@ export function EnhancedDataTable<TData = unknown>({
   const [commentDialogOpen, setCommentDialogOpen] = useState(false)
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
 
-  // Writeback hook for cell updates
-  const { updateCell, isUpdating } = usePlanningWriteback(budgetVersionId)
+  // Writeback hook for cell updates and locking
+  const { updateCell, lockCell, unlockCell, isUpdating, isLocking } = usePlanningWriteback(budgetVersionId)
 
   // User presence tracking
   const { activeUsers, broadcast } = useUserPresence({
@@ -291,19 +291,23 @@ export function EnhancedDataTable<TData = unknown>({
         },
         'separator',
         {
-          name: 'Verrouiller la cellule',
-          icon: '<span>🔒</span>',
-          disabled: cellData?.is_locked,
-          action: () => {
+          name: cellData?.is_locked ? 'Déverrouiller la cellule' : 'Verrouiller la cellule',
+          icon: cellData?.is_locked ? '<span>🔓</span>' : '<span>🔒</span>',
+          action: async () => {
             if (cellId) {
-              // TODO: Implement lock cell API call
-              console.log('Lock cell:', cellId)
+              if (cellData?.is_locked) {
+                // Unlock the cell
+                await unlockCell({ cellId })
+              } else {
+                // Lock the cell
+                await lockCell({ cellId, reason: 'Verrouillage manuel' })
+              }
             }
           },
         },
       ]
     },
-    []
+    [lockCell, unlockCell]
   )
 
   /**
@@ -372,11 +376,17 @@ export function EnhancedDataTable<TData = unknown>({
           'relative rounded-card border border-sand-200 overflow-hidden'
         )}
       >
-        {(loading || isUpdating) && (
+        {(loading || isUpdating || isLocking) && (
           <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
             <div className="flex gap-2 items-center text-twilight-600">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>{loading ? 'Chargement...' : 'Sauvegarde en cours...'}</span>
+              <span>
+                {loading
+                  ? 'Chargement...'
+                  : isLocking
+                    ? 'Verrouillage en cours...'
+                    : 'Sauvegarde en cours...'}
+              </span>
             </div>
           </div>
         )}
