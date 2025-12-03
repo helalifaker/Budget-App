@@ -172,7 +172,6 @@ async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
         name_fr="Maternelle",
         sort_order=1,
         requires_atsem=True,
-        is_secondary=False,
     )
     elementaire = AcademicCycle(
         id=uuid4(),
@@ -181,7 +180,6 @@ async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
         name_fr="Élémentaire",
         sort_order=2,
         requires_atsem=False,
-        is_secondary=False,
     )
     college = AcademicCycle(
         id=uuid4(),
@@ -190,7 +188,6 @@ async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
         name_fr="Collège",
         sort_order=3,
         requires_atsem=False,
-        is_secondary=True,
     )
     lycee = AcademicCycle(
         id=uuid4(),
@@ -199,7 +196,6 @@ async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
         name_fr="Lycée",
         sort_order=4,
         requires_atsem=False,
-        is_secondary=True,
     )
 
     db_session.add_all([maternelle, elementaire, college, lycee])
@@ -323,6 +319,7 @@ async def subjects(db_session: AsyncSession) -> dict[str, Subject]:
             code="FRENCH",
             name_en="French Language",
             name_fr="Français",
+            category="core",
             is_active=True,
         ),
         "MATH": Subject(
@@ -330,6 +327,7 @@ async def subjects(db_session: AsyncSession) -> dict[str, Subject]:
             code="MATH",
             name_en="Mathematics",
             name_fr="Mathématiques",
+            category="core",
             is_active=True,
         ),
         "HISTORY": Subject(
@@ -337,6 +335,7 @@ async def subjects(db_session: AsyncSession) -> dict[str, Subject]:
             code="HISTORY",
             name_en="History-Geography",
             name_fr="Histoire-Géographie",
+            category="core",
             is_active=True,
         ),
         "ENGLISH": Subject(
@@ -344,6 +343,7 @@ async def subjects(db_session: AsyncSession) -> dict[str, Subject]:
             code="ENGLISH",
             name_en="English",
             name_fr="Anglais",
+            category="core",
             is_active=True,
         ),
     }
@@ -393,21 +393,27 @@ async def fee_categories(db_session: AsyncSession) -> dict[str, FeeCategory]:
             code="TUITION",
             name_en="Tuition",
             name_fr="Scolarité",
-            nationality_type_id=None,
+            account_code="70110",
+            is_recurring=True,
+            allows_sibling_discount=True,
         ),
         "DAI": FeeCategory(
             id=uuid4(),
             code="DAI",
             name_en="Annual Enrollment Fee",
             name_fr="Droit Annuel d'Inscription",
-            nationality_type_id=None,
+            account_code="70140",
+            is_recurring=True,
+            allows_sibling_discount=False,
         ),
         "REGISTRATION": FeeCategory(
             id=uuid4(),
             code="REGISTRATION",
             name_en="Registration Fee",
             name_fr="Frais d'Inscription",
-            nationality_type_id=None,
+            account_code="70150",
+            is_recurring=False,
+            allows_sibling_discount=False,
         ),
     }
 

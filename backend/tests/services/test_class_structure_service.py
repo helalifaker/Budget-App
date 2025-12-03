@@ -1,446 +1,1086 @@
 """
-Unit tests for Class Structure Service - Class Formation Planning.
+Tests for Class Structure Service.
+
+Covers:
+- Class structure calculation from enrollment data
+- Class size parameter validation
+- ATSEM allocation for Maternelle
+- Update and delete operations
+- Business rule validation
+- Error handling
+
+Target Coverage: 90%+
 """
 
 import uuid
 from decimal import Decimal
-from math import ceil
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.models.configuration import (
+    AcademicCycle,
+    AcademicLevel,
+    ClassSizeParam,
+)
+from app.models.planning import ClassStructure, EnrollmentPlan
 from app.services.class_structure_service import ClassStructureService
-from app.services.exceptions import BusinessRuleError, ValidationError
+from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
 
 
 @pytest.fixture
-def db_session():
-    """Create a mock async session."""
-    session = MagicMock(spec=AsyncSession)
+def mock_session():
+    """Create mock async database session."""
+    session = AsyncMock()
     session.execute = AsyncMock()
     session.flush = AsyncMock()
-    session.commit = AsyncMock()
+    session.add = MagicMock()
     return session
 
 
 @pytest.fixture
-def class_service(db_session):
-    """Create ClassStructureService instance with mocked session."""
-    return ClassStructureService(db_session)
+def class_structure_service(mock_session):
+    """Create class structure service instance."""
+    return ClassStructureService(mock_session)
 
 
-class TestClassStructureServiceInitialization:
-    """Tests for ClassStructureService initialization."""
-
-    def test_service_initialization(self, db_session):
-        """Test service initializes with session."""
-        service = ClassStructureService(db_session)
-        assert service.session == db_session
-        assert service.base_service is not None
+@pytest.fixture
+def test_user_id():
+    """Create test user UUID."""
+    return uuid.uuid4()
 
 
-class TestCalculationMethodValidation:
-    """Tests for calculation method validation."""
+@pytest.fixture
+def mock_budget_version_id():
+    """Create test budget version UUID."""
+    return uuid.uuid4()
+
+
+@pytest.fixture
+def mock_maternelle_cycle():
+    """Create Maternelle cycle."""
+    cycle = MagicMock(spec=AcademicCycle)
+    cycle.id = uuid.uuid4()
+    cycle.code = "MATERNELLE"
+    cycle.name_fr = "Maternelle"
+    cycle.requires_atsem = True  # ATSEM required for Maternelle
+    return cycle
+
+
+@pytest.fixture
+def mock_elementaire_cycle():
+    """Create Élémentaire cycle."""
+    cycle = MagicMock(spec=AcademicCycle)
+    cycle.id = uuid.uuid4()
+    cycle.code = "ELEMENTAIRE"
+    cycle.name_fr = "Élémentaire"
+    cycle.requires_atsem = False
+    return cycle
+
+
+@pytest.fixture
+def mock_college_cycle():
+    """Create Collège cycle."""
+    cycle = MagicMock(spec=AcademicCycle)
+    cycle.id = uuid.uuid4()
+    cycle.code = "COLLEGE"
+    cycle.name_fr = "Collège"
+    cycle.requires_atsem = False
+    return cycle
+
+
+@pytest.fixture
+def mock_maternelle_levels(mock_maternelle_cycle):
+    """Create Maternelle levels (PS, MS, GS)."""
+    ps = MagicMock(spec=AcademicLevel)
+    ps.id = uuid.uuid4()
+    ps.code = "PS"
+    ps.name_fr = "Petite Section"
+    ps.cycle_id = mock_maternelle_cycle.id
+    ps.cycle = mock_maternelle_cycle
+    ps.is_secondary = False
+    ps.sort_order = 1
+
+    ms = MagicMock(spec=AcademicLevel)
+    ms.id = uuid.uuid4()
+    ms.code = "MS"
+    ms.name_fr = "Moyenne Section"
+    ms.cycle_id = mock_maternelle_cycle.id
+    ms.cycle = mock_maternelle_cycle
+    ms.is_secondary = False
+    ms.sort_order = 2
+
+    gs = MagicMock(spec=AcademicLevel)
+    gs.id = uuid.uuid4()
+    gs.code = "GS"
+    gs.name_fr = "Grande Section"
+    gs.cycle_id = mock_maternelle_cycle.id
+    gs.cycle = mock_maternelle_cycle
+    gs.is_secondary = False
+    gs.sort_order = 3
+
+    return [ps, ms, gs]
+
+
+@pytest.fixture
+def mock_college_levels(mock_college_cycle):
+    """Create Collège levels (6ème, 5ème, 4ème, 3ème)."""
+    levels = []
+    for i, (code, name) in enumerate([
+        ("6EME", "Sixième"),
+        ("5EME", "Cinquième"),
+        ("4EME", "Quatrième"),
+        ("3EME", "Troisième"),
+    ]):
+        level = MagicMock(spec=AcademicLevel)
+        level.id = uuid.uuid4()
+        level.code = code
+        level.name_fr = name
+        level.cycle_id = mock_college_cycle.id
+        level.cycle = mock_college_cycle
+        level.is_secondary = True
+        level.sort_order = i + 1
+        levels.append(level)
+    return levels
+
+
+# ==============================================================================
+# Test: Get Class Structure
+# ==============================================================================
+
+
+class TestGetClassStructure:
+    """Tests for getting class structure."""
 
     @pytest.mark.asyncio
-    async def test_calculate_validates_method_target(self, class_service):
-        """Test 'target' is a valid calculation method."""
-        # Mock empty enrollment to trigger early exit
-        class_service._get_enrollment_by_level = AsyncMock(return_value={})
-
-        with pytest.raises(BusinessRuleError) as exc_info:
-            await class_service.calculate_class_structure(
-                version_id=uuid.uuid4(),
-                method="target",
+    async def test_get_class_structure_success(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_session,
+        mock_budget_version_id,
+    ):
+        """Test successful retrieval of class structure."""
+        mock_structures = [
+            MagicMock(
+                id=uuid.uuid4(),
+                budget_version_id=mock_budget_version_id,
+                level_id=uuid.uuid4(),
+                total_students=50,
+                number_of_classes=2,
+                avg_class_size=Decimal("25.0"),
             )
+        ]
 
-        # Should fail due to no enrollment, not invalid method
-        assert "NO_ENROLLMENT" in exc_info.value.details.get("rule", "")
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = mock_structures
+        mock_session.execute.return_value = mock_result
 
-    @pytest.mark.asyncio
-    async def test_calculate_validates_method_min(self, class_service):
-        """Test 'min' is a valid calculation method."""
-        class_service._get_enrollment_by_level = AsyncMock(return_value={})
+        result = await class_structure_service.get_class_structure(mock_budget_version_id)
 
-        with pytest.raises(BusinessRuleError) as exc_info:
-            await class_service.calculate_class_structure(
-                version_id=uuid.uuid4(),
-                method="min",
-            )
-
-        assert "NO_ENROLLMENT" in exc_info.value.details.get("rule", "")
+        assert len(result) == 1
+        mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_calculate_validates_method_max(self, class_service):
-        """Test 'max' is a valid calculation method."""
-        class_service._get_enrollment_by_level = AsyncMock(return_value={})
+    async def test_get_class_structure_empty(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_session,
+        mock_budget_version_id,
+    ):
+        """Test retrieval when no class structures exist."""
+        mock_result = MagicMock()
+        mock_result.scalars.return_value.all.return_value = []
+        mock_session.execute.return_value = mock_result
 
-        with pytest.raises(BusinessRuleError) as exc_info:
-            await class_service.calculate_class_structure(
-                version_id=uuid.uuid4(),
-                method="max",
-            )
+        result = await class_structure_service.get_class_structure(mock_budget_version_id)
 
-        assert "NO_ENROLLMENT" in exc_info.value.details.get("rule", "")
+        assert result == []
+
+
+# ==============================================================================
+# Test: Calculate Class Structure
+# ==============================================================================
+
+
+class TestCalculateClassStructure:
+    """Tests for class structure calculation."""
 
     @pytest.mark.asyncio
-    async def test_calculate_rejects_invalid_method(self, class_service):
-        """Test invalid method is rejected."""
+    async def test_calculate_class_structure_target_method(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_session,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """
+        Test class structure calculation with target method.
+
+        Formula: classes = CEILING(total_students / target_class_size)
+        Example: 75 students / 25 target = 3 classes
+        """
+        level = mock_college_levels[0]  # 6ème
+
+        # Mock enrollment data
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (75, level, mock_college_cycle)},
+        ):
+            # Mock class size params
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
+
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                # Mock get_class_structure (no existing structures)
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    # Mock base_service.create
+                    created = MagicMock()
+                    created.id = uuid.uuid4()
+                    created.number_of_classes = 3
+                    created.avg_class_size = Decimal("25.0")
+                    class_structure_service.base_service = MagicMock()
+                    class_structure_service.base_service.create = AsyncMock(
+                        return_value=created
+                    )
+
+                    result = await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="target",
+                        user_id=test_user_id,
+                    )
+
+                    assert len(result) == 1
+                    # 75 / 25 = 3 classes (exact division)
+                    class_structure_service.base_service.create.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_calculate_class_structure_min_method(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """
+        Test class structure calculation with min method.
+
+        Formula: classes = CEILING(total_students / min_class_size)
+        Example: 75 students / 20 min = 4 classes
+        """
+        level = mock_college_levels[0]
+
+        # Use 80 students so avg class size (80/4=20) equals min_class_size
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (80, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
+
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    created = MagicMock()
+                    created.id = uuid.uuid4()
+                    created.number_of_classes = 4  # ceil(80/20) = 4
+                    created.avg_class_size = Decimal("20.0")  # 80/4 = 20
+                    class_structure_service.base_service = MagicMock()
+                    class_structure_service.base_service.create = AsyncMock(
+                        return_value=created
+                    )
+
+                    result = await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="min",
+                        user_id=test_user_id,
+                    )
+
+                    assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_calculate_class_structure_max_method(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """
+        Test class structure calculation with max method.
+
+        Formula: classes = CEILING(total_students / max_class_size)
+        Example: 75 students / 30 max = 3 classes
+        """
+        level = mock_college_levels[0]
+
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (75, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
+
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    created = MagicMock()
+                    created.id = uuid.uuid4()
+                    created.number_of_classes = 3  # ceil(75/30) = 3
+                    created.avg_class_size = Decimal("25.0")
+                    class_structure_service.base_service = MagicMock()
+                    class_structure_service.base_service.create = AsyncMock(
+                        return_value=created
+                    )
+
+                    result = await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="max",
+                        user_id=test_user_id,
+                    )
+
+                    assert len(result) == 1
+
+    @pytest.mark.asyncio
+    async def test_calculate_class_structure_invalid_method(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        test_user_id,
+    ):
+        """Test calculation with invalid method raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
-            await class_service.calculate_class_structure(
-                version_id=uuid.uuid4(),
-                method="average",  # Invalid
+            await class_structure_service.calculate_class_structure(
+                version_id=mock_budget_version_id,
+                method="invalid_method",
+                user_id=test_user_id,
             )
 
-        assert "target, min, or max" in str(exc_info.value)
+        assert "Invalid calculation method" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_calculate_class_structure_no_enrollment_data(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        test_user_id,
+    ):
+        """Test calculation fails when no enrollment data exists."""
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={},
+        ):
+            with pytest.raises(BusinessRuleError) as exc_info:
+                await class_structure_service.calculate_class_structure(
+                    version_id=mock_budget_version_id,
+                    method="target",
+                    user_id=test_user_id,
+                )
+
+            assert "without enrollment data" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_calculate_class_structure_no_class_size_params(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """Test calculation fails when no class size params exist."""
+        level = mock_college_levels[0]
+
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (75, level, mock_college_cycle)},
+        ):
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[],
+            ):
+                with pytest.raises(BusinessRuleError) as exc_info:
+                    await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="target",
+                        user_id=test_user_id,
+                    )
+
+                assert "without class size parameters" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_calculate_class_structure_with_override(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """Test calculation with manual override by level."""
+        level = mock_college_levels[0]
+
+        # Use 100 students so override to 4 classes gives avg=25, within range [20-30]
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (100, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
+
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    created = MagicMock()
+                    created.id = uuid.uuid4()
+                    created.number_of_classes = 4  # Override to 4 classes
+                    created.avg_class_size = Decimal("25.0")  # 100/4 = 25
+                    class_structure_service.base_service = MagicMock()
+                    class_structure_service.base_service.create = AsyncMock(
+                        return_value=created
+                    )
+
+                    result = await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="target",
+                        override_by_level={str(level.id): 4},
+                        user_id=test_user_id,
+                    )
+
+                    assert len(result) == 1
 
 
-class TestClassCountCalculation:
-    """Tests for class count calculation formulas."""
-
-    def test_class_count_formula_exact_division(self):
-        """Test class count with exact division."""
-        total_students = 100
-        target_class_size = 25
-
-        number_of_classes = ceil(total_students / target_class_size)
-
-        assert number_of_classes == 4
-
-    def test_class_count_formula_rounds_up(self):
-        """Test class count rounds up for partial classes."""
-        total_students = 101
-        target_class_size = 25
-
-        number_of_classes = ceil(total_students / target_class_size)
-
-        # 101 / 25 = 4.04, ceiling = 5
-        assert number_of_classes == 5
-
-    def test_class_count_minimum_one(self):
-        """Test at least one class is formed."""
-        total_students = 5
-        target_class_size = 25
-
-        number_of_classes = max(1, ceil(total_students / target_class_size))
-
-        assert number_of_classes == 1
-
-    def test_class_count_with_different_targets(self):
-        """Test class count varies by target size."""
-        total_students = 75
-
-        # With target 25
-        classes_25 = ceil(total_students / 25)
-        assert classes_25 == 3
-
-        # With target 20 (more classes)
-        classes_20 = ceil(total_students / 20)
-        assert classes_20 == 4
-
-        # With target 30 (fewer classes)
-        classes_30 = ceil(total_students / 30)
-        assert classes_30 == 3
-
-
-class TestAverageClassSizeCalculation:
-    """Tests for average class size calculation."""
-
-    def test_avg_class_size_formula(self):
-        """Test average = total_students / number_of_classes."""
-        total_students = 100
-        number_of_classes = 4
-
-        avg_class_size = Decimal(total_students / number_of_classes).quantize(
-            Decimal("0.01")
-        )
-
-        assert avg_class_size == Decimal("25.00")
-
-    def test_avg_class_size_with_remainder(self):
-        """Test average handles non-even division."""
-        total_students = 76
-        number_of_classes = 3
-
-        avg_class_size = Decimal(total_students / number_of_classes).quantize(
-            Decimal("0.01")
-        )
-
-        # 76 / 3 = 25.333...
-        assert avg_class_size == Decimal("25.33")
-
-    def test_avg_class_size_precision(self):
-        """Test average is rounded to 2 decimal places."""
-        total_students = 100
-        number_of_classes = 3
-
-        avg_class_size = Decimal(total_students / number_of_classes).quantize(
-            Decimal("0.01")
-        )
-
-        # 100 / 3 = 33.333...
-        assert avg_class_size == Decimal("33.33")
-        assert len(str(avg_class_size).split(".")[-1]) <= 2
+# ==============================================================================
+# Test: ATSEM Allocation (Maternelle)
+# ==============================================================================
 
 
 class TestATSEMAllocation:
-    """Tests for ATSEM (preschool assistant) allocation."""
-
-    def test_atsem_count_equals_classes_when_required(self):
-        """Test ATSEM count = number of classes for Maternelle."""
-        number_of_classes = 6
-        requires_atsem = True
-
-        atsem_count = number_of_classes if requires_atsem else 0
-
-        assert atsem_count == 6
-
-    def test_atsem_count_zero_when_not_required(self):
-        """Test ATSEM count = 0 for non-Maternelle levels."""
-        number_of_classes = 6
-        requires_atsem = False
-
-        atsem_count = number_of_classes if requires_atsem else 0
-
-        assert atsem_count == 0
-
-
-class TestUpdateValidation:
-    """Tests for class structure update validation."""
+    """Tests for ATSEM allocation in Maternelle."""
 
     @pytest.mark.asyncio
-    async def test_update_validates_number_of_classes_positive(self, class_service):
-        """Test number of classes must be > 0."""
-        class_id = uuid.uuid4()
+    async def test_calculate_atsem_for_maternelle(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_maternelle_levels,
+        mock_maternelle_cycle,
+        test_user_id,
+    ):
+        """
+        Test ATSEM allocation for Maternelle levels.
 
-        # Mock existing entry
-        mock_entry = MagicMock()
-        mock_entry.total_students = 100
-        mock_entry.number_of_classes = 4
-        class_service.get_class_structure_by_id = AsyncMock(return_value=mock_entry)
+        Rule: 1 ATSEM per class in Maternelle
+        Example: 3 classes = 3 ATSEMs
+        """
+        level = mock_maternelle_levels[0]  # PS
 
-        with pytest.raises(ValidationError) as exc_info:
-            await class_service.update_class_structure(
-                class_structure_id=class_id,
-                number_of_classes=0,
-            )
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (60, level, mock_maternelle_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_maternelle_cycle.id
+            params.min_class_size = 15
+            params.target_class_size = 20
+            params.max_class_size = 25
 
-        assert "greater than 0" in str(exc_info.value)
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    created = MagicMock()
+                    created.id = uuid.uuid4()
+                    created.number_of_classes = 3  # ceil(60/20) = 3
+                    created.avg_class_size = Decimal("20.0")
+                    created.requires_atsem = True
+                    created.atsem_count = 3  # 1 per class
+                    class_structure_service.base_service = MagicMock()
+                    class_structure_service.base_service.create = AsyncMock(
+                        return_value=created
+                    )
+
+                    result = await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="target",
+                        user_id=test_user_id,
+                    )
+
+                    # Verify ATSEM was set in create call
+                    call_args = class_structure_service.base_service.create.call_args
+                    data = call_args[0][0]
+                    assert data["requires_atsem"] is True
+                    assert data["atsem_count"] == 3
 
     @pytest.mark.asyncio
-    async def test_update_validates_avg_class_size_range(self, class_service):
-        """Test average class size must be 0 < size <= 50."""
-        class_id = uuid.uuid4()
+    async def test_no_atsem_for_college(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """Test no ATSEM allocation for Collège levels."""
+        level = mock_college_levels[0]  # 6ème
 
-        mock_entry = MagicMock()
-        class_service.get_class_structure_by_id = AsyncMock(return_value=mock_entry)
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (75, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
 
-        # Test negative
-        with pytest.raises(ValidationError):
-            await class_service.update_class_structure(
-                class_structure_id=class_id,
-                avg_class_size=Decimal("-5"),
-            )
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    created = MagicMock()
+                    created.id = uuid.uuid4()
+                    created.number_of_classes = 3
+                    created.avg_class_size = Decimal("25.0")
+                    created.requires_atsem = False
+                    created.atsem_count = 0
+                    class_structure_service.base_service = MagicMock()
+                    class_structure_service.base_service.create = AsyncMock(
+                        return_value=created
+                    )
 
-        # Test > 50
-        with pytest.raises(ValidationError):
-            await class_service.update_class_structure(
-                class_structure_id=class_id,
-                avg_class_size=Decimal("55"),
-            )
+                    await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="target",
+                        user_id=test_user_id,
+                    )
+
+                    # Verify no ATSEM
+                    call_args = class_structure_service.base_service.create.call_args
+                    data = call_args[0][0]
+                    assert data["requires_atsem"] is False
+                    assert data["atsem_count"] == 0
+
+
+# ==============================================================================
+# Test: Update Class Structure
+# ==============================================================================
+
+
+class TestUpdateClassStructure:
+    """Tests for updating class structure."""
 
     @pytest.mark.asyncio
-    async def test_update_validates_atsem_count_non_negative(self, class_service):
-        """Test ATSEM count must be >= 0."""
-        class_id = uuid.uuid4()
+    async def test_update_number_of_classes(
+        self,
+        class_structure_service: ClassStructureService,
+        test_user_id,
+    ):
+        """Test updating number of classes."""
+        class_structure_id = uuid.uuid4()
 
-        mock_entry = MagicMock()
-        class_service.get_class_structure_by_id = AsyncMock(return_value=mock_entry)
+        existing = MagicMock(spec=ClassStructure)
+        existing.id = class_structure_id
+        existing.total_students = 75
+        existing.number_of_classes = 3
+        existing.avg_class_size = Decimal("25.0")
 
-        with pytest.raises(ValidationError) as exc_info:
-            await class_service.update_class_structure(
-                class_structure_id=class_id,
-                atsem_count=-1,
+        with patch.object(
+            class_structure_service,
+            "get_class_structure_by_id",
+            return_value=existing,
+        ):
+            updated = MagicMock()
+            updated.number_of_classes = 4
+            updated.avg_class_size = Decimal("18.75")
+            class_structure_service.base_service = MagicMock()
+            class_structure_service.base_service.update = AsyncMock(return_value=updated)
+
+            result = await class_structure_service.update_class_structure(
+                class_structure_id=class_structure_id,
+                number_of_classes=4,
+                user_id=test_user_id,
             )
 
-        assert "non-negative" in str(exc_info.value)
-
-
-class TestRecalculateAverageOnUpdate:
-    """Tests for automatic average recalculation on update."""
+            assert result.number_of_classes == 4
 
     @pytest.mark.asyncio
-    async def test_recalculates_avg_when_students_change(self, class_service):
-        """Test average is recalculated when only students change."""
-        class_id = uuid.uuid4()
+    async def test_update_invalid_number_of_classes(
+        self,
+        class_structure_service: ClassStructureService,
+        test_user_id,
+    ):
+        """Test validation error for invalid number of classes."""
+        class_structure_id = uuid.uuid4()
 
-        mock_entry = MagicMock()
-        mock_entry.total_students = 100
-        mock_entry.number_of_classes = 4
-        class_service.get_class_structure_by_id = AsyncMock(return_value=mock_entry)
-        class_service.base_service.update = AsyncMock(return_value=mock_entry)
+        existing = MagicMock(spec=ClassStructure)
+        existing.id = class_structure_id
 
-        await class_service.update_class_structure(
-            class_structure_id=class_id,
-            total_students=120,  # Changed
+        with patch.object(
+            class_structure_service,
+            "get_class_structure_by_id",
+            return_value=existing,
+        ):
+            with pytest.raises(ValidationError) as exc_info:
+                await class_structure_service.update_class_structure(
+                    class_structure_id=class_structure_id,
+                    number_of_classes=0,
+                    user_id=test_user_id,
+                )
+
+            assert "greater than 0" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_update_invalid_avg_class_size(
+        self,
+        class_structure_service: ClassStructureService,
+        test_user_id,
+    ):
+        """Test validation error for invalid average class size."""
+        class_structure_id = uuid.uuid4()
+
+        existing = MagicMock(spec=ClassStructure)
+        existing.id = class_structure_id
+
+        with patch.object(
+            class_structure_service,
+            "get_class_structure_by_id",
+            return_value=existing,
+        ):
+            with pytest.raises(ValidationError) as exc_info:
+                await class_structure_service.update_class_structure(
+                    class_structure_id=class_structure_id,
+                    avg_class_size=Decimal("55"),  # > 50
+                    user_id=test_user_id,
+                )
+
+            assert "between 0 and 50" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_update_invalid_atsem_count(
+        self,
+        class_structure_service: ClassStructureService,
+        test_user_id,
+    ):
+        """Test validation error for negative ATSEM count."""
+        class_structure_id = uuid.uuid4()
+
+        existing = MagicMock(spec=ClassStructure)
+        existing.id = class_structure_id
+
+        with patch.object(
+            class_structure_service,
+            "get_class_structure_by_id",
+            return_value=existing,
+        ):
+            with pytest.raises(ValidationError) as exc_info:
+                await class_structure_service.update_class_structure(
+                    class_structure_id=class_structure_id,
+                    atsem_count=-1,
+                    user_id=test_user_id,
+                )
+
+            assert "non-negative" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_update_recalculates_avg_class_size(
+        self,
+        class_structure_service: ClassStructureService,
+        test_user_id,
+    ):
+        """Test that updating students/classes recalculates avg_class_size."""
+        class_structure_id = uuid.uuid4()
+
+        existing = MagicMock(spec=ClassStructure)
+        existing.id = class_structure_id
+        existing.total_students = 75
+        existing.number_of_classes = 3
+        existing.avg_class_size = Decimal("25.0")
+
+        with patch.object(
+            class_structure_service,
+            "get_class_structure_by_id",
+            return_value=existing,
+        ):
+            updated = MagicMock()
+            updated.total_students = 80
+            updated.number_of_classes = 3
+            updated.avg_class_size = Decimal("26.67")
+            class_structure_service.base_service = MagicMock()
+            class_structure_service.base_service.update = AsyncMock(return_value=updated)
+
+            await class_structure_service.update_class_structure(
+                class_structure_id=class_structure_id,
+                total_students=80,
+                user_id=test_user_id,
+            )
+
+            # Verify avg_class_size was recalculated
+            call_args = class_structure_service.base_service.update.call_args
+            data = call_args[0][1]
+            assert "avg_class_size" in data
+            # 80 / 3 = 26.67
+            assert data["avg_class_size"] == Decimal("26.67")
+
+
+# ==============================================================================
+# Test: Delete Class Structure
+# ==============================================================================
+
+
+class TestDeleteClassStructure:
+    """Tests for deleting class structure."""
+
+    @pytest.mark.asyncio
+    async def test_delete_success(
+        self,
+        class_structure_service: ClassStructureService,
+    ):
+        """Test successful deletion of class structure."""
+        class_structure_id = uuid.uuid4()
+
+        class_structure_service.base_service = MagicMock()
+        class_structure_service.base_service.delete = AsyncMock(return_value=True)
+
+        result = await class_structure_service.delete_class_structure(
+            class_structure_id=class_structure_id,
         )
 
-        # Should have called update with recalculated average
-        call_args = class_service.base_service.update.call_args
-        update_data = call_args[0][1]
-
-        # 120 students / 4 classes = 30.00 avg
-        assert update_data["avg_class_size"] == Decimal("30.00")
-
-    @pytest.mark.asyncio
-    async def test_recalculates_avg_when_classes_change(self, class_service):
-        """Test average is recalculated when only classes change."""
-        class_id = uuid.uuid4()
-
-        mock_entry = MagicMock()
-        mock_entry.total_students = 100
-        mock_entry.number_of_classes = 4
-        class_service.get_class_structure_by_id = AsyncMock(return_value=mock_entry)
-        class_service.base_service.update = AsyncMock(return_value=mock_entry)
-
-        await class_service.update_class_structure(
-            class_structure_id=class_id,
-            number_of_classes=5,  # Changed
+        assert result is True
+        class_structure_service.base_service.delete.assert_called_once_with(
+            class_structure_id
         )
 
-        call_args = class_service.base_service.update.call_args
-        update_data = call_args[0][1]
 
-        # 100 students / 5 classes = 20.00 avg
-        assert update_data["avg_class_size"] == Decimal("20.00")
+# ==============================================================================
+# Test: Business Rule Validation
+# ==============================================================================
 
 
-class TestBusinessRuleErrors:
-    """Tests for business rule error scenarios."""
-
-    @pytest.mark.asyncio
-    async def test_no_enrollment_data_error(self, class_service):
-        """Test error when no enrollment data exists."""
-        class_service._get_enrollment_by_level = AsyncMock(return_value={})
-
-        with pytest.raises(BusinessRuleError) as exc_info:
-            await class_service.calculate_class_structure(uuid.uuid4())
-
-        assert exc_info.value.details.get("rule") == "NO_ENROLLMENT_DATA"
+class TestBusinessRuleValidation:
+    """Tests for business rule enforcement."""
 
     @pytest.mark.asyncio
-    async def test_no_class_size_params_error(self, class_service):
-        """Test error when no class size parameters exist."""
-        # Mock enrollment exists
-        mock_level = MagicMock()
-        mock_level.code = "6eme"
-        mock_level.cycle_id = uuid.uuid4()
-        mock_cycle = MagicMock()
-        mock_cycle.requires_atsem = False
+    async def test_avg_class_size_below_minimum(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """
+        Test validation when avg class size falls below minimum.
 
-        class_service._get_enrollment_by_level = AsyncMock(return_value={
-            uuid.uuid4(): (100, mock_level, mock_cycle)
-        })
-        class_service._get_class_size_params = AsyncMock(return_value=[])
+        Rule: min_class_size < target_class_size ≤ max_class_size
+        """
+        level = mock_college_levels[0]
 
-        with pytest.raises(BusinessRuleError) as exc_info:
-            await class_service.calculate_class_structure(uuid.uuid4())
+        # 20 students / 2 classes (via override) = 10 avg (below min of 20)
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (20, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
 
-        assert exc_info.value.details.get("rule") == "NO_CLASS_SIZE_PARAMS"
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    with pytest.raises(BusinessRuleError) as exc_info:
+                        await class_structure_service.calculate_class_structure(
+                            version_id=mock_budget_version_id,
+                            method="target",
+                            override_by_level={str(level.id): 2},  # Forces avg = 10
+                            user_id=test_user_id,
+                        )
 
-
-class TestFrenchEducationLevels:
-    """Tests for French education system level handling."""
-
-    def test_maternelle_requires_atsem(self):
-        """Test Maternelle levels (PS, MS, GS) require ATSEM."""
-        maternelle_levels = ["PS", "MS", "GS"]
-        for level in maternelle_levels:
-            # By business rule, Maternelle cycle has requires_atsem = True
-            assert level in ["PS", "MS", "GS"]
-
-    def test_elementaire_levels(self):
-        """Test Élémentaire levels are correctly identified."""
-        elementaire_levels = ["CP", "CE1", "CE2", "CM1", "CM2"]
-        assert len(elementaire_levels) == 5
-
-    def test_college_levels(self):
-        """Test Collège levels are correctly identified."""
-        college_levels = ["6ème", "5ème", "4ème", "3ème"]
-        assert len(college_levels) == 4
-
-    def test_lycee_levels(self):
-        """Test Lycée levels are correctly identified."""
-        lycee_levels = ["2nde", "1ère", "Terminale"]
-        assert len(lycee_levels) == 3
-
-
-class TestClassSizeConstraints:
-    """Tests for class size constraint validation."""
-
-    def test_typical_class_size_ranges(self):
-        """Test typical class size ranges by cycle."""
-        # Maternelle typically has smaller classes
-        maternelle_min, maternelle_max = 20, 28
-
-        # Élémentaire
-        elementaire_min, elementaire_max = 20, 28
-
-        # Collège/Lycée can be slightly larger
-        secondary_min, secondary_max = 25, 35
-
-        assert maternelle_min < maternelle_max
-        assert elementaire_min < elementaire_max
-        assert secondary_min < secondary_max
-
-    def test_efir_class_size_constraints(self):
-        """Test EFIR-specific class size constraints."""
-        # Based on EFIR school profile
-        max_students = 1875
-        avg_class_size = 25
-        expected_classes = ceil(max_students / avg_class_size)
-
-        assert expected_classes == 75
-
-
-class TestCustomOverrides:
-    """Tests for custom class count overrides."""
+                    assert "below minimum" in str(exc_info.value)
 
     @pytest.mark.asyncio
-    async def test_override_uses_custom_method(self, class_service):
-        """Test that custom override sets method to 'custom'."""
-        version_id = uuid.uuid4()
-        level_id = uuid.uuid4()
+    async def test_avg_class_size_exceeds_maximum(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """Test validation when avg class size exceeds maximum."""
+        level = mock_college_levels[0]
 
-        # Mock data
-        mock_level = MagicMock()
-        mock_level.code = "6eme"
-        mock_level.cycle_id = uuid.uuid4()
-        mock_cycle = MagicMock()
-        mock_cycle.requires_atsem = False
+        # 100 students / 3 classes = 33.33 avg (above max of 30)
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (100, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
 
-        mock_params = MagicMock()
-        mock_params.level_id = level_id
-        mock_params.cycle_id = None
-        mock_params.min_class_size = 20
-        mock_params.max_class_size = 30
-        mock_params.target_class_size = 25
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    with pytest.raises(BusinessRuleError) as exc_info:
+                        await class_structure_service.calculate_class_structure(
+                            version_id=mock_budget_version_id,
+                            method="target",
+                            override_by_level={str(level.id): 3},  # Forces avg = 33.33
+                            user_id=test_user_id,
+                        )
 
-        class_service._get_enrollment_by_level = AsyncMock(return_value={
-            level_id: (100, mock_level, mock_cycle)
-        })
-        class_service._get_class_size_params = AsyncMock(return_value=[mock_params])
-        class_service.get_class_structure = AsyncMock(return_value=[])
-        class_service.base_service.create = AsyncMock(return_value=MagicMock())
+                    assert "exceeds maximum" in str(exc_info.value)
 
-        await class_service.calculate_class_structure(
-            version_id=version_id,
-            override_by_level={str(level_id): 5},  # Force 5 classes
-        )
+    @pytest.mark.asyncio
+    async def test_missing_params_for_level(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """Test validation when no class size params exist for a level."""
+        level = mock_college_levels[0]
+        another_level = mock_college_levels[1]
 
-        # Verify create was called with custom method
-        call_args = class_service.base_service.create.call_args
-        data = call_args[0][0]
-        assert data["calculation_method"] == "custom"
-        assert data["number_of_classes"] == 5
+        # Enrollment for 6ème, but params only for 5ème
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (75, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = another_level.id  # Different level
+            params.cycle_id = None  # No cycle fallback
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
+
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    with pytest.raises(BusinessRuleError) as exc_info:
+                        await class_structure_service.calculate_class_structure(
+                            version_id=mock_budget_version_id,
+                            method="target",
+                            user_id=test_user_id,
+                        )
+
+                    assert "No class size parameters found for level" in str(exc_info.value)
+
+
+# ==============================================================================
+# Test: Edge Cases
+# ==============================================================================
+
+
+class TestEdgeCases:
+    """Tests for edge cases and boundary conditions."""
+
+    @pytest.mark.asyncio
+    async def test_single_student_creates_one_class(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """Test that a single student creates exactly one class."""
+        level = mock_college_levels[0]
+
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (1, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 1  # Allow single student class
+            params.target_class_size = 25
+            params.max_class_size = 30
+
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[],
+                ):
+                    created = MagicMock()
+                    created.number_of_classes = 1
+                    class_structure_service.base_service = MagicMock()
+                    class_structure_service.base_service.create = AsyncMock(
+                        return_value=created
+                    )
+
+                    result = await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="target",
+                        user_id=test_user_id,
+                    )
+
+                    call_args = class_structure_service.base_service.create.call_args
+                    data = call_args[0][0]
+                    assert data["number_of_classes"] == 1
+
+    @pytest.mark.asyncio
+    async def test_update_existing_structure(
+        self,
+        class_structure_service: ClassStructureService,
+        mock_budget_version_id,
+        mock_college_levels,
+        mock_college_cycle,
+        test_user_id,
+    ):
+        """Test that existing structures are updated instead of created."""
+        level = mock_college_levels[0]
+
+        with patch.object(
+            class_structure_service,
+            "_get_enrollment_by_level",
+            return_value={level.id: (75, level, mock_college_cycle)},
+        ):
+            params = MagicMock(spec=ClassSizeParam)
+            params.level_id = level.id
+            params.cycle_id = mock_college_cycle.id
+            params.min_class_size = 20
+            params.target_class_size = 25
+            params.max_class_size = 30
+
+            with patch.object(
+                class_structure_service,
+                "_get_class_size_params",
+                return_value=[params],
+            ):
+                # Existing structure
+                existing = MagicMock(spec=ClassStructure)
+                existing.id = uuid.uuid4()
+                existing.level_id = level.id
+                existing.number_of_classes = 2
+
+                with patch.object(
+                    class_structure_service,
+                    "get_class_structure",
+                    return_value=[existing],
+                ):
+                    updated = MagicMock()
+                    updated.number_of_classes = 3
+                    class_structure_service.base_service = MagicMock()
+                    class_structure_service.base_service.update = AsyncMock(
+                        return_value=updated
+                    )
+
+                    await class_structure_service.calculate_class_structure(
+                        version_id=mock_budget_version_id,
+                        method="target",
+                        user_id=test_user_id,
+                    )
+
+                    # Should call update, not create
+                    class_structure_service.base_service.update.assert_called_once()

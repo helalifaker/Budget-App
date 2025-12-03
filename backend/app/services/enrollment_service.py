@@ -66,6 +66,8 @@ class EnrollmentService:
         """
         query = (
             select(EnrollmentPlan)
+            .join(EnrollmentPlan.level)
+            .join(EnrollmentPlan.nationality_type)
             .where(
                 and_(
                     EnrollmentPlan.budget_version_id == version_id,
@@ -76,8 +78,6 @@ class EnrollmentService:
                 selectinload(EnrollmentPlan.level).selectinload(AcademicLevel.cycle),
                 selectinload(EnrollmentPlan.nationality_type),
                 selectinload(EnrollmentPlan.budget_version),
-                selectinload(EnrollmentPlan.created_by),
-                selectinload(EnrollmentPlan.updated_by),
             )
             .order_by(
                 AcademicLevel.sort_order,

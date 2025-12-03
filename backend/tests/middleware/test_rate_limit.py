@@ -1,278 +1,265 @@
 """
-Unit tests for Rate Limiting Middleware.
+Tests for rate limiting middleware.
+
+Covers:
+- Basic rate limiting enforcement
+- Category-based limits
+- Role-based multipliers
+- Redis fallback behavior
+- Rate limit headers
 """
 
-from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+from fastapi import FastAPI, Request
+from fastapi.testclient import TestClient
+from starlette.responses import Response
+
+from app.middleware.rate_limit import (
+    RateLimitMiddleware,
+    get_client_identifier,
+    get_rate_limit_category,
+    get_user_role,
+    RATE_LIMITS,
+    ROLE_MULTIPLIERS,
+)
 
 
-class TestRateLimitConfiguration:
-    """Tests for rate limiting configuration."""
-
-    def test_default_rate_limit_per_minute(self):
-        """Test default rate limit is 300 requests per minute."""
-        default_limit = 300
-        assert default_limit > 0
-        assert default_limit == 300
-
-    def test_strict_rate_limit_for_auth(self):
-        """Test stricter limit for auth endpoints is 10/minute."""
-        strict_limit = 10
-        assert strict_limit < 300
-        assert strict_limit == 10
-
-    def test_exempt_paths(self):
-        """Test health check paths are exempt from rate limiting."""
-        exempt_paths = ["/health", "/health/live", "/health/ready"]
-
-        for path in exempt_paths:
-            assert path.startswith("/health")
-
-    def test_strict_rate_limit_paths(self):
-        """Test authentication endpoints have stricter limits."""
-        strict_paths = [
-            "/api/v1/auth/login",
-            "/api/v1/auth/register",
-        ]
-
-        for path in strict_paths:
-            assert "/auth/" in path
-
-
-class TestTokenBucketAlgorithm:
-    """Tests for token bucket rate limiting algorithm."""
-
-    def test_token_bucket_initial_tokens(self):
-        """Test bucket starts with max tokens."""
-        max_tokens = 300
-        initial_tokens = max_tokens
-        assert initial_tokens == max_tokens
-
-    def test_token_bucket_refill_rate(self):
-        """Test token refill rate calculation."""
-        max_tokens = 300
-        window_seconds = 60
-
-        tokens_per_second = max_tokens / window_seconds
-
-        assert tokens_per_second == 5.0  # 300 tokens / 60 seconds
-
-    def test_token_consumption_per_request(self):
-        """Test each request consumes one token."""
-        tokens_before = 100
-        tokens_after_request = tokens_before - 1
-
-        assert tokens_after_request == 99
-
-    def test_request_denied_when_no_tokens(self):
-        """Test request is denied when bucket is empty."""
-        tokens = 0
-        should_allow = tokens > 0
-
-        assert should_allow is False
-
-    def test_request_allowed_when_tokens_available(self):
-        """Test request is allowed when tokens are available."""
-        tokens = 50
-        should_allow = tokens > 0
-
-        assert should_allow is True
-
-
-class TestTokenRefillCalculation:
-    """Tests for token refill timing."""
-
-    def test_refill_tokens_after_time(self):
-        """Test tokens are refilled based on elapsed time."""
-        tokens_per_second = 5.0
-        elapsed_seconds = 10
-
-        tokens_to_add = tokens_per_second * elapsed_seconds
-
-        assert tokens_to_add == 50.0
-
-    def test_tokens_capped_at_max(self):
-        """Test tokens don't exceed maximum."""
-        max_tokens = 300
-        current_tokens = 280
-        tokens_to_add = 100
-
-        new_tokens = min(current_tokens + tokens_to_add, max_tokens)
-
-        assert new_tokens == 300
-
-    def test_fractional_tokens_handling(self):
-        """Test fractional tokens are preserved."""
-        tokens = Decimal("99.5")
-        tokens_consumed = Decimal("1")
-
-        remaining = tokens - tokens_consumed
-
-        assert remaining == Decimal("98.5")
+# ==============================================================================
+# Test: Client Identification
+# ==============================================================================
 
 
 class TestClientIdentification:
-    """Tests for client identification in rate limiting."""
+    """Tests for client identification logic."""
 
-    def test_ip_based_identification(self):
-        """Test clients are identified by IP address."""
-        client_ip = "192.168.1.100"
-        rate_limit_key = f"rate_limit:{client_ip}"
+    def test_get_client_identifier_with_user(self):
+        """Test identification with authenticated user."""
+        request = MagicMock(spec=Request)
+        user = MagicMock()
+        user.id = "user-123"
+        request.state.user = user
+        request.headers = {}
 
-        assert client_ip in rate_limit_key
+        result = get_client_identifier(request)
 
-    def test_user_based_identification(self):
-        """Test authenticated users are identified by user ID."""
-        user_id = "user-123"
-        rate_limit_key = f"rate_limit:user:{user_id}"
+        assert result == "user:user-123"
 
-        assert user_id in rate_limit_key
+    def test_get_client_identifier_with_forwarded_ip(self):
+        """Test identification with X-Forwarded-For header."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock(spec=[])  # No user attribute
+        request.headers = {"X-Forwarded-For": "192.168.1.1, 10.0.0.1"}
+        request.client = MagicMock()
+        request.client.host = "127.0.0.1"
 
-    def test_x_forwarded_for_handling(self):
-        """Test X-Forwarded-For header is used for proxied requests."""
-        forwarded_ip = "10.0.0.1"
-        x_forwarded_for = f"{forwarded_ip}, 192.168.1.1, 172.16.0.1"
+        result = get_client_identifier(request)
 
-        # First IP in chain is the actual client
-        actual_client_ip = x_forwarded_for.split(",")[0].strip()
+        assert result == "ip:192.168.1.1"
 
-        assert actual_client_ip == forwarded_ip
+    def test_get_client_identifier_with_direct_ip(self):
+        """Test identification with direct client IP."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock(spec=[])  # No user attribute
+        request.headers = {}
+        request.client = MagicMock()
+        request.client.host = "192.168.1.100"
 
+        result = get_client_identifier(request)
 
-class TestRateLimitResponse:
-    """Tests for rate limit response headers and status."""
-
-    def test_rate_limit_exceeded_status(self):
-        """Test rate limit exceeded returns 429 status."""
-        status_code = 429
-        assert status_code == 429
-
-    def test_rate_limit_headers(self):
-        """Test rate limit headers are included in response."""
-        expected_headers = [
-            "X-RateLimit-Limit",
-            "X-RateLimit-Remaining",
-            "X-RateLimit-Reset",
-        ]
-
-        for header in expected_headers:
-            assert header.startswith("X-RateLimit")
-
-    def test_retry_after_header(self):
-        """Test Retry-After header is included when rate limited."""
-        retry_after_seconds = 60
-        assert retry_after_seconds > 0
+        assert result == "ip:192.168.1.100"
 
 
-class TestRateLimitByEndpoint:
-    """Tests for endpoint-specific rate limits."""
-
-    def test_auth_endpoints_stricter(self):
-        """Test auth endpoints have stricter rate limits."""
-        general_limit = 300
-        auth_limit = 10
-
-        assert auth_limit < general_limit
-
-    def test_api_endpoints_standard_limit(self):
-        """Test API endpoints use standard rate limit."""
-        api_paths = [
-            "/api/v1/enrollments",
-            "/api/v1/revenue",
-            "/api/v1/costs",
-        ]
-
-        standard_limit = 300
-
-        for path in api_paths:
-            # These should use standard limit (300)
-            assert path.startswith("/api/v1")
-
-    def test_health_endpoints_no_limit(self):
-        """Test health endpoints have no rate limit."""
-        health_paths = ["/health", "/health/live", "/health/ready"]
-
-        for path in health_paths:
-            assert path.startswith("/health")
+# ==============================================================================
+# Test: Category Detection
+# ==============================================================================
 
 
-class TestInMemoryRateLimit:
-    """Tests for in-memory rate limit fallback."""
+class TestCategoryDetection:
+    """Tests for rate limit category detection."""
 
-    def test_in_memory_storage_structure(self):
-        """Test in-memory storage uses dict structure."""
-        storage = {}
-        client_key = "192.168.1.1"
+    def test_calculations_category(self):
+        """Test calculations path detection."""
+        assert get_rate_limit_category("/api/v1/calculations/dhg") == "calculations"
 
-        storage[client_key] = {
-            "tokens": 300,
-            "last_refill": 1234567890.0,
-        }
+    def test_consolidation_category(self):
+        """Test consolidation path detection."""
+        assert get_rate_limit_category("/api/v1/consolidation/submit") == "consolidation"
 
-        assert client_key in storage
-        assert storage[client_key]["tokens"] == 300
+    def test_export_category(self):
+        """Test export path detection."""
+        assert get_rate_limit_category("/api/v1/analysis/export/pdf") == "export"
 
-    def test_in_memory_cleanup_threshold(self):
-        """Test in-memory storage is cleaned after threshold."""
-        max_entries = 10000
-        current_entries = 15000
+    def test_default_category(self):
+        """Test default category for unknown paths."""
+        assert get_rate_limit_category("/api/v1/unknown/path") == "default"
 
-        should_cleanup = current_entries > max_entries
-
-        assert should_cleanup is True
-
-    def test_entry_expiration(self):
-        """Test entries expire after window period."""
-        window_seconds = 60
-        entry_age_seconds = 120
-
-        is_expired = entry_age_seconds > window_seconds
-
-        assert is_expired is True
+    def test_read_category(self):
+        """Test read category for configuration paths."""
+        assert get_rate_limit_category("/api/v1/configuration/version") == "read"
 
 
-class TestRateLimitWithRedis:
-    """Tests for Redis-based rate limiting."""
-
-    def test_redis_key_format(self):
-        """Test Redis key format for rate limits."""
-        client_ip = "192.168.1.100"
-        key = f"rate_limit:{client_ip}"
-
-        assert key.startswith("rate_limit:")
-        assert client_ip in key
-
-    def test_redis_ttl_setting(self):
-        """Test Redis TTL is set for rate limit keys."""
-        window_seconds = 60
-        ttl = window_seconds * 2  # 2x window for safety
-
-        assert ttl == 120
-
-    def test_redis_pipeline_for_atomic_operations(self):
-        """Test Redis pipeline is used for atomic operations."""
-        # Rate limiting should use atomic operations
-        operations = ["GET", "SET", "EXPIRE"]
-
-        for op in operations:
-            assert op in ["GET", "SET", "EXPIRE", "INCR", "DECR"]
+# ==============================================================================
+# Test: Role Detection
+# ==============================================================================
 
 
-class TestRateLimitLogging:
-    """Tests for rate limit logging."""
+class TestRoleDetection:
+    """Tests for user role detection."""
 
-    def test_log_rate_limit_exceeded(self):
-        """Test rate limit exceeded events are logged."""
-        log_message = "Rate limit exceeded for client 192.168.1.1"
+    def test_get_user_role_with_role(self):
+        """Test role detection with authenticated user."""
+        request = MagicMock(spec=Request)
+        user = MagicMock()
+        user.role = "ADMIN"
+        request.state.user = user
 
-        assert "Rate limit exceeded" in log_message
-        assert "192.168.1.1" in log_message
+        result = get_user_role(request)
 
-    def test_log_includes_endpoint(self):
-        """Test log includes the endpoint that was rate limited."""
-        endpoint = "/api/v1/auth/login"
-        log_message = f"Rate limit exceeded for {endpoint}"
+        assert result == "admin"
 
-        assert endpoint in log_message
+    def test_get_user_role_default(self):
+        """Test default role when no user."""
+        request = MagicMock(spec=Request)
+        request.state = MagicMock(spec=[])  # No user attribute
+
+        result = get_user_role(request)
+
+        assert result == "viewer"
+
+
+# ==============================================================================
+# Test: Rate Limit Configuration
+# ==============================================================================
+
+
+class TestRateLimitConfiguration:
+    """Tests for rate limit configuration."""
+
+    def test_rate_limits_defined(self):
+        """Test that required rate limit categories are defined."""
+        assert "default" in RATE_LIMITS
+        assert "calculations" in RATE_LIMITS
+        assert "consolidation" in RATE_LIMITS
+        assert "export" in RATE_LIMITS
+        assert "read" in RATE_LIMITS
+
+    def test_rate_limits_have_required_keys(self):
+        """Test that rate limits have required configuration."""
+        for category, config in RATE_LIMITS.items():
+            assert "requests" in config, f"{category} missing 'requests'"
+            assert "window" in config, f"{category} missing 'window'"
+            assert config["requests"] > 0
+            assert config["window"] > 0
+
+    def test_role_multipliers_defined(self):
+        """Test that role multipliers are defined."""
+        assert "admin" in ROLE_MULTIPLIERS
+        assert "finance_director" in ROLE_MULTIPLIERS
+        assert "viewer" in ROLE_MULTIPLIERS
+
+    def test_admin_has_highest_multiplier(self):
+        """Test that admin has highest multiplier."""
+        admin_mult = ROLE_MULTIPLIERS["admin"]
+        for role, mult in ROLE_MULTIPLIERS.items():
+            assert admin_mult >= mult
+
+
+# ==============================================================================
+# Test: Middleware Integration
+# ==============================================================================
+
+
+class TestRateLimitMiddleware:
+    """Tests for rate limit middleware integration."""
+
+    @pytest.fixture
+    def app(self):
+        """Create test FastAPI app."""
+        app = FastAPI()
+        app.add_middleware(RateLimitMiddleware)
+
+        @app.get("/test")
+        async def test_endpoint():
+            return {"status": "ok"}
+
+        @app.get("/health")
+        async def health_endpoint():
+            return {"status": "healthy"}
+
+        return app
+
+    @pytest.fixture
+    def client(self, app):
+        """Create test client."""
+        return TestClient(app)
+
+    def test_rate_limit_headers_present(self, client):
+        """Test that rate limit headers are added to response."""
+        with patch("app.middleware.rate_limit.RATE_LIMIT_ENABLED", True):
+            with patch("app.middleware.rate_limit.REDIS_ENABLED", False):
+                response = client.get("/test")
+
+                assert response.status_code == 200
+                assert "X-RateLimit-Limit" in response.headers
+                assert "X-RateLimit-Remaining" in response.headers
+                assert "X-RateLimit-Reset" in response.headers
+
+    def test_health_check_bypasses_rate_limit(self, client):
+        """Test that health check endpoints bypass rate limiting."""
+        # Health checks should always succeed
+        for _ in range(10):
+            response = client.get("/health")
+            assert response.status_code == 200
+
+    @patch("app.middleware.rate_limit.RATE_LIMIT_ENABLED", False)
+    def test_rate_limit_disabled(self, client):
+        """Test behavior when rate limiting is disabled."""
+        # Should not add rate limit headers when disabled
+        response = client.get("/test")
+        assert response.status_code == 200
+
+
+# ==============================================================================
+# Test: Redis Integration
+# ==============================================================================
+
+
+class TestRedisIntegration:
+    """Tests for Redis-backed rate limiting."""
+
+    @pytest.mark.asyncio
+    async def test_check_rate_limit_redis_disabled(self):
+        """Test graceful degradation when Redis disabled."""
+        middleware = RateLimitMiddleware(app=None)
+
+        with patch("app.middleware.rate_limit.REDIS_ENABLED", False):
+            is_allowed, count, reset = await middleware._check_rate_limit(
+                client_id="test-client",
+                category="default",
+                max_requests=10,
+                window=60,
+            )
+
+            assert is_allowed is True
+            assert count == 0
+
+    @pytest.mark.asyncio
+    async def test_check_rate_limit_redis_error(self):
+        """Test graceful degradation on Redis error."""
+        middleware = RateLimitMiddleware(app=None)
+
+        with patch("app.middleware.rate_limit.REDIS_ENABLED", True):
+            with patch(
+                "app.core.cache.get_redis_client",
+                side_effect=Exception("Redis connection failed"),
+            ):
+                is_allowed, count, reset = await middleware._check_rate_limit(
+                    client_id="test-client",
+                    category="default",
+                    max_requests=10,
+                    window=60,
+                )
+
+                # Should allow request on error
+                assert is_allowed is True

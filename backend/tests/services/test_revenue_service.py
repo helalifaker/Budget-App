@@ -1,241 +1,693 @@
 """
 Tests for RevenueService.
 
-Comprehensive tests for revenue calculations including:
-- Tuition revenue calculation with fee structure
-- Sibling discount application (25% for 3rd+ child)
-- Trimester distribution (40%/30%/30%)
-- DAI and registration fee handling
-- Nationality-based fee variations
+Tests cover:
+- Revenue plan CRUD operations
+- Account code validation (70xxx-77xxx)
+- Revenue calculation from enrollment and fees
+- Trimester distribution (T1: 40%, T2: 30%, T3: 30%)
+- Sibling discount application
+- Revenue summary statistics
 """
 
 import uuid
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.configuration import BudgetVersion, BudgetVersionStatus
+from app.models.configuration import BudgetVersion, FeeStructure
+from app.models.planning import EnrollmentPlan, RevenuePlan
+from app.services.exceptions import NotFoundError, ValidationError
 from app.services.revenue_service import RevenueService
 
 
-class TestTuitionRevenueCalculation:
-    """Tests for tuition revenue calculation."""
+class TestRevenueServiceCRUD:
+    """Tests for basic CRUD operations."""
 
-    def test_basic_tuition_calculation(self):
-        """Test basic tuition calculation: students × fee amount."""
-        student_count = 100
-        fee_amount = Decimal("30000")  # 30,000 SAR
+    @pytest.mark.asyncio
+    async def test_get_revenue_plan_empty(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+    ):
+        """Test retrieving empty revenue plan."""
+        service = RevenueService(db_session)
 
-        expected_revenue = student_count * fee_amount
-        assert expected_revenue == Decimal("3000000")
+        result = await service.get_revenue_plan(test_budget_version.id)
 
-    def test_trimester_distribution_percentages(self):
-        """Test that trimester distribution adds up to 100%."""
-        t1_pct = Decimal("0.40")  # 40%
-        t2_pct = Decimal("0.30")  # 30%
-        t3_pct = Decimal("0.30")  # 30%
+        assert result == []
 
-        total = t1_pct + t2_pct + t3_pct
-        assert total == Decimal("1.00")
+    @pytest.mark.asyncio
+    async def test_create_revenue_entry_success(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test creating a revenue entry."""
+        service = RevenueService(db_session)
 
-    def test_trimester_revenue_distribution(self):
-        """Test revenue distribution across trimesters."""
-        annual_revenue = Decimal("3000000")
+        result = await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70110",
+            description="Scolarité Trimestre 1",
+            category="tuition",
+            amount_sar=Decimal("1000000.00"),
+            is_calculated=False,
+            trimester=1,
+            notes="Test entry",
+            user_id=test_user_id,
+        )
 
-        t1_revenue = annual_revenue * Decimal("0.40")  # 40%
-        t2_revenue = annual_revenue * Decimal("0.30")  # 30%
-        t3_revenue = annual_revenue * Decimal("0.30")  # 30%
+        assert result.id is not None
+        assert result.account_code == "70110"
+        assert result.amount_sar == Decimal("1000000.00")
+        assert result.trimester == 1
 
-        assert t1_revenue == Decimal("1200000")
-        assert t2_revenue == Decimal("900000")
-        assert t3_revenue == Decimal("900000")
-        assert t1_revenue + t2_revenue + t3_revenue == annual_revenue
+    @pytest.mark.asyncio
+    async def test_create_revenue_entry_update_existing(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test creating revenue entry updates existing entry with same account code."""
+        service = RevenueService(db_session)
 
+        # Create first entry
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70110",
+            description="Original",
+            category="tuition",
+            amount_sar=Decimal("1000000.00"),
+            user_id=test_user_id,
+        )
 
-class TestSiblingDiscount:
-    """Tests for sibling discount calculations."""
+        # Create second entry with same account code
+        result = await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70110",
+            description="Updated",
+            category="tuition",
+            amount_sar=Decimal("1500000.00"),
+            user_id=test_user_id,
+        )
 
-    def test_sibling_discount_rate(self):
-        """Test that sibling discount is 25% for 3rd+ child."""
-        discount_rate = Decimal("0.25")  # 25%
-        assert discount_rate == Decimal("0.25")
+        # Should update, not create new
+        all_entries = await service.get_revenue_plan(test_budget_version.id)
+        tuition_entries = [e for e in all_entries if e.account_code == "70110"]
 
-    def test_sibling_discount_applied_to_tuition_only(self):
-        """Test that sibling discount applies only to tuition, not DAI."""
-        tuition_fee = Decimal("30000")
-        dai_fee = Decimal("3000")
-        discount_rate = Decimal("0.25")
+        assert len(tuition_entries) == 1
+        assert result.amount_sar == Decimal("1500000.00")
+        assert result.description == "Updated"
 
-        # Discount applies to tuition only
-        discounted_tuition = tuition_fee * (1 - discount_rate)
-        total_with_discount = discounted_tuition + dai_fee  # DAI unchanged
+    @pytest.mark.asyncio
+    async def test_get_revenue_by_account(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test retrieving revenue by account code."""
+        service = RevenueService(db_session)
 
-        assert discounted_tuition == Decimal("22500")  # 30000 * 0.75
-        assert total_with_discount == Decimal("25500")  # 22500 + 3000
+        # Create entry
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70200",
+            description="DAI Revenue",
+            category="fees",
+            amount_sar=Decimal("500000.00"),
+            user_id=test_user_id,
+        )
 
-    def test_no_discount_for_first_two_children(self):
-        """Test that first and second children pay full price."""
-        tuition_fee = Decimal("30000")
-        child_order = 1  # First child
+        result = await service.get_revenue_by_account(
+            test_budget_version.id,
+            "70200",
+        )
 
-        # No discount for 1st or 2nd child
-        if child_order < 3:
-            discount = Decimal("0")
-        else:
-            discount = tuition_fee * Decimal("0.25")
+        assert result is not None
+        assert result.account_code == "70200"
+        assert result.amount_sar == Decimal("500000.00")
 
-        assert discount == Decimal("0")
+    @pytest.mark.asyncio
+    async def test_get_revenue_by_account_not_found(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+    ):
+        """Test retrieving non-existent revenue returns None."""
+        service = RevenueService(db_session)
 
-    def test_discount_applied_for_third_child(self):
-        """Test that third child gets 25% discount."""
-        tuition_fee = Decimal("30000")
-        child_order = 3  # Third child
+        result = await service.get_revenue_by_account(
+            test_budget_version.id,
+            "70999",  # Non-existent
+        )
 
-        if child_order >= 3:
-            discount = tuition_fee * Decimal("0.25")
-        else:
-            discount = Decimal("0")
+        assert result is None
 
-        assert discount == Decimal("7500")  # 30000 * 0.25
+    @pytest.mark.asyncio
+    async def test_delete_revenue_entry(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test deleting a revenue entry."""
+        service = RevenueService(db_session)
 
+        # Create entry
+        entry = await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70300",
+            description="Test entry",
+            category="other",
+            amount_sar=Decimal("100000.00"),
+            user_id=test_user_id,
+        )
 
-class TestNationalityBasedFees:
-    """Tests for nationality-based fee variations."""
+        # Delete
+        result = await service.delete_revenue_entry(entry.id)
 
-    def test_french_students_ttc_pricing(self):
-        """Test that French students use TTC (tax-inclusive) pricing."""
-        # French students pay TTC prices
-        base_fee = Decimal("30000")
-        fee_type = "TTC"
+        assert result is True
 
-        assert fee_type == "TTC"
-        assert base_fee > 0
-
-    def test_saudi_students_ht_pricing(self):
-        """Test that Saudi students use HT (tax-exclusive) pricing."""
-        # Saudi students pay HT prices
-        base_fee = Decimal("28500")  # Lower due to HT
-        fee_type = "HT"
-
-        assert fee_type == "HT"
-        assert base_fee > 0
-
-    def test_other_nationality_ttc_pricing(self):
-        """Test that other nationalities use TTC pricing."""
-        # Other nationalities pay TTC prices like French
-        fee_type = "TTC"
-        assert fee_type == "TTC"
-
-
-class TestDAICalculation:
-    """Tests for DAI (Droit Annuel d'Inscription) calculations."""
-
-    def test_dai_not_subject_to_sibling_discount(self):
-        """Test that DAI is not reduced by sibling discount."""
-        dai_fee = Decimal("3000")
-        sibling_discount_rate = Decimal("0.25")
-
-        # DAI should not be discounted
-        dai_after_discount = dai_fee  # Unchanged
-
-        assert dai_after_discount == dai_fee
-
-    def test_dai_per_student(self):
-        """Test DAI calculation per student."""
-        dai_fee = Decimal("3000")
-        student_count = 100
-
-        total_dai_revenue = dai_fee * student_count
-        assert total_dai_revenue == Decimal("300000")
-
-
-class TestRevenueAccountCodes:
-    """Tests for revenue account code mapping."""
-
-    def test_tuition_account_codes_structure(self):
-        """Test tuition revenue account codes follow PCG pattern."""
-        # Revenue accounts are in 70xxx range
-        t1_code = "70110"  # Tuition T1
-        t2_code = "70120"  # Tuition T2
-        t3_code = "70130"  # Tuition T3
-
-        assert t1_code.startswith("70")
-        assert t2_code.startswith("70")
-        assert t3_code.startswith("70")
-
-    def test_dai_account_code(self):
-        """Test DAI revenue account code."""
-        dai_code = "70200"  # DAI
-
-        assert dai_code.startswith("70")
-
-    def test_registration_fee_account_code(self):
-        """Test registration fee account code."""
-        registration_code = "70300"  # Registration fee
-
-        assert registration_code.startswith("70")
-
-
-class TestRevenueService:
-    """Tests for RevenueService class."""
-
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock database session."""
-        session = AsyncMock()
-        session.flush = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def revenue_service(self, mock_session):
-        """Create RevenueService with mock session."""
-        return RevenueService(mock_session)
-
-    def test_service_initialization(self, revenue_service, mock_session):
-        """Test that RevenueService initializes correctly."""
-        assert revenue_service.session == mock_session
+        # Verify deleted
+        deleted = await service.get_revenue_by_account(
+            test_budget_version.id,
+            "70300",
+        )
+        assert deleted is None
 
 
-class TestRevenueProjectionLogic:
-    """Tests for revenue projection calculations."""
+class TestRevenueServiceAccountValidation:
+    """Tests for account code validation."""
 
-    def test_enrollment_driven_revenue(self):
-        """Test that revenue is calculated from enrollment projections."""
-        # Revenue = Σ(students × fees) per level/nationality
-        enrollments = [
-            {"level": "PS", "nationality": "FRENCH", "count": 50, "fee": Decimal("25000")},
-            {"level": "PS", "nationality": "SAUDI", "count": 30, "fee": Decimal("23500")},
-            {"level": "6EME", "nationality": "FRENCH", "count": 80, "fee": Decimal("32000")},
+    @pytest.mark.asyncio
+    async def test_valid_account_codes(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test that valid revenue account codes (70-77) are accepted."""
+        service = RevenueService(db_session)
+
+        valid_codes = [
+            "70110",  # 70xxx - Tuition
+            "71100",  # 71xxx
+            "72100",  # 72xxx
+            "73100",  # 73xxx
+            "74100",  # 74xxx
+            "75100",  # 75xxx
+            "76100",  # 76xxx
+            "77100",  # 77xxx
         ]
 
-        total_revenue = sum(
-            Decimal(e["count"]) * e["fee"] for e in enrollments
+        for code in valid_codes:
+            result = await service.create_revenue_entry(
+                version_id=test_budget_version.id,
+                account_code=code,
+                description=f"Revenue {code}",
+                category="other",
+                amount_sar=Decimal("10000.00"),
+                user_id=test_user_id,
+            )
+            assert result.account_code == code
+
+    @pytest.mark.asyncio
+    async def test_invalid_account_code_expense(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test that expense account codes (60-68) are rejected."""
+        service = RevenueService(db_session)
+
+        with pytest.raises(ValidationError) as exc_info:
+            await service.create_revenue_entry(
+                version_id=test_budget_version.id,
+                account_code="64110",  # Personnel expense
+                description="Invalid",
+                category="tuition",
+                amount_sar=Decimal("10000.00"),
+                user_id=test_user_id,
+            )
+
+        assert "70-77" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_invalid_account_code_asset(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test that asset account codes are rejected."""
+        service = RevenueService(db_session)
+
+        invalid_codes = ["10100", "20200", "30300", "40400", "50500"]
+
+        for code in invalid_codes:
+            with pytest.raises(ValidationError):
+                await service.create_revenue_entry(
+                    version_id=test_budget_version.id,
+                    account_code=code,
+                    description="Invalid",
+                    category="other",
+                    amount_sar=Decimal("10000.00"),
+                    user_id=test_user_id,
+                )
+
+
+class TestRevenueServiceCalculation:
+    """Tests for revenue calculation from enrollment."""
+
+    @pytest.mark.asyncio
+    async def test_calculate_revenue_no_enrollment(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test calculation fails without enrollment data."""
+        service = RevenueService(db_session)
+
+        with pytest.raises(ValidationError) as exc_info:
+            await service.calculate_revenue_from_enrollment(
+                budget_version_id=test_budget_version.id,
+                user_id=test_user_id,
+            )
+
+        assert "No enrollment data" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_calculate_revenue_no_fee_structure(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_user_id: uuid.UUID,
+    ):
+        """Test calculation fails without fee structure."""
+        service = RevenueService(db_session)
+
+        with pytest.raises(ValidationError) as exc_info:
+            await service.calculate_revenue_from_enrollment(
+                budget_version_id=test_budget_version.id,
+                user_id=test_user_id,
+            )
+
+        assert "No fee structure" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_calculate_revenue_success(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_fee_structure: list[FeeStructure],
+        test_user_id: uuid.UUID,
+    ):
+        """Test successful revenue calculation."""
+        service = RevenueService(db_session)
+
+        result = await service.calculate_revenue_from_enrollment(
+            budget_version_id=test_budget_version.id,
+            user_id=test_user_id,
         )
 
-        expected = (50 * 25000) + (30 * 23500) + (80 * 32000)
-        assert total_revenue == Decimal(expected)
+        assert "total_revenue" in result
+        assert result["total_revenue"] >= Decimal("0")
+        assert "trimester_distribution" in result
+        assert "created_entries" in result
 
-    def test_new_student_registration_revenue(self):
-        """Test calculation of registration fees for new students."""
-        new_students = 50
-        registration_fee = Decimal("5000")
+    @pytest.mark.asyncio
+    async def test_calculate_revenue_trimester_distribution(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_fee_structure: list[FeeStructure],
+        test_user_id: uuid.UUID,
+    ):
+        """Test trimester distribution is correct (40%, 30%, 30%)."""
+        service = RevenueService(db_session)
 
-        registration_revenue = new_students * registration_fee
-        assert registration_revenue == Decimal("250000")
-
-    def test_total_annual_revenue_aggregation(self):
-        """Test aggregation of all revenue streams."""
-        tuition_revenue = Decimal("10000000")
-        dai_revenue = Decimal("500000")
-        registration_revenue = Decimal("250000")
-        other_revenue = Decimal("100000")
-
-        total_revenue = (
-            tuition_revenue +
-            dai_revenue +
-            registration_revenue +
-            other_revenue
+        result = await service.calculate_revenue_from_enrollment(
+            budget_version_id=test_budget_version.id,
+            user_id=test_user_id,
         )
 
-        assert total_revenue == Decimal("10850000")
+        distribution = result["trimester_distribution"]
+        total = result["total_revenue"]
+
+        if total > 0:
+            t1_pct = (distribution["T1"] / total) * 100
+            t2_pct = (distribution["T2"] / total) * 100
+            t3_pct = (distribution["T3"] / total) * 100
+
+            # Allow for small rounding differences
+            assert abs(t1_pct - Decimal("40")) < Decimal("0.1")
+            assert abs(t2_pct - Decimal("30")) < Decimal("0.1")
+            assert abs(t3_pct - Decimal("30")) < Decimal("0.1")
+
+
+class TestRevenueServiceSummary:
+    """Tests for revenue summary statistics."""
+
+    @pytest.mark.asyncio
+    async def test_get_revenue_summary_empty(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+    ):
+        """Test summary for version with no revenue."""
+        service = RevenueService(db_session)
+
+        summary = await service.get_revenue_summary(test_budget_version.id)
+
+        assert summary["total_revenue"] == Decimal("0")
+        assert summary["entry_count"] == 0
+        assert summary["revenue_by_category"] == {}
+        assert summary["revenue_by_trimester"] == {}
+
+    @pytest.mark.asyncio
+    async def test_get_revenue_summary_with_entries(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test summary with multiple revenue entries."""
+        service = RevenueService(db_session)
+
+        # Create tuition entries
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70110",
+            description="T1 Tuition",
+            category="tuition",
+            amount_sar=Decimal("400000.00"),
+            trimester=1,
+            is_calculated=True,
+            user_id=test_user_id,
+        )
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70120",
+            description="T2 Tuition",
+            category="tuition",
+            amount_sar=Decimal("300000.00"),
+            trimester=2,
+            is_calculated=True,
+            user_id=test_user_id,
+        )
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70130",
+            description="T3 Tuition",
+            category="tuition",
+            amount_sar=Decimal("300000.00"),
+            trimester=3,
+            is_calculated=True,
+            user_id=test_user_id,
+        )
+
+        # Create fee entry
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70200",
+            description="DAI",
+            category="fees",
+            amount_sar=Decimal("100000.00"),
+            is_calculated=False,
+            user_id=test_user_id,
+        )
+
+        summary = await service.get_revenue_summary(test_budget_version.id)
+
+        assert summary["total_revenue"] == Decimal("1100000.00")
+        assert summary["entry_count"] == 4
+        assert summary["revenue_by_category"]["tuition"] == Decimal("1000000.00")
+        assert summary["revenue_by_category"]["fees"] == Decimal("100000.00")
+        assert summary["revenue_by_trimester"]["T1"] == Decimal("400000.00")
+        assert summary["revenue_by_trimester"]["T2"] == Decimal("300000.00")
+        assert summary["revenue_by_trimester"]["T3"] == Decimal("300000.00")
+        assert summary["calculated_revenue"] == Decimal("1000000.00")
+        assert summary["manual_revenue"] == Decimal("100000.00")
+
+
+class TestRevenueServiceRealEFIRData:
+    """Tests using realistic EFIR school revenue data."""
+
+    @pytest.mark.asyncio
+    async def test_realistic_tuition_revenue(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test with realistic EFIR tuition amounts."""
+        service = RevenueService(db_session)
+
+        # Based on EFIR data: ~1,800 students × ~30,000 SAR avg = ~54M SAR
+        # Trimester distribution: T1: 40%, T2: 30%, T3: 30%
+        total_tuition = Decimal("54000000.00")
+        t1 = total_tuition * Decimal("0.40")
+        t2 = total_tuition * Decimal("0.30")
+        t3 = total_tuition * Decimal("0.30")
+
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70110",
+            description="Scolarité Trimestre 1",
+            category="tuition",
+            amount_sar=t1,
+            trimester=1,
+            is_calculated=True,
+            user_id=test_user_id,
+        )
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70120",
+            description="Scolarité Trimestre 2",
+            category="tuition",
+            amount_sar=t2,
+            trimester=2,
+            is_calculated=True,
+            user_id=test_user_id,
+        )
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70130",
+            description="Scolarité Trimestre 3",
+            category="tuition",
+            amount_sar=t3,
+            trimester=3,
+            is_calculated=True,
+            user_id=test_user_id,
+        )
+
+        # DAI revenue: ~1,800 students × 3,000 SAR = ~5.4M SAR
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70200",
+            description="Droit Annuel d'Inscription (DAI)",
+            category="fees",
+            amount_sar=Decimal("5400000.00"),
+            is_calculated=True,
+            user_id=test_user_id,
+        )
+
+        summary = await service.get_revenue_summary(test_budget_version.id)
+
+        # Total should be ~59.4M SAR
+        assert summary["total_revenue"] == Decimal("59400000.00")
+        assert summary["revenue_by_category"]["tuition"] == Decimal("54000000.00")
+        assert summary["revenue_by_category"]["fees"] == Decimal("5400000.00")
+
+    @pytest.mark.asyncio
+    async def test_fee_categories_by_nationality(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test different fee handling for French, Saudi, Other nationalities."""
+        service = RevenueService(db_session)
+
+        # French students (TTC - includes VAT)
+        # Saudi students (HT - VAT exempt)
+        # Other students (TTC - includes VAT)
+
+        # Create separate entries for tracking nationality-based revenue
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70111",
+            description="Scolarité T1 - Français",
+            category="tuition_french",
+            amount_sar=Decimal("15000000.00"),  # ~500 French students
+            trimester=1,
+            user_id=test_user_id,
+        )
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70112",
+            description="Scolarité T1 - Saoudien",
+            category="tuition_saudi",
+            amount_sar=Decimal("4000000.00"),  # ~150 Saudi students
+            trimester=1,
+            user_id=test_user_id,
+        )
+        await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70113",
+            description="Scolarité T1 - Autres",
+            category="tuition_other",
+            amount_sar=Decimal("2000000.00"),  # ~75 Other students
+            trimester=1,
+            user_id=test_user_id,
+        )
+
+        summary = await service.get_revenue_summary(test_budget_version.id)
+
+        # French should be majority
+        french_revenue = summary["revenue_by_category"].get("tuition_french", Decimal("0"))
+        total_revenue = summary["total_revenue"]
+
+        assert french_revenue > total_revenue / 2  # French is majority
+
+
+class TestRevenueServiceEdgeCases:
+    """Tests for edge cases."""
+
+    @pytest.mark.asyncio
+    async def test_zero_revenue_entry(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test creating zero revenue entry."""
+        service = RevenueService(db_session)
+
+        result = await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70500",
+            description="Zero revenue",
+            category="other",
+            amount_sar=Decimal("0.00"),
+            user_id=test_user_id,
+        )
+
+        assert result.amount_sar == Decimal("0.00")
+
+    @pytest.mark.asyncio
+    async def test_large_revenue_amounts(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test handling large revenue amounts."""
+        service = RevenueService(db_session)
+
+        # 100 million SAR
+        large_amount = Decimal("100000000.00")
+
+        result = await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70600",
+            description="Large revenue",
+            category="other",
+            amount_sar=large_amount,
+            user_id=test_user_id,
+        )
+
+        assert result.amount_sar == large_amount
+
+        summary = await service.get_revenue_summary(test_budget_version.id)
+        assert summary["total_revenue"] == large_amount
+
+    @pytest.mark.asyncio
+    async def test_decimal_precision(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test decimal precision is maintained."""
+        service = RevenueService(db_session)
+
+        precise_amount = Decimal("1234567.89")
+
+        result = await service.create_revenue_entry(
+            version_id=test_budget_version.id,
+            account_code="70700",
+            description="Precise amount",
+            category="other",
+            amount_sar=precise_amount,
+            user_id=test_user_id,
+        )
+
+        assert result.amount_sar == precise_amount
+
+    @pytest.mark.asyncio
+    async def test_multiple_versions_isolation(
+        self,
+        db_session: AsyncSession,
+        test_user_id: uuid.UUID,
+    ):
+        """Test revenue entries are isolated by budget version."""
+        service = RevenueService(db_session)
+
+        # Create two versions
+        from app.models.configuration import BudgetVersion, BudgetVersionStatus
+        version1 = BudgetVersion(
+            id=uuid.uuid4(),
+            name="Version 1",
+            fiscal_year=2025,
+            academic_year="2024-2025",
+            status=BudgetVersionStatus.WORKING,
+            created_by_id=test_user_id,
+        )
+        version2 = BudgetVersion(
+            id=uuid.uuid4(),
+            name="Version 2",
+            fiscal_year=2025,
+            academic_year="2024-2025",
+            status=BudgetVersionStatus.WORKING,
+            created_by_id=test_user_id,
+        )
+        db_session.add_all([version1, version2])
+        await db_session.flush()
+
+        # Create entries in each version
+        await service.create_revenue_entry(
+            version_id=version1.id,
+            account_code="70110",
+            description="V1 Revenue",
+            category="tuition",
+            amount_sar=Decimal("1000000.00"),
+            user_id=test_user_id,
+        )
+        await service.create_revenue_entry(
+            version_id=version2.id,
+            account_code="70110",
+            description="V2 Revenue",
+            category="tuition",
+            amount_sar=Decimal("2000000.00"),
+            user_id=test_user_id,
+        )
+
+        # Verify isolation
+        v1_entries = await service.get_revenue_plan(version1.id)
+        v2_entries = await service.get_revenue_plan(version2.id)
+
+        assert len(v1_entries) == 1
+        assert len(v2_entries) == 1
+        assert v1_entries[0].amount_sar == Decimal("1000000.00")
+        assert v2_entries[0].amount_sar == Decimal("2000000.00")

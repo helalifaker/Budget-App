@@ -3,7 +3,7 @@ name = "efir-budget-backend"
 version = "0.1.0"
 description = "FastAPI service for EFIR Budget Planning"
 readme = "README.md"
-requires-python = ">=3.12,<3.15"
+requires-python = ">=3.11,<3.15"
 authors = [{name = "EFIR", email = "tech@efir.local"}]
 dependencies = [
   "fastapi==0.123.0",
@@ -66,7 +66,7 @@ ignore = [
 "app/models/*.py" = ["E501"]  # Allow longer lines for SQL comments
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.11"
 warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = false  # Too strict for evolving codebase

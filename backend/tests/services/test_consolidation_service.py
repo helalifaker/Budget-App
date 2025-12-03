@@ -1,590 +1,646 @@
 """
 Tests for ConsolidationService.
 
-Comprehensive tests for budget consolidation operations including:
-- Budget consolidation calculations
-- Approval workflow management
+Tests cover:
+- Budget consolidation across all planning modules
+- Approval workflow (WORKING → SUBMITTED → APPROVED → SUPERSEDED)
 - Version validation and completeness checks
-- Line item rollup and calculations
+- Line item rollup calculations
+- Business rule validation
 """
 
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.configuration import BudgetVersion, BudgetVersionStatus
-from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
+from app.models.consolidation import BudgetConsolidation
+from app.models.planning import (
+    ClassStructure,
+    EnrollmentPlan,
+    OperatingCostPlan,
+    PersonnelCostPlan,
+    RevenuePlan,
+)
 from app.services.consolidation_service import ConsolidationService
 from app.services.exceptions import BusinessRuleError, NotFoundError
 
 
-class TestConsolidationService:
-    """Tests for ConsolidationService."""
+class TestConsolidationServiceGetConsolidation:
+    """Tests for retrieving consolidated budget."""
 
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock database session."""
-        session = AsyncMock()
-        session.execute = AsyncMock()
-        session.flush = AsyncMock()
-        session.rollback = AsyncMock()
-        session.commit = AsyncMock()
-        return session
+    @pytest.mark.asyncio
+    async def test_get_consolidation_empty(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+    ):
+        """Test retrieving empty consolidation."""
+        service = ConsolidationService(db_session)
 
-    @pytest.fixture
-    def consolidation_service(self, mock_session):
-        """Create ConsolidationService with mock session."""
-        return ConsolidationService(mock_session)
+        result = await service.get_consolidation(test_budget_version.id)
 
-    @pytest.fixture
-    def sample_budget_version(self):
-        """Create a sample budget version for testing."""
-        return BudgetVersion(
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_get_consolidation_invalid_version(
+        self,
+        db_session: AsyncSession,
+    ):
+        """Test retrieving consolidation for non-existent version."""
+        service = ConsolidationService(db_session)
+
+        with pytest.raises(NotFoundError):
+            await service.get_consolidation(uuid.uuid4())
+
+
+class TestConsolidationServiceConsolidate:
+    """Tests for budget consolidation calculation."""
+
+    @pytest.mark.asyncio
+    async def test_consolidate_budget_with_revenue(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test consolidating budget with revenue entries."""
+        # Create revenue entries
+        revenue1 = RevenuePlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="70110",
+            description="Tuition T1",
+            category="tuition",
+            amount_sar=Decimal("2000000.00"),
+            trimester=1,
+            created_by_id=test_user_id,
+        )
+        revenue2 = RevenuePlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="70120",
+            description="Tuition T2",
+            category="tuition",
+            amount_sar=Decimal("1500000.00"),
+            trimester=2,
+            created_by_id=test_user_id,
+        )
+        db_session.add_all([revenue1, revenue2])
+        await db_session.flush()
+
+        service = ConsolidationService(db_session)
+        result = await service.consolidate_budget(
+            test_budget_version.id,
+            user_id=test_user_id,
+        )
+
+        assert len(result) >= 2  # At least 2 revenue entries
+        revenue_entries = [e for e in result if e.is_revenue]
+        assert len(revenue_entries) == 2
+
+    @pytest.mark.asyncio
+    async def test_consolidate_budget_with_personnel_costs(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test consolidating budget with personnel cost entries."""
+        # Create personnel cost entries
+        cost1 = PersonnelCostPlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="64110",
+            description="Teaching Staff",
+            fte_count=Decimal("20"),
+            unit_cost_sar=Decimal("180000.00"),
+            total_cost_sar=Decimal("3600000.00"),
+            created_by_id=test_user_id,
+        )
+        db_session.add(cost1)
+        await db_session.flush()
+
+        service = ConsolidationService(db_session)
+        result = await service.consolidate_budget(
+            test_budget_version.id,
+            user_id=test_user_id,
+        )
+
+        cost_entries = [e for e in result if not e.is_revenue]
+        assert len(cost_entries) >= 1
+
+    @pytest.mark.asyncio
+    async def test_consolidate_budget_replaces_existing(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test that consolidation replaces existing entries."""
+        # Create initial revenue
+        revenue = RevenuePlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="70110",
+            description="Tuition",
+            category="tuition",
+            amount_sar=Decimal("1000000.00"),
+            created_by_id=test_user_id,
+        )
+        db_session.add(revenue)
+        await db_session.flush()
+
+        service = ConsolidationService(db_session)
+
+        # First consolidation
+        result1 = await service.consolidate_budget(
+            test_budget_version.id,
+            user_id=test_user_id,
+        )
+
+        # Update revenue and consolidate again
+        revenue.amount_sar = Decimal("1500000.00")
+        await db_session.flush()
+
+        result2 = await service.consolidate_budget(
+            test_budget_version.id,
+            user_id=test_user_id,
+        )
+
+        # Should have replaced, not duplicated
+        all_entries = await service.get_consolidation(test_budget_version.id)
+        tuition_entries = [e for e in all_entries if e.account_code == "70110"]
+        assert len(tuition_entries) == 1
+
+
+class TestConsolidationServiceApprovalWorkflow:
+    """Tests for budget approval workflow."""
+
+    @pytest.mark.asyncio
+    async def test_submit_for_approval_success(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_class_structure: list[ClassStructure],
+        test_user_id: uuid.UUID,
+    ):
+        """Test submitting budget for approval."""
+        service = ConsolidationService(db_session)
+
+        result = await service.submit_for_approval(
+            test_budget_version.id,
+            user_id=test_user_id,
+        )
+
+        assert result.status == BudgetVersionStatus.SUBMITTED
+        assert result.submitted_at is not None
+        assert result.submitted_by_id == test_user_id
+
+    @pytest.mark.asyncio
+    async def test_submit_for_approval_wrong_status(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_class_structure: list[ClassStructure],
+        test_user_id: uuid.UUID,
+    ):
+        """Test cannot submit if not WORKING status."""
+        service = ConsolidationService(db_session)
+
+        # First submit
+        await service.submit_for_approval(
+            test_budget_version.id,
+            user_id=test_user_id,
+        )
+
+        # Try to submit again (now SUBMITTED)
+        with pytest.raises(BusinessRuleError) as exc_info:
+            await service.submit_for_approval(
+                test_budget_version.id,
+                user_id=test_user_id,
+            )
+
+        assert exc_info.value.details["rule"] == "SUBMIT_WORKFLOW"
+        assert "Only WORKING" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_submit_for_approval_incomplete(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test cannot submit incomplete budget."""
+        service = ConsolidationService(db_session)
+
+        # No enrollment or class structure
+        with pytest.raises(BusinessRuleError) as exc_info:
+            await service.submit_for_approval(
+                test_budget_version.id,
+                user_id=test_user_id,
+            )
+
+        assert exc_info.value.details["rule"] == "SUBMIT_COMPLETENESS"
+        assert "enrollment" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_approve_budget_success(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_class_structure: list[ClassStructure],
+        test_user_id: uuid.UUID,
+    ):
+        """Test approving submitted budget."""
+        service = ConsolidationService(db_session)
+
+        # First submit
+        await service.submit_for_approval(
+            test_budget_version.id,
+            user_id=test_user_id,
+        )
+
+        # Then approve
+        result = await service.approve_budget(
+            test_budget_version.id,
+            user_id=test_user_id,
+        )
+
+        assert result.status == BudgetVersionStatus.APPROVED
+        assert result.approved_at is not None
+        assert result.approved_by_id == test_user_id
+        assert result.is_baseline is True
+
+    @pytest.mark.asyncio
+    async def test_approve_budget_wrong_status(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test cannot approve if not SUBMITTED status."""
+        service = ConsolidationService(db_session)
+
+        # Try to approve WORKING budget
+        with pytest.raises(BusinessRuleError) as exc_info:
+            await service.approve_budget(
+                test_budget_version.id,
+                user_id=test_user_id,
+            )
+
+        assert exc_info.value.details["rule"] == "APPROVE_WORKFLOW"
+        assert "Only SUBMITTED" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_approve_supersedes_previous(
+        self,
+        db_session: AsyncSession,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_class_structure: list[ClassStructure],
+        test_user_id: uuid.UUID,
+    ):
+        """Test approving new budget supersedes previous approved."""
+        service = ConsolidationService(db_session)
+
+        # Create first budget version and approve
+        version1 = BudgetVersion(
             id=uuid.uuid4(),
             name="FY2025 Budget v1",
             fiscal_year=2025,
             academic_year="2024-2025",
             status=BudgetVersionStatus.WORKING,
-            is_baseline=False,
-            notes="Test budget version",
-            created_at=datetime.utcnow(),
+            created_by_id=test_user_id,
         )
+        db_session.add(version1)
+        await db_session.flush()
 
-    @pytest.fixture
-    def sample_consolidation_entries(self, sample_budget_version):
-        """Create sample consolidation entries for testing."""
-        return [
-            BudgetConsolidation(
+        # Add enrollment and class structure for version1
+        enrollment1 = EnrollmentPlan(
+            id=uuid.uuid4(),
+            budget_version_id=version1.id,
+            level_id=test_enrollment_data[0].level_id,
+            nationality_type_id=test_enrollment_data[0].nationality_type_id,
+            student_count=50,
+            created_by_id=test_user_id,
+        )
+        class1 = ClassStructure(
+            id=uuid.uuid4(),
+            budget_version_id=version1.id,
+            level_id=test_enrollment_data[0].level_id,
+            total_students=50,
+            number_of_classes=2,
+            avg_class_size=Decimal("25"),
+            created_by_id=test_user_id,
+        )
+        db_session.add_all([enrollment1, class1])
+        await db_session.flush()
+
+        # Submit and approve version1
+        await service.submit_for_approval(version1.id, test_user_id)
+        await service.approve_budget(version1.id, test_user_id)
+
+        # Create second budget version
+        version2 = BudgetVersion(
+            id=uuid.uuid4(),
+            name="FY2025 Budget v2",
+            fiscal_year=2025,  # Same fiscal year
+            academic_year="2024-2025",
+            status=BudgetVersionStatus.WORKING,
+            created_by_id=test_user_id,
+        )
+        db_session.add(version2)
+        await db_session.flush()
+
+        # Add enrollment and class structure for version2
+        enrollment2 = EnrollmentPlan(
+            id=uuid.uuid4(),
+            budget_version_id=version2.id,
+            level_id=test_enrollment_data[0].level_id,
+            nationality_type_id=test_enrollment_data[0].nationality_type_id,
+            student_count=60,
+            created_by_id=test_user_id,
+        )
+        class2 = ClassStructure(
+            id=uuid.uuid4(),
+            budget_version_id=version2.id,
+            level_id=test_enrollment_data[0].level_id,
+            total_students=60,
+            number_of_classes=2,
+            avg_class_size=Decimal("30"),
+            created_by_id=test_user_id,
+        )
+        db_session.add_all([enrollment2, class2])
+        await db_session.flush()
+
+        # Submit and approve version2
+        await service.submit_for_approval(version2.id, test_user_id)
+        await service.approve_budget(version2.id, test_user_id)
+
+        # Refresh version1
+        await db_session.refresh(version1)
+
+        # version1 should be superseded
+        assert version1.status == BudgetVersionStatus.SUPERSEDED
+        assert version1.is_baseline is False
+
+
+class TestConsolidationServiceValidation:
+    """Tests for validation methods."""
+
+    @pytest.mark.asyncio
+    async def test_validate_completeness_empty(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+    ):
+        """Test validation with no planning data."""
+        service = ConsolidationService(db_session)
+
+        result = await service.validate_completeness(test_budget_version.id)
+
+        assert result["is_complete"] is False
+        assert "enrollment" in result["missing_modules"]
+        assert "class_structure" in result["missing_modules"]
+
+    @pytest.mark.asyncio
+    async def test_validate_completeness_with_enrollment(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+    ):
+        """Test validation with enrollment only."""
+        service = ConsolidationService(db_session)
+
+        result = await service.validate_completeness(test_budget_version.id)
+
+        assert "enrollment" not in result["missing_modules"]
+        assert "class_structure" in result["missing_modules"]
+        assert result["module_counts"]["enrollment"] == len(test_enrollment_data)
+
+    @pytest.mark.asyncio
+    async def test_validate_completeness_complete(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_class_structure: list[ClassStructure],
+    ):
+        """Test validation with complete required modules."""
+        service = ConsolidationService(db_session)
+
+        result = await service.validate_completeness(test_budget_version.id)
+
+        assert result["is_complete"] is True
+        assert result["missing_modules"] == []
+        assert result["module_counts"]["enrollment"] > 0
+        assert result["module_counts"]["class_structure"] > 0
+
+    @pytest.mark.asyncio
+    async def test_validate_completeness_warnings(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_class_structure: list[ClassStructure],
+    ):
+        """Test validation returns warnings for optional missing data."""
+        service = ConsolidationService(db_session)
+
+        result = await service.validate_completeness(test_budget_version.id)
+
+        # Should have warnings for missing revenue, costs (optional but warned)
+        assert len(result["warnings"]) > 0
+        assert result["module_counts"]["revenue"] == 0
+        assert result["module_counts"]["personnel_costs"] == 0
+
+
+class TestConsolidationServiceLineItems:
+    """Tests for line item calculations."""
+
+    @pytest.mark.asyncio
+    async def test_calculate_line_items_revenue(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test revenue line item calculation."""
+        # Create revenue entries
+        revenues = [
+            RevenuePlan(
                 id=uuid.uuid4(),
-                budget_version_id=sample_budget_version.id,
+                budget_version_id=test_budget_version.id,
                 account_code="70110",
-                account_name="Tuition Revenue - T1",
-                consolidation_category=ConsolidationCategory.REVENUE_TUITION,
-                is_revenue=True,
-                amount_sar=Decimal("1000000.00"),
-                source_table="revenue_plans",
-                source_count=50,
-                is_calculated=True,
+                description="Tuition T1",
+                category="tuition",
+                amount_sar=Decimal("1000000"),
+                created_by_id=test_user_id,
             ),
-            BudgetConsolidation(
+            RevenuePlan(
                 id=uuid.uuid4(),
-                budget_version_id=sample_budget_version.id,
-                account_code="64110",
-                account_name="Teaching Salaries",
-                consolidation_category=ConsolidationCategory.PERSONNEL_TEACHING,
-                is_revenue=False,
-                amount_sar=Decimal("500000.00"),
-                source_table="personnel_cost_plans",
-                source_count=20,
-                is_calculated=True,
+                budget_version_id=test_budget_version.id,
+                account_code="70120",
+                description="Tuition T2",
+                category="tuition",
+                amount_sar=Decimal("750000"),
+                created_by_id=test_user_id,
+            ),
+            RevenuePlan(
+                id=uuid.uuid4(),
+                budget_version_id=test_budget_version.id,
+                account_code="70200",
+                description="DAI",
+                category="fees",
+                amount_sar=Decimal("250000"),
+                created_by_id=test_user_id,
             ),
         ]
+        db_session.add_all(revenues)
+        await db_session.flush()
 
+        service = ConsolidationService(db_session)
+        line_items = await service.calculate_line_items(test_budget_version.id)
 
-class TestGetConsolidation:
-    """Tests for get_consolidation method."""
+        revenue_items = [item for item in line_items if item["is_revenue"]]
+        assert len(revenue_items) == 3
 
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock database session."""
-        session = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def consolidation_service(self, mock_session):
-        """Create ConsolidationService with mock session."""
-        return ConsolidationService(mock_session)
+        total_revenue = sum(item["amount_sar"] for item in revenue_items)
+        assert total_revenue == Decimal("2000000")
 
     @pytest.mark.asyncio
-    async def test_get_consolidation_returns_list(
-        self, consolidation_service, mock_session
+    async def test_calculate_line_items_costs(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
     ):
-        """Test that get_consolidation returns a list of BudgetConsolidation."""
-        budget_version_id = uuid.uuid4()
-
-        # Mock budget version exists
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = BudgetVersion(
-            id=budget_version_id,
-            name="Test",
-            fiscal_year=2025,
-            academic_year="2024-2025",
-            status=BudgetVersionStatus.WORKING,
+        """Test cost line item calculation."""
+        # Create cost entries
+        personnel = PersonnelCostPlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="64110",
+            description="Teaching Staff",
+            fte_count=Decimal("10"),
+            unit_cost_sar=Decimal("180000"),
+            total_cost_sar=Decimal("1800000"),
+            created_by_id=test_user_id,
         )
-        mock_session.execute.return_value = mock_result
+        operating = OperatingCostPlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="60610",
+            description="Supplies",
+            category="supplies",
+            amount_sar=Decimal("200000"),
+            created_by_id=test_user_id,
+        )
+        db_session.add_all([personnel, operating])
+        await db_session.flush()
 
-        # Mock consolidation entries
-        mock_consolidation_result = MagicMock()
-        mock_consolidation_result.scalars.return_value.all.return_value = []
-        mock_session.execute.side_effect = [mock_result, mock_consolidation_result]
+        service = ConsolidationService(db_session)
+        line_items = await service.calculate_line_items(test_budget_version.id)
 
-        result = await consolidation_service.get_consolidation(budget_version_id)
+        cost_items = [item for item in line_items if not item["is_revenue"]]
+        assert len(cost_items) == 2
 
-        assert isinstance(result, list)
+        total_cost = sum(item["amount_sar"] for item in cost_items)
+        assert total_cost == Decimal("2000000")
 
 
-class TestConsolidateBudget:
-    """Tests for consolidate_budget method."""
-
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock database session."""
-        session = AsyncMock()
-        session.flush = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def consolidation_service(self, mock_session):
-        """Create ConsolidationService with mock session."""
-        return ConsolidationService(mock_session)
+class TestConsolidationServiceRealEFIRData:
+    """Tests using realistic EFIR budget data."""
 
     @pytest.mark.asyncio
-    async def test_consolidate_budget_creates_entries(
-        self, consolidation_service, mock_session
+    async def test_full_budget_consolidation(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_enrollment_data: list[EnrollmentPlan],
+        test_class_structure: list[ClassStructure],
+        test_user_id: uuid.UUID,
     ):
-        """Test that consolidate_budget creates consolidation entries."""
-        budget_version_id = uuid.uuid4()
-        user_id = uuid.uuid4()
+        """Test full budget consolidation with realistic data."""
+        # Create realistic revenue (54M SAR tuition)
+        for trimester, pct in [(1, "0.40"), (2, "0.30"), (3, "0.30")]:
+            revenue = RevenuePlan(
+                id=uuid.uuid4(),
+                budget_version_id=test_budget_version.id,
+                account_code=f"7011{trimester}",
+                description=f"Scolarité T{trimester}",
+                category="tuition",
+                amount_sar=Decimal("54000000") * Decimal(pct),
+                trimester=trimester,
+                created_by_id=test_user_id,
+            )
+            db_session.add(revenue)
 
-        # Mock budget version exists
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = BudgetVersion(
-            id=budget_version_id,
-            name="Test",
-            fiscal_year=2025,
-            academic_year="2024-2025",
-            status=BudgetVersionStatus.WORKING,
+        # DAI revenue (5.4M SAR)
+        dai = RevenuePlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="70200",
+            description="DAI",
+            category="fees",
+            amount_sar=Decimal("5400000"),
+            created_by_id=test_user_id,
+        )
+        db_session.add(dai)
+
+        # Personnel costs (30M SAR)
+        personnel = PersonnelCostPlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="64110",
+            description="Teaching Staff",
+            fte_count=Decimal("100"),
+            unit_cost_sar=Decimal("300000"),
+            total_cost_sar=Decimal("30000000"),
+            created_by_id=test_user_id,
+        )
+        db_session.add(personnel)
+
+        # Operating costs (5M SAR)
+        operating = OperatingCostPlan(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            account_code="60610",
+            description="Operating Expenses",
+            category="supplies",
+            amount_sar=Decimal("5000000"),
+            created_by_id=test_user_id,
+        )
+        db_session.add(operating)
+
+        await db_session.flush()
+
+        service = ConsolidationService(db_session)
+        result = await service.consolidate_budget(
+            test_budget_version.id,
+            user_id=test_user_id,
         )
 
-        # Mock empty results for source tables
-        mock_empty_result = MagicMock()
-        mock_empty_result.scalars.return_value.all.return_value = []
-        mock_empty_result.scalar_one_or_none.return_value = None
+        # Verify consolidation
+        revenue_items = [e for e in result if e.is_revenue]
+        cost_items = [e for e in result if not e.is_revenue]
 
-        mock_session.execute.return_value = mock_result
-        mock_session.execute.side_effect = [
-            mock_result,  # Budget version check
-            mock_empty_result,  # Delete existing
-            mock_empty_result,  # Revenue plans
-            mock_empty_result,  # Personnel costs
-            mock_empty_result,  # Operating costs
-            mock_empty_result,  # CapEx
-        ]
+        total_revenue = sum(e.amount_sar for e in revenue_items)
+        total_cost = sum(e.amount_sar for e in cost_items)
 
-        # Mock the calculate_line_items to return empty
-        with patch.object(
-            consolidation_service,
-            'calculate_line_items',
-            return_value=[]
-        ):
-            with patch.object(
-                consolidation_service,
-                '_delete_existing_consolidation',
-                return_value=None
-            ):
-                result = await consolidation_service.consolidate_budget(
-                    budget_version_id,
-                    user_id=user_id
-                )
+        # Revenue: 54M + 5.4M = 59.4M
+        assert total_revenue == Decimal("59400000")
 
-        assert isinstance(result, list)
+        # Costs: 30M + 5M = 35M
+        assert total_cost == Decimal("35000000")
 
-
-class TestValidateCompleteness:
-    """Tests for validate_completeness method."""
-
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock database session."""
-        session = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def consolidation_service(self, mock_session):
-        """Create ConsolidationService with mock session."""
-        return ConsolidationService(mock_session)
-
-    @pytest.mark.asyncio
-    async def test_validate_completeness_returns_dict(
-        self, consolidation_service, mock_session
-    ):
-        """Test that validate_completeness returns a validation dict."""
-        budget_version_id = uuid.uuid4()
-
-        # Mock budget version exists
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = BudgetVersion(
-            id=budget_version_id,
-            name="Test",
-            fiscal_year=2025,
-            academic_year="2024-2025",
-            status=BudgetVersionStatus.WORKING,
-        )
-
-        # Mock module counts
-        mock_count_result = MagicMock()
-        mock_count_result.scalar.return_value = 0
-
-        mock_session.execute.side_effect = [
-            mock_result,  # Budget version check
-            mock_count_result,  # Enrollment count
-            mock_count_result,  # Class structure count
-            mock_count_result,  # DHG count
-            mock_count_result,  # Revenue count
-            mock_count_result,  # Personnel count
-            mock_count_result,  # Operating count
-            mock_count_result,  # CapEx count
-        ]
-
-        with patch.object(
-            consolidation_service.budget_version_service,
-            'get_by_id',
-            return_value=mock_result.scalar_one_or_none.return_value
-        ):
-            result = await consolidation_service.validate_completeness(budget_version_id)
-
-        assert isinstance(result, dict)
-        assert "is_complete" in result or "missing_modules" in result or True
-
-
-class TestSubmitForApproval:
-    """Tests for submit_for_approval method."""
-
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock database session."""
-        session = AsyncMock()
-        session.flush = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def consolidation_service(self, mock_session):
-        """Create ConsolidationService with mock session."""
-        return ConsolidationService(mock_session)
-
-    @pytest.mark.asyncio
-    async def test_submit_from_wrong_status_raises_error(
-        self, consolidation_service, mock_session
-    ):
-        """Test that submit_for_approval raises error if status is not WORKING."""
-        budget_version_id = uuid.uuid4()
-        user_id = uuid.uuid4()
-
-        # Mock budget version with SUBMITTED status
-        budget_version = BudgetVersion(
-            id=budget_version_id,
-            name="Test",
-            fiscal_year=2025,
-            academic_year="2024-2025",
-            status=BudgetVersionStatus.SUBMITTED,  # Already submitted
-        )
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = budget_version
-        mock_session.execute.return_value = mock_result
-
-        with patch.object(
-            consolidation_service.budget_version_service,
-            'get_by_id',
-            return_value=budget_version
-        ):
-            with pytest.raises(BusinessRuleError):
-                await consolidation_service.submit_for_approval(
-                    budget_version_id,
-                    user_id=user_id
-                )
-
-
-class TestApproveBudget:
-    """Tests for approve_budget method."""
-
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock database session."""
-        session = AsyncMock()
-        session.flush = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def consolidation_service(self, mock_session):
-        """Create ConsolidationService with mock session."""
-        return ConsolidationService(mock_session)
-
-    @pytest.mark.asyncio
-    async def test_approve_from_wrong_status_raises_error(
-        self, consolidation_service, mock_session
-    ):
-        """Test that approve_budget raises error if status is not SUBMITTED."""
-        budget_version_id = uuid.uuid4()
-        user_id = uuid.uuid4()
-
-        # Mock budget version with WORKING status (not submitted)
-        budget_version = BudgetVersion(
-            id=budget_version_id,
-            name="Test",
-            fiscal_year=2025,
-            academic_year="2024-2025",
-            status=BudgetVersionStatus.WORKING,  # Not submitted
-        )
-
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = budget_version
-        mock_session.execute.return_value = mock_result
-
-        with patch.object(
-            consolidation_service.budget_version_service,
-            'get_by_id',
-            return_value=budget_version
-        ):
-            with pytest.raises(BusinessRuleError):
-                await consolidation_service.approve_budget(
-                    budget_version_id,
-                    user_id=user_id
-                )
-
-
-class TestConsolidationCategoryMapping:
-    """Tests for consolidation category mapping logic."""
-
-    def test_revenue_category_exists(self):
-        """Test that revenue category enum values exist."""
-        assert hasattr(ConsolidationCategory, 'REVENUE_TUITION')
-        assert hasattr(ConsolidationCategory, 'REVENUE_FEES')
-        assert hasattr(ConsolidationCategory, 'REVENUE_OTHER')
-
-    def test_personnel_category_exists(self):
-        """Test that personnel category enum values exist."""
-        assert hasattr(ConsolidationCategory, 'PERSONNEL_TEACHING')
-        assert hasattr(ConsolidationCategory, 'PERSONNEL_ADMIN')
-        assert hasattr(ConsolidationCategory, 'PERSONNEL_SUPPORT')
-
-    def test_operating_category_exists(self):
-        """Test that operating category enum values exist."""
-        assert hasattr(ConsolidationCategory, 'OPERATING_SUPPLIES')
-
-    def test_budget_version_status_workflow(self):
-        """Test that BudgetVersionStatus has correct workflow states."""
-        assert hasattr(BudgetVersionStatus, 'WORKING')
-        assert hasattr(BudgetVersionStatus, 'SUBMITTED')
-        assert hasattr(BudgetVersionStatus, 'APPROVED')
-
-
-class TestRevenueCategoryMapping:
-    """Tests for revenue category mapping."""
-
-    @pytest.fixture
-    def consolidation_service(self):
-        """Create ConsolidationService with mock session."""
-        session = MagicMock()
-        return ConsolidationService(session)
-
-    def test_tuition_account_maps_to_revenue_tuition(self, consolidation_service):
-        """Test 701xx maps to REVENUE_TUITION."""
-        result = consolidation_service._map_revenue_to_consolidation_category(
-            "70110", "tuition"
-        )
-        assert result == ConsolidationCategory.REVENUE_TUITION
-
-    def test_fee_account_702_maps_to_revenue_fees(self, consolidation_service):
-        """Test 702xx maps to REVENUE_FEES."""
-        result = consolidation_service._map_revenue_to_consolidation_category(
-            "70200", "fees"
-        )
-        assert result == ConsolidationCategory.REVENUE_FEES
-
-    def test_fee_account_703_maps_to_revenue_fees(self, consolidation_service):
-        """Test 703xx maps to REVENUE_FEES."""
-        result = consolidation_service._map_revenue_to_consolidation_category(
-            "70300", "registration"
-        )
-        assert result == ConsolidationCategory.REVENUE_FEES
-
-    def test_other_revenue_maps_to_revenue_other(self, consolidation_service):
-        """Test other revenue accounts map to REVENUE_OTHER."""
-        result = consolidation_service._map_revenue_to_consolidation_category(
-            "75000", "other"
-        )
-        assert result == ConsolidationCategory.REVENUE_OTHER
-
-
-class TestPersonnelCategoryMapping:
-    """Tests for personnel category mapping."""
-
-    @pytest.fixture
-    def consolidation_service(self):
-        """Create ConsolidationService with mock session."""
-        session = MagicMock()
-        return ConsolidationService(session)
-
-    def test_teaching_account_maps_correctly(self, consolidation_service):
-        """Test 6411x maps to PERSONNEL_TEACHING."""
-        result = consolidation_service._map_personnel_to_consolidation_category(
-            "64110", "teaching"
-        )
-        assert result == ConsolidationCategory.PERSONNEL_TEACHING
-
-    def test_admin_account_maps_correctly(self, consolidation_service):
-        """Test 6412x maps to PERSONNEL_ADMIN."""
-        result = consolidation_service._map_personnel_to_consolidation_category(
-            "64120", "admin"
-        )
-        assert result == ConsolidationCategory.PERSONNEL_ADMIN
-
-    def test_support_account_maps_correctly(self, consolidation_service):
-        """Test 6413x maps to PERSONNEL_SUPPORT."""
-        result = consolidation_service._map_personnel_to_consolidation_category(
-            "64130", "support"
-        )
-        assert result == ConsolidationCategory.PERSONNEL_SUPPORT
-
-    def test_social_charges_maps_correctly(self, consolidation_service):
-        """Test 645xx maps to PERSONNEL_SOCIAL."""
-        result = consolidation_service._map_personnel_to_consolidation_category(
-            "64500", "social"
-        )
-        assert result == ConsolidationCategory.PERSONNEL_SOCIAL
-
-    def test_default_maps_to_teaching(self, consolidation_service):
-        """Test unknown personnel account defaults to PERSONNEL_TEACHING."""
-        result = consolidation_service._map_personnel_to_consolidation_category(
-            "64999", "unknown"
-        )
-        assert result == ConsolidationCategory.PERSONNEL_TEACHING
-
-
-class TestOperatingCategoryMapping:
-    """Tests for operating cost category mapping."""
-
-    @pytest.fixture
-    def consolidation_service(self):
-        """Create ConsolidationService with mock session."""
-        session = MagicMock()
-        return ConsolidationService(session)
-
-    def test_supplies_account_maps_correctly(self, consolidation_service):
-        """Test 606xx maps to OPERATING_SUPPLIES."""
-        result = consolidation_service._map_operating_to_consolidation_category(
-            "60600", "supplies"
-        )
-        assert result == ConsolidationCategory.OPERATING_SUPPLIES
-
-    def test_utilities_account_matches_supplies_first(self, consolidation_service):
-        """Test 6061x matches 606xx first, so maps to OPERATING_SUPPLIES.
-
-        Note: Due to ordering of conditions, 6061x is matched by 606xx prefix first.
-        This is the actual behavior of the code.
-        """
-        result = consolidation_service._map_operating_to_consolidation_category(
-            "60610", "utilities"
-        )
-        # Due to condition ordering, 606xx matches before 6061x
-        assert result == ConsolidationCategory.OPERATING_SUPPLIES
-
-    def test_maintenance_account_maps_correctly(self, consolidation_service):
-        """Test 615xx maps to OPERATING_MAINTENANCE."""
-        result = consolidation_service._map_operating_to_consolidation_category(
-            "61500", "maintenance"
-        )
-        assert result == ConsolidationCategory.OPERATING_MAINTENANCE
-
-    def test_insurance_account_maps_correctly(self, consolidation_service):
-        """Test 616xx maps to OPERATING_INSURANCE."""
-        result = consolidation_service._map_operating_to_consolidation_category(
-            "61600", "insurance"
-        )
-        assert result == ConsolidationCategory.OPERATING_INSURANCE
-
-    def test_default_maps_to_other(self, consolidation_service):
-        """Test unknown operating account defaults to OPERATING_OTHER."""
-        result = consolidation_service._map_operating_to_consolidation_category(
-            "62000", "unknown"
-        )
-        assert result == ConsolidationCategory.OPERATING_OTHER
-
-
-class TestCapexCategoryMapping:
-    """Tests for CapEx category mapping."""
-
-    @pytest.fixture
-    def consolidation_service(self):
-        """Create ConsolidationService with mock session."""
-        session = MagicMock()
-        return ConsolidationService(session)
-
-    def test_equipment_account_maps_correctly(self, consolidation_service):
-        """Test 2154x maps to CAPEX_EQUIPMENT."""
-        result = consolidation_service._map_capex_to_consolidation_category(
-            "21540", "equipment"
-        )
-        assert result == ConsolidationCategory.CAPEX_EQUIPMENT
-
-    def test_it_account_maps_correctly(self, consolidation_service):
-        """Test 2183x maps to CAPEX_IT."""
-        result = consolidation_service._map_capex_to_consolidation_category(
-            "21830", "it"
-        )
-        assert result == ConsolidationCategory.CAPEX_IT
-
-    def test_furniture_account_maps_correctly(self, consolidation_service):
-        """Test 2184x maps to CAPEX_FURNITURE."""
-        result = consolidation_service._map_capex_to_consolidation_category(
-            "21840", "furniture"
-        )
-        assert result == ConsolidationCategory.CAPEX_FURNITURE
-
-    def test_building_account_maps_correctly(self, consolidation_service):
-        """Test 213xx maps to CAPEX_BUILDING."""
-        result = consolidation_service._map_capex_to_consolidation_category(
-            "21300", "building"
-        )
-        assert result == ConsolidationCategory.CAPEX_BUILDING
-
-    def test_software_account_maps_correctly(self, consolidation_service):
-        """Test 205xx maps to CAPEX_SOFTWARE."""
-        result = consolidation_service._map_capex_to_consolidation_category(
-            "20500", "software"
-        )
-        assert result == ConsolidationCategory.CAPEX_SOFTWARE
-
-    def test_default_maps_to_equipment(self, consolidation_service):
-        """Test unknown capex account defaults to CAPEX_EQUIPMENT."""
-        result = consolidation_service._map_capex_to_consolidation_category(
-            "29999", "unknown"
-        )
-        assert result == ConsolidationCategory.CAPEX_EQUIPMENT
-
-
-class TestConsolidationData:
-    """Tests for consolidation data structure."""
-
-    def test_consolidation_entry_structure(self):
-        """Test consolidation entry has required fields."""
-        required_fields = [
-            "budget_version_id",
-            "account_code",
-            "account_name",
-            "consolidation_category",
-            "is_revenue",
-            "amount_sar",
-            "source_table",
-            "source_count",
-            "is_calculated",
-        ]
-
-        for field in required_fields:
-            assert field in required_fields
-
-    def test_source_tables(self):
-        """Test valid source tables for consolidation."""
-        valid_sources = [
-            "revenue_plans",
-            "personnel_cost_plans",
-            "operating_cost_plans",
-            "capex_plans",
-        ]
-
-        for source in valid_sources:
-            assert source in valid_sources
+        # Net surplus: 59.4M - 35M = 24.4M
+        net = total_revenue - total_cost
+        assert net == Decimal("24400000")

@@ -1,277 +1,316 @@
 """
-Rate limiting middleware for API protection.
+Rate limiting middleware for EFIR Budget Planning Application.
 
-Implements token bucket algorithm for rate limiting using Redis.
-Provides protection against:
-- DDoS attacks
-- API abuse
-- Credential stuffing
+Implements sliding window rate limiting using Redis for distributed enforcement.
+Provides different rate limits based on endpoint sensitivity and user role.
 """
 
 import os
 import time
 from collections.abc import Callable
+from typing import Any
 
 from fastapi import Request, Response
-from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 
-# Try to import redis, but make it optional
-try:
-    import redis.asyncio as redis
-    REDIS_AVAILABLE = True
-except ImportError:
-    REDIS_AVAILABLE = False
+from app.core.logging import logger
+
+# Rate limit configuration (requests per window)
+RATE_LIMITS = {
+    # Default limits (per minute)
+    "default": {"requests": 100, "window": 60},
+    # Strict limits for expensive operations
+    "calculations": {"requests": 30, "window": 60},
+    "consolidation": {"requests": 20, "window": 60},
+    "export": {"requests": 10, "window": 60},
+    # Relaxed limits for read operations
+    "read": {"requests": 200, "window": 60},
+}
+
+# Role-based multipliers (higher = more requests allowed)
+ROLE_MULTIPLIERS = {
+    "admin": 3.0,
+    "finance_director": 2.0,
+    "hr": 1.5,
+    "academic": 1.5,
+    "viewer": 1.0,
+}
+
+# Paths that map to rate limit categories
+PATH_CATEGORIES = {
+    "/api/v1/calculations/": "calculations",
+    "/api/v1/consolidation/": "consolidation",
+    "/api/v1/analysis/export": "export",
+    "/api/v1/planning/": "default",
+    "/api/v1/configuration/": "read",
+    "/health": "read",
+}
+
+# Environment flag to enable/disable rate limiting
+RATE_LIMIT_ENABLED = os.getenv("RATE_LIMIT_ENABLED", "true").lower() == "true"
+REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").lower() == "true"
+
+
+def get_client_identifier(request: Request) -> str:
+    """
+    Get unique client identifier for rate limiting.
+
+    Uses authenticated user ID if available, otherwise falls back to IP address.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        Client identifier string
+    """
+    # Check for authenticated user (set by auth middleware)
+    user = getattr(request.state, "user", None)
+    if user and hasattr(user, "id"):
+        return f"user:{user.id}"
+
+    # Fall back to IP address
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return f"ip:{forwarded.split(',')[0].strip()}"
+
+    return f"ip:{request.client.host if request.client else 'unknown'}"
+
+
+def get_rate_limit_category(path: str) -> str:
+    """
+    Determine rate limit category for a request path.
+
+    Args:
+        path: Request path
+
+    Returns:
+        Rate limit category name
+    """
+    for prefix, category in PATH_CATEGORIES.items():
+        if path.startswith(prefix):
+            return category
+    return "default"
+
+
+def get_user_role(request: Request) -> str:
+    """
+    Get user role from request state.
+
+    Args:
+        request: FastAPI request object
+
+    Returns:
+        User role string or "viewer" as default
+    """
+    user = getattr(request.state, "user", None)
+    if user and hasattr(user, "role"):
+        return user.role.lower()
+    return "viewer"
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """
-    Rate limiting middleware using Redis for distributed rate limiting.
+    Rate limiting middleware using sliding window algorithm.
 
-    Implements a sliding window rate limiter that limits requests per IP
-    and per user (if authenticated).
-
-    Configuration via environment variables:
-    - RATE_LIMIT_PER_MINUTE: Requests per minute per client (default: 300)
-    - RATE_LIMIT_PER_HOUR: Requests per hour per client (default: 5000)
-    - REDIS_URL: Redis connection URL for distributed rate limiting
+    Features:
+    - Redis-backed for distributed rate limiting
+    - Role-based rate limit multipliers
+    - Path-based rate limit categories
+    - Graceful degradation when Redis unavailable
     """
-
-    # Paths exempt from rate limiting
-    EXEMPT_PATHS = [
-        "/health",
-        "/health/live",
-        "/health/ready",
-    ]
-
-    # Stricter limits for sensitive endpoints
-    STRICT_RATE_LIMIT_PATHS = [
-        "/api/v1/auth/login",
-        "/api/v1/auth/register",
-        "/api/v1/auth/password-reset",
-    ]
-
-    def __init__(self, app):
-        """
-        Initialize rate limiting middleware.
-
-        Args:
-            app: FastAPI application instance
-        """
-        super().__init__(app)
-        self.default_rate_limit = int(os.getenv("RATE_LIMIT_PER_MINUTE", "300"))
-        self.hourly_rate_limit = int(os.getenv("RATE_LIMIT_PER_HOUR", "5000"))
-        self.strict_rate_limit = 10  # Very strict for auth endpoints
-        self.redis_url = os.getenv("REDIS_URL")
-        self._redis_client = None
-        self._local_cache: dict[str, dict] = {}  # Fallback for non-Redis environments
-
-    async def _get_redis(self):
-        """Get or create Redis client connection."""
-        if not REDIS_AVAILABLE or not self.redis_url:
-            return None
-
-        if self._redis_client is None:
-            try:
-                self._redis_client = redis.from_url(
-                    self.redis_url,
-                    encoding="utf-8",
-                    decode_responses=True,
-                )
-                # Test connection
-                await self._redis_client.ping()
-            except Exception:
-                self._redis_client = None
-                return None
-
-        return self._redis_client
-
-    def _get_client_identifier(self, request: Request) -> str:
-        """
-        Get unique identifier for the client.
-
-        Uses user ID if authenticated, otherwise falls back to IP address.
-
-        Args:
-            request: FastAPI request object
-
-        Returns:
-            Client identifier string
-        """
-        # Check if user is authenticated
-        if hasattr(request.state, "user") and request.state.user:
-            return f"user:{request.state.user.id}"
-
-        # Fall back to IP address
-        forwarded_for = request.headers.get("X-Forwarded-For")
-        if forwarded_for:
-            # Take the first IP in the chain (original client)
-            client_ip = forwarded_for.split(",")[0].strip()
-        else:
-            client_ip = request.client.host if request.client else "unknown"
-
-        return f"ip:{client_ip}"
-
-    def _get_rate_limit(self, path: str) -> int:
-        """
-        Get rate limit for the given path.
-
-        Args:
-            path: Request path
-
-        Returns:
-            Rate limit (requests per minute)
-        """
-        if any(path.startswith(strict_path) for strict_path in self.STRICT_RATE_LIMIT_PATHS):
-            return self.strict_rate_limit
-        return self.default_rate_limit
-
-    async def _check_rate_limit_redis(
-        self,
-        redis_client,
-        key: str,
-        limit: int,
-        window_seconds: int = 60,
-    ) -> tuple[bool, int, int]:
-        """
-        Check rate limit using Redis sliding window.
-
-        Args:
-            redis_client: Redis client instance
-            key: Rate limit key
-            limit: Maximum requests allowed
-            window_seconds: Time window in seconds
-
-        Returns:
-            Tuple of (is_allowed, remaining, reset_time)
-        """
-        now = time.time()
-        window_start = now - window_seconds
-
-        # Use Redis pipeline for atomic operations
-        pipe = redis_client.pipeline()
-
-        # Remove old entries
-        pipe.zremrangebyscore(key, "-inf", window_start)
-
-        # Add current request
-        pipe.zadd(key, {str(now): now})
-
-        # Count requests in window
-        pipe.zcard(key)
-
-        # Set expiry
-        pipe.expire(key, window_seconds * 2)
-
-        results = await pipe.execute()
-        request_count = results[2]
-
-        remaining = max(0, limit - request_count)
-        reset_time = int(now + window_seconds)
-
-        return request_count <= limit, remaining, reset_time
-
-    def _check_rate_limit_local(
-        self,
-        key: str,
-        limit: int,
-        window_seconds: int = 60,
-    ) -> tuple[bool, int, int]:
-        """
-        Check rate limit using local in-memory cache.
-
-        Fallback for when Redis is not available.
-
-        Args:
-            key: Rate limit key
-            limit: Maximum requests allowed
-            window_seconds: Time window in seconds
-
-        Returns:
-            Tuple of (is_allowed, remaining, reset_time)
-        """
-        now = time.time()
-
-        if key not in self._local_cache:
-            self._local_cache[key] = {"requests": [], "last_cleanup": now}
-
-        entry = self._local_cache[key]
-
-        # Cleanup old requests
-        if now - entry["last_cleanup"] > window_seconds:
-            entry["requests"] = [
-                t for t in entry["requests"]
-                if now - t < window_seconds
-            ]
-            entry["last_cleanup"] = now
-
-        # Check limit
-        request_count = len(entry["requests"])
-        remaining = max(0, limit - request_count)
-        reset_time = int(now + window_seconds)
-
-        if request_count < limit:
-            entry["requests"].append(now)
-            return True, remaining - 1, reset_time
-
-        return False, 0, reset_time
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
-        Process the request and check rate limits.
+        Process request with rate limiting.
 
         Args:
-            request: FastAPI request object
-            call_next: Next middleware/handler in the chain
+            request: Incoming request
+            call_next: Next middleware/handler
 
         Returns:
-            Response from the next handler or rate limit error
+            Response or 429 Too Many Requests
         """
-        # Skip rate limiting for exempt paths
-        if request.url.path in self.EXEMPT_PATHS:
+        # Skip if rate limiting disabled
+        if not RATE_LIMIT_ENABLED:
             return await call_next(request)
 
-        client_id = self._get_client_identifier(request)
-        rate_limit = self._get_rate_limit(request.url.path)
-        key = f"rate_limit:{request.url.path}:{client_id}"
+        # Skip rate limiting for health checks
+        if request.url.path in ["/health", "/health/ready", "/health/live"]:
+            return await call_next(request)
 
-        # Try Redis first, fall back to local
-        redis_client = await self._get_redis()
+        # Get rate limit parameters
+        client_id = get_client_identifier(request)
+        category = get_rate_limit_category(request.url.path)
+        user_role = get_user_role(request)
 
-        if redis_client:
-            is_allowed, remaining, reset_time = await self._check_rate_limit_redis(
-                redis_client, key, rate_limit
-            )
-        else:
-            is_allowed, remaining, reset_time = self._check_rate_limit_local(
-                key, rate_limit
-            )
+        # Calculate effective rate limit
+        base_limit = RATE_LIMITS.get(category, RATE_LIMITS["default"])
+        multiplier = ROLE_MULTIPLIERS.get(user_role, 1.0)
+        max_requests = int(base_limit["requests"] * multiplier)
+        window = base_limit["window"]
 
-        # Add rate limit headers to response
-        response_headers = {
-            "X-RateLimit-Limit": str(rate_limit),
-            "X-RateLimit-Remaining": str(remaining),
-            "X-RateLimit-Reset": str(reset_time),
-        }
+        # Check rate limit
+        is_allowed, current_count, reset_time = await self._check_rate_limit(
+            client_id=client_id,
+            category=category,
+            max_requests=max_requests,
+            window=window,
+        )
 
         if not is_allowed:
+            logger.warning(
+                "rate_limit_exceeded",
+                client_id=client_id,
+                category=category,
+                current_count=current_count,
+                max_requests=max_requests,
+                path=request.url.path,
+            )
             return JSONResponse(
                 status_code=429,
                 content={
-                    "detail": "Rate limit exceeded. Please try again later.",
-                    "retry_after": reset_time - int(time.time()),
+                    "detail": "Rate limit exceeded",
+                    "retry_after": reset_time,
+                    "limit": max_requests,
+                    "window": window,
                 },
                 headers={
-                    **response_headers,
-                    "Retry-After": str(reset_time - int(time.time())),
+                    "Retry-After": str(reset_time),
+                    "X-RateLimit-Limit": str(max_requests),
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(int(time.time()) + reset_time),
                 },
             )
 
         # Process request
         response = await call_next(request)
 
-        # Add rate limit headers to successful response
-        for header_name, header_value in response_headers.items():
-            response.headers[header_name] = header_value
+        # Add rate limit headers to response
+        response.headers["X-RateLimit-Limit"] = str(max_requests)
+        response.headers["X-RateLimit-Remaining"] = str(max(0, max_requests - current_count))
+        response.headers["X-RateLimit-Reset"] = str(int(time.time()) + reset_time)
 
         return response
+
+    async def _check_rate_limit(
+        self,
+        client_id: str,
+        category: str,
+        max_requests: int,
+        window: int,
+    ) -> tuple[bool, int, int]:
+        """
+        Check if request is within rate limit using sliding window.
+
+        Args:
+            client_id: Unique client identifier
+            category: Rate limit category
+            max_requests: Maximum requests allowed
+            window: Time window in seconds
+
+        Returns:
+            Tuple of (is_allowed, current_count, seconds_until_reset)
+        """
+        if not REDIS_ENABLED:
+            # Graceful degradation: allow all requests if Redis unavailable
+            return True, 0, window
+
+        try:
+            from app.core.cache import get_redis_client
+
+            client = await get_redis_client()
+            key = f"rate_limit:{category}:{client_id}"
+            now = int(time.time())
+
+            # Use Redis pipeline for atomic operations
+            async with client.pipeline(transaction=True) as pipe:
+                # Remove expired entries
+                pipe.zremrangebyscore(key, 0, now - window)
+                # Add current request
+                pipe.zadd(key, {str(now): now})
+                # Count requests in window
+                pipe.zcard(key)
+                # Set expiry on key
+                pipe.expire(key, window)
+                results = await pipe.execute()
+
+            current_count = results[2]
+            reset_time = window - (now % window)
+
+            is_allowed = current_count <= max_requests
+            return is_allowed, current_count, reset_time
+
+        except Exception as e:
+            logger.error("rate_limit_check_failed", error=str(e), client_id=client_id)
+            # Graceful degradation: allow request on error
+            return True, 0, window
+
+
+def rate_limit(
+    requests: int = 100,
+    window: int = 60,
+    key_func: Callable[[Request], str] | None = None,
+) -> Callable:
+    """
+    Decorator for endpoint-specific rate limiting.
+
+    Args:
+        requests: Maximum requests allowed
+        window: Time window in seconds
+        key_func: Optional custom function to generate rate limit key
+
+    Returns:
+        Decorator function
+
+    Example:
+        @router.post("/calculate")
+        @rate_limit(requests=10, window=60)
+        async def calculate(request: Request):
+            ...
+    """
+
+    def decorator(func: Callable) -> Callable:
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Find request in args/kwargs
+            request = None
+            for arg in args:
+                if isinstance(arg, Request):
+                    request = arg
+                    break
+            if request is None:
+                request = kwargs.get("request")
+
+            if request is None:
+                return await func(*args, **kwargs)
+
+            # Get client identifier
+            if key_func:
+                client_id = key_func(request)
+            else:
+                client_id = get_client_identifier(request)
+
+            # Check rate limit
+            middleware = RateLimitMiddleware(None)
+            is_allowed, current_count, reset_time = await middleware._check_rate_limit(
+                client_id=client_id,
+                category="decorator",
+                max_requests=requests,
+                window=window,
+            )
+
+            if not is_allowed:
+                return JSONResponse(
+                    status_code=429,
+                    content={
+                        "detail": "Rate limit exceeded",
+                        "retry_after": reset_time,
+                    },
+                    headers={"Retry-After": str(reset_time)},
+                )
+
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
