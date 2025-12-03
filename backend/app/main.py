@@ -24,6 +24,7 @@ from app.api.v1 import (
 )
 from app.core.logging import LoggingMiddleware
 from app.middleware.auth import AuthenticationMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.rbac import RBACMiddleware
 from app.routes import health
 
@@ -60,6 +61,9 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+
+    # Rate limiting middleware (prevents abuse)
+    app.add_middleware(RateLimitMiddleware)
 
     # RBAC middleware (enforces role-based access control)
     app.add_middleware(RBACMiddleware)
