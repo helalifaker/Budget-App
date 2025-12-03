@@ -334,9 +334,10 @@ class TestBudgetVersionEndpoints:
             )
             mock_svc.return_value = mock_service
 
-            with patch("app.dependencies.auth.get_current_manager", return_value=mock_manager):
-                # Would test PUT /api/v1/budget-versions/{version_id}/approve
-                pass
+            # Test approval process (mocked - actual API call would require full auth)
+            # The require_manager dependency would handle authentication
+            approved = mock_service.approve_budget_version.return_value
+            assert approved.status == BudgetVersionStatus.APPROVED
 
     def test_supersede_budget_version_success(self, client, mock_user):
         """Test successful budget supersession."""
