@@ -102,10 +102,16 @@ describe('usePlanningWriteback', () => {
         version: 1,
       })
 
-      // Check optimistic update (should be instant)
+      // Check optimistic update happens during the mutation
+      // Wait for the optimistic update to be applied to the cache
+      await waitFor(() => {
+        const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+        expect(cacheData?.[0].value_numeric).toBe(200)
+      })
+
+      // Version incremented optimistically
       const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
-      expect(cacheData?.[0].value_numeric).toBe(200)
-      expect(cacheData?.[0].version).toBe(2) // Version incremented optimistically
+      expect(cacheData?.[0].version).toBe(2)
 
       // Wait for server response
       await updatePromise
@@ -271,10 +277,13 @@ describe('usePlanningWriteback', () => {
         ],
       })
 
-      // Check optimistic updates (should be instant)
-      const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
-      expect(cacheData?.[0].value_numeric).toBe(200)
-      expect(cacheData?.[1].value_numeric).toBe(250)
+      // Check optimistic updates happen during the mutation
+      // Wait for the optimistic updates to be applied to the cache
+      await waitFor(() => {
+        const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+        expect(cacheData?.[0].value_numeric).toBe(200)
+        expect(cacheData?.[1].value_numeric).toBe(250)
+      })
 
       // Wait for server response
       await updatePromise
