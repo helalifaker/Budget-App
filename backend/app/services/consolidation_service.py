@@ -503,7 +503,6 @@ class ConsolidationService:
             select(
                 PersonnelCostPlan.account_code,
                 PersonnelCostPlan.description,
-                PersonnelCostPlan.category,
                 func.sum(PersonnelCostPlan.total_cost_sar).label("total_amount"),
                 func.count(PersonnelCostPlan.id).label("source_count"),
             )
@@ -516,7 +515,6 @@ class ConsolidationService:
             .group_by(
                 PersonnelCostPlan.account_code,
                 PersonnelCostPlan.description,
-                PersonnelCostPlan.category,
             )
         )
 
@@ -528,7 +526,6 @@ class ConsolidationService:
             # Map personnel category to consolidation category
             consolidation_category = self._map_personnel_to_consolidation_category(
                 row.account_code,
-                row.category,
             )
 
             consolidation_data.append({
@@ -666,7 +663,6 @@ class ConsolidationService:
     def _map_personnel_to_consolidation_category(
         self,
         account_code: str,
-        category: str,
     ) -> ConsolidationCategory:
         """Map personnel account code and category to consolidation category."""
         # Teaching staff (64110-64119)
