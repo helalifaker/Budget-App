@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.configuration import AcademicLevel, ClassSizeParam
+from app.services.exceptions import ValidationError
 
 
 class ClassStructureValidationError(ValueError):
@@ -112,7 +113,7 @@ async def validate_class_structure(
     if avg_class_size < param.min_class_size:
         raise ClassStructureValidationError(
             f"Average class size {avg_class_size} is below minimum "
-            f"{param.min_class_size} for level {level.name}. "
+            f"{param.min_class_size} for level {level.name_en}. "
             f"Current structure: {number_of_classes} classes, "
             f"{total_students} students. "
             f"Consider reducing number of classes."
@@ -122,7 +123,7 @@ async def validate_class_structure(
     if avg_class_size > param.max_class_size:
         raise ClassStructureValidationError(
             f"Average class size {avg_class_size} exceeds maximum "
-            f"{param.max_class_size} for level {level.name}. "
+            f"{param.max_class_size} for level {level.name_en}. "
             f"Current structure: {number_of_classes} classes, "
             f"{total_students} students. "
             f"Consider adding more classes."
@@ -199,3 +200,22 @@ def validate_class_structure_sync(
 
     # Validation passed
     return
+
+
+def validate_class_size_params(min_size: int, target_size: int, max_size: int) -> None:
+    """
+    Validate that class size parameters follow min < target <= max.
+    """
+    if not (min_size < target_size <= max_size):
+        raise ValidationError("Invalid class size parameters: require min < target <= max")
+
+
+def validate_enrollment_distribution(total_students: int, distributions: dict[str, int]) -> None:
+    """
+    Validate that enrollment distribution sums to total and has no negatives.
+    """
+    if any(count < 0 for count in distributions.values()):
+        raise ValidationError("Enrollment distribution cannot contain negative values")
+
+    if sum(distributions.values()) != total_students:
+        raise ValidationError("Enrollment distribution must equal total students")

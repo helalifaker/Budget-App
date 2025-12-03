@@ -10,10 +10,16 @@ This file provides common fixtures and configuration for all tests, including:
 """
 
 import asyncio
+import os
 from collections.abc import AsyncGenerator, Generator
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
+
+# Force lightweight SQLite database for tests to avoid external dependencies
+os.environ.setdefault("USE_SQLITE_FOR_TESTS", "true")
+os.environ.setdefault("PYTEST_RUNNING", "true")
+os.environ.setdefault("REDIS_ENABLED", "false")
 
 import pytest
 

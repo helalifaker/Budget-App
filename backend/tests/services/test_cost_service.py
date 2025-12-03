@@ -551,3 +551,60 @@ class TestCostServiceRealEFIRData:
         # Total: 2.3M SAR
         assert summary["total_operating_cost"] == Decimal("2300000")
         assert summary["operating_entry_count"] == 7
+
+
+class TestCostServiceDHGCalculation:
+    """Tests for personnel cost calculation from DHG allocations."""
+
+    @pytest.mark.asyncio
+    async def test_calculate_personnel_costs_from_dhg_no_allocations(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test DHG calculation fails when no allocations exist."""
+        service = CostService(db_session)
+
+        # Attempt calculation without any allocations
+        with pytest.raises(ValidationError) as exc_info:
+            await service.calculate_personnel_costs_from_dhg(
+                version_id=test_budget_version.id,
+                user_id=test_user_id,
+            )
+
+        assert "No teacher allocations found" in str(exc_info.value)
+        assert exc_info.value.details.get("field") == "allocations"
+
+
+class TestCostServiceDeletion:
+    """Tests for cost entry deletion."""
+
+    @pytest.mark.asyncio
+    async def test_delete_personnel_cost_entry(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Test deleting a personnel cost entry."""
+        service = CostService(db_session)
+
+        # Create entry
+        entry = await service.create_personnel_cost_entry(
+            version_id=test_budget_version.id,
+            account_code="64110",
+            description="Test Personnel Entry",
+            fte_count=Decimal("1"),
+            unit_cost_sar=Decimal("100000"),
+            user_id=test_user_id,
+        )
+
+        # Delete it
+        result = await service.delete_personnel_cost_entry(entry.id)
+
+        assert result is True
+
+        # Verify it's deleted (soft delete, so check deleted_at)
+        costs = await service.get_personnel_costs(test_budget_version.id)
+        assert len([c for c in costs if c.id == entry.id]) == 0
