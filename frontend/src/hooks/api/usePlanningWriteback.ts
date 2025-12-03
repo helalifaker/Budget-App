@@ -7,6 +7,8 @@ import {
   CellUpdateResponse,
   BatchUpdateResponse,
   CellData,
+  CellLockResponse,
+  LockRequest,
   VersionConflictError,
   CellLockedError,
   BatchConflictError,
@@ -14,6 +16,22 @@ import {
 
 // Re-export error classes for use in components
 export { VersionConflictError, CellLockedError, BatchConflictError }
+
+/**
+ * Lock cell request parameters
+ */
+export interface LockCellParams {
+  cellId: string
+  reason?: string
+}
+
+/**
+ * Unlock cell request parameters
+ */
+export interface UnlockCellParams {
+  cellId: string
+  reason?: string
+}
 
 /**
  * Hook for cell-level writeback with optimistic updates
@@ -304,13 +322,120 @@ export function usePlanningWriteback(budgetVersionId: string) {
     },
   })
 
+  // Mutation for locking a cell
+  const lockCellMutation = useMutation({
+    mutationFn: async (params: LockCellParams): Promise<CellLockResponse> => {
+      const response = await apiRequest<CellLockResponse>({
+        method: 'POST',
+        url: `/writeback/cells/${params.cellId}/lock`,
+        data: {
+          lock_reason: params.reason || 'Cellule verrouillée manuellement',
+        } as LockRequest,
+      })
+      return response
+    },
+
+    onSuccess: (data: CellLockResponse) => {
+      toast.success('Cellule verrouillée', {
+        description: data.lock_reason || 'La cellule ne peut plus être modifiée.',
+        duration: 3000,
+      })
+
+      // Update cache to reflect locked state
+      queryClient.setQueryData<CellData[]>(['cells', budgetVersionId], (old) => {
+        if (!old) return old
+        return old.map((cell) =>
+          cell.id === data.id
+            ? {
+                ...cell,
+                is_locked: true,
+              }
+            : cell
+        )
+      })
+
+      // Invalidate to refetch latest data
+      queryClient.invalidateQueries({ queryKey: ['cells', budgetVersionId] })
+    },
+
+    onError: (err: unknown) => {
+      if (err instanceof Error) {
+        toast.error('Erreur lors du verrouillage', {
+          description: err.message || 'Impossible de verrouiller la cellule.',
+          duration: 3000,
+        })
+      } else {
+        toast.error('Erreur lors du verrouillage', {
+          description: 'Une erreur inconnue est survenue.',
+          duration: 3000,
+        })
+      }
+    },
+  })
+
+  // Mutation for unlocking a cell
+  const unlockCellMutation = useMutation({
+    mutationFn: async (params: UnlockCellParams): Promise<CellLockResponse> => {
+      const response = await apiRequest<CellLockResponse>({
+        method: 'DELETE',
+        url: `/writeback/cells/${params.cellId}/lock`,
+        data: {
+          unlock_reason: params.reason,
+        },
+      })
+      return response
+    },
+
+    onSuccess: (data: CellLockResponse) => {
+      toast.success('Cellule déverrouillée', {
+        description: 'La cellule peut maintenant être modifiée.',
+        duration: 3000,
+      })
+
+      // Update cache to reflect unlocked state
+      queryClient.setQueryData<CellData[]>(['cells', budgetVersionId], (old) => {
+        if (!old) return old
+        return old.map((cell) =>
+          cell.id === data.id
+            ? {
+                ...cell,
+                is_locked: false,
+              }
+            : cell
+        )
+      })
+
+      // Invalidate to refetch latest data
+      queryClient.invalidateQueries({ queryKey: ['cells', budgetVersionId] })
+    },
+
+    onError: (err: unknown) => {
+      if (err instanceof Error) {
+        toast.error('Erreur lors du déverrouillage', {
+          description: err.message || 'Impossible de déverrouiller la cellule.',
+          duration: 3000,
+        })
+      } else {
+        toast.error('Erreur lors du déverrouillage', {
+          description: 'Une erreur inconnue est survenue.',
+          duration: 3000,
+        })
+      }
+    },
+  })
+
   return {
     updateCell: updateCellMutation.mutateAsync,
     batchUpdate: batchUpdateMutation.mutateAsync,
+    lockCell: lockCellMutation.mutateAsync,
+    unlockCell: unlockCellMutation.mutateAsync,
     isUpdating: updateCellMutation.isPending || batchUpdateMutation.isPending,
+    isLocking: lockCellMutation.isPending || unlockCellMutation.isPending,
     error: updateCellMutation.error || batchUpdateMutation.error,
     // Direct mutation access for advanced use cases
     updateCellMutation,
     batchUpdateMutation,
+    lockCellMutation,
+    unlockCellMutation,
   }
 }

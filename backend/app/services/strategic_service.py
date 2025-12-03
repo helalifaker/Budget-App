@@ -120,7 +120,10 @@ class StrategicService:
         )
         existing_result = await self.session.execute(existing_query)
         if existing_result.scalar_one_or_none():
-            raise BusinessRuleError(f"Strategic plan '{plan_name}' already exists")
+            raise BusinessRuleError(
+                "duplicate_plan",
+                f"Strategic plan '{plan_name}' already exists",
+            )
 
         # Create plan
         plan = StrategicPlan(

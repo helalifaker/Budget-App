@@ -35,22 +35,29 @@ vi.mock('@/hooks/api/usePlanningWriteback', () => ({
   },
 }))
 
-vi.mock('@/hooks/api/useRealtimeSync', () => ({
+vi.mock('@/hooks/useRealtimeSync', () => ({
   useRealtimeSync: vi.fn(),
 }))
 
-vi.mock('@/hooks/api/useUserPresence', () => ({
+vi.mock('@/hooks/useUserPresence', () => ({
   useUserPresence: vi.fn(() => ({
     activeUsers: [
       {
         user_id: '1',
-        user_name: 'Test User',
         user_email: 'test@efir.sa',
-        last_seen: new Date().toISOString(),
+        joined_at: new Date().toISOString(),
       },
     ],
-    updateActiveCell: vi.fn(),
+    broadcast: vi.fn(),
   })),
+}))
+
+vi.mock('@/contexts/AuthContext', () => ({
+  useAuth: vi.fn(() => ({
+    user: { id: '1', email: 'test@efir.sa' },
+    session: { access_token: 'test-token' },
+  })),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 const createTestQueryClient = () =>
@@ -108,7 +115,7 @@ describe('EnhancedDataTable', () => {
     )
 
     expect(screen.getByText('Utilisateurs actifs:')).toBeInTheDocument()
-    expect(screen.getByText('Test User')).toBeInTheDocument()
+    expect(screen.getByText('test@efir.sa')).toBeInTheDocument()
   })
 
   it('shows loading state', () => {

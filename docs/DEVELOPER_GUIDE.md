@@ -35,7 +35,7 @@
          │ REST API
          ▼
 ┌─────────────────┐
-│  Backend        │  FastAPI 0.123 + Python 3.12+
+│  Backend        │  FastAPI 0.123 + Python 3.14.0
 │  (Port 8000)    │  Calculation Engines
 └────────┬────────┘
          │
@@ -69,7 +69,7 @@ External Integrations:
 
 **Backend**:
 - FastAPI 0.123.x (async web framework)
-- Python 3.12+ (type hints required)
+- Python 3.14.0 (type hints required)
 - Pydantic 2.12+ (data validation)
 - SQLAlchemy 2.x (ORM)
 - Alembic (migrations)
@@ -209,13 +209,13 @@ Install the following:
 nvm install 20
 nvm use 20
 
-# Python 3.12+
+# Python 3.14.0
 # On macOS with Homebrew:
-brew install python@3.12
+brew install python@3.14
 
 # On Ubuntu/Debian:
 sudo apt update
-sudo apt install python3.12 python3.12-venv
+sudo apt install python3.14 python3.14-venv
 
 # PostgreSQL 17 (optional if using local DB)
 brew install postgresql@17  # macOS
@@ -279,7 +279,7 @@ pnpm typecheck      # TypeScript type check
 cd backend
 
 # Create virtual environment
-python3.12 -m venv .venv
+python3.14 -m venv .venv
 
 # Activate virtual environment
 source .venv/bin/activate  # macOS/Linux

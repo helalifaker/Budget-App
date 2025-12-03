@@ -241,20 +241,10 @@ class RevenueService:
         total_discounts = Decimal("0")
 
         for enrollment in enrollments:
-            # Get fees for this level/nationality combination
-            fee_category_query = select(FeeCategory).where(
-                FeeCategory.nationality_type_id == enrollment.nationality_type_id
-            )
-            fee_category_result = await self.session.execute(fee_category_query)
-            fee_category = fee_category_result.scalar_one_or_none()
-
-            if not fee_category:
-                continue
-
-            # Find matching fees
+            # Find matching fees from fee_map
             fees = None
             for key, fee_data in fee_map.items():
-                level_id, nat_id, cat_id = key
+                level_id, nat_id, _cat_id = key
                 if level_id == enrollment.level_id and nat_id == enrollment.nationality_type_id:
                     fees = fee_data
                     break

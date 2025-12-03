@@ -39,15 +39,8 @@ from app.models.configuration import (
     TeacherCostParam,
 )
 from app.models.planning import (
-    CapExPlan,
     ClassStructure,
-    DHGSubjectHours,
-    DHGTeacherRequirement,
     EnrollmentPlan,
-    OperatingCostPlan,
-    PersonnelCostPlan,
-    RevenuePlan,
-    TeacherAllocation,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 

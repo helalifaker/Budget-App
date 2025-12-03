@@ -236,3 +236,25 @@ export interface UserPresenceOptions {
   onUserLeave?: (user: PresenceUser) => void
   broadcastActivity?: boolean
 }
+
+/**
+ * Cell Lock Request
+ */
+export const LockRequestSchema = z.object({
+  lock_reason: z.string().optional(),
+})
+
+export type LockRequest = z.infer<typeof LockRequestSchema>
+
+/**
+ * Cell Lock Response
+ */
+export const CellLockResponseSchema = z.object({
+  id: z.string().uuid(),
+  is_locked: z.boolean(),
+  lock_reason: z.string().optional(),
+  locked_by: z.string().uuid().optional(),
+  locked_at: z.string().optional(),
+})
+
+export type CellLockResponse = z.infer<typeof CellLockResponseSchema>

@@ -22,7 +22,7 @@
 ## Prerequisites
 
 ### Required Tools
-- Python 3.12+ with pip
+- Python 3.14.0 with pip
 - Node.js 18+ and pnpm
 - Supabase account (free tier is sufficient for development)
 - Git

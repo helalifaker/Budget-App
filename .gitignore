@@ -7,10 +7,12 @@ venv
 .venv
 .env
 .env.local
+.env.production
 .idea
 .vscode
 __pycache__
 *.pyc
 coverage
+.coverage
 .pytest_cache
 *.egg-info/

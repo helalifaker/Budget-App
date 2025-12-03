@@ -72,8 +72,6 @@ class ClassStructureService:
             .options(
                 selectinload(ClassStructure.level).selectinload(AcademicLevel.cycle),
                 selectinload(ClassStructure.budget_version),
-                selectinload(ClassStructure.created_by),
-                selectinload(ClassStructure.updated_by),
             )
             .order_by(AcademicLevel.sort_order)
         )

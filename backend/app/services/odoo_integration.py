@@ -164,6 +164,9 @@ class OdooIntegrationService:
             raise OdooConnectionError(
                 f"Failed to connect to Odoo server: {e.errmsg}"
             ) from e
+        except OdooAuthenticationError:
+            # Re-raise authentication errors directly
+            raise
         except Exception as e:
             raise OdooConnectionError(
                 f"Unexpected error connecting to Odoo: {e!s}"

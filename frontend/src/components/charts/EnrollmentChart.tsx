@@ -7,7 +7,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  TooltipProps,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -24,19 +23,30 @@ interface EnrollmentChartProps {
   className?: string
 }
 
+interface TooltipPayload {
+  value?: number
+  payload?: EnrollmentData
+}
+
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: TooltipPayload[]
+}
+
 export function EnrollmentChart({
   data,
   title = 'Enrollment by Level',
   showCapacity = false,
   className,
 }: EnrollmentChartProps) {
-  const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
+  const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length && payload[0].value !== undefined) {
       const value = payload[0].value
-      const capacity = payload[0].payload.capacity
+      const capacity = payload[0].payload?.capacity
+      const level = payload[0].payload?.level
       return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 mb-1">{payload[0].payload.level}</p>
+          <p className="font-medium text-gray-900 mb-1">{level}</p>
           <p className="text-sm">
             <span className="text-gray-600">Students:</span>{' '}
             <span className="font-semibold text-blue-600">{value}</span>

@@ -20,6 +20,6 @@ def test_latest_migration_numbers_are_increasing():
     """Basic check that migration filenames are sorted by timestamp prefix."""
     versions_dir = ROOT / "backend" / "alembic" / "versions"
     files = sorted(p.name for p in versions_dir.glob("*.py"))
-    # Expect the last migration to be the strategic layer one
+    # Expect the last migration to be the writeback layer one
     assert files, "No migration files found"
-    assert files[-1].startswith("20251201_0138"), "Latest migration mismatch"
+    assert files[-1].startswith("20251202_2330"), "Latest migration mismatch"

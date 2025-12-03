@@ -84,8 +84,7 @@ class ConsolidationService:
             )
             .options(
                 selectinload(BudgetConsolidation.budget_version),
-                selectinload(BudgetConsolidation.created_by),
-                selectinload(BudgetConsolidation.updated_by),
+                # Note: created_by and updated_by are FKs, not relationships
             )
             .order_by(
                 BudgetConsolidation.is_revenue.desc(),
@@ -505,7 +504,6 @@ class ConsolidationService:
             select(
                 PersonnelCostPlan.account_code,
                 PersonnelCostPlan.description,
-                PersonnelCostPlan.category,
                 func.sum(PersonnelCostPlan.total_cost_sar).label("total_amount"),
                 func.count(PersonnelCostPlan.id).label("source_count"),
             )
@@ -518,7 +516,6 @@ class ConsolidationService:
             .group_by(
                 PersonnelCostPlan.account_code,
                 PersonnelCostPlan.description,
-                PersonnelCostPlan.category,
             )
         )
 
@@ -530,7 +527,6 @@ class ConsolidationService:
             # Map personnel category to consolidation category
             consolidation_category = self._map_personnel_to_consolidation_category(
                 row.account_code,
-                row.category,
             )
 
             consolidation_data.append({
@@ -557,7 +553,7 @@ class ConsolidationService:
                 OperatingCostPlan.account_code,
                 OperatingCostPlan.description,
                 OperatingCostPlan.category,
-                func.sum(OperatingCostPlan.total_cost_sar).label("total_amount"),
+                func.sum(OperatingCostPlan.amount_sar).label("total_amount"),
                 func.count(OperatingCostPlan.id).label("source_count"),
             )
             .where(
@@ -668,7 +664,6 @@ class ConsolidationService:
     def _map_personnel_to_consolidation_category(
         self,
         account_code: str,
-        category: str,
     ) -> ConsolidationCategory:
         """Map personnel account code and category to consolidation category."""
         # Teaching staff (64110-64119)

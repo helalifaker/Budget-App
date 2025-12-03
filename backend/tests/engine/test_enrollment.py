@@ -625,3 +625,253 @@ class TestScenarioGrowthRates:
         year2 = result.projections[1]
         assert year2.projected_enrollment == 110  # 100 × 1.10
         assert year2.growth_rate_applied == Decimal("0.10")
+
+
+class TestEnrollmentEdgeCases100PercentCoverage:
+    """Additional edge cases for 100% Enrollment calculator coverage."""
+
+    def test_enrollment_projection_fractional_growth_high_precision(self):
+        """Test growth rates with very high precision (0.0001)."""
+        input_data = EnrollmentInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            nationality="French",
+            current_enrollment=100,
+            custom_growth_rate=Decimal("0.0001"),  # 0.01% growth
+            years_to_project=5,
+        )
+
+        result = calculate_enrollment_projection(input_data)
+
+        # After 5 years at 0.01% growth, should be very close to 100
+        year5 = result.projections[4]
+        assert 100 <= year5.projected_enrollment <= 101
+
+    def test_multi_level_total_mismatched_years(self):
+        """Test multi-level total calculation with mismatched projection years."""
+        # Level 1: 3 years
+        level1 = EnrollmentProjectionResult(
+            level_id=uuid4(),
+            level_code="6EME",
+            nationality="French",
+            base_enrollment=120,
+            scenario=EnrollmentGrowthScenario.BASE,
+            projections=[
+                EnrollmentProjection(
+                    year=1, projected_enrollment=120,
+                    growth_rate_applied=Decimal("0.00"),
+                    cumulative_growth=Decimal("0.00")
+                ),
+                EnrollmentProjection(
+                    year=2, projected_enrollment=125,
+                    growth_rate_applied=Decimal("0.04"),
+                    cumulative_growth=Decimal("0.04")
+                ),
+                EnrollmentProjection(
+                    year=3, projected_enrollment=130,
+                    growth_rate_applied=Decimal("0.04"),
+                    cumulative_growth=Decimal("0.0816")
+                ),
+            ],
+            total_growth_students=10,
+            total_growth_percent=Decimal("0.0816"),
+        )
+
+        # Level 2: 2 years (fewer years)
+        level2 = EnrollmentProjectionResult(
+            level_id=uuid4(),
+            level_code="5EME",
+            nationality="French",
+            base_enrollment=115,
+            scenario=EnrollmentGrowthScenario.BASE,
+            projections=[
+                EnrollmentProjection(
+                    year=1, projected_enrollment=115,
+                    growth_rate_applied=Decimal("0.00"),
+                    cumulative_growth=Decimal("0.00")
+                ),
+                EnrollmentProjection(
+                    year=2, projected_enrollment=120,
+                    growth_rate_applied=Decimal("0.04"),
+                    cumulative_growth=Decimal("0.04")
+                ),
+            ],
+            total_growth_students=5,
+            total_growth_percent=Decimal("0.04"),
+        )
+
+        totals = calculate_multi_level_total([level1, level2])
+
+        # Year 1: 120 + 115 = 235
+        assert totals[1] == 235
+
+        # Year 2: 125 + 120 = 245
+        assert totals[2] == 245
+
+        # Year 3: Only level1 has data
+        assert totals[3] == 130
+
+    def test_retention_model_boundary_conditions_50_and_100_percent(self):
+        """Test retention model at exactly 50% and 100% boundaries."""
+        # Exactly 50% retention (minimum)
+        retention_50 = RetentionModel(
+            level_id=uuid4(),
+            retention_rate=Decimal("0.50"),
+            attrition_rate=Decimal("0.50"),
+            new_student_intake=10,
+        )
+
+        next_year = apply_retention_model(100, retention_50)
+        # (100 × 0.50) + 10 = 60
+        assert next_year == 60
+
+        # Exactly 100% retention (maximum)
+        retention_100 = RetentionModel(
+            level_id=uuid4(),
+            retention_rate=Decimal("1.00"),
+            attrition_rate=Decimal("0.00"),
+            new_student_intake=5,
+        )
+
+        next_year = apply_retention_model(100, retention_100)
+        # (100 × 1.00) + 5 = 105
+        assert next_year == 105
+
+    def test_capacity_validation_concurrent_updates_simulation(self):
+        """Test capacity validation with simulated concurrent enrollment changes."""
+        # Simulate near-capacity scenario
+        validate_capacity(1874, capacity_limit=1875)  # OK - 1 under
+        validate_capacity(1875, capacity_limit=1875)  # OK - exactly at
+
+        # Next enrollment would exceed
+        with pytest.raises(CapacityExceededError):
+            validate_capacity(1876, capacity_limit=1875)
+
+    def test_enrollment_scenario_switching_mid_calculation(self):
+        """Test that custom growth rate overrides scenario correctly."""
+        # Start with BASE scenario (4%)
+        input_with_override = EnrollmentInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            nationality="French",
+            current_enrollment=100,
+            growth_scenario=EnrollmentGrowthScenario.BASE,  # Would be 4%
+            custom_growth_rate=Decimal("0.10"),  # Override with 10%
+            years_to_project=2,
+        )
+
+        result = calculate_enrollment_projection(input_with_override)
+
+        # Should use 10%, not 4%
+        year2 = result.projections[1]
+        assert year2.projected_enrollment == 110  # 100 × 1.10
+        assert year2.growth_rate_applied == Decimal("0.10")
+
+    def test_zero_retention_rate_all_students_leave(self):
+        """Test behavior with 0% retention (all students leave)."""
+        # This would be invalid - retention must be >= 0.50
+        with pytest.raises(ValueError, match="must be between 0.50 and 1.00"):
+            validate_retention_rate(Decimal("0.00"))
+
+    def test_enrollment_unicode_level_codes(self):
+        """Test enrollment with Unicode level codes."""
+        input_data = EnrollmentInput(
+            level_id=uuid4(),
+            level_code="Terminale-ES (Économique & Social) — Section européenne",
+            nationality="French",
+            current_enrollment=50,
+            growth_scenario=EnrollmentGrowthScenario.BASE,
+            years_to_project=2,
+        )
+
+        result = calculate_enrollment_projection(input_data)
+
+        # Should handle Unicode level codes without issues
+        assert "Terminale" in result.level_code
+        assert len(result.projections) == 2
+
+    def test_projection_negative_students_never_occurs(self):
+        """Test that negative student counts are prevented."""
+        # Even with extreme negative growth, should not go below 0
+        input_data = EnrollmentInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            nationality="French",
+            current_enrollment=10,
+            custom_growth_rate=Decimal("-0.50"),  # -50% decline
+            years_to_project=5,
+        )
+
+        result = calculate_enrollment_projection(input_data)
+
+        # All projections should be >= 0
+        for projection in result.projections:
+            assert projection.projected_enrollment >= 0
+
+    def test_enrollment_immutability_frozen_models(self):
+        """Test that enrollment projection results are immutable."""
+        result = EnrollmentProjectionResult(
+            level_id=uuid4(),
+            level_code="6EME",
+            nationality="French",
+            base_enrollment=100,
+            scenario=EnrollmentGrowthScenario.BASE,
+            projections=[],
+            total_growth_students=0,
+            total_growth_percent=Decimal("0.00"),
+        )
+
+        # Pydantic frozen models should prevent modification
+        with pytest.raises(ValidationError):
+            result.base_enrollment = 200
+
+    def test_custom_growth_rate_extreme_boundaries(self):
+        """Test custom growth rate at exact -50% and +100% boundaries."""
+        # Exactly -50% (minimum allowed)
+        input_min = EnrollmentInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            nationality="French",
+            current_enrollment=100,
+            custom_growth_rate=Decimal("-0.50"),  # Minimum
+            years_to_project=2,
+        )
+
+        result_min = calculate_enrollment_projection(input_min)
+        year2 = result_min.projections[1]
+        # 100 × 0.50 = 50
+        assert year2.projected_enrollment == 50
+
+        # Exactly +100% (maximum allowed)
+        input_max = EnrollmentInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            nationality="French",
+            current_enrollment=100,
+            custom_growth_rate=Decimal("1.00"),  # Maximum
+            years_to_project=2,
+        )
+
+        result_max = calculate_enrollment_projection(input_max)
+        year2 = result_max.projections[1]
+        # 100 × 2.00 = 200
+        assert year2.projected_enrollment == 200
+
+    def test_enrollment_projection_serialization(self):
+        """Test JSON serialization of enrollment projection models."""
+        projection = EnrollmentProjection(
+            year=1,
+            projected_enrollment=120,
+            growth_rate_applied=Decimal("0.04"),
+            cumulative_growth=Decimal("0.04"),
+        )
+
+        # Serialize to dict
+        data_dict = projection.model_dump()
+        assert data_dict["year"] == 1
+        assert data_dict["projected_enrollment"] == 120
+
+        # Deserialize back
+        reconstructed = EnrollmentProjection(**data_dict)
+        assert reconstructed.year == 1
+        assert reconstructed.projected_enrollment == 120

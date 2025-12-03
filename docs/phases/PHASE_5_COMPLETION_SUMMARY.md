@@ -436,7 +436,7 @@ Trimester Distribution:
 **Type Safety:**
 - ✅ 100% type hints on all functions
 - ✅ Pydantic validation on all inputs
-- ✅ Python 3.12+ type annotations
+- ✅ Python 3.14.0 type annotations
 - ✅ No `any` types used
 
 **Testing:**

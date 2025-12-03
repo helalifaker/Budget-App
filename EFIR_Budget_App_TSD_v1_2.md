@@ -62,7 +62,7 @@ Key integration principles:
 | UI Framework | React 19.2, TypeScript 5.9 | React Server Components + Actions for data mutations; Activity API for collaboration cues |
 | Build Tooling | Vite 7.2, Vitest 3 | Baseline browser targeting, environment API, HMR test harness |
 | UI System | Tailwind CSS 4.1, shadcn/ui (TW v4), AG Grid 34.3, Recharts 2.15 | AG Grid themeQuartz + custom cell renderers; OKLCH palette |
-| Backend | FastAPI 0.123, Python 3.12, Uvicorn 0.34, Pydantic 2.12 | Modular routers, pydantic settings, async SQLAlchemy |
+| Backend | FastAPI 0.123, Python 3.14.0, Uvicorn 0.34, Pydantic 2.12 | Modular routers, pydantic settings, async SQLAlchemy |
 | Data | Supabase (PostgreSQL 17) | Row Level Security, database functions, edge functions |
 | Auth & Collaboration | Supabase Auth, Supabase Realtime | Role-based policies, live cursor + auto-save |
 | Dev Quality | ESLint 9 (flat), Prettier 3.4, Husky 9, lint-staged 15, Ruff 0.8, mypy 1.14, pytest 8, Playwright 1.49 | Mandatory pre-commit and CI gates |
