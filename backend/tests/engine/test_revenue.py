@@ -825,3 +825,257 @@ class TestEdgeCasesAndErrorHandling:
         # Total should match (within 0.01 rounding difference)
         total = distribution.trimester_1 + distribution.trimester_2 + distribution.trimester_3
         assert abs(total - Decimal("45001")) <= Decimal("0.01")
+
+
+class TestRevenueEdgeCases100PercentCoverage:
+    """Additional edge cases for 100% Revenue calculator coverage."""
+
+    def test_sibling_discount_10th_child_maximum_order(self):
+        """Test sibling discount for 10th child (maximum sibling order)."""
+        discount = calculate_sibling_discount(Decimal("45000"), 10)
+
+        assert discount.sibling_order == 10
+        assert discount.discount_applicable is True
+        assert discount.discount_rate == SIBLING_DISCOUNT_RATE  # 0.25
+        assert discount.discount_amount == Decimal("11250.00")  # 45000 × 0.25
+        assert discount.net_tuition == Decimal("33750.00")
+
+    def test_trimester_distribution_sum_verification_no_rounding_loss(self):
+        """Test that trimesters always sum to total with no rounding loss."""
+        test_amounts = [
+            Decimal("45000"),
+            Decimal("45001.33"),  # Odd number
+            Decimal("99999.99"),
+            Decimal("123456.78"),
+        ]
+
+        for amount in test_amounts:
+            distribution = calculate_trimester_distribution(amount)
+
+            total = (
+                distribution.trimester_1
+                + distribution.trimester_2
+                + distribution.trimester_3
+            )
+
+            # Allow for 0.01 rounding difference
+            assert abs(total - amount) <= Decimal("0.01")
+
+    def test_revenue_calculation_all_fees_zero(self):
+        """Test revenue calculation with all fees set to zero."""
+        input_data = TuitionInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            fee_category=FeeCategory.FRENCH_TTC,
+            tuition_fee=Decimal("0"),
+            dai_fee=Decimal("0"),
+            registration_fee=Decimal("0"),
+            sibling_order=1,
+        )
+
+        result = calculate_tuition_revenue(input_data)
+
+        assert result.total_revenue == Decimal("0.00")
+        assert result.base_tuition == Decimal("0")
+        assert result.net_tuition == Decimal("0.00")
+
+    def test_fee_category_enum_validation_all_categories(self):
+        """Test that all fee categories are valid."""
+        for category in [
+            FeeCategory.FRENCH_TTC,
+            FeeCategory.SAUDI_HT,
+            FeeCategory.OTHER_TTC,
+        ]:
+            input_data = TuitionInput(
+                level_id=uuid4(),
+                level_code="6EME",
+                fee_category=category,
+                tuition_fee=Decimal("45000"),
+                dai_fee=Decimal("2000"),
+                registration_fee=Decimal("1000"),
+                sibling_order=1,
+            )
+
+            result = calculate_tuition_revenue(input_data)
+
+            assert result.fee_category == category
+            assert result.total_revenue == Decimal("48000.00")
+
+    def test_aggregate_revenue_empty_and_single_student(self):
+        """Test aggregate revenue with empty list and single student."""
+        # Empty list
+        total_empty = calculate_aggregate_revenue([])
+        assert total_empty == Decimal("0")
+
+        # Single student
+        single_student = TuitionRevenue(
+            level_code="6EME",
+            fee_category=FeeCategory.FRENCH_TTC,
+            base_tuition=Decimal("45000"),
+            base_dai=Decimal("2000"),
+            base_registration=Decimal("1000"),
+            net_tuition=Decimal("45000"),
+            net_dai=Decimal("2000"),
+            net_registration=Decimal("1000"),
+            total_revenue=Decimal("48000"),
+        )
+
+        total_single = calculate_aggregate_revenue([single_student])
+        assert total_single == Decimal("48000")
+
+    def test_revenue_by_level_unicode_level_codes(self):
+        """Test revenue by level with Unicode level codes."""
+        revenues = [
+            TuitionRevenue(
+                level_code="Terminale-ES (Économique & Social)",
+                fee_category=FeeCategory.FRENCH_TTC,
+                base_tuition=Decimal("45000"),
+                base_dai=Decimal("2000"),
+                base_registration=Decimal("1000"),
+                net_tuition=Decimal("45000"),
+                net_dai=Decimal("2000"),
+                net_registration=Decimal("1000"),
+                total_revenue=Decimal("48000"),
+            ),
+            TuitionRevenue(
+                level_code="Terminale-ES (Économique & Social)",
+                fee_category=FeeCategory.FRENCH_TTC,
+                base_tuition=Decimal("45000"),
+                base_dai=Decimal("2000"),
+                base_registration=Decimal("0"),
+                net_tuition=Decimal("45000"),
+                net_dai=Decimal("2000"),
+                net_registration=Decimal("0"),
+                total_revenue=Decimal("47000"),
+            ),
+        ]
+
+        by_level = calculate_revenue_by_level(revenues)
+
+        # Should group by level code (even with Unicode)
+        assert "Terminale-ES (Économique & Social)" in by_level
+        assert by_level["Terminale-ES (Économique & Social)"] == Decimal("95000")
+
+    def test_revenue_by_category_all_three_simultaneously(self):
+        """Test revenue by category with students in all three categories."""
+        revenues = [
+            TuitionRevenue(
+                level_code="6EME",
+                fee_category=FeeCategory.FRENCH_TTC,
+                base_tuition=Decimal("45000"),
+                base_dai=Decimal("2000"),
+                base_registration=Decimal("1000"),
+                net_tuition=Decimal("45000"),
+                net_dai=Decimal("2000"),
+                net_registration=Decimal("1000"),
+                total_revenue=Decimal("48000"),
+            ),
+            TuitionRevenue(
+                level_code="6EME",
+                fee_category=FeeCategory.SAUDI_HT,
+                base_tuition=Decimal("40000"),
+                base_dai=Decimal("2000"),
+                base_registration=Decimal("1000"),
+                net_tuition=Decimal("40000"),
+                net_dai=Decimal("2000"),
+                net_registration=Decimal("1000"),
+                total_revenue=Decimal("43000"),
+            ),
+            TuitionRevenue(
+                level_code="6EME",
+                fee_category=FeeCategory.OTHER_TTC,
+                base_tuition=Decimal("45000"),
+                base_dai=Decimal("2000"),
+                base_registration=Decimal("1000"),
+                net_tuition=Decimal("45000"),
+                net_dai=Decimal("2000"),
+                net_registration=Decimal("1000"),
+                total_revenue=Decimal("48000"),
+            ),
+        ]
+
+        by_category = calculate_revenue_by_category(revenues)
+
+        # Should have all three categories
+        assert len(by_category) == 3
+        assert by_category[FeeCategory.FRENCH_TTC] == Decimal("48000")
+        assert by_category[FeeCategory.SAUDI_HT] == Decimal("43000")
+        assert by_category[FeeCategory.OTHER_TTC] == Decimal("48000")
+
+    def test_tuition_revenue_precision_all_amounts(self):
+        """Test that all amounts maintain exactly 2 decimal precision."""
+        input_data = TuitionInput(
+            level_id=uuid4(),
+            level_code="6EME",
+            fee_category=FeeCategory.FRENCH_TTC,
+            tuition_fee=Decimal("45000.123456"),  # More than 2 decimals
+            dai_fee=Decimal("2000.999"),
+            registration_fee=Decimal("1000.555"),
+            sibling_order=3,  # With discount
+        )
+
+        result = calculate_tuition_revenue(input_data)
+
+        # All amounts should be quantized to 2 decimals
+        assert result.base_tuition.as_tuple().exponent == -2
+        assert result.base_dai.as_tuple().exponent == -2
+        assert result.base_registration.as_tuple().exponent == -2
+        assert result.net_tuition.as_tuple().exponent == -2
+        assert result.total_revenue.as_tuple().exponent == -2
+
+    def test_sibling_discount_immutability_frozen_model(self):
+        """Test that sibling discount results are immutable."""
+        from app.engine.revenue.calculator import SiblingDiscount
+
+        discount = SiblingDiscount(
+            sibling_order=3,
+            discount_applicable=True,
+            discount_rate=Decimal("0.25"),
+            discount_amount=Decimal("11250.00"),
+            net_tuition=Decimal("33750.00"),
+        )
+
+        # Pydantic frozen models should prevent modification
+        with pytest.raises(ValidationError):
+            discount.sibling_order = 5
+
+    def test_total_student_revenue_consistency_verification(self):
+        """Test that tuition revenue + trimester distribution totals match."""
+        input_data = TuitionInput(
+            student_id=uuid4(),
+            level_id=uuid4(),
+            level_code="6EME",
+            fee_category=FeeCategory.FRENCH_TTC,
+            tuition_fee=Decimal("45000"),
+            dai_fee=Decimal("2000"),
+            registration_fee=Decimal("1000"),
+            sibling_order=3,  # With discount
+        )
+
+        result = calculate_total_student_revenue(input_data)
+
+        # Tuition revenue total should match trimester distribution total
+        assert result.tuition_revenue.total_revenue == result.trimester_distribution.total_revenue
+
+        # Trimester distribution should sum to total (within rounding)
+        trimester_sum = (
+            result.trimester_distribution.trimester_1
+            + result.trimester_distribution.trimester_2
+            + result.trimester_distribution.trimester_3
+        )
+
+        assert abs(trimester_sum - result.total_annual_revenue) <= Decimal("0.01")
+
+    def test_sibling_discount_rate_and_threshold_constants(self):
+        """Test that sibling discount constants are correctly defined."""
+        # Constants should be defined
+        assert SIBLING_DISCOUNT_THRESHOLD == 3  # 3rd child+
+        assert SIBLING_DISCOUNT_RATE == Decimal("0.25")  # 25%
+
+        # Verify constants are used correctly
+        discount_2nd = calculate_sibling_discount(Decimal("45000"), 2)
+        assert discount_2nd.discount_applicable is False  # Before threshold
+
+        discount_3rd = calculate_sibling_discount(Decimal("45000"), 3)
+        assert discount_3rd.discount_applicable is True  # At threshold
+        assert discount_3rd.discount_rate == SIBLING_DISCOUNT_RATE
