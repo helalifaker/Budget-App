@@ -12,5 +12,6 @@ venv
 __pycache__
 *.pyc
 coverage
+.coverage
 .pytest_cache
 *.egg-info/
