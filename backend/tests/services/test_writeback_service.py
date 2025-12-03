@@ -2,32 +2,42 @@
 Tests for WritebackService.
 
 Tests cover:
-- Cell CRUD operations
-- Optimistic locking
-- Batch updates
-- Undo/redo operations
-- Cell comments
-- Cell locking
-- Cache invalidation
+- Module cache mapping
+- Service initialization
+- Cell CRUD operations (with mocking)
+- Optimistic locking logic
+- Schema validations
 
-Note: Many tests require the efir_budget.planning_cells table which uses raw SQL.
-These tests are skipped in unit test mode and require PostgreSQL integration tests.
+Note: Full integration tests require PostgreSQL with efir_budget schema.
 """
 
-import uuid
+from datetime import datetime
+from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.configuration import BudgetVersion
+from app.schemas.writeback import (
+    BatchUpdateRequest,
+    CellCreateRequest,
+    CellUpdate,
+    CellUpdateRequest,
+    CommentRequest,
+    LockRequest,
+    UndoRequest,
+    UnlockRequest,
+)
+from app.services.exceptions import (
+    CellLockedError,
+    NotFoundError,
+    VersionConflictError,
+)
 from app.services.writeback_service import (
     MODULE_TO_CACHE_ENTITY,
     WritebackService,
-)
-
-# Skip tests that require raw SQL tables not available in SQLite
-SKIP_RAW_SQL = pytest.mark.skip(
-    reason="Requires PostgreSQL with efir_budget schema - run in integration tests"
 )
 
 
@@ -80,132 +90,281 @@ class TestWritebackServiceInit:
         assert service.session == db_session
 
 
-# =============================================================================
-# Integration tests requiring PostgreSQL (skipped in unit tests)
-# =============================================================================
-
-
-@SKIP_RAW_SQL
 class TestGetCellById:
     """Tests for cell retrieval by ID."""
 
     @pytest.mark.asyncio
-    async def test_get_cell_not_found_raises_error(
-        self,
-        db_session: AsyncSession,
-    ):
-        """Test retrieving non-existent cell raises error."""
-        pass
+    async def test_get_cell_success(self):
+        """Test successful cell retrieval."""
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_row = MagicMock()
+        mock_row._mapping = {
+            "id": uuid4(),
+            "budget_version_id": uuid4(),
+            "module_code": "enrollment",
+            "entity_id": uuid4(),
+            "field_name": "student_count",
+            "period_code": "2025",
+            "value_numeric": Decimal("100"),
+            "value_text": None,
+            "value_type": "numeric",
+            "is_locked": False,
+            "lock_reason": None,
+            "locked_by": None,
+            "locked_at": None,
+            "version": 1,
+            "modified_by": uuid4(),
+            "modified_at": datetime.utcnow(),
+            "created_by_id": uuid4(),
+            "created_at": datetime.utcnow(),
+            "comment_count": 0,
+            "unresolved_comment_count": 0,
+        }
+        mock_result.fetchone.return_value = mock_row
+        mock_session.execute.return_value = mock_result
+
+        service = WritebackService(mock_session)
+        cell_id = uuid4()
+        result = await service.get_cell_by_id(cell_id)
+
+        assert result is not None
+        mock_session.execute.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_get_cell_not_found_returns_none(
-        self,
-        db_session: AsyncSession,
-    ):
-        """Test retrieving non-existent cell returns None when specified."""
-        pass
+    async def test_get_cell_not_found_raises(self):
+        """Test cell retrieval raises NotFoundError when not found."""
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = None
+        mock_session.execute.return_value = mock_result
 
+        service = WritebackService(mock_session)
+        cell_id = uuid4()
 
-@SKIP_RAW_SQL
-class TestCreateCell:
-    """Tests for cell creation."""
-
-    @pytest.mark.asyncio
-    async def test_create_cell_success(
-        self,
-        db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
-        test_user_id: uuid.UUID,
-    ):
-        """Test successful cell creation."""
-        pass
-
-
-@SKIP_RAW_SQL
-class TestUpdateCell:
-    """Tests for cell updates with optimistic locking."""
+        with pytest.raises(NotFoundError):
+            await service.get_cell_by_id(cell_id, raise_if_not_found=True)
 
     @pytest.mark.asyncio
-    async def test_update_cell_success(
-        self,
-        db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
-        test_user_id: uuid.UUID,
-    ):
-        """Test successful cell update."""
-        pass
+    async def test_get_cell_not_found_returns_none(self):
+        """Test cell retrieval returns None when not found and flag is False."""
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = None
+        mock_session.execute.return_value = mock_result
+
+        service = WritebackService(mock_session)
+        cell_id = uuid4()
+        result = await service.get_cell_by_id(cell_id, raise_if_not_found=False)
+
+        assert result is None
 
 
-@SKIP_RAW_SQL
-class TestBatchUpdate:
-    """Tests for batch cell updates."""
-
-    @pytest.mark.asyncio
-    async def test_batch_update_success(
-        self,
-        db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
-        test_user_id: uuid.UUID,
-    ):
-        """Test successful batch update."""
-        pass
-
-
-@SKIP_RAW_SQL
-class TestCellLocking:
-    """Tests for cell locking operations."""
+class TestCellUpdateValidation:
+    """Tests for cell update validation logic."""
 
     @pytest.mark.asyncio
-    async def test_lock_cell_success(
-        self,
-        db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
-        test_user_id: uuid.UUID,
-    ):
-        """Test successful cell locking."""
-        pass
+    async def test_update_cell_locked_raises(self):
+        """Test that updating locked cell raises error."""
+        mock_session = AsyncMock(spec=AsyncSession)
 
+        cell_id = uuid4()
+        locked_cell = {
+            "id": cell_id,
+            "budget_version_id": uuid4(),
+            "module_code": "enrollment",
+            "entity_id": uuid4(),
+            "field_name": "student_count",
+            "period_code": "2025",
+            "value_numeric": Decimal("100"),
+            "value_text": None,
+            "value_type": "numeric",
+            "is_locked": True,
+            "lock_reason": "Budget approved",
+            "version": 1,
+        }
 
-@SKIP_RAW_SQL
-class TestCellComments:
-    """Tests for cell comment operations."""
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = MagicMock(_mapping=locked_cell)
+        mock_session.execute.return_value = mock_result
 
-    @pytest.mark.asyncio
-    async def test_add_comment_success(
-        self,
-        db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
-        test_user_id: uuid.UUID,
-    ):
-        """Test successful comment addition."""
-        pass
+        service = WritebackService(mock_session)
+        user_id = uuid4()
+        data = CellUpdateRequest(
+            value_numeric=Decimal("150"),
+            version=1,
+        )
 
-
-@SKIP_RAW_SQL
-class TestUndoRedo:
-    """Tests for undo/redo operations."""
-
-    @pytest.mark.asyncio
-    async def test_undo_success(
-        self,
-        db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
-        test_user_id: uuid.UUID,
-    ):
-        """Test successful undo operation."""
-        pass
-
-
-@SKIP_RAW_SQL
-class TestChangeHistory:
-    """Tests for change history tracking."""
+        with pytest.raises(CellLockedError):
+            await service.update_cell(cell_id, data, user_id)
 
     @pytest.mark.asyncio
-    async def test_get_cell_history(
-        self,
-        db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
-        test_user_id: uuid.UUID,
-    ):
-        """Test retrieving cell change history."""
-        pass
+    async def test_update_cell_version_conflict(self):
+        """Test that version mismatch raises conflict error."""
+        mock_session = AsyncMock(spec=AsyncSession)
+
+        cell_id = uuid4()
+        cell_data = {
+            "id": cell_id,
+            "budget_version_id": uuid4(),
+            "module_code": "enrollment",
+            "entity_id": uuid4(),
+            "field_name": "student_count",
+            "period_code": "2025",
+            "value_numeric": Decimal("100"),
+            "value_text": None,
+            "value_type": "numeric",
+            "is_locked": False,
+            "version": 5,  # Server has version 5
+        }
+
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = MagicMock(_mapping=cell_data)
+        mock_session.execute.return_value = mock_result
+
+        service = WritebackService(mock_session)
+        user_id = uuid4()
+        data = CellUpdateRequest(
+            value_numeric=Decimal("150"),
+            version=3,  # Client expects version 3
+        )
+
+        with pytest.raises(VersionConflictError):
+            await service.update_cell(cell_id, data, user_id)
+
+
+class TestSchemaValidation:
+    """Tests for request/response schema validation."""
+
+    def test_cell_create_request(self):
+        """Test CellCreateRequest schema validation."""
+        data = CellCreateRequest(
+            budget_version_id=uuid4(),
+            module_code="enrollment",
+            entity_id=uuid4(),
+            field_name="student_count",
+            period_code="2025",
+            value_numeric=Decimal("100"),
+            value_type="numeric",
+        )
+
+        assert data.module_code == "enrollment"
+        assert data.field_name == "student_count"
+        assert data.value_numeric == Decimal("100")
+
+    def test_cell_update_request(self):
+        """Test CellUpdateRequest schema validation."""
+        data = CellUpdateRequest(
+            value_numeric=Decimal("150"),
+            version=1,
+        )
+
+        assert data.value_numeric == Decimal("150")
+        assert data.version == 1
+
+    def test_cell_update_request_with_text(self):
+        """Test CellUpdateRequest with text value."""
+        data = CellUpdateRequest(
+            value_text="Test note",
+            version=2,
+        )
+
+        assert data.value_text == "Test note"
+        assert data.version == 2
+
+    def test_batch_update_request(self):
+        """Test BatchUpdateRequest schema validation."""
+        request = BatchUpdateRequest(
+            updates=[
+                CellUpdate(
+                    cell_id=uuid4(),
+                    value_numeric=Decimal("100"),
+                    version=1,
+                ),
+                CellUpdate(
+                    cell_id=uuid4(),
+                    value_text="Test",
+                    version=1,
+                ),
+            ]
+        )
+
+        assert len(request.updates) == 2
+
+    def test_lock_request(self):
+        """Test LockRequest schema validation."""
+        data = LockRequest(lock_reason="Budget approved")
+        assert data.lock_reason == "Budget approved"
+
+    def test_unlock_request(self):
+        """Test UnlockRequest schema validation."""
+        data = UnlockRequest(unlock_reason="Budget reopened")
+        assert data.unlock_reason == "Budget reopened"
+
+    def test_unlock_request_optional_reason(self):
+        """Test UnlockRequest with no reason."""
+        data = UnlockRequest()
+        assert data.unlock_reason is None
+
+    def test_comment_request(self):
+        """Test CommentRequest schema validation."""
+        data = CommentRequest(comment_text="Review this value")
+        assert data.comment_text == "Review this value"
+
+    def test_undo_request(self):
+        """Test UndoRequest schema validation."""
+        session_id = uuid4()
+        request = UndoRequest(session_id=session_id)
+        assert request.session_id == session_id
+
+
+class TestCacheInvalidation:
+    """Tests for cache invalidation logic."""
+
+    def test_module_to_cache_entity_mapping_coverage(self):
+        """Test all modules have cache entity mappings."""
+        efir_modules = [
+            "enrollment",
+            "class_structure",
+            "dhg",
+            "revenue",
+            "personnel_costs",
+            "operating_costs",
+            "capex",
+            "consolidation",
+        ]
+
+        for module in efir_modules:
+            assert module in MODULE_TO_CACHE_ENTITY, f"Module {module} not mapped"
+            assert MODULE_TO_CACHE_ENTITY[module], f"Module {module} has empty mapping"
+
+    def test_cache_entity_values_not_empty(self):
+        """Test cache entity values are meaningful strings."""
+        for module, entity in MODULE_TO_CACHE_ENTITY.items():
+            assert isinstance(entity, str)
+            assert len(entity) > 0
+            assert entity.islower() or "_" in entity
+
+
+class TestOptimisticLocking:
+    """Tests for optimistic locking behavior."""
+
+    def test_version_field_required(self):
+        """Test that version field is required in CellUpdateRequest."""
+        with pytest.raises(Exception):
+            CellUpdateRequest(value_numeric=Decimal("100"))
+
+    def test_version_must_be_positive(self):
+        """Test version must be a positive integer >= 1."""
+        # Version 1 is the minimum
+        data = CellUpdateRequest(value_numeric=Decimal("100"), version=1)
+        assert data.version == 1
+
+        # Higher versions work
+        data = CellUpdateRequest(value_numeric=Decimal("100"), version=5)
+        assert data.version == 5
+
+    def test_version_zero_rejected(self):
+        """Test version 0 is rejected."""
+        with pytest.raises(Exception):
+            CellUpdateRequest(value_numeric=Decimal("100"), version=0)

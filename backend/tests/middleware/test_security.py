@@ -31,7 +31,6 @@ from app.core.security import (
 class TestPasswordHashing:
     """Tests for password hashing utilities."""
 
-    @pytest.mark.skipif(True, reason="bcrypt library version compatibility issue")
     def test_hash_password(self):
         """Test password hashing."""
         password = "secure_password_123"
@@ -41,7 +40,6 @@ class TestPasswordHashing:
         assert len(hashed) > 0
         assert hashed.startswith("$2b$")  # bcrypt prefix
 
-    @pytest.mark.skipif(True, reason="bcrypt library version compatibility issue")
     def test_verify_password_correct(self):
         """Test password verification with correct password."""
         password = "my_secure_password"
@@ -49,7 +47,6 @@ class TestPasswordHashing:
 
         assert verify_password(password, hashed) is True
 
-    @pytest.mark.skipif(True, reason="bcrypt library version compatibility issue")
     def test_verify_password_incorrect(self):
         """Test password verification with incorrect password."""
         password = "my_secure_password"
@@ -58,7 +55,6 @@ class TestPasswordHashing:
 
         assert verify_password(wrong_password, hashed) is False
 
-    @pytest.mark.skipif(True, reason="bcrypt library version compatibility issue")
     def test_hash_produces_unique_hashes(self):
         """Test that same password produces different hashes (salting)."""
         password = "same_password"
