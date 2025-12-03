@@ -16,3 +16,6 @@ coverage
 .coverage
 .pytest_cache
 *.egg-info/
+playwright-report/
+test-results/
+.tanstack/
