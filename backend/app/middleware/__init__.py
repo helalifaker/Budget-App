@@ -4,4 +4,12 @@ Middleware for EFIR Budget Planning Application.
 Provides authentication, authorization, and request processing middleware.
 """
 
-__all__: list[str] = []
+from app.middleware.auth import AuthenticationMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
+from app.middleware.rbac import RBACMiddleware
+
+__all__ = [
+    "AuthenticationMiddleware",
+    "RateLimitMiddleware",
+    "RBACMiddleware",
+]

@@ -7,6 +7,7 @@ venv
 .venv
 .env
 .env.local
+.env.production
 .idea
 .vscode
 __pycache__

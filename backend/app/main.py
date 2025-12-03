@@ -24,6 +24,7 @@ from app.api.v1 import (
 )
 from app.core.logging import LoggingMiddleware
 from app.middleware.auth import AuthenticationMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.rbac import RBACMiddleware
 from app.routes import health
 
@@ -67,14 +68,31 @@ def create_app() -> FastAPI:
     # Authentication middleware (validates JWT tokens)
     app.add_middleware(AuthenticationMiddleware)
 
+    # Rate limiting middleware (protects against abuse)
+    # Only enable in production or when explicitly configured
+    if os.getenv("ENABLE_RATE_LIMITING", "true").lower() == "true":
+        app.add_middleware(RateLimitMiddleware)
+
     # CORS middleware should wrap authentication so preflight checks hit it first
+    # Get allowed origins from environment variable, with sensible defaults
+    allowed_origins_str = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://localhost:3000"
+    )
+    allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
+
+    # Add production domain if configured
+    production_domain = os.getenv("PRODUCTION_FRONTEND_URL")
+    if production_domain and production_domain not in allowed_origins:
+        allowed_origins.append(production_domain)
+
+    # Always allow Vercel deployments for staging
+    if "https://*.vercel.app" not in allowed_origins:
+        allowed_origins.append("https://*.vercel.app")
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:5173",  # Vite dev server
-            "http://localhost:3000",  # Alternative dev port
-            "https://*.vercel.app",   # Vercel deployments
-        ],
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

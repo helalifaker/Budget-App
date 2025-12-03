@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import UUID, Boolean, DateTime, Integer, String, Text
+from sqlalchemy import UUID, Boolean, DateTime, Integer, String, Text  # noqa: F401
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel, PortableJSON
