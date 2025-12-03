@@ -8,7 +8,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  TooltipProps,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -31,6 +30,18 @@ interface ScenarioChartProps {
   title?: string
   className?: string
   metrics?: string[]
+}
+
+interface TooltipPayload {
+  value?: number
+  name?: string
+  color?: string
+  payload?: ScenarioData
+}
+
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: TooltipPayload[]
 }
 
 const COLORS = {
@@ -61,12 +72,12 @@ export function ScenarioChart({
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
+  const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 mb-2">Year {payload[0].payload.year}</p>
-          {payload.map((entry, idx) => {
+          <p className="font-medium text-gray-900 mb-2">Year {payload[0].payload?.year}</p>
+          {payload.map((entry: TooltipPayload, idx: number) => {
             const value = entry.value
             if (value !== undefined) {
               return (

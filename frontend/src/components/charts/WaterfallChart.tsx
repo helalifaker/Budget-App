@@ -8,7 +8,6 @@ import {
   ResponsiveContainer,
   Cell,
   Legend,
-  TooltipProps,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -22,6 +21,16 @@ interface WaterfallChartProps {
   data: WaterfallData[]
   title?: string
   className?: string
+}
+
+interface TooltipPayload {
+  value?: number
+  payload?: WaterfallData
+}
+
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: TooltipPayload[]
 }
 
 const COLORS = {
@@ -45,13 +54,13 @@ export function WaterfallChart({
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
+  const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length && payload[0].value !== undefined) {
       return (
         <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900">{payload[0].payload.name}</p>
+          <p className="font-medium text-gray-900">{payload[0].payload?.name}</p>
           <p className="text-lg font-bold">{formatCurrency(Math.abs(payload[0].value))}</p>
-          <p className="text-xs text-gray-500 capitalize">{payload[0].payload.type}</p>
+          <p className="text-xs text-gray-500 capitalize">{payload[0].payload?.type}</p>
         </div>
       )
     }

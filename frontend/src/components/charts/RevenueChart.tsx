@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, TooltipProps } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface RevenueData {
@@ -11,6 +11,21 @@ interface RevenueChartProps {
   data: RevenueData[]
   title?: string
   className?: string
+}
+
+interface TooltipPayload {
+  value?: number
+  name?: string
+}
+
+interface CustomTooltipProps {
+  active?: boolean
+  payload?: TooltipPayload[]
+}
+
+interface PieLabelProps {
+  name?: string
+  percent?: number
 }
 
 const COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444']
@@ -26,7 +41,7 @@ export function RevenueChart({ data, title = 'Revenue Breakdown', className }: R
     }).format(value)
   }
 
-  const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
+  const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length && payload[0].value !== undefined) {
       const value = payload[0].value
       const total = data.reduce((sum, d) => sum + d.amount, 0)
@@ -49,6 +64,11 @@ export function RevenueChart({ data, title = 'Revenue Breakdown', className }: R
 
   const total = data.reduce((sum, item) => sum + item.amount, 0)
 
+  const renderLabel = ({ name, percent }: PieLabelProps) => {
+    const percentValue = percent ?? 0
+    return `${name} (${(percentValue * 100).toFixed(0)}%)`
+  }
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -63,7 +83,7 @@ export function RevenueChart({ data, title = 'Revenue Breakdown', className }: R
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+              label={renderLabel}
               outerRadius={80}
               fill="#8884d8"
               dataKey="value"
