@@ -1019,3 +1019,204 @@ class TestEdgeCasesAndErrorHandling:
 
         assert hsa_over.hsa_hours_needed == Decimal("21.00")
         assert hsa_over.hsa_within_limit is False  # Over limit
+
+
+class TestDHGEdgeCases100PercentCoverage:
+    """Additional edge cases for 100% DHG calculator coverage."""
+
+    def test_dhg_hours_precision_very_small_values(self):
+        """Test DHG hours with very small precision (0.01h)."""
+        level_id = uuid4()
+        input_data = DHGInput(
+            level_id=level_id,
+            level_code="6EME",
+            education_level=EducationLevel.SECONDARY,
+            number_of_classes=1,
+            subject_hours_list=[
+                SubjectHours(
+                    subject_id=uuid4(),
+                    subject_code="MUSIC",
+                    subject_name="Musique",
+                    level_id=level_id,
+                    level_code="6EME",
+                    hours_per_week=Decimal("0.01"),  # Very small
+                )
+            ],
+        )
+
+        result = calculate_dhg_hours(input_data)
+        assert result.total_hours == Decimal("0.01")
+
+    def test_fte_calculation_rounding_at_half_boundary(self):
+        """Test FTE rounding at exactly .5 boundary."""
+        # Exactly 9.5 hours → should round to 10 FTE
+        hours_result = DHGHoursResult(
+            level_id=uuid4(),
+            level_code="6EME",
+            education_level=EducationLevel.SECONDARY,
+            number_of_classes=1,
+            total_hours=Decimal("171.0"),  # 9.5 × 18 = 171
+            subjects_hours_breakdown=[],
+        )
+
+        fte_result = calculate_fte_from_hours(hours_result)
+        # 171 ÷ 18 = 9.5 → rounds to 10
+        assert fte_result.rounded_fte == 10
+
+    def test_subject_hours_unicode_characters(self):
+        """Test subject names with Unicode characters."""
+        level_id = uuid4()
+        input_data = DHGInput(
+            level_id=level_id,
+            level_code="6EME",
+            education_level=EducationLevel.SECONDARY,
+            number_of_classes=3,
+            subject_hours_list=[
+                SubjectHours(
+                    subject_id=uuid4(),
+                    subject_code="FRANÇAIS",
+                    subject_name="Français (Littérature Française) — É È Ê Ë",
+                    level_id=level_id,
+                    level_code="6EME",
+                    hours_per_week=Decimal("4.5"),
+                )
+            ],
+        )
+
+        result = calculate_dhg_hours(input_data)
+        # Should handle Unicode without issues
+        assert len(result.subjects_hours_breakdown) == 1
+        assert "Français" in result.subjects_hours_breakdown[0].subject_name
+
+    def test_dhg_input_immutability(self):
+        """Test that DHG input models are immutable after creation."""
+        level_id = uuid4()
+        input_data = DHGInput(
+            level_id=level_id,
+            level_code="6EME",
+            education_level=EducationLevel.SECONDARY,
+            number_of_classes=5,
+            subject_hours_list=[],
+        )
+
+        # Pydantic frozen models should prevent modification
+        with pytest.raises(ValidationError):
+            input_data.number_of_classes = 10
+
+    def test_dhg_serialization_and_deserialization(self):
+        """Test JSON serialization/deserialization of DHG models."""
+        level_id = uuid4()
+        input_data = DHGInput(
+            level_id=level_id,
+            level_code="6EME",
+            education_level=EducationLevel.SECONDARY,
+            number_of_classes=5,
+            subject_hours_list=[],
+        )
+
+        # Serialize to dict
+        data_dict = input_data.model_dump()
+        assert data_dict["number_of_classes"] == 5
+
+        # Deserialize back
+        reconstructed = DHGInput(**data_dict)
+        assert reconstructed.number_of_classes == 5
+        assert reconstructed.level_id == level_id
+
+    def test_validate_standard_hours_custom_values(self):
+        """Test validation with custom standard hours values."""
+        # Custom primary standard hours (should be 18-30)
+        validate_standard_hours(Decimal("24.0"), EducationLevel.PRIMARY)  # Valid
+        validate_standard_hours(Decimal("18.0"), EducationLevel.PRIMARY)  # Min valid
+        validate_standard_hours(Decimal("30.0"), EducationLevel.PRIMARY)  # Max valid
+
+    def test_dhg_hours_float_overflow_protection(self):
+        """Test with extremely large number of classes (boundary of Decimal)."""
+        level_id = uuid4()
+        input_data = DHGInput(
+            level_id=level_id,
+            level_code="6EME",
+            education_level=EducationLevel.SECONDARY,
+            number_of_classes=999,  # Very large
+            subject_hours_list=[
+                SubjectHours(
+                    subject_id=uuid4(),
+                    subject_code="MATH",
+                    subject_name="Mathématiques",
+                    level_id=level_id,
+                    level_code="6EME",
+                    hours_per_week=Decimal("4.5"),
+                )
+            ],
+        )
+
+        result = calculate_dhg_hours(input_data)
+        # 999 classes × 4.5 hours = 4495.5 hours
+        assert result.total_hours == Decimal("4495.5")
+
+    def test_calculate_trmd_gap_with_decimal_fte(self):
+        """Test TRMD gap calculation with decimal FTE values."""
+        gap_result = calculate_trmd_gap(
+            required_fte=Decimal("12.5"),
+            available_aefe_fte=Decimal("8.3"),
+            available_local_fte=Decimal("2.7"),
+        )
+
+        # Gap: 12.5 - 8.3 - 2.7 = 1.5 FTE
+        assert gap_result.gap_fte == Decimal("1.5")
+        assert gap_result.is_overstaffed is False
+        assert gap_result.gap_coverage_recommendation.startswith("Recruit")
+
+    def test_hsa_allocation_zero_available_teachers(self):
+        """Test HSA allocation fails gracefully when no teachers available."""
+        with pytest.raises(ValueError, match="must have at least one available teacher"):
+            calculate_hsa_allocation(
+                "MATH",
+                "Mathématiques",
+                Decimal("20.0"),
+                0,  # No teachers!
+                EducationLevel.SECONDARY,
+            )
+
+    def test_subject_hours_breakdown_alphabetical_sort(self):
+        """Test that subject hours breakdown is sorted alphabetically."""
+        level_id = uuid4()
+        input_data = DHGInput(
+            level_id=level_id,
+            level_code="6EME",
+            education_level=EducationLevel.SECONDARY,
+            number_of_classes=3,
+            subject_hours_list=[
+                SubjectHours(
+                    subject_id=uuid4(),
+                    subject_code="SCIENCE",
+                    subject_name="Sciences",
+                    level_id=level_id,
+                    level_code="6EME",
+                    hours_per_week=Decimal("3.0"),
+                ),
+                SubjectHours(
+                    subject_id=uuid4(),
+                    subject_code="MATH",
+                    subject_name="Mathématiques",
+                    level_id=level_id,
+                    level_code="6EME",
+                    hours_per_week=Decimal("4.5"),
+                ),
+                SubjectHours(
+                    subject_id=uuid4(),
+                    subject_code="ART",
+                    subject_name="Arts plastiques",
+                    level_id=level_id,
+                    level_code="6EME",
+                    hours_per_week=Decimal("1.0"),
+                ),
+            ],
+        )
+
+        result = calculate_dhg_hours(input_data)
+
+        # Should be sorted: Arts, Mathématiques, Sciences
+        assert result.subjects_hours_breakdown[0].subject_name == "Arts plastiques"
+        assert result.subjects_hours_breakdown[1].subject_name == "Mathématiques"
+        assert result.subjects_hours_breakdown[2].subject_name == "Sciences"

@@ -853,3 +853,207 @@ class TestEdgeCasesAndErrorHandling:
         assert result.cost_per_student is not None
         assert result.margin_percentage is not None
         assert result.staff_cost_ratio is not None
+
+
+class TestKPIEdgeCases100PercentCoverage:
+    """Additional edge cases for 100% KPI calculator coverage."""
+
+    def test_kpi_calculation_with_zero_revenue_all_kpis(self):
+        """Test all KPI calculations when revenue is exactly zero."""
+        kpi_input = KPIInput(
+            total_students=1850,
+            secondary_students=650,
+            max_capacity=1875,
+            total_teacher_fte=Decimal("154.17"),
+            total_revenue=Decimal("0.00"),  # Zero revenue!
+            total_costs=Decimal("74945250"),
+            personnel_costs=Decimal("52461675"),
+        )
+
+        result = calculate_all_kpis(kpi_input)
+
+        # Revenue per student should be 0
+        assert result.revenue_per_student.value == Decimal("0.00")
+
+        # Margin percentage calculation requires positive revenue
+        # Should handle gracefully
+        assert result.margin_percentage is not None
+
+    def test_kpi_precision_very_large_numbers_billions(self):
+        """Test KPI calculations with billions in revenue."""
+        kpi_input = KPIInput(
+            total_students=10000,
+            secondary_students=4000,
+            max_capacity=12000,
+            total_teacher_fte=Decimal("800.0"),
+            dhg_hours_total=Decimal("5400.0"),
+            total_revenue=Decimal("5000000000"),  # 5 billion SAR
+            total_costs=Decimal("4500000000"),    # 4.5 billion SAR
+            personnel_costs=Decimal("3150000000"), # 3.15 billion SAR
+        )
+
+        result = calculate_all_kpis(kpi_input)
+
+        # Revenue per student: 5B ÷ 10,000 = 500,000 SAR
+        assert result.revenue_per_student.value == Decimal("500000.00")
+
+        # Cost per student: 4.5B ÷ 10,000 = 450,000 SAR
+        assert result.cost_per_student.value == Decimal("450000.00")
+
+    def test_kpi_performance_status_exact_boundaries(self):
+        """Test performance status at exact target boundaries."""
+        # Exactly on target for student-teacher ratio
+        result = calculate_student_teacher_ratio(
+            total_students=1850,
+            total_teacher_fte=Decimal("154.166667")  # Exactly 12.00 ratio
+        )
+
+        assert result.value == Decimal("12.00")
+        assert result.performance_status == "on_target"
+
+    def test_calculate_all_kpis_partial_data_minimal_fields(self):
+        """Test calculating KPIs with only minimal required fields."""
+        kpi_input = KPIInput(
+            total_students=100,
+            secondary_students=0,  # No secondary students
+            max_capacity=150,
+            total_teacher_fte=Decimal("10.0"),
+            dhg_hours_total=None,  # Not provided
+            total_revenue=Decimal("1000000"),
+            total_costs=Decimal("900000"),
+            personnel_costs=Decimal("600000"),
+        )
+
+        result = calculate_all_kpis(kpi_input)
+
+        # H/E ratio should be None (no DHG hours)
+        assert result.he_ratio_secondary is None
+
+        # All other KPIs should be calculated
+        assert result.student_teacher_ratio is not None
+        assert result.capacity_utilization is not None
+        assert result.revenue_per_student is not None
+
+    def test_kpi_variance_sign_consistency_all_directions(self):
+        """Test variance signs are consistent across all KPIs."""
+        # Above target
+        above = calculate_student_teacher_ratio(
+            total_students=1850,
+            total_teacher_fte=Decimal("120.0")  # 15.42 ratio > 12.00 target
+        )
+        assert above.variance_from_target > 0
+        assert above.performance_status == "above_target"
+
+        # Below target
+        below = calculate_student_teacher_ratio(
+            total_students=1850,
+            total_teacher_fte=Decimal("200.0")  # 9.25 ratio < 12.00 target
+        )
+        assert below.variance_from_target < 0
+        assert below.performance_status == "below_target"
+
+        # On target (within tolerance)
+        on_target = calculate_student_teacher_ratio(
+            total_students=1850,
+            total_teacher_fte=Decimal("154.17")  # ~12.00 ratio
+        )
+        assert abs(on_target.variance_from_target) <= Decimal("0.01")
+
+    def test_margin_percentage_extreme_loss_10x_costs(self):
+        """Test margin percentage with costs 10x higher than revenue."""
+        result = calculate_margin_percentage(
+            total_revenue=Decimal("10000000"),
+            total_costs=Decimal("100000000"),  # 10x higher!
+        )
+
+        # Margin: (10M - 100M) / 10M = -9.00 = -900%
+        assert result.value == Decimal("-900.00")
+        assert result.value < 0  # Loss
+        assert result.performance_status == "below_target"
+
+    def test_staff_cost_ratio_zero_personnel_costs(self):
+        """Test staff cost ratio when personnel costs are zero."""
+        result = calculate_staff_cost_ratio(
+            personnel_costs=Decimal("0.00"),  # Zero personnel costs
+            total_costs=Decimal("100000"),
+        )
+
+        # Ratio: 0 / 100,000 = 0%
+        assert result.value == Decimal("0.00")
+        assert result.performance_status == "below_target"  # Far below 70%
+
+    def test_capacity_utilization_over_200_percent_severe_overcrowding(self):
+        """Test capacity utilization in severe overcrowding (>200%)."""
+        result = calculate_capacity_utilization(
+            current_students=4000,  # More than 2x capacity
+            max_capacity=1875,
+        )
+
+        # Utilization: 4000 / 1875 = 213.33%
+        assert result.value > Decimal("200.00")
+        assert result.performance_status == "above_target"
+
+    def test_kpi_calculation_date_timezone_utc(self):
+        """Test that calculation_date is set correctly."""
+        kpi_input = KPIInput(
+            total_students=1850,
+            secondary_students=650,
+            max_capacity=1875,
+            total_teacher_fte=Decimal("154.17"),
+            total_revenue=Decimal("83272500"),
+            total_costs=Decimal("74945250"),
+            personnel_costs=Decimal("52461675"),
+        )
+
+        result = calculate_all_kpis(kpi_input)
+
+        # Should have a calculation date
+        assert result.calculation_date is not None
+        # Should be recent (within last minute)
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        assert (now - result.calculation_date).total_seconds() < 60
+
+    def test_kpi_result_immutability_frozen_models(self):
+        """Test that KPI results cannot be modified after creation."""
+        result = KPIResult(
+            kpi_type=KPIType.STUDENT_TEACHER_RATIO,
+            value=Decimal("12.0"),
+            target_value=Decimal("12.0"),
+            unit="ratio",
+            variance_from_target=Decimal("0.0"),
+            performance_status="on_target",
+        )
+
+        # Pydantic frozen models should prevent modification
+        with pytest.raises(ValidationError):
+            result.value = Decimal("15.0")
+
+    def test_he_ratio_secondary_with_zero_hours(self):
+        """Test H/E ratio calculation when DHG hours is zero."""
+        with pytest.raises(ValueError, match="must be positive"):
+            calculate_he_ratio_secondary(
+                dhg_hours_total=Decimal("0.00"),  # Zero hours
+                secondary_students=650,
+            )
+
+    def test_all_kpis_serialization_to_dict(self):
+        """Test that all KPI results can be serialized to dict."""
+        kpi_input = KPIInput(
+            total_students=1850,
+            secondary_students=650,
+            max_capacity=1875,
+            total_teacher_fte=Decimal("154.17"),
+            total_revenue=Decimal("83272500"),
+            total_costs=Decimal("74945250"),
+            personnel_costs=Decimal("52461675"),
+        )
+
+        result = calculate_all_kpis(kpi_input)
+
+        # Should be able to convert to dict
+        data_dict = result.model_dump()
+
+        assert "student_teacher_ratio" in data_dict
+        assert "capacity_utilization" in data_dict
+        assert "margin_percentage" in data_dict
