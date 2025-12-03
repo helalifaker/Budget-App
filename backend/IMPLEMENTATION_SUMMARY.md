@@ -304,7 +304,7 @@ backend/app/
 - OpenAPI documentation via FastAPI
 
 ### ✅ Code Quality
-- Type hints throughout (Python 3.12+)
+- Type hints throughout (Python 3.14.0)
 - Comprehensive documentation
 - No TODO comments
 - Production-ready error handling

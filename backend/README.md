@@ -1,11 +1,11 @@
 # EFIR Budget Planning Backend
 
-FastAPI 0.123 + Python 3.12 backend for the EFIR Budget Planning Application, implementing the DHG (Dotation Horaire Globale) workforce planning methodology.
+FastAPI 0.123 + Python 3.14.0 backend for the EFIR Budget Planning Application, implementing the DHG (Dotation Horaire Globale) workforce planning methodology.
 
 ## Technology Stack
 
 - **Framework**: FastAPI 0.123.0 (async, high-performance)
-- **Language**: Python 3.12+ (required for union types)
+- **Language**: Python 3.14.0 (required for union types)
 - **Validation**: Pydantic 2.12.0
 - **ORM**: SQLAlchemy 2.0.44 (async with `asyncpg`)
 - **Migrations**: Alembic
@@ -48,7 +48,7 @@ backend/
 
 ### Prerequisites
 
-- Python 3.12+ (required for type syntax)
+- Python 3.14.0 (required for type syntax)
 - PostgreSQL 17.x or Supabase account
 - Poetry or pip
 
@@ -56,7 +56,7 @@ backend/
 
 ```bash
 # Create virtual environment
-python3.12 -m venv .venv
+python3.14 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # Install dependencies

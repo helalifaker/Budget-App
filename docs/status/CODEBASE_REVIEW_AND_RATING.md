@@ -36,7 +36,7 @@ The codebase demonstrates **excellent foundational work** with a solid database 
    - ✅ Clean, production-ready code
 
 2. **Type Safety**
-   - ✅ **Backend**: Full type hints with Python 3.12+ features
+   - ✅ **Backend**: Full type hints with Python 3.14.0 features
    - ✅ **Frontend**: TypeScript 5.9 with strict mode
    - ✅ Proper use of `Mapped[]` types in SQLAlchemy models
    - ✅ No `any` types found in TypeScript code

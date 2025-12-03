@@ -28,7 +28,7 @@ This application provides integrated workforce planning through annual budget an
 - **Charts**: Recharts 2.15.x
 
 ### Backend
-- **Runtime**: Python 3.12+
+- **Runtime**: Python 3.14.0
 - **API Framework**: FastAPI 0.123.x
 - **Validation**: Pydantic 2.12+
 - **Server**: Uvicorn 0.34+
@@ -72,7 +72,7 @@ This application provides integrated workforce planning through annual budget an
 ### Prerequisites
 
 - **Node.js**: 20.x or higher
-- **Python**: 3.12 or higher
+- **Python**: 3.14.0 or higher
 - **PostgreSQL**: 17.x (or Supabase account)
 - **Git**: Latest version
 

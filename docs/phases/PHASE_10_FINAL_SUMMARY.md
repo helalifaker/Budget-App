@@ -246,7 +246,7 @@ E2E tests run automatically in GitHub Actions pipeline:
 
 | File | Path | Purpose |
 |------|------|---------|
-| **backend/Dockerfile** | `/backend/Dockerfile` | Python 3.12 backend image |
+| **backend/Dockerfile** | `/backend/Dockerfile` | Python 3.14.0 backend image |
 | **frontend/Dockerfile** | `/frontend/Dockerfile` | Node 20 + Nginx frontend image |
 | **frontend/nginx.conf** | `/frontend/nginx.conf` | Nginx web server config |
 | **docker-compose.yml** | `/docker-compose.yml` | Multi-container orchestration |
@@ -599,7 +599,7 @@ curl http://localhost:3000/
 - Playwright 1.49.1, Vitest 3.2.4
 
 **Backend**:
-- Python 3.12+, FastAPI 0.123.x, Pydantic 2.12+
+- Python 3.14.0, FastAPI 0.123.x, Pydantic 2.12+
 - SQLAlchemy 2.x, Alembic, Uvicorn 0.34+
 - pytest 8.x, Ruff 0.8.x, mypy 1.14.x
 

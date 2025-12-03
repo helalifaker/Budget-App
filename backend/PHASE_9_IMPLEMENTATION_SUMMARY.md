@@ -408,7 +408,7 @@ update_positions()      # Update teacher_cost_params
 ## Technology Stack
 
 ### Backend
-- **Python** 3.12+
+- **Python** 3.14.0
 - **FastAPI** 0.123.0
 - **SQLAlchemy** 2.0.44 (async)
 - **Pydantic** 2.12.5

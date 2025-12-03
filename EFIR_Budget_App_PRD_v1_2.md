@@ -73,7 +73,7 @@ The technology stack has been updated to use the latest stable versions and best
 
 | Component | Version | Purpose |
 |-----------|---------|---------|
-| **Python** | 3.12+ | Runtime with improved performance and error messages |
+| **Python** | 3.14.0 | Runtime with improved performance and error messages |
 | **FastAPI** | 0.123.x | High-performance async API framework with Pydantic v2 |
 | **Pydantic** | 2.12+ | Data validation with JSON Schema support |
 | **Uvicorn** | 0.34+ | ASGI server for production deployment |
@@ -136,7 +136,7 @@ Complete technology stack with versions as of November 2025:
 | **UI Components** | shadcn/ui | Latest (TW v4 compatible) |
 | **Data Grid** | AG Grid Community | 34.3.x (MIT) |
 | **Charts** | Recharts | 2.15.x |
-| **Backend Runtime** | Python | 3.12+ |
+| **Backend Runtime** | Python | 3.14.0 |
 | **API Framework** | FastAPI | 0.123.x |
 | **Database** | PostgreSQL (Supabase) | 17.x |
 | **Linting** | ESLint + Ruff | 9.x / 0.8.x |
