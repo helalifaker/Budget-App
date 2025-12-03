@@ -96,8 +96,8 @@ importers:
         specifier: ^4.1.17
         version: 4.1.17
       zod:
-        specifier: ^3.24.3
-        version: 3.24.4
+        specifier: ^4.1.0
+        version: 4.1.13
     devDependencies:
       '@axe-core/playwright':
         specifier: ^4.11.0
@@ -3907,6 +3907,9 @@ packages:
   zod@3.24.4:
     resolution: {integrity: sha512-OdqJE9UDRPwWsrHjLN2F8bPxvwJBK22EHLWtanu0LSYr5YqzsaaW3RMgmjwr8Rypg5k+meEJdSPXJZXE/yqOMg==}
 
+  zod@4.1.13:
+    resolution: {integrity: sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig==}
+
 snapshots:
 
   '@acemir/cssom@0.9.24': {}
@@ -7434,3 +7437,5 @@ snapshots:
   yocto-queue@0.1.0: {}
 
   zod@3.24.4: {}
+
+  zod@4.1.13: {}
