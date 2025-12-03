@@ -10,7 +10,7 @@ Provides comprehensive health monitoring for:
 import os
 import time
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from app.core.logging import logger
@@ -138,7 +138,8 @@ async def readiness(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
         if REDIS_ENABLED:
             redis_client = await get_redis_client()
             start_time = time.perf_counter()
-            await redis_client.ping()
+            # Cast to Awaitable for async Redis client (ping returns Union[Awaitable[bool], bool])
+            await cast("Any", redis_client.ping())
             latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
             checks["redis"] = {"status": "ok", "latency_ms": latency_ms}
         else:

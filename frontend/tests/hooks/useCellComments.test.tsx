@@ -420,36 +420,29 @@ describe('useCellComments', () => {
       })
     })
 
-    it.skip(
-      'should auto-refresh every minute',
-      async () => {
-        vi.useFakeTimers()
-        const budgetVersionId = 'budget-version-123'
-        vi.mocked(apiRequest).mockResolvedValue([])
+    it.skip('should auto-refresh every minute', async () => {
+      // Skip: Testing refetchInterval with fake timers is unreliable in Vitest 4.x + React Query
+      // The refetchInterval feature is tested by React Query itself
+      vi.useFakeTimers()
+      const budgetVersionId = 'budget-version-123'
+      vi.mocked(apiRequest).mockResolvedValue([])
 
-        renderHook(() => useUnresolvedComments(budgetVersionId), { wrapper })
+      renderHook(() => useUnresolvedComments(budgetVersionId), { wrapper })
 
-        // Wait for initial load
-        await waitFor(
-          () => {
-            expect(apiRequest).toHaveBeenCalled()
-          },
-          { timeout: 2000 }
-        )
+      // Wait for initial load
+      await waitFor(() => {
+        expect(apiRequest).toHaveBeenCalledTimes(1)
+      })
 
-        const initialCalls = vi.mocked(apiRequest).mock.calls.length
+      // Fast-forward 60 seconds
+      await vi.advanceTimersByTimeAsync(60000)
 
-        // Fast-forward 60 seconds
-        vi.advanceTimersByTime(60000)
-        vi.runAllTimers()
+      // Wait for refetch
+      await waitFor(() => {
+        expect(apiRequest).toHaveBeenCalledTimes(2)
+      })
 
-        // The refetch should have been triggered
-        // Just verify the API was called more times
-        expect(vi.mocked(apiRequest).mock.calls.length).toBeGreaterThan(initialCalls)
-
-        vi.useRealTimers()
-      },
-      { timeout: 20000 }
-    )
+      vi.useRealTimers()
+    })
   })
 })

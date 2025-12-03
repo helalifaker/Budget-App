@@ -16,7 +16,7 @@ export function useAutoSave<T>({
 }: UseAutoSaveOptions<T>) {
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef<T>(data)
 
   const saveMutation = useMutation({

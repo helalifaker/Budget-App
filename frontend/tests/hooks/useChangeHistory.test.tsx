@@ -294,59 +294,46 @@ describe('useChangeHistory', () => {
       })
     })
 
-    it.skip(
-      'should auto-refresh every 30 seconds',
-      async () => {
-        vi.useFakeTimers()
-        vi.mocked(apiRequest).mockResolvedValue(mockChanges)
+    it.skip('should auto-refresh every 30 seconds', async () => {
+      // Skip: Testing refetchInterval with fake timers is unreliable in Vitest 4.x + React Query
+      // The refetchInterval feature is tested by React Query itself
+      vi.useFakeTimers()
+      vi.mocked(apiRequest).mockResolvedValue(mockChanges)
 
-        renderHook(() => useRecentChanges(budgetVersionId), { wrapper })
+      renderHook(() => useRecentChanges(budgetVersionId), { wrapper })
 
-        // Wait for initial load
-        await waitFor(
-          () => {
-            expect(apiRequest).toHaveBeenCalled()
-          },
-          { timeout: 2000 }
-        )
+      // Wait for initial load
+      await waitFor(() => {
+        expect(apiRequest).toHaveBeenCalledTimes(1)
+      })
 
-        const initialCalls = vi.mocked(apiRequest).mock.calls.length
+      // Fast-forward 30 seconds
+      await vi.advanceTimersByTimeAsync(30000)
 
-        // Fast-forward 30 seconds
-        vi.advanceTimersByTime(30000)
-        vi.runAllTimers()
+      // Wait for refetch
+      await waitFor(() => {
+        expect(apiRequest).toHaveBeenCalledTimes(2)
+      })
 
-        // The refetch should have been triggered
-        expect(vi.mocked(apiRequest).mock.calls.length).toBeGreaterThan(initialCalls)
-
-        vi.useRealTimers()
-      },
-      { timeout: 20000 }
-    )
+      vi.useRealTimers()
+    })
   })
 
   describe('error handling', () => {
-    it.skip(
-      'should handle API errors gracefully',
-      async () => {
-        const errorMessage = 'Network error'
-        vi.mocked(apiRequest).mockRejectedValue(new Error(errorMessage))
+    it('should handle API errors gracefully', async () => {
+      const errorMessage = 'Network error'
+      vi.mocked(apiRequest).mockRejectedValue(new Error(errorMessage))
 
-        const { result } = renderHook(() => useChangeHistory(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => useChangeHistory(budgetVersionId), { wrapper })
 
-        // Wait for error - use a reasonable timeout
-        await waitFor(
-          () => {
-            expect(result.current.isError).toBe(true)
-          },
-          { timeout: 5000 }
-        )
+      // Wait for error
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true)
+      })
 
-        // Verify error is exposed
-        expect(result.current.error).toBeDefined()
-        expect((result.current.error as Error).message).toBe(errorMessage)
-      },
-      { timeout: 10000 }
-    )
+      // Verify error is exposed
+      expect(result.current.error).toBeDefined()
+      expect((result.current.error as Error).message).toBe(errorMessage)
+    })
   })
 })

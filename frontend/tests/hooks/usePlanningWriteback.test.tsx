@@ -86,14 +86,23 @@ describe('usePlanningWriteback', () => {
     it('should optimistically update cell value before server response', async () => {
       const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
 
-      // Mock successful API response
-      vi.mocked(apiRequest).mockResolvedValue({
-        id: 'cell-1',
-        value_numeric: 200,
-        version: 2,
-        modified_by: 'user-1',
-        modified_at: '2025-01-01T11:00:00Z',
-      })
+      // Mock successful API response with delay to ensure optimistic update happens first
+      vi.mocked(apiRequest).mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  id: 'cell-1',
+                  value_numeric: 200,
+                  version: 2,
+                  modified_by: 'user-1',
+                  modified_at: '2025-01-01T11:00:00Z',
+                }),
+              10
+            )
+          )
+      )
 
       // Start update
       const updatePromise = result.current.updateCell({
@@ -102,16 +111,12 @@ describe('usePlanningWriteback', () => {
         version: 1,
       })
 
-      // Check optimistic update happens during the mutation
-      // Wait for the optimistic update to be applied to the cache
+      // Wait for optimistic update to be applied (onMutate is async due to cancelQueries)
       await waitFor(() => {
         const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
         expect(cacheData?.[0].value_numeric).toBe(200)
+        expect(cacheData?.[0].version).toBe(2) // Version incremented optimistically
       })
-
-      // Version incremented optimistically
-      const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
-      expect(cacheData?.[0].version).toBe(2)
 
       // Wait for server response
       await updatePromise
@@ -261,12 +266,21 @@ describe('usePlanningWriteback', () => {
     it('should optimistically update multiple cells', async () => {
       const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
 
-      // Mock successful batch response
-      vi.mocked(apiRequest).mockResolvedValue({
-        session_id: 'session-123',
-        updated_count: 2,
-        conflicts: [],
-      })
+      // Mock successful batch response with delay
+      vi.mocked(apiRequest).mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve({
+                  session_id: 'session-123',
+                  updated_count: 2,
+                  conflicts: [],
+                }),
+              10
+            )
+          )
+      )
 
       // Start batch update
       const updatePromise = result.current.batchUpdate({
@@ -277,8 +291,7 @@ describe('usePlanningWriteback', () => {
         ],
       })
 
-      // Check optimistic updates happen during the mutation
-      // Wait for the optimistic updates to be applied to the cache
+      // Wait for optimistic updates to be applied (onMutate is async)
       await waitFor(() => {
         const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
         expect(cacheData?.[0].value_numeric).toBe(200)
