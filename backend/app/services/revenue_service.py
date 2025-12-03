@@ -254,7 +254,7 @@ class RevenueService:
             # Find matching fees
             fees = None
             for key, fee_data in fee_map.items():
-                level_id, nat_id, cat_id = key
+                level_id, nat_id, _cat_id = key
                 if level_id == enrollment.level_id and nat_id == enrollment.nationality_type_id:
                     fees = fee_data
                     break
