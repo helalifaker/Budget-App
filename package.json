@@ -4,11 +4,11 @@
   "private": true,
   "description": "EFIR School Budget Planning Application - Monorepo",
   "scripts": {
-    "dev": "concurrently \"pnpm --filter frontend dev\" \"cd backend && .venv/bin/uvicorn app.main:app --reload\"",
-    "build": "pnpm --filter frontend build",
-    "lint": "pnpm --filter frontend lint && cd backend && .venv/bin/ruff check .",
-    "typecheck": "pnpm --filter frontend typecheck && cd backend && .venv/bin/mypy app",
-    "test": "pnpm --filter frontend test && cd backend && .venv/bin/pytest",
+    "dev": "concurrently \"pnpm --filter efir-budget-frontend dev\" \"cd backend && .venv/bin/uvicorn app.main:app --reload\"",
+    "build": "pnpm --filter efir-budget-frontend build",
+    "lint": "pnpm --filter efir-budget-frontend lint && cd backend && .venv/bin/ruff check app",
+    "typecheck": "pnpm --filter efir-budget-frontend typecheck && cd backend && .venv/bin/mypy app",
+    "test": "pnpm --filter efir-budget-frontend test && cd backend && .venv/bin/pytest",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -22,8 +22,8 @@
       "cd frontend && npx prettier --write"
     ],
     "backend/**/*.py": [
-      "cd backend && .venv/bin/ruff check --fix",
-      "cd backend && .venv/bin/ruff format"
+      "cd backend && .venv/bin/ruff check --fix app",
+      "cd backend && .venv/bin/ruff format app"
     ]
   }
 }

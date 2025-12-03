@@ -9,7 +9,7 @@ from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EnrollmentGrowthScenario(str, Enum):
@@ -122,8 +122,9 @@ class EnrollmentProjectionResult(BaseModel):
         default=False, description="Whether projections exceed school capacity"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        frozen=True,  # Make model immutable after creation
+        json_schema_extra={
             "example": {
                 "level_id": "123e4567-e89b-12d3-a456-426614174000",
                 "level_code": "6EME",
@@ -154,7 +155,8 @@ class EnrollmentProjectionResult(BaseModel):
                 "total_growth_percent": 0.0816,
                 "capacity_exceeded": False,
             }
-        }
+        },
+    )
 
 
 class RetentionModel(BaseModel):

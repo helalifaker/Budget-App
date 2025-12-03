@@ -10,6 +10,6 @@ from app.middleware.rbac import RBACMiddleware
 
 __all__ = [
     "AuthenticationMiddleware",
-    "RateLimitMiddleware",
     "RBACMiddleware",
+    "RateLimitMiddleware",
 ]

@@ -21,6 +21,7 @@ from app.engine.dhg.calculator import (
     calculate_fte_from_hours,
     calculate_hsa_allocation,
     calculate_teacher_requirement,
+    calculate_trmd_gap,
 )
 from app.engine.dhg.models import (
     DHGHoursResult,
@@ -34,6 +35,7 @@ from app.engine.dhg.models import (
 from app.engine.dhg.validators import (
     validate_dhg_input,
     validate_hsa_limits,
+    validate_standard_hours,
     validate_subject_hours,
 )
 
@@ -51,8 +53,10 @@ __all__ = [
     "calculate_fte_from_hours",
     "calculate_hsa_allocation",
     "calculate_teacher_requirement",
+    "calculate_trmd_gap",
     # Validators
     "validate_dhg_input",
     "validate_hsa_limits",
+    "validate_standard_hours",
     "validate_subject_hours",
 ]

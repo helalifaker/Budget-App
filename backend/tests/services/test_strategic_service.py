@@ -12,20 +12,13 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.configuration import BudgetVersion
 from app.models.strategic import (
-    InitiativeStatus,
-    ProjectionCategory,
     ScenarioType,
-    StrategicInitiative,
-    StrategicPlan,
-    StrategicPlanProjection,
-    StrategicPlanScenario,
 )
 from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
 from app.services.strategic_service import StrategicService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Skip tests for methods not yet implemented
 SKIP_NOT_IMPLEMENTED = pytest.mark.skip(

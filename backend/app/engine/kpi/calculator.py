@@ -140,6 +140,9 @@ def calculate_he_ratio_secondary(
             performance_status="on_target"
         )
     """
+    if dhg_hours_total <= 0:
+        raise ValueError("DHG hours total must be positive")
+
     if secondary_students <= 0:
         raise ValueError(f"Secondary students must be positive, got {secondary_students}")
 
@@ -463,7 +466,7 @@ def calculate_all_kpis(kpi_input: KPIInput) -> KPICalculationResult:
         >>> result.margin_percentage.value
         Decimal("10.00")
     """
-    from datetime import datetime
+    from datetime import UTC, datetime
 
     # Educational KPIs
     student_teacher_ratio = calculate_student_teacher_ratio(
@@ -489,9 +492,21 @@ def calculate_all_kpis(kpi_input: KPIInput) -> KPICalculationResult:
         kpi_input.total_costs, kpi_input.total_students
     )
 
-    margin_percentage = calculate_margin_percentage(
-        kpi_input.total_revenue, kpi_input.total_costs
-    )
+    # Handle zero revenue case gracefully
+    if kpi_input.total_revenue == 0:
+        # Zero revenue means 100% loss
+        margin_percentage = KPIResult(
+            kpi_type=KPIType.MARGIN_PERCENTAGE,
+            value=Decimal("-100.00") if kpi_input.total_costs > 0 else Decimal("0.00"),
+            target_value=TARGET_MARGIN_PERCENTAGE,
+            unit="%",
+            variance_from_target=Decimal("-110.00") if kpi_input.total_costs > 0 else Decimal("-10.00"),
+            performance_status="below_target",
+        )
+    else:
+        margin_percentage = calculate_margin_percentage(
+            kpi_input.total_revenue, kpi_input.total_costs
+        )
 
     staff_cost_ratio = calculate_staff_cost_ratio(
         kpi_input.personnel_costs, kpi_input.total_costs
@@ -499,7 +514,7 @@ def calculate_all_kpis(kpi_input: KPIInput) -> KPICalculationResult:
 
     return KPICalculationResult(
         budget_id=kpi_input.budget_id,
-        calculation_date=datetime.utcnow().isoformat(),
+        calculation_date=datetime.now(UTC),
         student_teacher_ratio=student_teacher_ratio,
         he_ratio_secondary=he_ratio_secondary,
         capacity_utilization=capacity_utilization,

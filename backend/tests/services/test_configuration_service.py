@@ -4,13 +4,10 @@ Unit tests for Configuration Service.
 
 import uuid
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
+from unittest.mock import MagicMock
 
 from app.models.configuration import BudgetVersionStatus
 from app.services.configuration_service import ConfigurationService
-from app.services.exceptions import BusinessRuleError, ConflictError, ValidationError
 
 
 class TestConfigurationServiceInitialization:

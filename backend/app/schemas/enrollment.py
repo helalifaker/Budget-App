@@ -5,6 +5,6 @@ from app.engine.enrollment.models import (
     EnrollmentProjectionResult,
 )
 
-# Reuse engine models for API layer
+# Re-export engine models so API layer stays in sync with calculation engine.
 EnrollmentProjectionRequest = EnrollmentInput
 EnrollmentProjectionResponse = EnrollmentProjectionResult

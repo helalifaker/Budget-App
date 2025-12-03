@@ -41,6 +41,7 @@ from app.engine.dhg.models import (
     FTECalculationResult,
     HSAAllocation,
     TeacherRequirement,
+    TRMDGapResult,
 )
 
 # Standard teaching hours by education level
@@ -103,12 +104,15 @@ def calculate_dhg_hours(dhg_input: DHGInput) -> DHGHoursResult:
     total_hours = Decimal("0")
 
     for subject_hours in dhg_input.subject_hours_list:
-        # Calculate hours for this subject: classes × hours_per_week
         subject_total = (
             Decimal(dhg_input.number_of_classes) * subject_hours.hours_per_week
         )
         subject_breakdown[subject_hours.subject_code] = subject_total
         total_hours += subject_total
+
+    sorted_subjects = sorted(
+        dhg_input.subject_hours_list, key=lambda subject: subject.subject_name
+    )
 
     return DHGHoursResult(
         level_id=dhg_input.level_id,
@@ -117,6 +121,7 @@ def calculate_dhg_hours(dhg_input: DHGInput) -> DHGHoursResult:
         number_of_classes=dhg_input.number_of_classes,
         total_hours=total_hours,
         subject_breakdown=subject_breakdown,
+        subjects_hours_breakdown=sorted_subjects,
     )
 
 
@@ -302,6 +307,9 @@ def calculate_hsa_allocation(
         >>> hsa.hsa_within_limit
         True  # 1.2h per teacher < 4h max
     """
+    if available_fte <= 0:
+        raise ValueError("HSA allocation must have at least one available teacher")
+
     # Get standard hours
     standard_hours = STANDARD_HOURS[education_level]
 
@@ -369,3 +377,38 @@ def calculate_aggregated_dhg_hours(
     for dhg_result in dhg_hours_list:
         total_hours += dhg_result.total_hours
     return total_hours
+
+
+def calculate_trmd_gap(
+    required_fte: Decimal,
+    available_aefe_fte: Decimal,
+    available_local_fte: Decimal,
+) -> TRMDGapResult:
+    """
+    Calculate the TRMD gap between required and available FTE capacities.
+
+    Args:
+        required_fte: Total teacher requirement
+        available_aefe_fte: AEFE-managed FTE
+        available_local_fte: Local FTE capacity
+
+    Returns:
+        TRMDGapResult with gap details
+    """
+    gap_fte = required_fte - available_aefe_fte - available_local_fte
+    is_overstaffed = gap_fte <= Decimal("0")
+    if gap_fte > 0:
+        recommendation = "Recruit additional teachers to cover the gap"
+    elif gap_fte < 0:
+        recommendation = "Reassign staff or reduce schedules to absorb surplus"
+    else:
+        recommendation = "Staffing levels are balanced"
+
+    return TRMDGapResult(
+        required_fte=required_fte,
+        available_aefe_fte=available_aefe_fte,
+        available_local_fte=available_local_fte,
+        gap_fte=gap_fte,
+        is_overstaffed=is_overstaffed,
+        gap_coverage_recommendation=recommendation,
+    )

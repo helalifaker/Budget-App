@@ -1218,30 +1218,13 @@ class TestGapAnalysis:
 
 
 class TestDHGBusinessRules:
-    """Test business rule enforcement."""
+    """Test business rule enforcement.
 
-    @pytest.mark.asyncio
-    async def test_validate_hsa_hours_within_limit(
-        self,
-        dhg_service: DHGService,
-    ):
-        """Test HSA hours validation (max 2-4 hours per teacher)."""
-        # TODO: Implement based on actual service API
-        pass
+    Note: Business rule validation is covered in the engine tests.
+    Service-level validation tests are covered in functional tests above.
+    """
 
-    @pytest.mark.asyncio
-    async def test_validate_standard_hours_by_cycle(
-        self,
-        dhg_service: DHGService,
-    ):
-        """
-        Test standard hours validation.
-
-        - Primary: 24h/week
-        - Secondary: 18h/week
-        """
-        # TODO: Implement based on actual service API
-        pass
+    pass
 
 
 # ==============================================================================

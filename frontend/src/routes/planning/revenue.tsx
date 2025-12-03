@@ -210,9 +210,6 @@ function RevenuePage() {
                             resizable: true,
                           }}
                           loading={isLoading}
-                          onCellValueChanged={(event) => {
-                            console.log('Revenue item updated:', event.data)
-                          }}
                           groupDisplayType="groupRows"
                           groupDefaultExpanded={-1}
                         />

@@ -13,20 +13,18 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.configuration import BudgetVersion, BudgetVersionStatus
+from app.models.configuration import BudgetVersion
 from app.models.consolidation import (
     BudgetConsolidation,
     ConsolidationCategory,
     FinancialStatement,
-    FinancialStatementLine,
     LineType,
     StatementFormat,
     StatementType,
 )
 from app.services.exceptions import ValidationError
 from app.services.financial_statements_service import FinancialStatementsService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestGetIncomeStatement:

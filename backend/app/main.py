@@ -19,7 +19,6 @@ from app.api.v1 import (
     consolidation_router,
     costs_router,
     export_router,
-    integrations_router,
     planning_router,
     writeback_router,
 )
@@ -62,9 +61,6 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
-
-    # Rate limiting middleware (prevents abuse)
-    app.add_middleware(RateLimitMiddleware)
 
     # RBAC middleware (enforces role-based access control)
     app.add_middleware(RBACMiddleware)
@@ -114,7 +110,6 @@ def create_app() -> FastAPI:
     app.include_router(costs_router)
     app.include_router(analysis_router)
     app.include_router(consolidation_router)
-    app.include_router(integrations_router)
     app.include_router(writeback_router)
     app.include_router(export_router)
 

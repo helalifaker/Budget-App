@@ -22,9 +22,9 @@ from app.models.configuration import (
     AcademicLevel,
     ClassSizeParam,
 )
-from app.models.planning import ClassStructure, EnrollmentPlan
+from app.models.planning import ClassStructure
 from app.services.class_structure_service import ClassStructureService
-from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
+from app.services.exceptions import BusinessRuleError, ValidationError
 
 
 @pytest.fixture

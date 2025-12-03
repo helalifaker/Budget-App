@@ -13,8 +13,6 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.analysis import (
     ActualData,
     ActualDataSource,
@@ -24,6 +22,7 @@ from app.models.analysis import (
 from app.models.configuration import BudgetVersion
 from app.services.budget_actual_service import BudgetActualService
 from app.services.exceptions import NotFoundError, ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestImportActuals:

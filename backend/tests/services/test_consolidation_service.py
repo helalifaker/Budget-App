@@ -10,14 +10,10 @@ Tests cover:
 """
 
 import uuid
-from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.configuration import BudgetVersion, BudgetVersionStatus
-from app.models.consolidation import BudgetConsolidation
 from app.models.planning import (
     ClassStructure,
     EnrollmentPlan,
@@ -27,6 +23,7 @@ from app.models.planning import (
 )
 from app.services.consolidation_service import ConsolidationService
 from app.services.exceptions import BusinessRuleError, NotFoundError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestConsolidationServiceGetConsolidation:

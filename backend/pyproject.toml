@@ -52,14 +52,14 @@ ignore = [
     "RUF012",  # Pydantic Config class uses mutable defaults intentionally
     "B008",  # Depends() in defaults is standard FastAPI pattern
     "B904",  # Don't chain HTTPExceptions to avoid exposing internal errors
-    "UP046", "UP047",  # Keep Generic[T] syntax for compatibility (new type params are optional)
+    # UP046 and UP047 removed - not available in the pinned Ruff version
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/env.py" = ["E402"]  # Imports after sys.path manipulation is standard Alembic pattern
 "alembic/versions/*" = ["E501"]  # Allow long lines in migration files (auto-generated)
 "tests/test_models.py" = ["F406"]  # Allow star import in test function
-"tests/**/*.py" = ["RUF043", "E501"]  # Allow non-raw regex patterns in pytest match= and long lines
+"tests/**/*.py" = ["E501"]  # Allow long lines in test files
 "app/services/*.py" = ["E501"]  # Allow longer lines for descriptive error messages
 "app/api/**/*.py" = ["E501"]  # Allow longer lines in API schemas
 "app/schemas/*.py" = ["E501"]  # Allow longer lines for Field descriptions

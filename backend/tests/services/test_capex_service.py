@@ -15,12 +15,11 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.configuration import BudgetVersion
 from app.models.planning import CapExPlan
 from app.services.capex_service import CapExService
 from app.services.exceptions import NotFoundError, ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestGetCapExPlan:

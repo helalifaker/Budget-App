@@ -5,11 +5,12 @@ Input/output models for key performance indicator calculations.
 All models use Pydantic for validation and type safety.
 """
 
+from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class KPIType(str, Enum):
@@ -82,8 +83,8 @@ class KPIInput(BaseModel):
                 )
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "budget_id": "123e4567-e89b-12d3-a456-426614174000",
                 "total_students": 1850,
@@ -96,6 +97,7 @@ class KPIInput(BaseModel):
                 "personnel_costs": 52461675,
             }
         }
+    )
 
 
 class KPIResult(BaseModel):
@@ -130,8 +132,10 @@ class KPIResult(BaseModel):
             )
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        frozen=True,  # Make model immutable after creation
+        validate_assignment=True,
+        json_schema_extra={
             "example": {
                 "kpi_type": "student_teacher_ratio",
                 "value": 12.0,
@@ -140,7 +144,8 @@ class KPIResult(BaseModel):
                 "variance_from_target": 0.0,
                 "performance_status": "on_target",
             }
-        }
+        },
+    )
 
 
 class KPICalculationResult(BaseModel):
@@ -151,8 +156,8 @@ class KPICalculationResult(BaseModel):
     """
 
     budget_id: UUID | None = Field(None, description="Budget UUID (if applicable)")
-    calculation_date: str | None = Field(
-        None, description="ISO 8601 date when calculations were performed"
+    calculation_date: datetime | None = Field(
+        None, description="Datetime when calculations were performed (UTC)"
     )
 
     # Educational KPIs
@@ -180,8 +185,8 @@ class KPICalculationResult(BaseModel):
         None, description="Personnel as % of total costs (target: ~70%)"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "budget_id": "123e4567-e89b-12d3-a456-426614174000",
                 "calculation_date": "2025-12-01",
@@ -211,3 +216,4 @@ class KPICalculationResult(BaseModel):
                 },
             }
         }
+    )

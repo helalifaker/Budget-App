@@ -20,7 +20,7 @@
 - **Docker**: 24.x or later
 - **Docker Compose**: 2.x or later
 - **Node.js**: 20.x LTS (for local development)
-- **Python**: 3.12+ (for backend development)
+- **Python**: 3.14.0 (for backend development - Free-threaded Python support)
 - **PostgreSQL**: 17.x (via Supabase or self-hosted)
 - **Redis**: 7.x (for caching and rate limiting)
 

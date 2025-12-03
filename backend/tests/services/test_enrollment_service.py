@@ -11,16 +11,13 @@ Tests cover:
 
 import uuid
 from decimal import Decimal
-from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.engine.enrollment import EnrollmentGrowthScenario
 from app.models.configuration import AcademicLevel, BudgetVersion, NationalityType
 from app.models.planning import EnrollmentPlan
 from app.services.enrollment_service import EnrollmentService
 from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestEnrollmentServiceCRUD:

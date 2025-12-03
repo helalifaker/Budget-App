@@ -309,9 +309,6 @@ function PersonnelCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: b
               resizable: true,
             }}
             loading={isLoading}
-            onCellValueChanged={(event) => {
-              console.log('Personnel cost updated:', event.data)
-            }}
           />
         </div>
       </CardContent>
@@ -403,9 +400,6 @@ function OperatingCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: b
               resizable: true,
             }}
             loading={isLoading}
-            onCellValueChanged={(event) => {
-              console.log('Operating cost updated:', event.data)
-            }}
           />
         </div>
       </CardContent>

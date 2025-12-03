@@ -4,11 +4,12 @@ FastAPI 0.123 + Python 3.14.0 backend for the EFIR Budget Planning Application, 
 
 ## Technology Stack
 
-- **Framework**: FastAPI 0.123.0 (async, high-performance)
-- **Language**: Python 3.14.0 (required for union types)
-- **Validation**: Pydantic 2.12.0
+- **Framework**: FastAPI 0.123.4 (async, high-performance)
+- **Language**: Python 3.14.0 (Free-threaded Python, Template String Literals)
+- **Validation**: Pydantic 2.12.5
+- **Server**: Uvicorn 0.38.0 (ASGI server)
 - **ORM**: SQLAlchemy 2.0.44 (async with `asyncpg`)
-- **Migrations**: Alembic
+- **Migrations**: Alembic 1.17.2
 - **Database**: PostgreSQL 17.x (via Supabase)
 - **Security**: Supabase Auth + Row Level Security (RLS)
 
@@ -131,7 +132,7 @@ alembic revision --autogenerate -m "description"
 alembic downgrade -1
 ```
 
-### Current Migrations (7)
+### Current Migrations (10)
 
 1. `initial_configuration_layer` - Modules 1-6 tables
 2. `planning_layer` - Modules 7-12 tables
@@ -140,6 +141,9 @@ alembic downgrade -1
 5. `analysis_layer` - Modules 15-17 tables
 6. `class_structure_validation` - Validation triggers
 7. `strategic_layer` - Module 18 tables
+8. `performance_indexes` - Query optimization indexes
+9. `materialized_views_kpi` - KPI dashboard caching
+10. `planning_cells_writeback` - Real-time data entry support
 
 ## Testing
 

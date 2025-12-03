@@ -12,11 +12,10 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.configuration import BudgetVersion
 from app.services.dashboard_service import DashboardService
 from app.services.exceptions import NotFoundError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Skip tests for methods not yet implemented
 SKIP_NOT_IMPLEMENTED = pytest.mark.skip(

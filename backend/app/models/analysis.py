@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import enum
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -1220,6 +1221,24 @@ class VarianceExplanation(BaseModel):
             f"<VarianceExplanation(variance_id={self.budget_vs_actual_id}, "
             f"cause={self.root_cause}, status={status})>"
         )
+
+
+# ============================================================================
+# KPI Helpers
+# ============================================================================
+
+
+@dataclass
+class KPICalculation:
+    """
+    Lightweight KPI calculation result model used by export endpoints.
+    """
+
+    __allow_unmapped__ = True
+
+    kpi_definition: KPIDefinition
+    calculated_value: Decimal
+    variance_from_target: Decimal
 
 
 # ============================================================================

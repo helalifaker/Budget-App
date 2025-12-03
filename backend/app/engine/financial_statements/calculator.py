@@ -207,8 +207,8 @@ def generate_income_statement_lines(
     expense_entries = [e for e in consolidation_entries if not e.is_revenue]
 
     # Calculate totals
-    total_revenue = sum(e.amount_sar for e in revenue_entries)
-    total_expenses = sum(e.amount_sar for e in expense_entries)
+    total_revenue = sum((e.amount_sar for e in revenue_entries), start=Decimal("0.00"))
+    total_expenses = sum((e.amount_sar for e in expense_entries), start=Decimal("0.00"))
 
     # REVENUE SECTION
     revenue_header = (
@@ -266,7 +266,7 @@ def generate_income_statement_lines(
         format_statement_line(
             line_number,
             StatementLineType.BLANK_LINE,
-            "",
+            " ",
             indent_level=0,
         )
     )
@@ -328,7 +328,7 @@ def generate_income_statement_lines(
         format_statement_line(
             line_number,
             StatementLineType.BLANK_LINE,
-            "",
+            " ",
             indent_level=0,
         )
     )
@@ -410,8 +410,8 @@ def calculate_income_statement(
     revenue_entries = [e for e in income_input.consolidation_entries if e.is_revenue]
     expense_entries = [e for e in income_input.consolidation_entries if not e.is_revenue]
 
-    total_revenue = sum(e.amount_sar for e in revenue_entries)
-    total_expenses = sum(e.amount_sar for e in expense_entries)
+    total_revenue = sum((e.amount_sar for e in revenue_entries), start=Decimal("0.00"))
+    total_expenses = sum((e.amount_sar for e in expense_entries), start=Decimal("0.00"))
     operating_result = calculate_operating_result(total_revenue, total_expenses)
 
     # Statement name
@@ -597,8 +597,8 @@ def calculate_balance_sheet(
     )
 
     # Calculate totals
-    total_assets = sum(e.amount_sar for e in balance_input.asset_entries)
-    total_liabilities = sum(e.amount_sar for e in balance_input.liability_entries)
+    total_assets = sum((e.amount_sar for e in balance_input.asset_entries), start=Decimal("0.00"))
+    total_liabilities = sum((e.amount_sar for e in balance_input.liability_entries), start=Decimal("0.00"))
     total_equity = balance_input.equity_amount
 
     # Check balance
@@ -668,7 +668,8 @@ def generate_cash_flow_lines(
     line_number += 1
 
     operating_total = sum(
-        e.amount_sar if e.is_revenue else -e.amount_sar for e in operating_entries
+        (e.amount_sar if e.is_revenue else -e.amount_sar for e in operating_entries),
+        start=Decimal("0.00")
     )
 
     for entry in operating_entries:
@@ -698,11 +699,12 @@ def generate_cash_flow_lines(
     line_number += 1
 
     # Investing activities
-    investing_total = sum(-e.amount_sar for e in investing_entries)
+    investing_total = sum((-e.amount_sar for e in investing_entries), start=Decimal("0.00"))
 
     # Financing activities (if any)
     financing_total = sum(
-        e.amount_sar if e.is_revenue else -e.amount_sar for e in financing_entries
+        (e.amount_sar if e.is_revenue else -e.amount_sar for e in financing_entries),
+        start=Decimal("0.00")
     )
 
     # Net cash change
@@ -755,15 +757,20 @@ def calculate_cash_flow_statement(
 
     # Calculate totals
     operating_cash_flow = sum(
-        e.amount_sar if e.is_revenue else -e.amount_sar
-        for e in cash_flow_input.operating_entries
+        (e.amount_sar if e.is_revenue else -e.amount_sar
+        for e in cash_flow_input.operating_entries),
+        start=Decimal("0.00")
     )
 
-    investing_cash_flow = sum(-e.amount_sar for e in cash_flow_input.investing_entries)
+    investing_cash_flow = sum(
+        (-e.amount_sar for e in cash_flow_input.investing_entries),
+        start=Decimal("0.00")
+    )
 
     financing_cash_flow = sum(
-        e.amount_sar if e.is_revenue else -e.amount_sar
-        for e in cash_flow_input.financing_entries
+        (e.amount_sar if e.is_revenue else -e.amount_sar
+        for e in cash_flow_input.financing_entries),
+        start=Decimal("0.00")
     )
 
     net_cash_change = operating_cash_flow + investing_cash_flow + financing_cash_flow

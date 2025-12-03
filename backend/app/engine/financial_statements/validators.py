@@ -188,8 +188,14 @@ def validate_statement_line(line: StatementLine) -> None:
 
     # Validate amount if present
     if line.amount_sar is not None:
+        # Check for special values (NaN, Infinity)
+        if line.amount_sar.is_nan() or line.amount_sar.is_infinite():
+            raise InvalidFinancialStatementError(
+                f"Amount cannot be NaN or Infinity, got {line.amount_sar}"
+            )
         # Check decimal precision
-        if line.amount_sar.as_tuple().exponent < -2:
+        exponent = line.amount_sar.as_tuple().exponent
+        if isinstance(exponent, int) and exponent < -2:
             raise InvalidFinancialStatementError(
                 f"Amount must have at most 2 decimal places, got {line.amount_sar}"
             )

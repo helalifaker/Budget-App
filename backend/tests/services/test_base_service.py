@@ -6,11 +6,10 @@ import uuid
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.base import BaseModel
 from app.services.base import BaseService
 from app.services.exceptions import NotFoundError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 # Create a mock model for testing

@@ -9,10 +9,12 @@ import uuid
 from decimal import Decimal
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.cache import cache_revenue_projection
+from app.core.logging import logger
 from app.engine.revenue import (
     FeeCategory as EngineFeeCategory,
 )
@@ -20,10 +22,10 @@ from app.engine.revenue import (
     TuitionInput,
     calculate_total_student_revenue,
 )
-from app.models.configuration import FeeCategory, FeeStructure
+from app.models.configuration import FeeStructure
 from app.models.planning import EnrollmentPlan, RevenuePlan
 from app.services.base import BaseService
-from app.services.exceptions import ValidationError
+from app.services.exceptions import ServiceException, ValidationError
 
 
 class RevenueService:
@@ -55,10 +57,26 @@ class RevenueService:
 
         Returns:
             List of RevenuePlan instances
+
+        Raises:
+            ServiceException: If database operation fails
         """
-        return await self.revenue_plan_service.get_all(
-            filters={"budget_version_id": version_id}
-        )
+        try:
+            return await self.revenue_plan_service.get_all(
+                filters={"budget_version_id": version_id}
+            )
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve revenue plan",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to retrieve revenue plan. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e
 
     async def get_revenue_by_account(
         self,
@@ -74,16 +92,36 @@ class RevenueService:
 
         Returns:
             RevenuePlan instance or None
+
+        Raises:
+            ServiceException: If database operation fails
         """
-        query = select(RevenuePlan).where(
-            and_(
-                RevenuePlan.budget_version_id == version_id,
-                RevenuePlan.account_code == account_code,
-                RevenuePlan.deleted_at.is_(None),
+        try:
+            query = select(RevenuePlan).where(
+                and_(
+                    RevenuePlan.budget_version_id == version_id,
+                    RevenuePlan.account_code == account_code,
+                    RevenuePlan.deleted_at.is_(None),
+                )
             )
-        )
-        result = await self.session.execute(query)
-        return result.scalar_one_or_none()
+            result = await self.session.execute(query)
+            return result.scalar_one_or_none()
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve revenue by account code",
+                version_id=str(version_id),
+                account_code=account_code,
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to retrieve revenue entry. Please try again.",
+                status_code=500,
+                details={
+                    "version_id": str(version_id),
+                    "account_code": account_code,
+                },
+            ) from e
 
     async def create_revenue_entry(
         self,
@@ -163,25 +201,42 @@ class RevenueService:
 
         Returns:
             Dictionary with calculation results and created revenue entries
+
+        Raises:
+            ValidationError: If enrollment or fee structure data is missing
+            ServiceException: If database operations or calculations fail
         """
-        # Maintain compatibility with existing code
-        version_id = budget_version_id
-        # Get enrollment data
-        enrollment_query = (
-            select(EnrollmentPlan)
-            .where(
-                and_(
-                    EnrollmentPlan.budget_version_id == version_id,
-                    EnrollmentPlan.deleted_at.is_(None),
+        try:
+            # Maintain compatibility with existing code
+            version_id = budget_version_id
+            # Get enrollment data
+            enrollment_query = (
+                select(EnrollmentPlan)
+                .where(
+                    and_(
+                        EnrollmentPlan.budget_version_id == version_id,
+                        EnrollmentPlan.deleted_at.is_(None),
+                    )
+                )
+                .options(
+                    selectinload(EnrollmentPlan.level),
+                    selectinload(EnrollmentPlan.nationality_type),
                 )
             )
-            .options(
-                selectinload(EnrollmentPlan.level),
-                selectinload(EnrollmentPlan.nationality_type),
+            enrollment_result = await self.session.execute(enrollment_query)
+            enrollments = list(enrollment_result.scalars().all())
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve enrollment data for revenue calculation",
+                version_id=str(budget_version_id),
+                error=str(e),
+                exc_info=True,
             )
-        )
-        enrollment_result = await self.session.execute(enrollment_query)
-        enrollments = list(enrollment_result.scalars().all())
+            raise ServiceException(
+                "Failed to retrieve enrollment data. Please try again.",
+                status_code=500,
+                details={"version_id": str(budget_version_id)},
+            ) from e
 
         if not enrollments:
             raise ValidationError(
@@ -190,23 +245,36 @@ class RevenueService:
                 field="enrollment",
             )
 
-        # Get fee structure
-        fee_query = (
-            select(FeeStructure)
-            .where(
-                and_(
-                    FeeStructure.budget_version_id == version_id,
-                    FeeStructure.deleted_at.is_(None),
+        try:
+            # Get fee structure
+            fee_query = (
+                select(FeeStructure)
+                .where(
+                    and_(
+                        FeeStructure.budget_version_id == version_id,
+                        FeeStructure.deleted_at.is_(None),
+                    )
+                )
+                .options(
+                    selectinload(FeeStructure.level),
+                    selectinload(FeeStructure.nationality_type),
+                    selectinload(FeeStructure.fee_category),
                 )
             )
-            .options(
-                selectinload(FeeStructure.level),
-                selectinload(FeeStructure.nationality_type),
-                selectinload(FeeStructure.fee_category),
+            fee_result = await self.session.execute(fee_query)
+            fee_structures = list(fee_result.scalars().all())
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve fee structure for revenue calculation",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
             )
-        )
-        fee_result = await self.session.execute(fee_query)
-        fee_structures = list(fee_result.scalars().all())
+            raise ServiceException(
+                "Failed to retrieve fee structure. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e
 
         if not fee_structures:
             raise ValidationError(
@@ -347,7 +415,20 @@ class RevenueService:
         )
         created_entries.append(t3_entry)
 
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to save revenue entries to database",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to save revenue calculations. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e
 
         return {
             "total_revenue": total_revenue,

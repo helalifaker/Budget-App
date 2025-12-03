@@ -9,9 +9,11 @@ import uuid
 from decimal import Decimal
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.logging import logger
 from app.engine.enrollment import (
     EnrollmentGrowthScenario,
     EnrollmentInput,
@@ -23,6 +25,7 @@ from app.models.planning import EnrollmentPlan
 from app.services.base import BaseService
 from app.services.exceptions import (
     BusinessRuleError,
+    ServiceException,
     ValidationError,
 )
 
@@ -59,33 +62,49 @@ class EnrollmentService:
         Returns:
             List of EnrollmentPlan instances with relationships loaded
 
+        Raises:
+            ServiceException: If database operation fails
+
         Performance Notes:
             - Uses selectinload for N+1 prevention
             - Eager loads level, cycle, nationality_type, and audit fields
             - Leverages idx_enrollment_version index
         """
-        query = (
-            select(EnrollmentPlan)
-            .join(EnrollmentPlan.level)
-            .join(EnrollmentPlan.nationality_type)
-            .where(
-                and_(
-                    EnrollmentPlan.budget_version_id == version_id,
-                    EnrollmentPlan.deleted_at.is_(None),
+        try:
+            query = (
+                select(EnrollmentPlan)
+                .join(EnrollmentPlan.level)
+                .join(EnrollmentPlan.nationality_type)
+                .where(
+                    and_(
+                        EnrollmentPlan.budget_version_id == version_id,
+                        EnrollmentPlan.deleted_at.is_(None),
+                    )
+                )
+                .options(
+                    selectinload(EnrollmentPlan.level).selectinload(AcademicLevel.cycle),
+                    selectinload(EnrollmentPlan.nationality_type),
+                    selectinload(EnrollmentPlan.budget_version),
+                )
+                .order_by(
+                    AcademicLevel.sort_order,
+                    NationalityType.sort_order,
                 )
             )
-            .options(
-                selectinload(EnrollmentPlan.level).selectinload(AcademicLevel.cycle),
-                selectinload(EnrollmentPlan.nationality_type),
-                selectinload(EnrollmentPlan.budget_version),
+            result = await self.session.execute(query)
+            return list(result.scalars().all())
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve enrollment plan",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
             )
-            .order_by(
-                AcademicLevel.sort_order,
-                NationalityType.sort_order,
-            )
-        )
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+            raise ServiceException(
+                "Failed to retrieve enrollment plan. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e
 
     async def get_enrollment_by_id(self, enrollment_id: uuid.UUID) -> EnrollmentPlan:
         """

@@ -10,9 +10,11 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.logging import logger
 from app.models.configuration import BudgetVersion, BudgetVersionStatus
 from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
 from app.models.planning import (
@@ -24,6 +26,7 @@ from app.models.planning import (
 from app.services.base import BaseService
 from app.services.exceptions import (
     BusinessRuleError,
+    ServiceException,
 )
 
 
@@ -121,29 +124,49 @@ class ConsolidationService:
         Raises:
             NotFoundError: If budget version not found
             ValidationError: If consolidation fails
+            ServiceException: If database operations fail
         """
-        # Verify budget version exists
-        await self.budget_version_service.get_by_id(budget_version_id)
+        try:
+            # Verify budget version exists
+            await self.budget_version_service.get_by_id(budget_version_id)
 
-        # Delete existing consolidation entries for this version
-        await self._delete_existing_consolidation(budget_version_id)
+            # Delete existing consolidation entries for this version
+            await self._delete_existing_consolidation(budget_version_id)
 
-        # Calculate line items from all sources
-        consolidation_entries = await self.calculate_line_items(budget_version_id)
+            # Calculate line items from all sources
+            consolidation_entries = await self.calculate_line_items(budget_version_id)
 
-        # Create consolidation entries
-        created_entries = []
-        for entry_data in consolidation_entries:
-            entry = await self.consolidation_service.create(
-                entry_data,
-                user_id=user_id,
+            # Create consolidation entries
+            created_entries = []
+            for entry_data in consolidation_entries:
+                entry = await self.consolidation_service.create(
+                    entry_data,
+                    user_id=user_id,
+                )
+                created_entries.append(entry)
+
+            # Commit the session
+            await self.session.flush()
+
+            logger.info(
+                "Budget consolidation completed successfully",
+                version_id=str(budget_version_id),
+                entries_created=len(created_entries),
             )
-            created_entries.append(entry)
 
-        # Commit the session
-        await self.session.flush()
-
-        return created_entries
+            return created_entries
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to consolidate budget",
+                version_id=str(budget_version_id),
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to consolidate budget. Please try again.",
+                status_code=500,
+                details={"version_id": str(budget_version_id)},
+            ) from e
 
     async def submit_for_approval(
         self,

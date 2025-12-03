@@ -9,21 +9,19 @@ Covers:
 - Rate limit headers
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import FastAPI, Request
-from fastapi.testclient import TestClient
-from starlette.responses import Response
+from unittest.mock import MagicMock, patch
 
+import pytest
 from app.middleware.rate_limit import (
+    RATE_LIMITS,
+    ROLE_MULTIPLIERS,
     RateLimitMiddleware,
     get_client_identifier,
     get_rate_limit_category,
     get_user_role,
-    RATE_LIMITS,
-    ROLE_MULTIPLIERS,
 )
-
+from fastapi import FastAPI, Request
+from fastapi.testclient import TestClient
 
 # ==============================================================================
 # Test: Client Identification

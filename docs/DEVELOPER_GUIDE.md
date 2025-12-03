@@ -29,13 +29,13 @@
          │ HTTPS
          ▼
 ┌─────────────────┐
-│  Frontend       │  React 19 + TypeScript + Vite
-│  (Port 5173)    │  Tailwind CSS 4.1 + AG Grid 34.3
+│  Frontend       │  React 19.2.0 + TypeScript 5.9.3 + Vite 7.2.6
+│  (Port 5173)    │  Tailwind CSS 4.1.17 + AG Grid 34.3.1
 └────────┬────────┘
          │ REST API
          ▼
 ┌─────────────────┐
-│  Backend        │  FastAPI 0.123 + Python 3.14.0
+│  Backend        │  FastAPI 0.123.4 + Python 3.14.0
 │  (Port 8000)    │  Calculation Engines
 └────────┬────────┘
          │
@@ -56,39 +56,39 @@ External Integrations:
 
 **Frontend**:
 - React 19.2.0 (Server Components, Actions)
-- TypeScript 5.9.x (strict mode)
-- Vite 7.2.x (build tool, 5x faster with Environment API)
-- Tailwind CSS 4.1.x (@tailwindcss/vite plugin)
+- TypeScript 5.9.3 (strict mode)
+- Vite 7.2.6 (build tool, 5x faster with Environment API)
+- Tailwind CSS 4.1.17 (@tailwindcss/vite plugin)
 - shadcn/ui (component library)
-- AG Grid Community 34.3.x (data grid, MIT license)
-- Recharts 2.15.x (charting)
-- TanStack Router 1.139.x (routing)
-- TanStack Query 5.80.x (data fetching/caching)
-- React Hook Form 7.67.x (forms)
+- AG Grid Community 34.3.1 (data grid, MIT license)
+- Recharts 3.4.1 (charting)
+- TanStack Router 1.139.12 (routing)
+- TanStack Query 5.90.11 (data fetching/caching)
+- React Hook Form 7.67.0 (forms)
 - Zod 3.24.x (validation)
 
 **Backend**:
-- FastAPI 0.123.x (async web framework)
-- Python 3.14.0 (type hints required)
-- Pydantic 2.12+ (data validation)
-- SQLAlchemy 2.x (ORM)
-- Alembic (migrations)
-- Uvicorn 0.34+ (ASGI server)
+- FastAPI 0.123.4 (async web framework)
+- Python 3.14.0 (Free-threaded Python, Template String Literals)
+- Pydantic 2.12.5 (data validation)
+- SQLAlchemy 2.0.44 (ORM)
+- Alembic 1.17.2 (migrations)
+- Uvicorn 0.38.0 (ASGI server)
 
 **Database**:
 - PostgreSQL 17.x (via Supabase)
 - Supabase (BaaS: Auth, Realtime, Edge Functions)
 
 **Testing**:
-- Frontend: Vitest 3.x + Testing Library + Playwright 1.49.x
-- Backend: pytest 8.x + coverage
+- Frontend: Vitest 4.0.0 + Testing Library + Playwright 1.57.0
+- Backend: pytest 9.0.1 + coverage
 
 **Code Quality**:
-- ESLint 9.x (frontend linting)
-- Ruff 0.8.x (backend linting, 10-100x faster than Flake8)
-- mypy 1.14.x (Python type checking)
-- Prettier 3.4.x (code formatting)
-- Husky 9.x + lint-staged 15.x (pre-commit hooks)
+- ESLint 9.39.1 (frontend linting)
+- Ruff 0.14.3 (backend linting, 10-100x faster than Flake8)
+- mypy 1.19.0 (Python type checking)
+- Prettier 3.7.0 (code formatting)
+- Husky 9.1.7 + lint-staged 15.5.2 (pre-commit hooks)
 
 ### 1.3 Directory Structure
 

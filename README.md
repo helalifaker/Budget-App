@@ -20,18 +20,18 @@ This application provides integrated workforce planning through annual budget an
 
 ### Frontend
 - **Framework**: React 19.2.0 (Server Components, Actions, Activity API)
-- **Language**: TypeScript 5.9.x
-- **Build Tool**: Vite 7.2.x
-- **Styling**: Tailwind CSS 4.1.x
+- **Language**: TypeScript 5.9.3
+- **Build Tool**: Vite 7.2.6
+- **Styling**: Tailwind CSS 4.1.17
 - **Components**: shadcn/ui (TW v4 compatible)
-- **Data Grid**: AG Grid Community 34.3.x
-- **Charts**: Recharts 2.15.x
+- **Data Grid**: AG Grid Community 34.3.1
+- **Charts**: Recharts 3.4.1
 
 ### Backend
-- **Runtime**: Python 3.14.0
-- **API Framework**: FastAPI 0.123.x
-- **Validation**: Pydantic 2.12+
-- **Server**: Uvicorn 0.34+
+- **Runtime**: Python 3.14.0 (Free-threaded Python, Template String Literals)
+- **API Framework**: FastAPI 0.123.4
+- **Validation**: Pydantic 2.12.5
+- **Server**: Uvicorn 0.38.0
 
 ### Database & Infrastructure
 - **Database**: PostgreSQL 17.x (via Supabase)
@@ -39,9 +39,9 @@ This application provides integrated workforce planning through annual budget an
 - **Security**: Row Level Security (RLS)
 
 ### Development Tools
-- **Frontend**: ESLint 9.x, Prettier 3.4.x, Vitest 3.x, Playwright 1.49.x
-- **Backend**: Ruff 0.8.x, mypy 1.14.x, pytest 8.x
-- **Git Hooks**: Husky 9.x, lint-staged 15.x
+- **Frontend**: ESLint 9.39.1, Prettier 3.7.0, Vitest 4.0.0, Playwright 1.57.0
+- **Backend**: Ruff 0.14.3, mypy 1.19.0, pytest 9.0.1
+- **Git Hooks**: Husky 9.1.7, lint-staged 15.5.2
 
 ## Project Structure
 

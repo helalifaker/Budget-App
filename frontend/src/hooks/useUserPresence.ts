@@ -63,7 +63,6 @@ export function useUserPresence(options: UserPresenceOptions) {
   const broadcast = useCallback(
     async (payload: UserActivityPayload) => {
       if (!channel || !broadcastActivity) {
-        console.log('Cannot broadcast: channel not ready or broadcasting disabled')
         return
       }
 
@@ -77,8 +76,6 @@ export function useUserPresence(options: UserPresenceOptions) {
             user_email: user?.email,
           },
         })
-
-        console.log('Broadcast sent:', payload)
       } catch (error) {
         console.error('Failed to broadcast activity:', error)
       }
@@ -89,11 +86,8 @@ export function useUserPresence(options: UserPresenceOptions) {
   // Setup presence tracking
   useEffect(() => {
     if (!budgetVersionId || !user) {
-      console.log('Presence: waiting for budget version or user')
       return
     }
-
-    console.log('Setting up presence tracking for budget:', budgetVersionId)
 
     // Create presence channel
     const presenceChannel = supabase.channel(`presence:${budgetVersionId}`, {
@@ -113,12 +107,9 @@ export function useUserPresence(options: UserPresenceOptions) {
         // Convert presence state to array of users
         const users = Object.values(state).flat()
 
-        console.log('Presence synced, active users:', users.length)
         setActiveUsers(users.filter((u) => u.user_id !== user.id))
       })
       .on('presence', { event: 'join' }, ({ newPresences }) => {
-        console.log('User(s) joined:', newPresences)
-
         const newUsers = newPresences as unknown as PresenceUser[]
 
         // Filter out current user and show notification for others
@@ -137,8 +128,6 @@ export function useUserPresence(options: UserPresenceOptions) {
         }
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        console.log('User(s) left:', leftPresences)
-
         const leftUsers = leftPresences as unknown as PresenceUser[]
 
         // Filter out current user
@@ -158,8 +147,6 @@ export function useUserPresence(options: UserPresenceOptions) {
         'broadcast',
         { event: 'user-activity' },
         (payload: { payload: UserActivityPayload & { user_id: string; user_email: string } }) => {
-          console.log('User activity broadcast received:', payload.payload)
-
           // Update active users with current activity
           setActiveUsers((prev) =>
             prev.map((u) =>
@@ -178,8 +165,6 @@ export function useUserPresence(options: UserPresenceOptions) {
 
     // Subscribe and announce presence
     presenceChannel.subscribe(async (status) => {
-      console.log('Presence subscription status:', status)
-
       if (status === 'SUBSCRIBED') {
         // Announce presence
         await presenceChannel.track({
@@ -187,8 +172,6 @@ export function useUserPresence(options: UserPresenceOptions) {
           user_email: user.email || 'Unknown',
           joined_at: new Date().toISOString(),
         })
-
-        console.log('Presence announced for user:', user.email)
       } else if (status === 'CHANNEL_ERROR') {
         console.error('Presence subscription error')
       }
@@ -198,14 +181,10 @@ export function useUserPresence(options: UserPresenceOptions) {
 
     // Cleanup on unmount
     return () => {
-      console.log('Cleaning up presence tracking')
-
       if (presenceChannel) {
         // Untrack presence before removing channel
         presenceChannel.untrack().then(() => {
-          supabase.removeChannel(presenceChannel).then(() => {
-            console.log('Presence channel removed')
-          })
+          supabase.removeChannel(presenceChannel)
         })
       }
     }

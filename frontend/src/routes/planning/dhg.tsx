@@ -208,9 +208,6 @@ function SubjectHoursTab({ data, isLoading }: { data: SubjectHoursItem[]; isLoad
               resizable: true,
             }}
             loading={isLoading}
-            onCellValueChanged={(event) => {
-              console.log('Cell value changed:', event.data)
-            }}
           />
         </div>
       </CardContent>
@@ -380,9 +377,6 @@ function TRMDTab({ data, isLoading }: { data: TRMDItem[]; isLoading: boolean }) 
               resizable: true,
             }}
             loading={isLoading}
-            onCellValueChanged={(event) => {
-              console.log('TRMD updated:', event.data)
-            }}
           />
         </div>
       </CardContent>

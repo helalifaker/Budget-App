@@ -458,14 +458,48 @@ uvicorn app.main:app --reload   # Start FastAPI server (http://localhost:8000)
 
 **Testing & Quality:**
 ```bash
-pytest                          # Run pytest (watch mode)
-pytest --cov=app                # Run with coverage report
+# Virtual environment activation (required first)
+source .venv/bin/activate       # Linux/Mac
+# OR: .venv\Scripts\activate    # Windows
+
+# Running tests
+pytest                          # All tests with 80% coverage check
 pytest -v                       # Verbose output
-pytest tests/engine/            # Run specific test directory
-pytest -k test_dhg              # Run tests matching pattern
+pytest --cov=app                # With coverage report
+pytest --cov=app --cov-report=html  # Generate HTML report (htmlcov/)
+pytest tests/engine/            # Specific test directory
+pytest -k test_dhg              # Tests matching pattern
+pytest -m unit                  # Only unit tests (fast)
+pytest -m integration           # Only integration tests
+pytest -m "not slow"            # Skip slow tests
+pytest -q                       # Quiet mode (faster, no coverage)
+
+# Code quality (from backend/ directory)
 .venv/bin/ruff check .          # Lint with Ruff
 .venv/bin/ruff check . --fix    # Auto-fix Ruff issues
-.venv/bin/mypy .                # Type check with mypy
+.venv/bin/ruff format .         # Format code with Ruff
+.venv/bin/mypy app              # Type check with mypy (app/ only)
+
+# From activated venv
+ruff check .                    # After source .venv/bin/activate
+mypy app                        # Type check
+```
+
+**Pytest Test Markers** (Categorize tests with decorators):
+```python
+@pytest.mark.unit               # Fast unit tests (no database)
+@pytest.mark.integration        # Integration tests (require database)
+@pytest.mark.slow               # Slow-running tests
+@pytest.mark.validation         # Validation logic tests
+@pytest.mark.models             # Model and ORM tests
+@pytest.mark.api                # API endpoint tests
+```
+
+**Coverage Requirements**:
+- **Minimum**: 80% coverage (enforced by pytest.ini)
+- **Target**: 95% coverage (see TEST_COVERAGE_95_PERCENT_PLAN.md)
+- **Current**: 73.62% (as of December 2025)
+- HTML reports generated in `htmlcov/` directory
 ```
 
 **Database & Migrations:**
@@ -482,10 +516,15 @@ alembic revision --autogenerate -m "description"  # Create new migration
 **From project root:**
 ```bash
 pnpm install                    # Install all workspaces
-pnpm -r build                   # Build all workspaces
+pnpm -r build                   # Build all workspaces (recursive)
 pnpm -r test                    # Test all workspaces
+pnpm --filter efir-budget-frontend dev    # Run frontend only
+pnpm --filter efir-budget-frontend build  # Build frontend only
 pnpm run lint                   # Lint frontend only
 pnpm run format                 # Format frontend only
+
+# Note: Backend has separate Python venv, not managed by pnpm
+# Use `cd backend && source .venv/bin/activate` for backend commands
 ```
 
 ## Development Notes
@@ -503,10 +542,39 @@ pnpm run format                 # Format frontend only
   - `frontend/src/routes/strategic/` - Strategic layer modules
 - **API Endpoints**: Backend routes registered in `backend/app/api/v1/` with controllers for each domain
 - **Backend Models**: All 18 modules have corresponding SQLAlchemy models in `backend/app/models/`
-- **Calculation Engines**: Pure Python engines in `backend/app/engine/` (DHG, KPI, Revenue, Enrollment)
+- **Calculation Engines**: Pure Python engines in `backend/app/engine/` (DHG, KPI, Revenue, Enrollment, Financial Statements)
 - **Services Layer**: Business logic in `backend/app/services/` (base service, integrations, exceptions)
 - **Schemas**: Pydantic request/response models in `backend/app/schemas/`
-- **Database Migrations**: Alembic migrations in `backend/alembic/versions/` (linear chain: 001→002→...→007)
+- **Database Migrations**: Alembic migrations in `backend/alembic/versions/` (linear chain: 001→002→...→010)
+
+## Recent Project Evolution
+
+**As of December 2025**, the project has matured with several significant improvements:
+
+**Production Readiness Milestone:**
+1. **Comprehensive Testing**: Active push to reach 95% test coverage (currently at 73.62%)
+2. **Calculation Validation**: DHG, KPI, Revenue, and Financial Statement engines fully validated
+3. **Performance Optimization**: Materialized views and indexes added for KPI dashboard performance
+4. **Writeback Support**: Real-time planning cell writeback implemented for instant data entry
+5. **Production Assessment**: Full production readiness checklist completed
+
+**Current Testing Status:**
+- **Current Coverage**: 73.62%
+- **Target Coverage**: 95%
+- **Critical Gaps**: Export API (13%), Integrations API (21%), Consolidation API (21%)
+- **New Test Files**: `test_calculations_api.py`, `test_export_api.py`, `test_integrations_api.py`, `test_materialized_view_service.py`, `test_core_logging.py`, `test_core_pagination.py`, `test_core_security.py`
+
+**Recent Database Enhancements:**
+- Migration 008: Performance indexes for query optimization
+- Migration 009: Materialized views for KPI dashboard caching
+- Migration 010: Planning cells writeback support for real-time editing
+
+**Key Documentation Files:**
+- `CALCULATION_ENGINE_VALIDATION_REPORT.md` - Validates all calculation engines against specifications
+- `PRODUCTION_READINESS_ASSESSMENT.md` - Production deployment readiness checklist
+- `TEST_COVERAGE_95_PERCENT_PLAN.md` - Detailed roadmap to achieve 95% test coverage
+- `TEST_COVERAGE_80_PERCENT_PLAN.md` - Baseline 80% coverage achievement plan
+- `PHASE_*.md` files - Historical implementation phase summaries
 
 ## MCP Tool Orchestration & Intelligence Rules
 
@@ -823,31 +891,63 @@ All form schemas in `frontend/src/schemas/` using Zod for validation
 **Project Layout:**
 ```
 backend/app/
-├── main.py           # FastAPI app initialization, middleware, CORS
-├── api/              # API routes organized by domain
+├── main.py              # FastAPI app initialization, middleware, CORS
+├── database.py          # Database session management and utilities
+├── api/                 # API routes organized by domain
 │   └── v1/
-│       ├── __init__.py (router registration)
-│       ├── planning.py (planning modules 7-12)
-│       ├── costs.py (cost calculation)
-│       ├── revenue.py (revenue calculation)
-│       ├── consolidation.py (budget consolidation)
-│       ├── analysis.py (KPI & analysis)
-│       ├── strategic.py (5-year planning)
-│       └── calculations.py (general calculation endpoints)
-├── models/           # SQLAlchemy ORM models (18 modules)
-├── schemas/          # Pydantic request/response models
-├── engine/           # Pure Python calculation engines
-│   ├── dhg_calculator.py (DHG/workforce)
-│   ├── kpi_calculator.py (KPI calculations)
-│   ├── revenue_calculator.py (revenue/fee calculations)
-│   └── enrollment_engine.py (enrollment projections)
-├── services/         # Business logic & external integrations
-│   ├── base.py (base service class with CRUD patterns)
-│   ├── exceptions.py (custom exception definitions)
-│   ├── odoo_integration.py (Odoo/XERO connector)
-│   ├── skolengo_integration.py (Skolengo enrollment import)
-│   └── aefe_integration.py (AEFE position data)
-└── tests/            # Pytest tests organized by domain
+│       ├── __init__.py           (router registration)
+│       ├── analysis.py           (KPI & analysis endpoints)
+│       ├── calculations.py       (general calculation endpoints)
+│       ├── configuration.py      (configuration layer modules 1-6)
+│       ├── consolidation.py      (budget consolidation module 13)
+│       ├── costs.py              (cost planning endpoints)
+│       ├── export.py             (export to Excel/PDF/CSV)
+│       ├── integrations.py       (Odoo/Skolengo/AEFE integration)
+│       ├── planning.py           (planning modules 7-12)
+│       └── writeback.py          (data entry writeback)
+├── core/                # Core infrastructure
+│   ├── logging.py      (structured logging with structlog)
+│   ├── pagination.py   (pagination utilities)
+│   └── security.py     (JWT auth, password hashing)
+├── dependencies/        # FastAPI dependency injection
+│   └── auth.py         (authentication dependencies)
+├── engine/              # Pure Python calculation engines
+│   ├── dhg/            (DHG workforce planning calculator)
+│   ├── enrollment/     (enrollment projection calculator)
+│   ├── financial_statements/ (PCG/IFRS statement generator)
+│   ├── kpi/            (KPI calculation engine)
+│   └── revenue/        (revenue/fee calculator)
+├── middleware/          # FastAPI middleware
+│   ├── auth.py         (JWT authentication middleware)
+│   └── rate_limit.py   (rate limiting with Redis)
+├── models/              # SQLAlchemy ORM models (18 modules)
+├── routes/              # Additional route organization
+├── schemas/             # Pydantic request/response models
+├── services/            # Business logic & external integrations
+│   ├── base.py                  (base service class with CRUD)
+│   ├── budget_actual_service.py (budget vs actual analysis)
+│   ├── capex_service.py         (capital expenditure planning)
+│   ├── class_structure_service.py
+│   ├── configuration_service.py
+│   ├── consolidation_service.py
+│   ├── cost_service.py
+│   ├── dashboard_service.py
+│   ├── enrollment_service.py
+│   ├── exceptions.py            (custom exception definitions)
+│   ├── financial_statements_service.py
+│   ├── materialized_view_service.py
+│   ├── odoo_integration.py      (Odoo connector)
+│   ├── revenue_service.py
+│   ├── skolengo_integration.py  (Skolengo connector)
+│   ├── strategic_service.py
+│   └── writeback_service.py
+├── validators/          # Business rule validators
+└── tests/               # Pytest tests organized by domain
+    ├── api/             (API endpoint tests)
+    ├── core/            (core utilities tests)
+    ├── engine/          (calculation engine tests)
+    ├── middleware/      (middleware tests)
+    └── services/        (service layer tests)
 ```
 
 ### Calculation Engine Pattern
@@ -906,7 +1006,8 @@ async def calculate_enrollment(
 ```
 001_initial_config → 002_planning_layer → 003_consolidation_layer →
 004_fix_critical_issues → 005_analysis_layer → 006_class_structure_validation →
-007_strategic_layer
+007_strategic_layer → 008_performance_indexes → 009_materialized_views_kpi →
+010_planning_cells_writeback
 ```
 
 Each migration:
@@ -914,6 +1015,15 @@ Each migration:
 - Tracks schema changes automatically
 - Includes down migrations for rollback capability
 - Linear chain (each migration's `down_revision` points to previous)
+- **Latest migrations**: Performance indexes (008), materialized views for KPIs (009), and writeback support (010)
+
+**Current Migration Count**: 10 migrations (as of December 2025)
+
+**Migration Details:**
+- **001-007**: Core 18-module implementation (Configuration, Planning, Consolidation, Analysis, Strategic layers)
+- **008**: Performance indexes for query optimization on frequently accessed tables
+- **009**: Materialized views for KPI dashboard caching and performance
+- **010**: Planning cells writeback support for real-time data entry
 
 **RLS Policies:**
 - User-level isolation: Each user can only access their organization's data

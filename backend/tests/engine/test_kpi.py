@@ -18,10 +18,12 @@ Test Categories:
 11. Edge cases and error handling
 """
 
+from datetime import UTC
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 from app.engine.kpi import (
     KPIInput,
     KPIResult,
@@ -1010,8 +1012,8 @@ class TestKPIEdgeCases100PercentCoverage:
         # Should have a calculation date
         assert result.calculation_date is not None
         # Should be recent (within last minute)
-        from datetime import datetime, timezone
-        now = datetime.now(timezone.utc)
+        from datetime import datetime
+        now = datetime.now(UTC)
         assert (now - result.calculation_date).total_seconds() < 60
 
     def test_kpi_result_immutability_frozen_models(self):

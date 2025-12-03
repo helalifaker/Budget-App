@@ -46,6 +46,11 @@ TRIMESTER_2_PCT = Decimal("0.30")  # 30%
 TRIMESTER_3_PCT = Decimal("0.30")  # 30%
 
 
+def quantize_currency(value: Decimal) -> Decimal:
+    """Ensure currency amounts have two decimal places."""
+    return value.quantize(Decimal("0.01"))
+
+
 def calculate_sibling_discount(
     tuition_amount: Decimal,
     sibling_order: int,
@@ -80,6 +85,7 @@ def calculate_sibling_discount(
         Decimal('33750.00')  # 45000 - 11250
     """
     # Determine if discount applies (3rd+ child)
+    tuition_amount = quantize_currency(tuition_amount)
     discount_applicable = sibling_order >= SIBLING_DISCOUNT_THRESHOLD
 
     if discount_applicable:
@@ -134,15 +140,19 @@ def calculate_tuition_revenue(
         >>> result.total_revenue
         Decimal('36750.00')  # 33750 + 2000 + 1000
     """
+    base_tuition = quantize_currency(tuition_input.tuition_fee)
+    base_dai = quantize_currency(tuition_input.dai_fee)
+    base_registration = quantize_currency(tuition_input.registration_fee)
+
     # Calculate sibling discount on tuition ONLY
     sibling_discount = calculate_sibling_discount(
-        tuition_input.tuition_fee,
+        base_tuition,
         tuition_input.sibling_order,
     )
 
     # DAI and registration fees are NOT discounted
-    net_dai = tuition_input.dai_fee
-    net_registration = tuition_input.registration_fee
+    net_dai = quantize_currency(base_dai)
+    net_registration = quantize_currency(base_registration)
 
     # Calculate total revenue
     total_revenue = sibling_discount.net_tuition + net_dai + net_registration
@@ -151,9 +161,9 @@ def calculate_tuition_revenue(
         student_id=tuition_input.student_id,
         level_code=tuition_input.level_code,
         fee_category=tuition_input.fee_category,
-        base_tuition=tuition_input.tuition_fee,
-        base_dai=tuition_input.dai_fee,
-        base_registration=tuition_input.registration_fee,
+        base_tuition=base_tuition,
+        base_dai=base_dai,
+        base_registration=base_registration,
         sibling_discount_amount=sibling_discount.discount_amount,
         sibling_discount_rate=sibling_discount.discount_rate,
         net_tuition=sibling_discount.net_tuition,

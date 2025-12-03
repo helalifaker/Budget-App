@@ -34,8 +34,8 @@
 ## 3. Solution Overview
 ```
 ┌──────────────┐        HTTPS + JWT/RLS        ┌────────────────┐
-│ React 19.2   │◄──────────────────────────────►│ FastAPI 0.123  │
-│ + Vite 7.2   │  Supabase JS client (auth)    │  Service Layer │
+│ React 19.2.0 │◄──────────────────────────────►│ FastAPI 0.123.4│
+│ + Vite 7.2.6 │  Supabase JS client (auth)    │  Service Layer │
 └──────┬───────┘                                 └─────┬────────┘
        │                                             │
        ▼                                             ▼
@@ -59,18 +59,18 @@ Key integration principles:
 ## 4. Technology Stack Alignment (v1.2)
 | Layer | Technology | Notes |
 |-------|------------|-------|
-| UI Framework | React 19.2, TypeScript 5.9 | React Server Components + Actions for data mutations; Activity API for collaboration cues |
-| Build Tooling | Vite 7.2, Vitest 3 | Baseline browser targeting, environment API, HMR test harness |
-| UI System | Tailwind CSS 4.1, shadcn/ui (TW v4), AG Grid 34.3, Recharts 2.15 | AG Grid themeQuartz + custom cell renderers; OKLCH palette |
-| Backend | FastAPI 0.123, Python 3.14.0, Uvicorn 0.34, Pydantic 2.12 | Modular routers, pydantic settings, async SQLAlchemy |
+| UI Framework | React 19.2.0, TypeScript 5.9.3 | React Server Components + Actions for data mutations; Activity API for collaboration cues |
+| Build Tooling | Vite 7.2.6, Vitest 4.0.0 | Baseline browser targeting, environment API, HMR test harness |
+| UI System | Tailwind CSS 4.1.17, shadcn/ui (TW v4), AG Grid 34.3.1, Recharts 3.4.1 | AG Grid themeQuartz + custom cell renderers; OKLCH palette |
+| Backend | FastAPI 0.123.4, Python 3.14.0, Uvicorn 0.38.0, Pydantic 2.12.5 | Modular routers, pydantic settings, async SQLAlchemy |
 | Data | Supabase (PostgreSQL 17) | Row Level Security, database functions, edge functions |
 | Auth & Collaboration | Supabase Auth, Supabase Realtime | Role-based policies, live cursor + auto-save |
-| Dev Quality | ESLint 9 (flat), Prettier 3.4, Husky 9, lint-staged 15, Ruff 0.8, mypy 1.14, pytest 8, Playwright 1.49 | Mandatory pre-commit and CI gates |
+| Dev Quality | ESLint 9.39.1 (flat), Prettier 3.7.0, Husky 9.1.7, lint-staged 15.5.2, Ruff 0.14.3, mypy 1.19.0, pytest 9.0.1, Playwright 1.57.0 | Mandatory pre-commit and CI gates |
 
 ---
 
 ## 5. Application Architecture Detail
-### 5.1 Frontend (React 19 + Vite)
+### 5.1 Frontend (React 19.2.0 + Vite 7.2.6)
 - **Application shell:** React Router app with layout-level suspense boundaries, streaming SSR via Vite for fast first paint.  
 - **State layers:**  
   - Local UI state via React hooks/useEffectEvent.  

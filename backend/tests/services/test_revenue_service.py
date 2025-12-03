@@ -14,12 +14,11 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.configuration import BudgetVersion, FeeStructure
-from app.models.planning import EnrollmentPlan, RevenuePlan
-from app.services.exceptions import NotFoundError, ValidationError
+from app.models.planning import EnrollmentPlan
+from app.services.exceptions import ValidationError
 from app.services.revenue_service import RevenueService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestRevenueServiceCRUD:

@@ -6,15 +6,15 @@ React 19 + Vite + TypeScript 5.9 frontend for the EFIR Budget Planning Applicati
 
 - **Framework**: React 19.2.0 (Server Components, Actions, Activity API ready)
 - **Language**: TypeScript 5.9.3 (strict mode, deferred imports)
-- **Build Tool**: Vite 6.0.11 (fast HMR, ESM-native)
-- **Styling**: Tailwind CSS 4.1.x (with PostCSS plugin)
-- **Components**: shadcn/ui patterns (Radix UI primitives)
-- **Data Grid**: AG Grid Community 34.3.x (enterprise spreadsheet UX)
-- **Charts**: Recharts 2.15.x
-- **Forms**: React Hook Form 7.x + Zod validation
-- **Animation**: Framer Motion 11.x
-- **State**: TanStack React Query 5.55.x (server state caching)
-- **Auth**: Supabase JS Client 2.86.x
+- **Build Tool**: Vite 7.2.6 (fast HMR, ESM-native, Environment API)
+- **Styling**: Tailwind CSS 4.1.17 (with @tailwindcss/vite plugin)
+- **Components**: shadcn/ui patterns (Radix UI primitives, TW v4 compatible)
+- **Data Grid**: AG Grid Community 34.3.1 (enterprise spreadsheet UX)
+- **Charts**: Recharts 3.4.1
+- **Forms**: React Hook Form 7.67.0 + Zod 4.1.0 validation
+- **State**: TanStack React Query 5.90.11 (server state caching)
+- **Router**: TanStack Router 1.139.12 (type-safe routing)
+- **Auth**: Supabase JS Client 2.49.0
 
 ## Project Structure
 
@@ -163,7 +163,7 @@ npx playwright codegen localhost:5173
 
 ## AG Grid Integration
 
-AG Grid Community 34.3.x provides enterprise-grade spreadsheet functionality:
+AG Grid Community 34.3.1 provides enterprise-grade spreadsheet functionality:
 
 ```tsx
 import { AgGridReact } from 'ag-grid-react';

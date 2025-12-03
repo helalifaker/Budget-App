@@ -79,15 +79,8 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
 
       // Ignore changes from current user (they already have optimistic update)
       if (record.modified_by === user?.id) {
-        console.log('Ignoring own change:', record.id)
         return
       }
-
-      console.log('Realtime change received:', {
-        eventType,
-        cellId: record.id,
-        userId: record.modified_by,
-      })
 
       // Update React Query cache based on event type
       if (eventType === 'UPDATE') {
@@ -148,11 +141,9 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
   // Setup subscription
   useEffect(() => {
     if (!budgetVersionId || !user) {
-      console.log('Realtime sync: waiting for budget version or user')
       return
     }
 
-    console.log('Setting up realtime subscription for budget:', budgetVersionId)
     updateStatus('CONNECTING')
 
     // Create channel for this budget version
@@ -178,14 +169,10 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
         handleChange as any
       )
       .subscribe((subscriptionStatus) => {
-        console.log('Realtime subscription status:', subscriptionStatus)
-
         if (subscriptionStatus === 'SUBSCRIBED') {
           updateStatus('SUBSCRIBED')
-          console.log('Realtime subscription active for budget:', budgetVersionId)
         } else if (subscriptionStatus === 'CLOSED') {
           updateStatus('CLOSED')
-          console.log('Realtime subscription closed')
         } else if (subscriptionStatus === 'CHANNEL_ERROR') {
           updateStatus('CHANNEL_ERROR')
           console.error('Realtime subscription error')
@@ -203,14 +190,11 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
 
     // Cleanup on unmount or dependency change
     return () => {
-      console.log('Cleaning up realtime subscription')
       updateStatus('CLOSED')
 
       // Unsubscribe and remove channel
       if (realtimeChannel) {
-        supabase.removeChannel(realtimeChannel).then(() => {
-          console.log('Realtime channel removed')
-        })
+        supabase.removeChannel(realtimeChannel)
       }
     }
   }, [budgetVersionId, user, handleChange, updateStatus, showNotifications])
@@ -218,7 +202,6 @@ export function useRealtimeSync(options: RealtimeSyncOptions) {
   // Manual reconnect function
   const reconnect = useCallback(() => {
     if (channel) {
-      console.log('Manually reconnecting realtime channel')
       supabase.removeChannel(channel).then(() => {
         // The useEffect will automatically create a new channel
         setChannel(null)

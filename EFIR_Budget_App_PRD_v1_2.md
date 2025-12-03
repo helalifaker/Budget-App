@@ -53,12 +53,12 @@ The technology stack has been updated to use the latest stable versions and best
 | Component | Version | Purpose |
 |-----------|---------|---------|
 | **React** | 19.2.0 | UI library with Server Components, Actions, Activity API |
-| **TypeScript** | 5.9.x | Type-safe development, deferred imports, enhanced type narrowing |
-| **Vite** | 7.2.x | Build tool with Environment API, ESM-only, Baseline browser targeting |
-| **Tailwind CSS** | 4.1.x | Utility-first CSS with @tailwindcss/vite plugin, 5x faster builds |
+| **TypeScript** | 5.9.3 | Type-safe development, deferred imports, enhanced type narrowing |
+| **Vite** | 7.2.6 | Build tool with Environment API, ESM-only, Baseline browser targeting |
+| **Tailwind CSS** | 4.1.17 | Utility-first CSS with @tailwindcss/vite plugin, 5x faster builds |
 | **shadcn/ui** | Latest (TW v4) | Accessible UI components with data-slot attributes, OKLCH colors |
-| **AG Grid Community** | 34.3.x | Enterprise-grade data grid (MIT license) - Replaces Handsontable |
-| **Recharts** | 2.15.x | React charting library for dashboards and visualizations |
+| **AG Grid Community** | 34.3.1 | Enterprise-grade data grid (MIT license) - Replaces Handsontable |
+| **Recharts** | 3.4.1 | React charting library for dashboards and visualizations |
 
 #### AG Grid Community Features (Free - MIT License)
 
@@ -73,10 +73,10 @@ The technology stack has been updated to use the latest stable versions and best
 
 | Component | Version | Purpose |
 |-----------|---------|---------|
-| **Python** | 3.14.0 | Runtime with improved performance and error messages |
-| **FastAPI** | 0.123.x | High-performance async API framework with Pydantic v2 |
-| **Pydantic** | 2.12+ | Data validation with JSON Schema support |
-| **Uvicorn** | 0.34+ | ASGI server for production deployment |
+| **Python** | 3.14.0 | Runtime with improved performance and error messages (Free-threaded Python, Template String Literals) |
+| **FastAPI** | 0.123.4 | High-performance async API framework with Pydantic v2 |
+| **Pydantic** | 2.12.5 | Data validation with JSON Schema support |
+| **Uvicorn** | 0.38.0 | ASGI server for production deployment |
 
 ### 7.3 Database & Infrastructure
 
@@ -93,18 +93,18 @@ Best-in-class tooling for code quality, consistency, and developer experience:
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| **ESLint** | 9.x | Code linting with flat config (eslint.config.js) |
-| **Prettier** | 3.4.x | Opinionated code formatting for consistency |
-| **Husky** | 9.x | Git hooks for pre-commit validation |
-| **lint-staged** | 15.x | Run linters on staged files only |
-| **Vitest** | 3.x | Vite-native testing framework with instant HMR |
-| **Playwright** | 1.49.x | End-to-end testing across browsers |
-| **@typescript-eslint** | 8.x | TypeScript-specific ESLint rules |
-| **eslint-plugin-react-hooks** | 5.x | React hooks linting rules |
+| **ESLint** | 9.39.1 | Code linting with flat config (eslint.config.js) |
+| **Prettier** | 3.7.0 | Opinionated code formatting for consistency |
+| **Husky** | 9.1.7 | Git hooks for pre-commit validation |
+| **lint-staged** | 15.5.2 | Run linters on staged files only |
+| **Vitest** | 4.0.0 | Vite-native testing framework with instant HMR |
+| **Playwright** | 1.57.0 | End-to-end testing across browsers |
+| **@typescript-eslint** | 8.48.0 | TypeScript-specific ESLint rules |
+| **eslint-plugin-react-hooks** | 5.1.0 | React hooks linting rules |
 | **eslint-plugin-tailwindcss** | 3.x | Tailwind CSS class ordering and best practices |
-| **Ruff** | 0.8.x | Python linter (10-100x faster than Flake8) |
-| **mypy** | 1.14.x | Python static type checker |
-| **pytest** | 8.x | Python testing framework |
+| **Ruff** | 0.14.3 | Python linter (10-100x faster than Flake8) |
+| **mypy** | 1.19.0 | Python static type checker |
+| **pytest** | 9.0.1 | Python testing framework |
 
 #### Development Workflow Configuration
 
@@ -130,19 +130,21 @@ Complete technology stack with versions as of November 2025:
 | Category | Technology | Version |
 |----------|------------|---------|
 | **Framework** | React | 19.2.0 |
-| **Language** | TypeScript | 5.9.x |
-| **Build Tool** | Vite | 7.2.x |
-| **Styling** | Tailwind CSS | 4.1.x |
+| **Language** | TypeScript | 5.9.3 |
+| **Build Tool** | Vite | 7.2.6 |
+| **Styling** | Tailwind CSS | 4.1.17 |
 | **UI Components** | shadcn/ui | Latest (TW v4 compatible) |
-| **Data Grid** | AG Grid Community | 34.3.x (MIT) |
-| **Charts** | Recharts | 2.15.x |
+| **Data Grid** | AG Grid Community | 34.3.1 (MIT) |
+| **Charts** | Recharts | 3.4.1 |
 | **Backend Runtime** | Python | 3.14.0 |
-| **API Framework** | FastAPI | 0.123.x |
+| **API Framework** | FastAPI | 0.123.4 |
+| **Validation** | Pydantic | 2.12.5 |
+| **Server** | Uvicorn | 0.38.0 |
 | **Database** | PostgreSQL (Supabase) | 17.x |
-| **Linting** | ESLint + Ruff | 9.x / 0.8.x |
-| **Formatting** | Prettier | 3.4.x |
-| **Git Hooks** | Husky + lint-staged | 9.x / 15.x |
-| **Testing** | Vitest + Playwright + pytest | 3.x / 1.49.x / 8.x |
+| **Linting** | ESLint + Ruff | 9.39.1 / 0.14.3 |
+| **Formatting** | Prettier | 3.7.0 |
+| **Git Hooks** | Husky + lint-staged | 9.1.7 / 15.5.2 |
+| **Testing** | Vitest + Playwright + pytest | 4.0.0 / 1.57.0 / 9.0.1 |
 
 ### 7.6 Key Changes from v1.1
 
@@ -151,7 +153,8 @@ Complete technology stack with versions as of November 2025:
 3. **React:** Upgraded to React 19.2 with Activity API and useEffectEvent
 4. **TypeScript:** Upgraded to TypeScript 5.9 with deferred module evaluation
 5. **Tailwind CSS:** Upgraded to v4.1 with dedicated Vite plugin, 5x faster builds
-6. **Dev Tools:** Added comprehensive tooling (ESLint 9, Prettier, Husky, lint-staged, Vitest, Playwright, Ruff)
+6. **Dev Tools:** Added comprehensive tooling (ESLint 9.39.1, Prettier 3.7.0, Husky 9.1.7, lint-staged 15.5.2, Vitest 4.0.0, Playwright 1.57.0, Ruff 0.14.3, mypy 1.19.0, pytest 9.0.1)
+7. **Recharts:** Upgraded to 3.4.1 (from 2.15.x) for improved charting capabilities
 7. **PostgreSQL:** Upgraded to PostgreSQL 17 via Supabase
 
 ---

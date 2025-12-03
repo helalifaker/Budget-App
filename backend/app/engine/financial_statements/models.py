@@ -7,7 +7,6 @@ All models are immutable and validated.
 
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -76,16 +75,16 @@ class StatementLine(BaseModel):
     line_number: int = Field(..., ge=1, description="Line sequence number")
     line_type: StatementLineType = Field(..., description="Type of line")
     indent_level: int = Field(..., ge=0, le=5, description="Indentation level (0-5)")
-    line_code: Optional[str] = Field(None, description="Account code if applicable")
+    line_code: str | None = Field(None, description="Account code if applicable")
     line_description: str = Field(..., min_length=1, description="Line description")
-    amount_sar: Optional[Decimal] = Field(None, description="Amount in SAR")
+    amount_sar: Decimal | None = Field(None, description="Amount in SAR")
     is_bold: bool = Field(default=False, description="Display in bold")
     is_underlined: bool = Field(default=False, description="Display underlined")
-    source_category: Optional[str] = Field(None, description="Source category")
+    source_category: str | None = Field(None, description="Source category")
 
     @field_validator("amount_sar")
     @classmethod
-    def quantize_amount(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+    def quantize_amount(cls, v: Decimal | None) -> Decimal | None:
         """Ensure amount has exactly 2 decimal places if present."""
         if v is not None:
             return v.quantize(Decimal("0.01"))

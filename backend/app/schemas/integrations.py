@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field  # noqa: I001
+from pydantic import BaseModel, Field
 
 # ============================================================================
 # ODOO INTEGRATION SCHEMAS

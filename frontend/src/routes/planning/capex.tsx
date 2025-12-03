@@ -223,9 +223,6 @@ function CapExPage() {
                             resizable: true,
                           }}
                           loading={isLoading}
-                          onCellValueChanged={(event) => {
-                            console.log('CapEx item updated:', event.data)
-                          }}
                         />
                       </div>
                     </CardContent>

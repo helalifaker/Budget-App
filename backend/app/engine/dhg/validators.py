@@ -397,3 +397,27 @@ def validate_subject_hours_list_consistency(
         raise InvalidSubjectHoursError(
             f"Duplicate subjects found: {set(duplicates)}"
         )
+
+
+def validate_standard_hours(value: Decimal, education_level: EducationLevel) -> Decimal:
+    """
+    Ensure standard teaching hours stay within defined business bounds.
+
+    Args:
+        value: Proposed standard hours per week
+        education_level: Primary or Secondary (used for messaging)
+
+    Returns:
+        The input value when within valid range
+
+    Raises:
+        InvalidDHGInputError: If the value is outside 18-30 hours/week
+    """
+    min_hours = Decimal("18.0")
+    max_hours = Decimal("30.0")
+    if not (min_hours <= value <= max_hours):
+        raise InvalidDHGInputError(
+            f"Standard hours for {education_level.value} must be between "
+            f"{min_hours} and {max_hours}, got {value}"
+        )
+    return value

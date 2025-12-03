@@ -14,17 +14,15 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.configuration import (
     AcademicCycle,
     BudgetVersion,
     TeacherCategory,
-    TeacherCostParam,
 )
-from app.models.planning import EnrollmentPlan, OperatingCostPlan, PersonnelCostPlan
+from app.models.planning import EnrollmentPlan
 from app.services.cost_service import CostService
 from app.services.exceptions import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestCostServicePersonnelCRUD:

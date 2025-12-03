@@ -9,9 +9,11 @@ import uuid
 from decimal import Decimal
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.logging import logger
 from app.models.configuration import (
     AcademicCycle,
     TeacherCategory,
@@ -24,7 +26,7 @@ from app.models.planning import (
     TeacherAllocation,
 )
 from app.services.base import BaseService
-from app.services.exceptions import ValidationError
+from app.services.exceptions import ServiceException, ValidationError
 
 
 class CostService:
@@ -195,24 +197,41 @@ class CostService:
 
         Returns:
             Dictionary with calculation results and created cost entries
+
+        Raises:
+            ValidationError: If teacher allocations or cost parameters are missing
+            ServiceException: If database operations fail
         """
-        # Get teacher allocations
-        allocation_query = (
-            select(TeacherAllocation)
-            .where(
-                and_(
-                    TeacherAllocation.budget_version_id == version_id,
-                    TeacherAllocation.deleted_at.is_(None),
+        try:
+            # Get teacher allocations
+            allocation_query = (
+                select(TeacherAllocation)
+                .where(
+                    and_(
+                        TeacherAllocation.budget_version_id == version_id,
+                        TeacherAllocation.deleted_at.is_(None),
+                    )
+                )
+                .options(
+                    selectinload(TeacherAllocation.category),
+                    selectinload(TeacherAllocation.cycle),
+                    selectinload(TeacherAllocation.subject),
                 )
             )
-            .options(
-                selectinload(TeacherAllocation.category),
-                selectinload(TeacherAllocation.cycle),
-                selectinload(TeacherAllocation.subject),
+            allocation_result = await self.session.execute(allocation_query)
+            allocations = list(allocation_result.scalars().all())
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve teacher allocations for cost calculation",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
             )
-        )
-        allocation_result = await self.session.execute(allocation_query)
-        allocations = list(allocation_result.scalars().all())
+            raise ServiceException(
+                "Failed to retrieve teacher allocation data. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e
 
         if not allocations:
             raise ValidationError(

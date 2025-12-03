@@ -17,9 +17,6 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.configuration import BudgetVersion
 from app.schemas.writeback import (
     BatchUpdateRequest,
     CellCreateRequest,
@@ -39,6 +36,7 @@ from app.services.writeback_service import (
     MODULE_TO_CACHE_ENTITY,
     WritebackService,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestModuleCacheMapping:

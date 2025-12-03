@@ -168,7 +168,7 @@ async def get_consolidated_budget(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get consolidated budget: {str(e)}",
+            detail=f"Failed to get consolidated budget: {e!s}",
         )
 
 
@@ -215,7 +215,7 @@ async def consolidate_budget(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to consolidate budget: {str(e)}",
+            detail=f"Failed to consolidate budget: {e!s}",
         )
 
 
@@ -282,7 +282,7 @@ async def submit_for_approval(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to submit budget: {str(e)}",
+            detail=f"Failed to submit budget: {e!s}",
         )
 
 
@@ -351,7 +351,7 @@ async def approve_budget(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to approve budget: {str(e)}",
+            detail=f"Failed to approve budget: {e!s}",
         )
 
 
@@ -386,7 +386,7 @@ async def validate_budget_completeness(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to validate budget: {str(e)}",
+            detail=f"Failed to validate budget: {e!s}",
         )
 
 
@@ -452,7 +452,7 @@ async def get_consolidation_summary(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get consolidation summary: {str(e)}",
+            detail=f"Failed to get consolidation summary: {e!s}",
         )
 
 
@@ -502,7 +502,7 @@ async def get_income_statement(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get income statement: {str(e)}",
+            detail=f"Failed to get income statement: {e!s}",
         )
 
 
@@ -564,7 +564,7 @@ async def get_balance_sheet(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get balance sheet: {str(e)}",
+            detail=f"Failed to get balance sheet: {e!s}",
         )
 
 
@@ -619,7 +619,7 @@ async def get_period_totals(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get period totals: {str(e)}",
+            detail=f"Failed to get period totals: {e!s}",
         )
 
 
@@ -668,5 +668,5 @@ async def get_period_total(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get period total: {str(e)}",
+            detail=f"Failed to get period total: {e!s}",
         )

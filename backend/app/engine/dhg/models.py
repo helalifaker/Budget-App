@@ -11,11 +11,12 @@ French Education System Context:
 - HSA (Heures Supplémentaires Annuelles): Overtime, max 2-4h per teacher
 """
 
+from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EducationLevel(str, Enum):
@@ -49,8 +50,9 @@ class SubjectHours(BaseModel):
             raise ValueError(f"Hours per week must be between 0 and 10, got {v}")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        validate_assignment=True,
+        json_schema_extra={
             "example": {
                 "subject_id": "123e4567-e89b-12d3-a456-426614174000",
                 "subject_code": "MATH",
@@ -59,7 +61,8 @@ class SubjectHours(BaseModel):
                 "level_code": "6EME",
                 "hours_per_week": 4.5,
             }
-        }
+        },
+    )
 
 
 class DHGInput(BaseModel):
@@ -76,7 +79,7 @@ class DHGInput(BaseModel):
         ..., description="Education level (primary or secondary)"
     )
     number_of_classes: int = Field(
-        ..., ge=0, le=50, description="Number of classes at this level"
+        ..., ge=0, le=80, description="Number of classes at this level"
     )
     subject_hours_list: list[SubjectHours] = Field(
         ..., description="List of subject hours for this level"
@@ -90,8 +93,10 @@ class DHGInput(BaseModel):
             raise ValueError(f"Number of classes must be between 0 and 50, got {v}")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        validate_assignment=True,
+        frozen=True,
+        json_schema_extra={
             "example": {
                 "level_id": "123e4567-e89b-12d3-a456-426614174001",
                 "level_code": "6EME",
@@ -116,7 +121,8 @@ class DHGInput(BaseModel):
                     },
                 ],
             }
-        }
+        },
+    )
 
 
 class DHGHoursResult(BaseModel):
@@ -133,11 +139,15 @@ class DHGHoursResult(BaseModel):
     number_of_classes: int = Field(..., description="Number of classes")
     total_hours: Decimal = Field(..., description="Total DHG hours per week")
     subject_breakdown: dict[str, Decimal] = Field(
-        ..., description="Hours breakdown by subject code"
+        default_factory=dict, description="Hours breakdown by subject code"
+    )
+    subjects_hours_breakdown: list[SubjectHours] = Field(
+        default_factory=list,
+        description="List of subject hours associated with this level",
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "level_id": "123e4567-e89b-12d3-a456-426614174001",
                 "level_code": "6EME",
@@ -149,7 +159,20 @@ class DHGHoursResult(BaseModel):
                     "FRAN": 30.0,  # 6 classes × 5.0h
                 },
             }
-        }
+        },
+    )
+
+
+@dataclass
+class TRMDGapResult:
+    """Result of TRMD gap calculation for teacher coverage."""
+
+    required_fte: Decimal
+    available_aefe_fte: Decimal
+    available_local_fte: Decimal
+    gap_fte: Decimal
+    is_overstaffed: bool
+    gap_coverage_recommendation: str
 
 
 class FTECalculationResult(BaseModel):

@@ -64,15 +64,8 @@ export function useRealtimeComments(options: RealtimeCommentOptions) {
 
       // Ignore changes from current user
       if (record.created_by === user?.id) {
-        console.log('Ignoring own comment change:', record.id)
         return
       }
-
-      console.log('Comment realtime change received:', {
-        eventType,
-        commentId: record.id,
-        cellId: record.cell_id,
-      })
 
       // Invalidate comments cache to refetch
       queryClient.invalidateQueries({
@@ -122,11 +115,8 @@ export function useRealtimeComments(options: RealtimeCommentOptions) {
   // Setup subscription
   useEffect(() => {
     if (!cellId || !user) {
-      console.log('Comment sync: waiting for cellId or user')
       return
     }
-
-    console.log('Setting up comment subscription for cell:', cellId)
 
     // Create channel for this cell's comments
     const channel = supabase.channel(`cell-comments:${cellId}`, {
@@ -150,8 +140,6 @@ export function useRealtimeComments(options: RealtimeCommentOptions) {
         handleCommentChange as any
       )
       .subscribe((status) => {
-        console.log('Comment subscription status:', status, 'for cell:', cellId)
-
         if (status === 'CHANNEL_ERROR') {
           console.error('Comment subscription error for cell:', cellId)
         }
@@ -159,7 +147,6 @@ export function useRealtimeComments(options: RealtimeCommentOptions) {
 
     // Cleanup on unmount or cellId change
     return () => {
-      console.log('Cleaning up comment subscription for cell:', cellId)
       supabase.removeChannel(channel)
     }
   }, [cellId, user, handleCommentChange])

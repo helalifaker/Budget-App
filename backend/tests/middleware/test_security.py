@@ -8,20 +8,19 @@ Covers:
 - Security middleware integration
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
+from unittest.mock import patch
 
-from app.middleware.auth import AuthenticationMiddleware
-from app.middleware.rbac import RBACMiddleware
+import pytest
 from app.core.security import (
-    hash_password,
-    verify_password,
     create_access_token,
     decode_access_token,
+    hash_password,
+    verify_password,
 )
-
+from app.middleware.auth import AuthenticationMiddleware
+from app.middleware.rbac import RBACMiddleware
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 # ==============================================================================
 # Test: Password Hashing

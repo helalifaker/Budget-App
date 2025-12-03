@@ -16,7 +16,7 @@ from decimal import Decimal
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FeeCategory(str, Enum):
@@ -66,8 +66,8 @@ class TuitionInput(BaseModel):
             raise ValueError(f"Fee cannot be negative, got {v}")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "student_id": "123e4567-e89b-12d3-a456-426614174000",
                 "level_id": "123e4567-e89b-12d3-a456-426614174001",
@@ -79,6 +79,7 @@ class TuitionInput(BaseModel):
                 "sibling_order": 1,
             }
         }
+    )
 
 
 class TuitionRevenue(BaseModel):
@@ -113,8 +114,8 @@ class TuitionRevenue(BaseModel):
     )
     total_revenue: Decimal = Field(..., description="Total revenue per student (SAR)")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "student_id": "123e4567-e89b-12d3-a456-426614174000",
                 "level_code": "6EME",
@@ -130,6 +131,7 @@ class TuitionRevenue(BaseModel):
                 "total_revenue": 36750,
             }
         }
+    )
 
 
 class SiblingDiscount(BaseModel):
@@ -147,8 +149,10 @@ class SiblingDiscount(BaseModel):
     discount_amount: Decimal = Field(..., description="Discount amount (SAR)")
     net_tuition: Decimal = Field(..., description="Tuition after discount (SAR)")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        frozen=True,  # Make model immutable after creation
+        validate_assignment=True,
+        json_schema_extra={
             "example": {
                 "sibling_order": 3,
                 "discount_applicable": True,
@@ -157,7 +161,8 @@ class SiblingDiscount(BaseModel):
                 "discount_amount": 11250,
                 "net_tuition": 33750,
             }
-        }
+        },
+    )
 
 
 class TrimesterDistribution(BaseModel):
@@ -185,8 +190,8 @@ class TrimesterDistribution(BaseModel):
             raise ValueError(f"Percentage must be between 0 and 1, got {v}")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "total_revenue": 45000,
                 "trimester_1": 18000,
@@ -197,6 +202,7 @@ class TrimesterDistribution(BaseModel):
                 "t3_percentage": 0.30,
             }
         }
+    )
 
 
 class StudentRevenueResult(BaseModel):

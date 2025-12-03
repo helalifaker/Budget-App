@@ -1031,6 +1031,7 @@ class TestRevenueEdgeCases100PercentCoverage:
             sibling_order=3,
             discount_applicable=True,
             discount_rate=Decimal("0.25"),
+            base_tuition=Decimal("45000.00"),
             discount_amount=Decimal("11250.00"),
             net_tuition=Decimal("33750.00"),
         )

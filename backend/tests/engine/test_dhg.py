@@ -20,6 +20,7 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 from app.engine.dhg import (
     DHGHoursResult,
     DHGInput,
@@ -30,8 +31,10 @@ from app.engine.dhg import (
     calculate_fte_from_hours,
     calculate_hsa_allocation,
     calculate_teacher_requirement,
+    calculate_trmd_gap,
     validate_dhg_input,
     validate_hsa_limits,
+    validate_standard_hours,
     validate_subject_hours,
 )
 from app.engine.dhg.calculator import (
@@ -440,19 +443,16 @@ class TestHSAAllocationCalculations:
         assert hsa.hsa_within_limit is True
 
     def test_calculate_hsa_allocation_zero_available_fte(self):
-        """Test HSA allocation with no available positions."""
-        hsa = calculate_hsa_allocation(
-            "MATH",
-            "Mathématiques",
-            Decimal("96.0"),
-            0,  # No available FTE
-            EducationLevel.SECONDARY,
-            Decimal("4.0"),
-        )
-
-        assert hsa.available_hours == Decimal("0")
-        assert hsa.hsa_hours_needed == Decimal("96.00")
-        assert hsa.hsa_within_limit is False
+        """Test HSA allocation error when no available positions remain."""
+        with pytest.raises(ValueError, match="at least one available teacher"):
+            calculate_hsa_allocation(
+                "MATH",
+                "Mathématiques",
+                Decimal("96.0"),
+                0,  # No available FTE
+                EducationLevel.SECONDARY,
+                Decimal("4.0"),
+            )
 
 
 class TestAggregatedDHGHours:
@@ -517,11 +517,9 @@ class TestDHGInputValidation:
     def test_validate_dhg_input_too_many_classes(self):
         """Test validation fails with too many classes."""
         # Pydantic validator catches this during model construction
-        from pydantic import ValidationError
-
         level_id = uuid4()
 
-        with pytest.raises(ValidationError, match="less than or equal to 50"):
+        with pytest.raises(ValidationError, match="less than or equal to 80"):
             DHGInput(
                 level_id=level_id,
                 level_code="6EME",
@@ -1131,28 +1129,25 @@ class TestDHGEdgeCases100PercentCoverage:
         validate_standard_hours(Decimal("30.0"), EducationLevel.PRIMARY)  # Max valid
 
     def test_dhg_hours_float_overflow_protection(self):
-        """Test with extremely large number of classes (boundary of Decimal)."""
+        """Test that inputs beyond the 80-class cap trigger validation errors."""
         level_id = uuid4()
-        input_data = DHGInput(
-            level_id=level_id,
-            level_code="6EME",
-            education_level=EducationLevel.SECONDARY,
-            number_of_classes=999,  # Very large
-            subject_hours_list=[
-                SubjectHours(
-                    subject_id=uuid4(),
-                    subject_code="MATH",
-                    subject_name="Mathématiques",
-                    level_id=level_id,
-                    level_code="6EME",
-                    hours_per_week=Decimal("4.5"),
-                )
-            ],
-        )
-
-        result = calculate_dhg_hours(input_data)
-        # 999 classes × 4.5 hours = 4495.5 hours
-        assert result.total_hours == Decimal("4495.5")
+        with pytest.raises(ValidationError, match="less than or equal to 80"):
+            DHGInput(
+                level_id=level_id,
+                level_code="6EME",
+                education_level=EducationLevel.SECONDARY,
+                number_of_classes=81,  # Just above the cap
+                subject_hours_list=[
+                    SubjectHours(
+                        subject_id=uuid4(),
+                        subject_code="MATH",
+                        subject_name="Mathématiques",
+                        level_id=level_id,
+                        level_code="6EME",
+                        hours_per_week=Decimal("4.5"),
+                    )
+                ],
+            )
 
     def test_calculate_trmd_gap_with_decimal_fte(self):
         """Test TRMD gap calculation with decimal FTE values."""
