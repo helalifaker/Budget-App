@@ -84,8 +84,7 @@ class ConsolidationService:
             )
             .options(
                 selectinload(BudgetConsolidation.budget_version),
-                selectinload(BudgetConsolidation.created_by),
-                selectinload(BudgetConsolidation.updated_by),
+                # Note: created_by and updated_by are FKs, not relationships
             )
             .order_by(
                 BudgetConsolidation.is_revenue.desc(),

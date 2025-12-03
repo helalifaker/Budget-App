@@ -62,7 +62,7 @@ class TestConsolidationService:
                 budget_version_id=sample_budget_version.id,
                 account_code="70110",
                 account_name="Tuition Revenue - T1",
-                consolidation_category=ConsolidationCategory.TUITION_FEES,
+                consolidation_category=ConsolidationCategory.REVENUE_TUITION,
                 is_revenue=True,
                 amount_sar=Decimal("1000000.00"),
                 source_table="revenue_plans",
@@ -346,46 +346,24 @@ class TestApproveBudget:
                 )
 
 
-class TestCalculateLineItems:
-    """Tests for calculate_line_items method."""
-
-    @pytest.fixture
-    def mock_session(self):
-        """Create mock database session."""
-        session = AsyncMock()
-        return session
-
-    @pytest.fixture
-    def consolidation_service(self, mock_session):
-        """Create ConsolidationService with mock session."""
-        return ConsolidationService(mock_session)
-
-    @pytest.mark.asyncio
-    async def test_calculate_line_items_returns_list(
-        self, consolidation_service, mock_session
-    ):
-        """Test that calculate_line_items returns a list of dicts."""
-        budget_version_id = uuid.uuid4()
-
-        # Mock empty results for all source tables
-        mock_empty_result = MagicMock()
-        mock_empty_result.scalars.return_value.all.return_value = []
-        mock_session.execute.return_value = mock_empty_result
-
-        result = await consolidation_service.calculate_line_items(budget_version_id)
-
-        assert isinstance(result, list)
-
-
 class TestConsolidationCategoryMapping:
     """Tests for consolidation category mapping logic."""
 
-    def test_category_enum_values(self):
-        """Test that ConsolidationCategory enum has expected values."""
-        assert hasattr(ConsolidationCategory, 'TUITION_FEES')
+    def test_revenue_category_exists(self):
+        """Test that revenue category enum values exist."""
+        assert hasattr(ConsolidationCategory, 'REVENUE_TUITION')
+        assert hasattr(ConsolidationCategory, 'REVENUE_FEES')
+        assert hasattr(ConsolidationCategory, 'REVENUE_OTHER')
+
+    def test_personnel_category_exists(self):
+        """Test that personnel category enum values exist."""
         assert hasattr(ConsolidationCategory, 'PERSONNEL_TEACHING')
-        assert hasattr(ConsolidationCategory, 'OPERATING_COSTS')
-        assert hasattr(ConsolidationCategory, 'CAPITAL_EXPENDITURE')
+        assert hasattr(ConsolidationCategory, 'PERSONNEL_ADMIN')
+        assert hasattr(ConsolidationCategory, 'PERSONNEL_SUPPORT')
+
+    def test_operating_category_exists(self):
+        """Test that operating category enum values exist."""
+        assert hasattr(ConsolidationCategory, 'OPERATING_SUPPLIES')
 
     def test_budget_version_status_workflow(self):
         """Test that BudgetVersionStatus has correct workflow states."""

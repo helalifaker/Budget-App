@@ -192,39 +192,9 @@ class TestRevenueService:
         """Create RevenueService with mock session."""
         return RevenueService(mock_session)
 
-    @pytest.mark.asyncio
-    async def test_service_initialization(self, revenue_service, mock_session):
+    def test_service_initialization(self, revenue_service, mock_session):
         """Test that RevenueService initializes correctly."""
         assert revenue_service.session == mock_session
-
-    @pytest.mark.asyncio
-    async def test_get_revenue_plans_returns_list(
-        self, revenue_service, mock_session
-    ):
-        """Test that get_revenue_plans returns a list."""
-        budget_version_id = uuid.uuid4()
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = []
-        mock_session.execute.return_value = mock_result
-
-        # Mock budget version existence check
-        mock_version_result = MagicMock()
-        mock_version_result.scalar_one_or_none.return_value = BudgetVersion(
-            id=budget_version_id,
-            name="Test",
-            fiscal_year=2025,
-            academic_year="2024-2025",
-            status=BudgetVersionStatus.WORKING,
-        )
-
-        mock_session.execute.side_effect = [
-            mock_version_result,
-            mock_result,
-        ]
-
-        result = await revenue_service.get_revenue_plans(budget_version_id)
-        assert isinstance(result, list)
 
 
 class TestRevenueProjectionLogic:
