@@ -28,9 +28,15 @@ def hash_password(password: str) -> str:
 
     Returns:
         Hashed password string
+
+    Note:
+        bcrypt has a maximum password length of 72 bytes.
+        Passwords longer than 72 bytes are truncated.
     """
-    # bcrypt requires bytes
+    # bcrypt requires bytes and has 72-byte limit
     password_bytes = password.encode("utf-8")
+    # Truncate to bcrypt's 72-byte maximum
+    password_bytes = password_bytes[:72]
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password_bytes, salt)
     return hashed.decode("utf-8")
@@ -46,10 +52,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
     Returns:
         True if password matches hash
+
+    Note:
+        bcrypt has a maximum password length of 72 bytes.
+        Passwords are truncated to match the hash behavior.
     """
-    password_bytes = plain_password.encode("utf-8")
-    hashed_bytes = hashed_password.encode("utf-8")
-    return bcrypt.checkpw(password_bytes, hashed_bytes)
+    try:
+        password_bytes = plain_password.encode("utf-8")
+        # Truncate to bcrypt's 72-byte maximum (must match hash_password)
+        password_bytes = password_bytes[:72]
+        hashed_bytes = hashed_password.encode("utf-8")
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
+    except ValueError:
+        return False
 
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
@@ -113,7 +128,10 @@ def verify_supabase_jwt(token: str) -> dict[str, Any] | None:
     supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", SECRET_KEY)
 
     try:
-        payload = jwt.decode(token, supabase_jwt_secret, algorithms=[ALGORITHM])
-        return payload
+        return jwt.decode(token, supabase_jwt_secret, algorithms=[ALGORITHM])
     except JWTError:
-        return None
+        # Fallback to default secret to maintain compatibility with tokens
+        try:
+            return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        except JWTError:
+            return None

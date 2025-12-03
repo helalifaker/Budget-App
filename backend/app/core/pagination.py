@@ -63,6 +63,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
                 "total_pages": 2,
             }
         }
+        arbitrary_types_allowed = True
 
 
 def create_paginated_response(

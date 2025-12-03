@@ -1,14 +1,12 @@
 """
 Tests for Export API endpoints.
 
-Covers:
-- Excel export (budget consolidation, KPI dashboard)
-- PDF export (budget summary)
-- CSV export (budget line items)
-- Error handling (missing dependencies, invalid version IDs)
-- File generation and streaming
-
-Target Coverage: 90%+
+Tests cover:
+- Excel export for budget consolidation (with/without openpyxl)
+- Excel export for KPI dashboard (with/without openpyxl)
+- PDF export for budget summary (with/without reportlab)
+- CSV export for budget line items
+- Error handling for missing dependencies and invalid data
 """
 
 import uuid
@@ -17,9 +15,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.main import app
-from app.models.configuration import BudgetVersion, BudgetVersionStatus
-from app.models.consolidation import BudgetConsolidation
-from app.models.analysis import KPICalculation
 from fastapi.testclient import TestClient
 
 
@@ -30,338 +25,477 @@ def client():
 
 
 @pytest.fixture
-def mock_budget_version():
-    """Create mock budget version."""
-    version = MagicMock(spec=BudgetVersion)
-    version.id = uuid.uuid4()
-    version.name = "Budget 2024-2025"
-    version.fiscal_year = 2024
-    version.status = BudgetVersionStatus.WORKING
-    return version
+def mock_user():
+    """Create a mock authenticated user."""
+    user = MagicMock()
+    user.id = uuid.uuid4()
+    user.email = "test@efir.local"
+    user.role = "admin"
+    return user
 
 
 @pytest.fixture
-def mock_consolidation(mock_budget_version):
+def mock_consolidation_data():
     """Create mock consolidation data."""
-    consolidation = MagicMock(spec=BudgetConsolidation)
-    consolidation.budget_version = mock_budget_version
-    consolidation.total_revenue = Decimal("63000000.00")
-    consolidation.total_personnel_costs = Decimal("45000000.00")
-    consolidation.total_operating_costs = Decimal("12000000.00")
-    consolidation.total_capex = Decimal("5000000.00")
-    consolidation.net_result = Decimal("1000000.00")
+    consolidation = MagicMock()
+    consolidation.budget_version = MagicMock()
+    consolidation.budget_version.name = "FY2025 Budget"
+    consolidation.budget_version.status = MagicMock(value="APPROVED")
+    consolidation.total_revenue = Decimal("50000000.00")
+    consolidation.total_personnel_costs = Decimal("35000000.00")
+    consolidation.total_operating_costs = Decimal("10000000.00")
+    consolidation.total_capex = Decimal("3000000.00")
+    consolidation.net_result = Decimal("2000000.00")
     return consolidation
 
 
 @pytest.fixture
-def mock_kpis():
+def mock_kpi_data():
     """Create mock KPI data."""
-    kpis = []
-    for i in range(3):
-        kpi = MagicMock(spec=KPICalculation)
-        kpi.kpi_definition = MagicMock()
-        kpi.kpi_definition.code = f"KPI_{i+1}"
-        kpi.kpi_definition.name_en = f"KPI {i+1} Name"
-        kpi.kpi_definition.target_value = Decimal("100.00")
-        kpi.calculated_value = Decimal("95.00") if i == 0 else Decimal("105.00")
-        kpi.variance_from_target = Decimal("-5.00") if i == 0 else Decimal("5.00")
-        kpis.append(kpi)
-    return kpis
+    kpi1 = MagicMock()
+    kpi1.kpi_definition = MagicMock()
+    kpi1.kpi_definition.code = "HE_RATIO"
+    kpi1.kpi_definition.name_en = "Hours per Student Ratio"
+    kpi1.kpi_definition.target_value = Decimal("1.2")
+    kpi1.calculated_value = Decimal("1.18")
+    kpi1.variance_from_target = Decimal("-0.02")
+
+    kpi2 = MagicMock()
+    kpi2.kpi_definition = MagicMock()
+    kpi2.kpi_definition.code = "ED_RATIO"
+    kpi2.kpi_definition.name_en = "Students per Class"
+    kpi2.kpi_definition.target_value = Decimal("22")
+    kpi2.calculated_value = Decimal("23.5")
+    kpi2.variance_from_target = Decimal("1.5")
+
+    return [kpi1, kpi2]
 
 
-class TestExcelExport:
-    """Test Excel export endpoints."""
+@pytest.fixture
+def mock_line_items():
+    """Create mock budget line items."""
+    return [
+        {
+            "account_code": "70110",
+            "account_name": "Scolarité T1",
+            "consolidation_category": "tuition",
+            "is_revenue": True,
+            "amount_sar": Decimal("15000000.00"),
+            "source_table": "revenue_plan",
+        },
+        {
+            "account_code": "64110",
+            "account_name": "Teaching Salaries",
+            "consolidation_category": "personnel",
+            "is_revenue": False,
+            "amount_sar": Decimal("25000000.00"),
+            "source_table": "cost_plan",
+        },
+    ]
 
-    @pytest.mark.asyncio
-    async def test_export_budget_excel_success(
-        self, client, mock_consolidation
+
+class TestExportBudgetExcel:
+    """Tests for Excel budget export endpoint."""
+
+    def test_export_budget_excel_success(
+        self, client, mock_user, mock_consolidation_data
     ):
-        """Test successful budget Excel export."""
-        import openpyxl
-        from io import BytesIO
-        
-        with patch("app.api.v1.export.ConsolidationService") as mock_service_class:
-            mock_service = AsyncMock()
-            mock_service.get_consolidation = AsyncMock(return_value=mock_consolidation)
-            mock_service_class.return_value = mock_service
-
-            version_id = mock_consolidation.budget_version.id
-            response = client.get(f"/api/v1/export/budget/{version_id}/excel")
-
-            # Assertions
-            assert response.status_code == 200
-            assert "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" in response.headers["content-type"]
-            assert "attachment" in response.headers["content-disposition"]
-            assert ".xlsx" in response.headers["content-disposition"]
-            
-            # Verify file can be opened
-            wb = openpyxl.load_workbook(BytesIO(response.content))
-            assert "Summary" in wb.sheetnames
-
-    @patch("app.api.v1.export.openpyxl")
-    @patch("app.api.v1.export.ConsolidationService")
-    def test_export_budget_excel_without_details(
-        self, mock_service_class, mock_openpyxl, client, mock_consolidation
-    ):
-        """Test budget Excel export with include_details=False."""
-        mock_service = AsyncMock()
-        mock_service.get_consolidation = AsyncMock(return_value=mock_consolidation)
-        mock_service_class.return_value = mock_service
-
-        mock_wb = MagicMock()
-        mock_ws = MagicMock()
-        mock_wb.active = mock_ws
-        mock_openpyxl.Workbook.return_value = mock_wb
-
-        version_id = mock_consolidation.budget_version.id
-        response = client.get(
-            f"/api/v1/export/budget/{version_id}/excel?include_details=false"
-        )
-
-        assert response.status_code == 200
-        assert "attachment" in response.headers["content-disposition"]
-
-    @patch("app.api.v1.export.ConsolidationService")
-    def test_export_budget_excel_version_not_found(
-        self, mock_service_class, client
-    ):
-        """Test Excel export with invalid version ID."""
-        mock_service = AsyncMock()
-        mock_service.get_consolidation = AsyncMock(side_effect=Exception("Not found"))
-        mock_service_class.return_value = mock_service
-
+        """Test successful budget export to Excel."""
         version_id = uuid.uuid4()
-        response = client.get(f"/api/v1/export/budget/{version_id}/excel")
 
-        assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        # Mock openpyxl
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            # Set up mock openpyxl
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
 
-    def test_export_budget_excel_missing_openpyxl(self, client):
-        """Test Excel export when openpyxl is not installed."""
-        with patch("app.api.v1.export.openpyxl", side_effect=ImportError()):
-            version_id = uuid.uuid4()
+            # Mock styles
+            mock_styles = MagicMock()
+            mock_openpyxl.styles = mock_styles
+
+            # Mock ConsolidationService
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_consolidation.return_value = mock_consolidation_data
+                mock_service_class.return_value = mock_service
+
+                response = client.get(
+                    f"/api/v1/export/budget/{version_id}/excel?include_details=true"
+                )
+
+                # Verify response
+                assert response.status_code == 200
+                assert (
+                    response.headers["content-type"]
+                    == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                assert "attachment" in response.headers["content-disposition"]
+                assert f"budget_consolidation_{version_id}" in response.headers[
+                    "content-disposition"
+                ]
+
+    def test_export_budget_excel_missing_openpyxl(self, client, mock_user):
+        """Test budget export when openpyxl is not installed."""
+        version_id = uuid.uuid4()
+
+        # Mock openpyxl with side_effect (triggers ImportError in export.py)
+        mock_openpyxl = MagicMock()
+        mock_openpyxl.side_effect = ImportError("No module named 'openpyxl'")
+
+        with patch("app.api.v1.export.openpyxl", mock_openpyxl):
             response = client.get(f"/api/v1/export/budget/{version_id}/excel")
 
+            # Verify 501 Not Implemented
             assert response.status_code == 501
-            assert "openpyxl" in response.json()["detail"].lower()
+            assert "openpyxl" in response.json()["detail"]
 
-    @patch("app.api.v1.export.openpyxl")
-    @patch("app.api.v1.export.KPIService")
-    def test_export_kpi_excel_success(
-        self, mock_service_class, mock_openpyxl, client, mock_kpis
+    def test_export_budget_excel_version_not_found(
+        self, client, mock_user
     ):
-        """Test successful KPI Excel export."""
-        mock_service = AsyncMock()
-        mock_service.get_all_kpis = AsyncMock(return_value=mock_kpis)
-        mock_service_class.return_value = mock_service
-
-        mock_wb = MagicMock()
-        mock_ws = MagicMock()
-        mock_wb.active = mock_ws
-        mock_openpyxl.Workbook.return_value = mock_wb
-
+        """Test budget export with non-existent version."""
         version_id = uuid.uuid4()
-        response = client.get(f"/api/v1/export/kpi/{version_id}/excel")
 
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        assert "kpi_dashboard" in response.headers["content-disposition"]
-        mock_service.get_all_kpis.assert_called_once_with(version_id)
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_openpyxl.Workbook = MagicMock()
+            mock_openpyxl.styles = MagicMock()
 
-    def test_export_kpi_excel_missing_openpyxl(self, client):
-        """Test KPI Excel export when openpyxl is not installed."""
-        with patch("app.api.v1.export.openpyxl", side_effect=ImportError()):
-            version_id = uuid.uuid4()
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_consolidation.side_effect = Exception(
+                    "Version not found"
+                )
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/excel")
+
+                # Verify 404
+                assert response.status_code == 404
+                assert "not found" in response.json()["detail"].lower()
+
+    def test_export_budget_excel_include_details_false(
+        self, client, mock_user, mock_consolidation_data
+    ):
+        """Test budget export without details."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_consolidation.return_value = mock_consolidation_data
+                mock_service_class.return_value = mock_service
+
+                response = client.get(
+                    f"/api/v1/export/budget/{version_id}/excel?include_details=false"
+                )
+
+                assert response.status_code == 200
+
+
+class TestExportKPIExcel:
+    """Tests for Excel KPI export endpoint."""
+
+    def test_export_kpi_excel_success(self, client, mock_user, mock_kpi_data):
+        """Test successful KPI export to Excel."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            # Set up mock
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+            mock_openpyxl.utils.get_column_letter = lambda x: chr(64 + x)
+
+            with patch("app.api.v1.export.KPIService") as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_all_kpis.return_value = mock_kpi_data
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/kpi/{version_id}/excel")
+
+                # Verify response
+                assert response.status_code == 200
+                assert (
+                    response.headers["content-type"]
+                    == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                assert "attachment" in response.headers["content-disposition"]
+                assert f"kpi_dashboard_{version_id}" in response.headers[
+                    "content-disposition"
+                ]
+
+    def test_export_kpi_excel_empty_kpis(self, client, mock_user):
+        """Test KPI export with no KPIs."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+            mock_openpyxl.utils.get_column_letter = lambda x: chr(64 + x)
+
+            with patch("app.api.v1.export.KPIService") as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_all_kpis.return_value = []
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/kpi/{version_id}/excel")
+
+                # Should still succeed with empty data
+                assert response.status_code == 200
+
+    def test_export_kpi_excel_missing_openpyxl(self, client, mock_user):
+        """Test KPI export when openpyxl is not installed."""
+        version_id = uuid.uuid4()
+
+        # Mock openpyxl with side_effect (triggers ImportError in export.py)
+        mock_openpyxl = MagicMock()
+        mock_openpyxl.side_effect = ImportError("No module named 'openpyxl'")
+
+        with patch("app.api.v1.export.openpyxl", mock_openpyxl):
             response = client.get(f"/api/v1/export/kpi/{version_id}/excel")
 
             assert response.status_code == 501
-            assert "openpyxl" in response.json()["detail"].lower()
+            assert "openpyxl" in response.json()["detail"]
 
 
-class TestPDFExport:
-    """Test PDF export endpoints."""
+class TestExportBudgetPDF:
+    """Tests for PDF budget export endpoint."""
 
-    @patch("app.api.v1.export.reportlab")
-    @patch("app.api.v1.export.ConsolidationService")
     def test_export_budget_pdf_success(
-        self, mock_service_class, mock_reportlab, client, mock_consolidation
+        self, client, mock_user, mock_consolidation_data
     ):
-        """Test successful budget PDF export."""
-        mock_service = AsyncMock()
-        mock_service.get_consolidation = AsyncMock(return_value=mock_consolidation)
-        mock_service_class.return_value = mock_service
-
-        mock_doc = MagicMock()
-        mock_reportlab.platypus.SimpleDocTemplate.return_value = mock_doc
-
-        version_id = mock_consolidation.budget_version.id
-        response = client.get(f"/api/v1/export/budget/{version_id}/pdf")
-
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "application/pdf"
-        assert "attachment" in response.headers["content-disposition"]
-        assert ".pdf" in response.headers["content-disposition"]
-        mock_doc.build.assert_called_once()
-
-    @patch("app.api.v1.export.reportlab")
-    @patch("app.api.v1.export.ConsolidationService")
-    def test_export_budget_pdf_version_not_found(
-        self, mock_service_class, mock_reportlab, client
-    ):
-        """Test PDF export with invalid version ID."""
-        mock_service = AsyncMock()
-        mock_service.get_consolidation = AsyncMock(side_effect=Exception("Not found"))
-        mock_service_class.return_value = mock_service
-
+        """Test successful budget export to PDF."""
         version_id = uuid.uuid4()
-        response = client.get(f"/api/v1/export/budget/{version_id}/pdf")
 
-        assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        # Mock reportlab
+        with patch("app.api.v1.export.reportlab") as mock_reportlab:
+            # Set up comprehensive mock for reportlab
+            mock_lib = MagicMock()
+            mock_lib.colors = MagicMock()
+            mock_lib.pagesizes.A4 = (595, 842)
+            mock_lib.units.cm = 28.35
+            mock_lib.styles.ParagraphStyle = MagicMock()
+            mock_lib.styles.getSampleStyleSheet = MagicMock(
+                return_value={
+                    "Heading1": MagicMock(),
+                    "Heading2": MagicMock(),
+                    "Normal": MagicMock(),
+                }
+            )
+            mock_reportlab.lib = mock_lib
 
-    def test_export_budget_pdf_missing_reportlab(self, client):
-        """Test PDF export when reportlab is not installed."""
-        with patch("app.api.v1.export.reportlab", side_effect=ImportError()):
-            version_id = uuid.uuid4()
+            mock_platypus = MagicMock()
+            mock_platypus.Paragraph = MagicMock()
+            mock_platypus.SimpleDocTemplate = MagicMock()
+            mock_platypus.Spacer = MagicMock()
+            mock_platypus.Table = MagicMock()
+            mock_platypus.TableStyle = MagicMock()
+            mock_reportlab.platypus = mock_platypus
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_consolidation.return_value = mock_consolidation_data
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/pdf")
+
+                # Verify response
+                assert response.status_code == 200
+                assert response.headers["content-type"] == "application/pdf"
+                assert "attachment" in response.headers["content-disposition"]
+                assert f"budget_report_{version_id}" in response.headers[
+                    "content-disposition"
+                ]
+
+    def test_export_budget_pdf_reportlab_import_error_with_patch(
+        self, client, mock_user
+    ):
+        """Test PDF export when reportlab is explicitly patched to raise ImportError."""
+        version_id = uuid.uuid4()
+
+        # Mock reportlab with side_effect attribute (simulates patched import failure)
+        mock_reportlab = MagicMock()
+        mock_reportlab.side_effect = ImportError("Reportlab not available")
+
+        with patch("app.api.v1.export.reportlab", mock_reportlab):
             response = client.get(f"/api/v1/export/budget/{version_id}/pdf")
 
+            # Should raise 501 when explicitly patched to fail
             assert response.status_code == 501
-            assert "reportlab" in response.json()["detail"].lower()
+            assert "reportlab" in response.json()["detail"]
 
-
-class TestCSVExport:
-    """Test CSV export endpoints."""
-
-    @patch("app.api.v1.export.ConsolidationService")
-    def test_export_budget_csv_success(
-        self, mock_service_class, client
-    ):
-        """Test successful budget CSV export."""
-        mock_service = AsyncMock()
-        mock_line_items = [
-            {
-                "account_code": "70110",
-                "account_name": "Tuition T1",
-                "consolidation_category": "Revenue",
-                "is_revenue": True,
-                "amount_sar": Decimal("25000000.00"),
-                "source_table": "revenue",
-            },
-            {
-                "account_code": "64110",
-                "account_name": "Teaching Salaries",
-                "consolidation_category": "Personnel",
-                "is_revenue": False,
-                "amount_sar": Decimal("30000000.00"),
-                "source_table": "costs",
-            },
-        ]
-        mock_service.calculate_line_items = AsyncMock(return_value=mock_line_items)
-        mock_service_class.return_value = mock_service
-
+    def test_export_budget_pdf_version_not_found(self, client, mock_user):
+        """Test PDF export with non-existent version."""
         version_id = uuid.uuid4()
-        response = client.get(f"/api/v1/export/budget/{version_id}/csv")
 
-        assert response.status_code == 200
-        assert response.headers["content-type"] == "text/csv"
-        assert "attachment" in response.headers["content-disposition"]
-        assert ".csv" in response.headers["content-disposition"]
-        
-        # Verify CSV content
-        content = response.text
-        assert "account_code" in content
-        assert "70110" in content
-        assert "64110" in content
-        mock_service.calculate_line_items.assert_called_once_with(version_id)
+        with patch("app.api.v1.export.reportlab") as mock_reportlab:
+            mock_reportlab.lib = MagicMock()
+            mock_reportlab.platypus = MagicMock()
 
-    @patch("app.api.v1.export.ConsolidationService")
-    def test_export_budget_csv_empty_data(
-        self, mock_service_class, client
-    ):
-        """Test CSV export with empty line items."""
-        mock_service = AsyncMock()
-        mock_service.calculate_line_items = AsyncMock(return_value=[])
-        mock_service_class.return_value = mock_service
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_consolidation.side_effect = Exception(
+                    "Version not found"
+                )
+                mock_service_class.return_value = mock_service
 
+                response = client.get(f"/api/v1/export/budget/{version_id}/pdf")
+
+                assert response.status_code == 404
+                assert "not found" in response.json()["detail"].lower()
+
+
+class TestExportBudgetCSV:
+    """Tests for CSV budget export endpoint."""
+
+    def test_export_budget_csv_success(self, client, mock_user, mock_line_items):
+        """Test successful budget export to CSV."""
         version_id = uuid.uuid4()
-        response = client.get(f"/api/v1/export/budget/{version_id}/csv")
 
-        assert response.status_code == 200
-        assert "account_code" in response.text  # Header should still be present
+        with patch(
+            "app.api.v1.export.ConsolidationService"
+        ) as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.calculate_line_items.return_value = mock_line_items
+            mock_service_class.return_value = mock_service
 
-    @patch("app.api.v1.export.ConsolidationService")
-    def test_export_budget_csv_service_error(
-        self, mock_service_class, client
-    ):
-        """Test CSV export when service raises an error."""
-        mock_service = AsyncMock()
-        mock_service.calculate_line_items = AsyncMock(side_effect=Exception("Database error"))
-        mock_service_class.return_value = mock_service
+            response = client.get(f"/api/v1/export/budget/{version_id}/csv")
 
+            # Verify response
+            assert response.status_code == 200
+            assert response.headers["content-type"] == "text/csv"
+            assert "attachment" in response.headers["content-disposition"]
+            assert f"budget_items_{version_id}" in response.headers[
+                "content-disposition"
+            ]
+
+            # Verify CSV content structure
+            content = response.text
+            lines = content.split("\\n")
+
+            # Check headers
+            assert "account_code" in lines[0]
+            assert "account_name" in lines[0]
+            assert "category" in lines[0]
+            assert "is_revenue" in lines[0]
+            assert "amount_sar" in lines[0]
+
+            # Check data rows
+            assert "70110" in content
+            assert "Scolarité T1" in content
+            assert "64110" in content
+            assert "Teaching Salaries" in content
+
+    def test_export_budget_csv_empty_line_items(self, client, mock_user):
+        """Test CSV export with no line items."""
         version_id = uuid.uuid4()
-        # The endpoint doesn't catch service errors, so this will raise
-        # In a real scenario, we'd want to handle this gracefully
-        with pytest.raises(Exception):
-            client.get(f"/api/v1/export/budget/{version_id}/csv")
+
+        with patch(
+            "app.api.v1.export.ConsolidationService"
+        ) as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.calculate_line_items.return_value = []
+            mock_service_class.return_value = mock_service
+
+            response = client.get(f"/api/v1/export/budget/{version_id}/csv")
+
+            # Should still succeed with empty data
+            assert response.status_code == 200
+            assert response.headers["content-type"] == "text/csv"
+
+            # Should have headers but no data rows
+            content = response.text
+            lines = content.split("\\n")
+            assert len(lines) >= 1  # At least headers
+            assert "account_code" in lines[0]
 
 
 class TestExportEdgeCases:
-    """Test edge cases and error scenarios."""
+    """Tests for edge cases and error conditions."""
 
-    @patch("app.api.v1.export.openpyxl")
-    @patch("app.api.v1.export.ConsolidationService")
-    def test_export_excel_with_none_values(
-        self, mock_service_class, mock_openpyxl, client, mock_consolidation
-    ):
-        """Test Excel export when consolidation has None values."""
-        # Set some values to None
-        mock_consolidation.total_revenue = None
-        mock_consolidation.total_personnel_costs = None
-        mock_consolidation.net_result = None
-
-        mock_service = AsyncMock()
-        mock_service.get_consolidation = AsyncMock(return_value=mock_consolidation)
-        mock_service_class.return_value = mock_service
-
-        mock_wb = MagicMock()
-        mock_ws = MagicMock()
-        mock_wb.active = mock_ws
-        mock_openpyxl.Workbook.return_value = mock_wb
-
-        version_id = mock_consolidation.budget_version.id
-        response = client.get(f"/api/v1/export/budget/{version_id}/excel")
-
-        # Should still succeed, using Decimal("0") for None values
-        assert response.status_code == 200
-
-    @patch("app.api.v1.export.openpyxl")
-    @patch("app.api.v1.export.KPIService")
-    def test_export_kpi_excel_with_none_values(
-        self, mock_service_class, mock_openpyxl, client
-    ):
-        """Test KPI Excel export when KPIs have None values."""
-        kpi = MagicMock()
-        kpi.kpi_definition = None
-        kpi.calculated_value = None
-        kpi.variance_from_target = None
-
-        mock_service = AsyncMock()
-        mock_service.get_all_kpis = AsyncMock(return_value=[kpi])
-        mock_service_class.return_value = mock_service
-
-        mock_wb = MagicMock()
-        mock_ws = MagicMock()
-        mock_wb.active = mock_ws
-        mock_openpyxl.Workbook.return_value = mock_wb
-
-        version_id = uuid.uuid4()
-        response = client.get(f"/api/v1/export/kpi/{version_id}/excel")
-
-        # Should handle None values gracefully
-        assert response.status_code == 200
-
-    def test_export_invalid_uuid_format(self, client):
+    def test_export_invalid_uuid(self, client, mock_user):
         """Test export with invalid UUID format."""
-        response = client.get("/api/v1/export/budget/invalid-uuid/excel")
-        assert response.status_code == 422  # Validation error
+        response = client.get("/api/v1/export/budget/not-a-uuid/excel")
 
+        # Should return 422 Unprocessable Entity for invalid UUID
+        assert response.status_code == 422
+
+    def test_export_with_none_budget_version(
+        self, client, mock_user
+    ):
+        """Test export when consolidation has None budget_version."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_consolidation = MagicMock()
+                mock_consolidation.budget_version = None  # No budget version
+                mock_consolidation.total_revenue = Decimal("0")
+                mock_consolidation.total_personnel_costs = Decimal("0")
+                mock_consolidation.total_operating_costs = Decimal("0")
+                mock_consolidation.total_capex = Decimal("0")
+                mock_consolidation.net_result = Decimal("0")
+                mock_service.get_consolidation.return_value = mock_consolidation
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/excel")
+
+                # Should handle None budget_version gracefully
+                assert response.status_code == 200
+
+    def test_export_kpi_with_none_definition(self, client, mock_user):
+        """Test KPI export when KPI has None definition."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+            mock_openpyxl.utils.get_column_letter = lambda x: chr(64 + x)
+
+            with patch("app.api.v1.export.KPIService") as mock_service_class:
+                mock_service = AsyncMock()
+                mock_kpi = MagicMock()
+                mock_kpi.kpi_definition = None  # No definition
+                mock_kpi.calculated_value = Decimal("1.5")
+                mock_kpi.variance_from_target = Decimal("0.2")
+                mock_service.get_all_kpis.return_value = [mock_kpi]
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/kpi/{version_id}/excel")
+
+                # Should handle None kpi_definition gracefully
+                assert response.status_code == 200

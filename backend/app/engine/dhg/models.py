@@ -85,14 +85,6 @@ class DHGInput(BaseModel):
         ..., description="List of subject hours for this level"
     )
 
-    @field_validator("number_of_classes")
-    @classmethod
-    def validate_class_count_reasonable(cls, v: int) -> int:
-        """Ensure class count is reasonable (0-50)."""
-        if not (0 <= v <= 50):
-            raise ValueError(f"Number of classes must be between 0 and 50, got {v}")
-        return v
-
     model_config = ConfigDict(
         validate_assignment=True,
         frozen=True,

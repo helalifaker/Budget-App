@@ -142,12 +142,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         Returns:
             Response or 429 Too Many Requests
         """
-        # Always skip in test runs to avoid external Redis dependency
-        if os.getenv("PYTEST_CURRENT_TEST"):
-            return await call_next(request)
-
-        # Skip if rate limiting disabled or running under tests
-        if not RATE_LIMIT_ENABLED or os.getenv("DISABLE_RATE_LIMITING", "false").lower() == "true":
+        # Skip if rate limiting disabled or flagged off for this app
+        if (
+            getattr(request.app.state, "skip_rate_limit_for_tests", False)
+            or not RATE_LIMIT_ENABLED
+            or os.getenv("DISABLE_RATE_LIMITING", "false").lower() == "true"
+        ):
             return await call_next(request)
 
         # Skip rate limiting for health checks

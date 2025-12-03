@@ -2,6 +2,46 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**⚠️ FOR AI AGENTS: This is your PRIMARY REFERENCE document. Read this entire file before making any code changes.**
+
+---
+
+## 🤖 Agent System Overview
+
+### 14-Agent Orchestration System
+
+This codebase uses a specialized 14-agent orchestration system for domain separation and clear boundaries. Each agent has specific responsibilities and cannot cross into other domains.
+
+**Agent Configuration:**
+- Agent definitions: `.claude/agents/` (14 specialized agent configs)
+- Orchestration rules: `.claude/AGENT_ORCHESTRATION.md` (complete agent system guide)
+- Master orchestrator: `efir-master-agent` (routes multi-domain tasks)
+
+**Agent Responsibilities Quick Reference:**
+
+| Agent | Can Do | Cannot Do |
+|-------|--------|-----------|
+| `product-architect-agent` | Business rules, formulas, requirements | Write code, implement features |
+| `system-architect-agent` | Architecture, interfaces, patterns | Business logic, requirements |
+| `database-supabase-agent` | SQL, migrations, RLS policies | Calculations, APIs, UI |
+| `backend-engine-agent` | Pure calculation logic (DHG, revenue, costs) | Database schema, APIs, UI |
+| `backend-api-specialist` | FastAPI routes, endpoints | Calculation logic, database, UI |
+| `frontend-ui-agent` | React components, pages, UI | Backend logic, database, APIs |
+| `security-rls-agent` | RLS policies, auth, security | Business logic, UI |
+| `qa-validation-agent` | Tests only | Production code |
+| `documentation-training-agent` | Documentation only | Code |
+
+**See [.claude/AGENT_ORCHESTRATION.md](./.claude/AGENT_ORCHESTRATION.md) for complete agent boundaries, dependencies, and orchestration rules.**
+
+**CRITICAL AGENT RULES:**
+1. **ALWAYS** consult `product-architect-agent` for business rules (SOURCE OF TRUTH)
+2. **ALWAYS** follow `system-architect-agent` for architecture patterns
+3. **NEVER** cross agent boundaries (see table above)
+4. **ALWAYS** route multi-domain tasks through `efir-master-agent`
+5. **ALWAYS** follow EFIR Development Standards (4 Non-Negotiables below)
+
+---
+
 ## Project Overview
 
 This is the **EFIR School Budget Planning Application** - an integrated planning system for École Française Internationale de Riyad (EFIR), a French international school in Saudi Arabia operating under AEFE (Agence pour l'enseignement français à l'étranger) guidelines.

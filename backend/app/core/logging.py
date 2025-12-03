@@ -96,6 +96,14 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             # Process request
             response = await call_next(request)
 
+            # Tests may return mock responses; normalize to Response to avoid shared state
+            if not isinstance(response, Response):
+                response = Response(
+                    content=getattr(response, "body", b""),
+                    status_code=getattr(response, "status_code", 200),
+                    headers=dict(getattr(response, "headers", {})),
+                )
+
             # Log successful completion
             logger.info(
                 "request_completed",

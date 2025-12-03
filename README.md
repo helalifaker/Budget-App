@@ -2,6 +2,88 @@
 
 A comprehensive, driver-based budget planning system for École Française Internationale de Riyad (EFIR), a French international school in Saudi Arabia operating under AEFE (Agence pour l'enseignement français à l'étranger) guidelines.
 
+---
+
+## 🤖 For AI Agents / Claude Code
+
+**⚠️ CRITICAL: If you are an AI agent working on this codebase, read this section FIRST.**
+
+### Primary Agent Reference Documents
+
+1. **[CLAUDE.md](./CLAUDE.md)** - **YOUR PRIMARY REFERENCE** (1000+ lines)
+   - Complete agent guidance, development standards, architecture patterns
+   - Technology stack details, module specifications, calculation formulas
+   - **Read this before making any code changes**
+
+2. **[.claude/AGENT_ORCHESTRATION.md](./.claude/AGENT_ORCHESTRATION.md)** - Agent System Guide
+   - 14 specialized agents and their boundaries
+   - Agent dependencies and orchestration rules
+   - Multi-agent workflow patterns
+
+3. **[.claude/agents/](./.claude/agents/)** - Individual Agent Configurations
+   - Your specific agent configuration file
+   - Know your boundaries and responsibilities
+
+### Agent System Overview
+
+This codebase uses a **14-agent orchestration system**:
+
+| Agent | Responsibility |
+|-------|---------------|
+| `efir-master-agent` | Orchestrator - routes multi-domain tasks |
+| `product-architect-agent` | Business rules, formulas, requirements (SOURCE OF TRUTH) |
+| `system-architect-agent` | Architecture, API contracts, module boundaries |
+| `database-supabase-agent` | PostgreSQL schema, RLS policies, migrations |
+| `backend-engine-agent` | Calculation engines (DHG, enrollment, revenue, costs) |
+| `backend-api-specialist` | FastAPI endpoints and API layer |
+| `frontend-ui-agent` | React UI, components, all 18 modules |
+| `governance-versioning-agent` | Budget lifecycle and workflow management |
+| `reporting-statements-agent` | PCG/IFRS statements and board reports |
+| `security-rls-agent` | Authentication, MFA, RLS policies |
+| `data-migration-agent` | ETL and data import from legacy systems |
+| `performance-agent` | Profiling, optimization, load testing |
+| `qa-validation-agent` | Test coverage and quality assurance |
+| `documentation-training-agent` | Documentation and training materials |
+
+### Quick Agent Routing Reference
+
+**Route requests to the correct agent:**
+
+- **Business Rules/Formulas/Requirements** → `product-architect-agent` (SOURCE OF TRUTH)
+- **Database/Schema/RLS/Migrations** → `database-supabase-agent`
+- **Calculation Logic (DHG, FTE, Revenue, Costs)** → `backend-engine-agent`
+- **FastAPI Routes/Endpoints** → `backend-api-specialist`
+- **React Components/UI** → `frontend-ui-agent`
+- **Architecture/Interfaces** → `system-architect-agent`
+- **Security/Auth/RLS** → `security-rls-agent`
+- **Tests/QA** → `qa-validation-agent`
+- **Multi-domain tasks** → `efir-master-agent` (orchestrator)
+
+**See [Agent Orchestration Guide](./.claude/AGENT_ORCHESTRATION.md) for complete routing logic and boundaries.**
+
+### Agent Development Standards
+
+All agents MUST follow the **EFIR Development Standards System** (4 Non-Negotiables):
+
+1. **Complete Implementation**: No TODOs, no placeholders, all edge cases handled
+2. **Best Practices**: Type-safe code, SOLID principles, 80%+ test coverage
+3. **Documentation**: Every module has a `.md` file with formulas, examples, business rules
+4. **Review & Testing**: All tests pass, linting passes, type checking passes
+
+**See [CLAUDE.md](./CLAUDE.md) "EFIR Development Standards System" section for details.**
+
+### Agent Boundary Enforcement
+
+**CRITICAL RULES:**
+- ❌ **NEVER** cross agent boundaries (e.g., frontend-ui-agent cannot modify database)
+- ✅ **ALWAYS** consult `product-architect-agent` for business rules
+- ✅ **ALWAYS** follow `system-architect-agent` for architecture patterns
+- ✅ **ALWAYS** route multi-domain tasks through `efir-master-agent`
+
+**See [Agent Orchestration Guide](./.claude/AGENT_ORCHESTRATION.md) "Agent Boundary Enforcement" section for complete rules.**
+
+---
+
 ## Overview
 
 This application provides integrated workforce planning through annual budget and 5-year strategic planning, built around the French education system's **DHG (Dotation Horaire Globale)** methodology. It transforms complex, manual budget processes into an automated system with real-time calculations, scenario analysis, and comprehensive reporting.
@@ -147,7 +229,12 @@ GitHub Actions automatically runs on push/PR:
 
 ## Documentation
 
-- **[CLAUDE.md](./CLAUDE.md)**: Development guidelines and project overview
+### For AI Agents
+- **[CLAUDE.md](./CLAUDE.md)**: **PRIMARY AGENT REFERENCE** - Complete development guidelines, architecture, standards (1000+ lines)
+- **[.claude/AGENT_ORCHESTRATION.md](./.claude/AGENT_ORCHESTRATION.md)**: 14-agent system, orchestration rules, boundaries
+- **[.claude/agents/](./.claude/agents/)**: Individual agent configuration files
+
+### For All Developers
 - **[PRD v1.2](./EFIR_Budget_App_PRD_v1_2.md)**: Product Requirements Document
 - **[TSD v1.2](./EFIR_Budget_App_TSD_v1_2.md)**: Technical Specification Document
 - **[Module Specifications](./EFIR_Module_Technical_Specification.md)**: Detailed module specifications and formulas

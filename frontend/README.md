@@ -2,6 +2,108 @@
 
 React 19 + Vite + TypeScript 5.9 frontend for the EFIR Budget Planning Application, providing an enterprise-grade spreadsheet interface for workforce planning and budget management.
 
+---
+
+## 🤖 For AI Agents
+
+**⚠️ CRITICAL: If you are an AI agent working on frontend code, read this section FIRST.**
+
+### Relevant Agent for Frontend
+
+| Agent | Responsibility | Boundaries |
+|-------|---------------|------------|
+| `frontend-ui-agent` | **All React components, pages, client-side logic, UI/UX** | ✅ CAN: Build React components, pages, hooks, UI logic<br>❌ CANNOT: Implement backend logic, modify database, create APIs, define business rules |
+
+### Agent Boundary Rules
+
+**CRITICAL ENFORCEMENT:**
+
+1. **`frontend-ui-agent` MUST:**
+   - Call backend APIs (via `backend-api-specialist`) for all data operations
+   - NEVER implement calculation logic in client-side code
+   - NEVER modify database schema or create migrations
+   - NEVER create FastAPI endpoints
+   - Use TanStack Query for server state management
+   - Use React Hook Form + Zod for form validation
+
+2. **`frontend-ui-agent` MUST NOT:**
+   - Implement business logic (DHG calculations, revenue formulas, etc.)
+   - Access database directly
+   - Create backend API endpoints
+   - Override business rules defined by `product-architect-agent`
+
+### Frontend Code Organization
+
+**Components** (`frontend/src/components/`):
+- **Owner**: `frontend-ui-agent`
+- **Pattern**: shadcn/ui style components with TypeScript strict mode
+- **Structure**: `ui/` for base components, `features/` for feature-specific components
+
+**Hooks** (`frontend/src/hooks/`):
+- **Owner**: `frontend-ui-agent`
+- **Pattern**: Custom React hooks for reusable logic
+- **API Hooks**: Use TanStack Query for server state (see `hooks/api/`)
+
+**API Client** (`frontend/src/services/`):
+- **Owner**: `frontend-ui-agent`
+- **Pattern**: API client functions that call `backend-api-specialist` endpoints
+- **Example**: `services/api/enrollment.ts` - calls `/api/v1/planning/enrollment`
+
+**Routes** (`frontend/src/routes/`):
+- **Owner**: `frontend-ui-agent`
+- **Pattern**: TanStack Router with lazy-loaded routes
+- **Structure**: Organized by module layer (configuration/, planning/, consolidation/, etc.)
+
+**State Management**:
+- **Server State**: TanStack Query (calls backend APIs)
+- **UI State**: React hooks (useState, useContext)
+- **Form State**: React Hook Form + Zod validation
+
+### Agent Workflow Examples
+
+**Example 1: Building Enrollment Planning UI**
+```
+1. product-architect-agent → Provides enrollment business rules
+2. backend-api-specialist → Creates /api/v1/planning/enrollment endpoint
+3. frontend-ui-agent → Builds React component with AG Grid
+4. frontend-ui-agent → Uses TanStack Query to fetch data from API
+5. qa-validation-agent → Writes E2E tests with Playwright
+```
+
+**Example 2: Adding New Form Component**
+```
+1. frontend-ui-agent → Creates React component with React Hook Form
+2. frontend-ui-agent → Uses Zod schema for validation (matches backend Pydantic schema)
+3. frontend-ui-agent → Calls backend API via TanStack Query mutation
+4. qa-validation-agent → Writes component tests with Vitest
+```
+
+**See [Agent Orchestration Guide](../.claude/AGENT_ORCHESTRATION.md) for complete workflow patterns.**
+
+### Frontend Development Standards
+
+All frontend agents MUST follow:
+- **Type Safety**: TypeScript 5.9 strict mode, no `any` types
+- **Component Patterns**: shadcn/ui style with `cva` for variants
+- **State Management**: TanStack Query for server state, React hooks for UI state
+- **Testing**: Vitest for unit tests, Playwright for E2E tests
+- **Code Quality**: ESLint 9, Prettier, TypeScript strict checking
+
+**See [CLAUDE.md](../CLAUDE.md) "EFIR Development Standards System" section for complete requirements.**
+
+### Frontend-Backend Integration
+
+**Data Flow Pattern:**
+```
+User Action → React Component → TanStack Query Hook → API Client → 
+Backend API (backend-api-specialist) → Backend Engine (backend-engine-agent) → 
+Database (database-supabase-agent) → Response → Frontend → UI Update
+```
+
+**CRITICAL**: Frontend NEVER implements calculation logic. All calculations happen in `backend-engine-agent` and are exposed via `backend-api-specialist`.
+
+---
+
 ## Technology Stack
 
 - **Framework**: React 19.2.0 (Server Components, Actions, Activity API ready)

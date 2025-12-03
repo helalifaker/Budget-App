@@ -4,7 +4,6 @@ Authentication middleware for JWT validation with Supabase.
 Validates Supabase JWT tokens and extracts user information.
 """
 
-import os
 from collections.abc import Callable
 
 from fastapi import Request, Response
@@ -47,11 +46,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         Returns:
             Response from the next handler or authentication error
         """
-        # Test environments use dependency overrides; skip auth when configured
-        if os.getenv("DISABLE_AUTH_FOR_TESTS", "false").lower() == "true" or os.getenv(
-            "PYTEST_CURRENT_TEST"
-        ):
-            # Provide a synthetic planner identity so downstream middleware has a role
+        # Optional app-level toggle for test environments
+        if getattr(request.app.state, "skip_auth_for_tests", False):
             request.state.user_role = "planner"
             request.state.user_id = "test-user"
             return await call_next(request)

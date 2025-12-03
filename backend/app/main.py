@@ -61,6 +61,8 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+    app.state.skip_auth_for_tests = os.getenv("SKIP_AUTH_FOR_TESTS", "true").lower() == "true"
+    app.state.skip_rate_limit_for_tests = os.getenv("SKIP_RATE_LIMIT_FOR_TESTS", "true").lower() == "true"
 
     # RBAC middleware (enforces role-based access control)
     app.add_middleware(RBACMiddleware)

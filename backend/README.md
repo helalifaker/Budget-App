@@ -2,6 +2,95 @@
 
 FastAPI 0.123 + Python 3.14.0 backend for the EFIR Budget Planning Application, implementing the DHG (Dotation Horaire Globale) workforce planning methodology.
 
+---
+
+## 🤖 For AI Agents
+
+**⚠️ CRITICAL: If you are an AI agent working on backend code, read this section FIRST.**
+
+### Relevant Agents for Backend
+
+| Agent | Responsibility | Boundaries |
+|-------|---------------|------------|
+| `backend-engine-agent` | **Pure calculation engines** (DHG, enrollment, revenue, costs, KPI) | ✅ CAN: Implement calculation logic<br>❌ CANNOT: Modify database schema, create API endpoints, build UI |
+| `backend-api-specialist` | **FastAPI routes, endpoints, request/response schemas** | ✅ CAN: Create FastAPI routes, validate requests<br>❌ CANNOT: Implement calculation logic (must call `backend-engine-agent`), modify database, build UI |
+| `database-supabase-agent` | **Database schema, migrations, RLS policies** | ✅ CAN: Create tables, migrations, RLS policies<br>❌ CANNOT: Implement calculation logic, create APIs, build UI |
+
+### Agent Boundary Rules
+
+**CRITICAL ENFORCEMENT:**
+
+1. **`backend-engine-agent` MUST:**
+   - Implement pure calculation functions (no side effects)
+   - Use Pydantic models for input/output validation
+   - Follow formulas exactly as specified by `product-architect-agent`
+   - Be fully testable (no database access, no API calls)
+
+2. **`backend-api-specialist` MUST:**
+   - Call `backend-engine-agent` for all calculations (NEVER implement calculation logic)
+   - Use FastAPI dependency injection for services
+   - Validate requests with Pydantic schemas
+   - Return proper HTTP status codes and error messages
+
+3. **`database-supabase-agent` MUST:**
+   - Create Alembic migrations for all schema changes
+   - Implement RLS policies in collaboration with `security-rls-agent`
+   - Never modify calculation logic or create API endpoints
+
+### Backend Code Organization
+
+**Calculation Engines** (`backend/app/engine/`):
+- **Owner**: `backend-engine-agent`
+- **Pattern**: Pure functions with Pydantic input/output models
+- **Example**: `app/engine/dhg/calculate_dhg_hours()` - no database, no API, pure calculation
+
+**API Endpoints** (`backend/app/api/v1/`):
+- **Owner**: `backend-api-specialist`
+- **Pattern**: FastAPI routes that call engine functions via services
+- **Example**: `app/api/v1/calculations/dhg.py` - calls `backend-engine-agent` via service layer
+
+**Database Models** (`backend/app/models/`):
+- **Owner**: `database-supabase-agent`
+- **Pattern**: SQLAlchemy ORM models with proper relationships
+- **Migrations**: `backend/alembic/versions/` (10 migrations as of December 2025)
+
+**Services** (`backend/app/services/`):
+- **Owner**: `backend-api-specialist` (orchestrates engine calls)
+- **Pattern**: Business logic layer between API and engines
+- **Example**: `EnrollmentService.calculate()` calls `backend-engine-agent` functions
+
+### Agent Workflow Examples
+
+**Example 1: Implementing DHG Calculation**
+```
+1. product-architect-agent → Provides DHG formula and business rules
+2. backend-engine-agent → Implements pure calculation function
+3. backend-api-specialist → Creates FastAPI endpoint that calls engine
+4. qa-validation-agent → Writes tests for engine and API
+```
+
+**Example 2: Adding Database Table**
+```
+1. system-architect-agent → Approves schema design
+2. database-supabase-agent → Creates SQLAlchemy model and Alembic migration
+3. backend-api-specialist → Creates CRUD endpoints (if needed)
+4. security-rls-agent → Adds RLS policies (collaborates with database-supabase-agent)
+```
+
+**See [Agent Orchestration Guide](../.claude/AGENT_ORCHESTRATION.md) for complete workflow patterns.**
+
+### Backend Development Standards
+
+All backend agents MUST follow:
+- **Type Safety**: Python 3.14.0 type hints, Pydantic validation
+- **Test Coverage**: 80%+ minimum (enforced by pytest.ini)
+- **Code Quality**: Ruff linting, mypy type checking
+- **Documentation**: Docstrings for all functions, module .md files
+
+**See [CLAUDE.md](../CLAUDE.md) "EFIR Development Standards System" section for complete requirements.**
+
+---
+
 ## Technology Stack
 
 - **Framework**: FastAPI 0.123.4 (async, high-performance)
