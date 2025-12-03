@@ -265,8 +265,6 @@ class KPIService:
             .options(
                 selectinload(KPIValue.kpi_definition),
                 selectinload(KPIValue.budget_version),
-                selectinload(KPIValue.created_by),
-                selectinload(KPIValue.updated_by),
             )
         )
 
@@ -304,8 +302,6 @@ class KPIService:
             .options(
                 selectinload(KPIValue.kpi_definition),
                 selectinload(KPIValue.budget_version),
-                selectinload(KPIValue.created_by),
-                selectinload(KPIValue.updated_by),
             )
         )
 

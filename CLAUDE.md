@@ -75,10 +75,15 @@ The application provides workforce planning through annual budget and 5-year str
 4. E2E tests (Playwright)
 5. Build verification
 
-### Integration Points
-- **Odoo**: Accounting system (for actuals import via API)
-- **Skolengo**: Student information system (export/import for enrollment data)
-- **AEFE**: Position data (manual/export)
+### Integration Points (OPTIONAL - Not Used in Current Deployment)
+> **Note:** The following integrations are implemented but NOT USED in the current EFIR deployment.
+> The application operates as a standalone budget planning system without external integrations.
+
+- **Odoo**: Accounting system (for actuals import via API) - *DISABLED*
+- **Skolengo**: Student information system (export/import for enrollment data) - *DISABLED*
+- **AEFE**: Position data (manual/export) - *DISABLED*
+
+All data entry is done directly through the application interface.
 
 ## Key Architectural Concepts
 

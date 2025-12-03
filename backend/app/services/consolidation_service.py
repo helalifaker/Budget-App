@@ -84,8 +84,6 @@ class ConsolidationService:
             )
             .options(
                 selectinload(BudgetConsolidation.budget_version),
-                selectinload(BudgetConsolidation.created_by),
-                selectinload(BudgetConsolidation.updated_by),
             )
             .order_by(
                 BudgetConsolidation.is_revenue.desc(),
@@ -557,7 +555,7 @@ class ConsolidationService:
                 OperatingCostPlan.account_code,
                 OperatingCostPlan.description,
                 OperatingCostPlan.category,
-                func.sum(OperatingCostPlan.total_cost_sar).label("total_amount"),
+                func.sum(OperatingCostPlan.amount_sar).label("total_amount"),
                 func.count(OperatingCostPlan.id).label("source_count"),
             )
             .where(

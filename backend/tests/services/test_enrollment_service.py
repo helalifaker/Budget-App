@@ -255,7 +255,7 @@ class TestEnrollmentServiceCapacity:
                 user_id=test_user_id,
             )
 
-        assert exc_info.value.code == "CAPACITY_EXCEEDED"
+        assert exc_info.value.details["rule"] == "CAPACITY_EXCEEDED"
         assert "1875" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -277,7 +277,7 @@ class TestEnrollmentServiceCapacity:
                 user_id=test_user_id,
             )
 
-        assert exc_info.value.code == "CAPACITY_EXCEEDED"
+        assert exc_info.value.details["rule"] == "CAPACITY_EXCEEDED"
 
     @pytest.mark.asyncio
     async def test_capacity_at_exact_limit(
@@ -493,7 +493,7 @@ class TestEnrollmentServiceProjection:
                 growth_scenario="base",
             )
 
-        assert exc_info.value.code == "NO_ENROLLMENT_DATA"
+        assert exc_info.value.details["rule"] == "NO_ENROLLMENT_DATA"
 
     @pytest.mark.asyncio
     async def test_project_enrollment_with_custom_rates(
@@ -655,7 +655,7 @@ class TestEnrollmentServiceEdgeCases:
                 user_id=test_user_id,
             )
 
-        assert exc_info.value.code == "CAPACITY_EXCEEDED"
+        assert exc_info.value.details["rule"] == "CAPACITY_EXCEEDED"
 
 
 class TestEnrollmentServiceRealEFIRData:
