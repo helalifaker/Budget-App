@@ -92,7 +92,7 @@ disable_error_code = ["attr-defined", "assignment"]
 
 [tool.pytest.ini_options]
 addopts = "-q"
-testpaths = ["backend/tests"]
+testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]

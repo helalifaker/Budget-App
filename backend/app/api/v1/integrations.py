@@ -35,6 +35,9 @@ from app.schemas.integrations import (
     SkolengoComparisonResponse,
     SkolengoImportResponse,
 )
+
+# Note: SkolengoExportRequest and SkolengoSyncRequest schemas exist but are not
+# used directly in endpoints (file upload uses budget_version_id param directly)
 from app.services.aefe_integration import AEFEIntegrationService, InvalidFileFormatError
 from app.services.exceptions import IntegrationError
 from app.services.odoo_integration import (
@@ -92,7 +95,7 @@ async def test_odoo_connection(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -178,7 +181,7 @@ async def import_odoo_actuals(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -214,7 +217,7 @@ async def sync_odoo_actuals(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -270,7 +273,7 @@ async def export_skolengo_enrollment(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -313,7 +316,7 @@ async def import_skolengo_enrollment(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -349,7 +352,7 @@ async def sync_skolengo_enrollment(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -373,7 +376,7 @@ async def compare_skolengo_enrollments(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -417,7 +420,7 @@ async def import_aefe_positions(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -437,7 +440,7 @@ async def get_aefe_positions(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -459,7 +462,7 @@ async def get_aefe_position_summary(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -484,7 +487,7 @@ async def download_aefe_template(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unexpected error: {e!s}",
+            detail=f"Unexpected error: {str(e)}",
         )
 
 
@@ -541,7 +544,7 @@ async def create_integration_settings(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save settings: {e!s}",
+            detail=f"Failed to save settings: {str(e)}",
         )
 
 
@@ -620,7 +623,7 @@ async def update_integration_settings(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update settings: {e!s}",
+            detail=f"Failed to update settings: {str(e)}",
         )
 
 
@@ -676,7 +679,7 @@ async def get_integration_logs(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch logs: {e!s}",
+            detail=f"Failed to fetch logs: {str(e)}",
         )
 
 
