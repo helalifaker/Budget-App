@@ -11,7 +11,7 @@ Handles generation of:
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -591,6 +591,19 @@ class FinancialStatementsService:
         lines = []
         line_number = 1
 
+        # Compute equity based on total assets (mirrors capex total for now)
+        capex_query = (
+            select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.source_table == "capex_plans",
+                    BudgetConsolidation.deleted_at.is_(None),
+                )
+            )
+        )
+        total_assets = Decimal(str((await self.session.execute(capex_query)).scalar()))
+
         # Header
         lines.append({
             "line_number": line_number,
@@ -606,7 +619,7 @@ class FinancialStatementsService:
 
         # Simplified: Just show equity as total
         # In reality, this would include detailed equity and liabilities
-        total_liabilities = Decimal("0.00")
+        total_liabilities = total_assets
 
         lines.append({
             "line_number": line_number,

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { configurationApi } from '@/services/configuration'
 import { toastMessages } from '@/lib/toast-messages'
+import type { SystemConfig } from '@/types/api'
 
 export const configurationKeys = {
   all: ['configuration'] as const,
@@ -266,7 +267,7 @@ export function useUpdateSystemConfig() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ key, data }: { key: string; data: unknown }) =>
+    mutationFn: ({ key, data }: { key: string; data: Partial<SystemConfig> }) =>
       configurationApi.systemConfig.update(key, data),
     onSuccess: () => {
       queryClient.invalidateQueries({

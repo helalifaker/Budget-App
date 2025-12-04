@@ -13,15 +13,24 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 import httpx
-from prometheus_client import CollectorRegistry, Gauge, generate_latest
 from app.core.cache import REDIS_ENABLED
 from app.core.logging import logger
 from app.database import get_db
 from fastapi import APIRouter, Depends, status
+from prometheus_client import REGISTRY, Gauge, generate_latest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["health"])
+START_TIME = time.time()
+cache_enabled_gauge = Gauge(
+    "cache_enabled",
+    "Redis cache enabled flag (1 = enabled, 0 = disabled)",
+)
+uptime_gauge = Gauge(
+    "app_uptime_seconds",
+    "Application uptime in seconds",
+)
 
 
 @router.get("/health")
@@ -169,30 +178,10 @@ async def metrics() -> dict[str, Any]:
     or displayed in JSON for quick debugging. Designed to be extended
     later by wiring middleware counters.
     """
-    registry = CollectorRegistry()
-
-    uptime_gauge = Gauge(
-        "app_uptime_seconds",
-        "Application uptime in seconds (set at request time)",
-        registry=registry,
-    )
-    uptime_gauge.set(time.time())
-
-    cache_enabled_gauge = Gauge(
-        "cache_enabled",
-        "Redis cache enabled flag (1 = enabled, 0 = disabled)",
-        registry=registry,
-    )
+    uptime_gauge.set(time.time() - START_TIME)
     cache_enabled_gauge.set(1 if REDIS_ENABLED else 0)
 
-    http_requests_total = Gauge(
-        "http_requests_total",
-        "Total HTTP requests handled (placeholder until middleware increments)",
-        registry=registry,
-    )
-    http_requests_total.set(0)
-
-    metrics_payload = generate_latest(registry).decode("utf-8")
+    metrics_payload = generate_latest(REGISTRY).decode("utf-8")
 
     return {
         "status": "ok",

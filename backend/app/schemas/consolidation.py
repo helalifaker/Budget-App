@@ -14,7 +14,6 @@ from app.models.configuration import BudgetVersionStatus
 from app.models.consolidation import (
     ConsolidationCategory,
     LineType,
-    StatementFormat,
     StatementType,
 )
 

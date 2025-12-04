@@ -25,6 +25,7 @@ from app.api.v1 import (
 )
 from app.core.logging import LoggingMiddleware
 from app.middleware.auth import AuthenticationMiddleware
+from app.middleware.metrics import RequestMetricsMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.rbac import RBACMiddleware
 from app.routes import health
@@ -116,6 +117,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Metrics middleware (increments Prometheus counter)
+    app.add_middleware(RequestMetricsMiddleware)
 
     # Logging middleware (adds correlation IDs and structured logging)
     # Must be added last so it wraps every request once the stack is built

@@ -13,11 +13,13 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
+from app.core.logging import logger
 from app.models.configuration import BudgetVersion
+from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
 from app.models.strategic import (
     InitiativeStatus,
     ProjectionCategory,
@@ -28,7 +30,12 @@ from app.models.strategic import (
     StrategicPlanScenario,
 )
 from app.services.base import BaseService
-from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
+from app.services.exceptions import (
+    BusinessRuleError,
+    NotFoundError,
+    ServiceException,
+    ValidationError,
+)
 
 
 class StrategicService:
@@ -104,38 +111,52 @@ class StrategicService:
         if years < 1 or years > 5:
             raise ValidationError("Strategic plan must be 1-5 years")
 
-        # Get base budget version
-        version_query = select(BudgetVersion).where(BudgetVersion.id == base_version_id)
-        version_result = await self.session.execute(version_query)
-        version = version_result.scalar_one_or_none()
+        try:
+            # Get base budget version
+            version_query = select(BudgetVersion).where(BudgetVersion.id == base_version_id)
+            version_result = await self.session.execute(version_query)
+            version = version_result.scalar_one_or_none()
 
-        if not version:
-            raise NotFoundError("BudgetVersion", str(base_version_id))
+            if not version:
+                raise NotFoundError("BudgetVersion", str(base_version_id))
 
-        # Check for duplicate plan name
-        existing_query = select(StrategicPlan).where(
-            and_(
-                StrategicPlan.name == plan_name,
-                StrategicPlan.deleted_at.is_(None),
+            # Check for duplicate plan name
+            existing_query = select(StrategicPlan).where(
+                and_(
+                    StrategicPlan.name == plan_name,
+                    StrategicPlan.deleted_at.is_(None),
+                )
             )
-        )
-        existing_result = await self.session.execute(existing_query)
-        if existing_result.scalar_one_or_none():
-            raise BusinessRuleError(
-                "duplicate_plan",
-                f"Strategic plan '{plan_name}' already exists",
-            )
+            existing_result = await self.session.execute(existing_query)
+            if existing_result.scalar_one_or_none():
+                raise BusinessRuleError(
+                    "duplicate_plan",
+                    f"Strategic plan '{plan_name}' already exists",
+                )
 
-        # Create plan
-        plan = StrategicPlan(
-            name=plan_name,
-            description=description,
-            base_year=version.fiscal_year,
-            status="draft",
-        )
-        self.session.add(plan)
-        await self.session.flush()
-        await self.session.refresh(plan)
+            # Create plan
+            plan = StrategicPlan(
+                name=plan_name,
+                description=description,
+                base_year=version.fiscal_year,
+                status="draft",
+            )
+            self.session.add(plan)
+            await self.session.flush()
+            await self.session.refresh(plan)
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to create strategic plan",
+                plan_name=plan_name,
+                base_version_id=str(base_version_id),
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to create strategic plan. Please try again.",
+                status_code=500,
+                details={"plan_name": plan_name, "base_version_id": str(base_version_id)},
+            ) from e
 
         # Create default scenarios if requested
         if create_default_scenarios:

@@ -113,14 +113,26 @@ async def engine(test_database_url: str):
     )
 
     async with engine.begin() as conn:
-        # SQLite needs attached schemas to handle multi-schema table names
+        # For SQLite tests, temporarily remove schema from metadata to create tables
+        # in the main database (SQLite doesn't support PostgreSQL-style schemas)
         if test_database_url.startswith("sqlite"):
-            # Attach schemas for efir_budget.* and auth.* tables
-            await conn.execute(text("ATTACH DATABASE ':memory:' AS efir_budget"))
-            await conn.execute(text("ATTACH DATABASE ':memory:' AS auth"))
+            # Temporarily set all table schemas to None for SQLite
+            for table in Base.metadata.tables.values():
+                table.schema = None
 
-        # Create all tables (including auth.users from User model)
+            # Debug: Print tables being created
+            print(f"\n🔍 Creating {len(Base.metadata.tables)} tables for SQLite tests")
+            for table_name in list(Base.metadata.tables.keys())[:5]:
+                print(f"  - {table_name}")
+
+        # Create all tables
         await conn.run_sync(Base.metadata.create_all)
+
+        # Debug: Verify tables were created
+        if test_database_url.startswith("sqlite"):
+            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+            tables = [row[0] for row in result.fetchall()]
+            print(f"✅ Created {len(tables)} tables in SQLite: {tables[:10]}")
 
     yield engine
 

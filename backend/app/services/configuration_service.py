@@ -16,9 +16,11 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.logging import logger
 from app.models.configuration import (
     AcademicCycle,
     AcademicLevel,
@@ -39,6 +41,7 @@ from app.services.base import BaseService
 from app.services.exceptions import (
     BusinessRuleError,
     ConflictError,
+    ServiceException,
     ValidationError,
 )
 
@@ -75,15 +78,31 @@ class ConfigurationService:
 
         Returns:
             SystemConfig instance or None if not found
+
+        Raises:
+            ServiceException: If database operation fails
         """
-        query = select(SystemConfig).where(
-            and_(
-                SystemConfig.key == key,
-                SystemConfig.deleted_at.is_(None),
+        try:
+            query = select(SystemConfig).where(
+                and_(
+                    SystemConfig.key == key,
+                    SystemConfig.deleted_at.is_(None),
+                )
             )
-        )
-        result = await self.session.execute(query)
-        return result.scalar_one_or_none()
+            result = await self.session.execute(query)
+            return result.scalar_one_or_none()
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve system configuration",
+                key=key,
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to retrieve system configuration. Please try again.",
+                status_code=500,
+                details={"key": key},
+            ) from e
 
     async def get_all_system_configs(self, category: str | None = None) -> list[SystemConfig]:
         """

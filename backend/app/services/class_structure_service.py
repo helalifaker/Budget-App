@@ -10,9 +10,11 @@ from decimal import Decimal
 from math import ceil
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.logging import logger
 from app.models.configuration import (
     AcademicCycle,
     AcademicLevel,
@@ -22,6 +24,7 @@ from app.models.planning import ClassStructure, EnrollmentPlan
 from app.services.base import BaseService
 from app.services.exceptions import (
     BusinessRuleError,
+    ServiceException,
     ValidationError,
 )
 
@@ -60,23 +63,39 @@ class ClassStructureService:
             - Uses selectinload for N+1 prevention
             - Eager loads level, cycle, budget_version, and audit fields
             - Leverages idx_class_structure_version index
+
+        Raises:
+            ServiceException: If database operation fails
         """
-        query = (
-            select(ClassStructure)
-            .where(
-                and_(
-                    ClassStructure.budget_version_id == version_id,
-                    ClassStructure.deleted_at.is_(None),
+        try:
+            query = (
+                select(ClassStructure)
+                .where(
+                    and_(
+                        ClassStructure.budget_version_id == version_id,
+                        ClassStructure.deleted_at.is_(None),
+                    )
                 )
+                .options(
+                    selectinload(ClassStructure.level).selectinload(AcademicLevel.cycle),
+                    selectinload(ClassStructure.budget_version),
+                )
+                .order_by(AcademicLevel.sort_order)
             )
-            .options(
-                selectinload(ClassStructure.level).selectinload(AcademicLevel.cycle),
-                selectinload(ClassStructure.budget_version),
+            result = await self.session.execute(query)
+            return list(result.scalars().all())
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve class structure",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
             )
-            .order_by(AcademicLevel.sort_order)
-        )
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+            raise ServiceException(
+                "Failed to retrieve class structure. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e
 
     async def get_class_structure_by_id(
         self, class_structure_id: uuid.UUID
@@ -375,42 +394,58 @@ class ClassStructureService:
             - Uses aggregation query for enrollment totals (single query)
             - Eager loads levels and cycles in second query
             - Leverages idx_enrollment_version index
+
+        Raises:
+            ServiceException: If database operation fails
         """
-        query = (
-            select(
-                EnrollmentPlan.level_id,
-                func.sum(EnrollmentPlan.student_count).label("total_students"),
-            )
-            .where(
-                and_(
-                    EnrollmentPlan.budget_version_id == version_id,
-                    EnrollmentPlan.deleted_at.is_(None),
+        try:
+            query = (
+                select(
+                    EnrollmentPlan.level_id,
+                    func.sum(EnrollmentPlan.student_count).label("total_students"),
                 )
+                .where(
+                    and_(
+                        EnrollmentPlan.budget_version_id == version_id,
+                        EnrollmentPlan.deleted_at.is_(None),
+                    )
+                )
+                .group_by(EnrollmentPlan.level_id)
             )
-            .group_by(EnrollmentPlan.level_id)
-        )
-        result = await self.session.execute(query)
-        enrollment_totals = {row.level_id: row.total_students for row in result}
+            result = await self.session.execute(query)
+            enrollment_totals = {row.level_id: row.total_students for row in result}
 
-        if not enrollment_totals:
-            return {}
+            if not enrollment_totals:
+                return {}
 
-        query_levels = (
-            select(AcademicLevel)
-            .where(AcademicLevel.id.in_(enrollment_totals.keys()))
-            .options(selectinload(AcademicLevel.cycle))
-        )
-        result_levels = await self.session.execute(query_levels)
-        levels = {level.id: level for level in result_levels.scalars().all()}
-
-        return {
-            level_id: (
-                total_students,
-                levels[level_id],
-                levels[level_id].cycle,
+            query_levels = (
+                select(AcademicLevel)
+                .where(AcademicLevel.id.in_(enrollment_totals.keys()))
+                .options(selectinload(AcademicLevel.cycle))
             )
-            for level_id, total_students in enrollment_totals.items()
-        }
+            result_levels = await self.session.execute(query_levels)
+            levels = {level.id: level for level in result_levels.scalars().all()}
+
+            return {
+                level_id: (
+                    total_students,
+                    levels[level_id],
+                    levels[level_id].cycle,
+                )
+                for level_id, total_students in enrollment_totals.items()
+            }
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve enrollment by level",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to retrieve enrollment data. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e
 
     async def _get_class_size_params(
         self, version_id: uuid.UUID
@@ -423,19 +458,35 @@ class ClassStructureService:
 
         Returns:
             List of ClassSizeParam instances
+
+        Raises:
+            ServiceException: If database operation fails
         """
-        query = (
-            select(ClassSizeParam)
-            .where(
-                and_(
-                    ClassSizeParam.budget_version_id == version_id,
-                    ClassSizeParam.deleted_at.is_(None),
+        try:
+            query = (
+                select(ClassSizeParam)
+                .where(
+                    and_(
+                        ClassSizeParam.budget_version_id == version_id,
+                        ClassSizeParam.deleted_at.is_(None),
+                    )
+                )
+                .options(
+                    selectinload(ClassSizeParam.level),
+                    selectinload(ClassSizeParam.cycle),
                 )
             )
-            .options(
-                selectinload(ClassSizeParam.level),
-                selectinload(ClassSizeParam.cycle),
+            result = await self.session.execute(query)
+            return list(result.scalars().all())
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve class size parameters",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
             )
-        )
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+            raise ServiceException(
+                "Failed to retrieve class size parameters. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e

@@ -322,6 +322,22 @@ class TestCalculateStatementLines:
         test_budget_version: BudgetVersion,
     ):
         """Test balance sheet liabilities line calculation."""
+        capex = BudgetConsolidation(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            source_table="capex_plans",
+            source_count=1,
+            is_calculated=True,
+            consolidation_category=ConsolidationCategory.CAPEX_EQUIPMENT,
+            account_code="21540",
+            account_name="Equipment",
+            amount_sar=Decimal("250000.00"),
+            is_revenue=False,
+            created_by_id=test_budget_version.created_by_id,
+        )
+        db_session.add(capex)
+        await db_session.flush()
+
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
             test_budget_version.id,
@@ -333,6 +349,10 @@ class TestCalculateStatementLines:
         # Should have header, equity line, and total
         line_descriptions = [line.get("line_description") for line in lines]
         assert "PASSIF" in line_descriptions
+        equity_line = next(line for line in lines if line["line_description"] == "Capitaux propres")
+        total_line = next(line for line in lines if line["line_type"] == LineType.TOTAL)
+        assert equity_line["amount_sar"] == Decimal("250000.00")
+        assert total_line["amount_sar"] == Decimal("250000.00")
 
     @pytest.mark.asyncio
     async def test_calculate_cash_flow_lines(

@@ -14,13 +14,14 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import and_, func, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import logger
 from app.models.configuration import AcademicLevel, BudgetVersion, BudgetVersionStatus
-from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
-from app.models.planning import ClassStructure, EnrollmentPlan
-from app.models.planning import DHGTeacherRequirement
-from app.services.exceptions import NotFoundError
+from app.models.consolidation import BudgetConsolidation
+from app.models.planning import ClassStructure, DHGTeacherRequirement, EnrollmentPlan
+from app.services.exceptions import NotFoundError, ServiceException
 
 
 class DashboardService:
@@ -70,94 +71,108 @@ class DashboardService:
 
         Raises:
             NotFoundError: If budget version not found
+            ServiceException: If database operation fails
         """
-        # Verify version exists
-        version_query = select(BudgetVersion).where(BudgetVersion.id == budget_version_id)
-        version_result = await self.session.execute(version_query)
-        version = version_result.scalar_one_or_none()
+        try:
+            # Verify version exists
+            version_query = select(BudgetVersion).where(BudgetVersion.id == budget_version_id)
+            version_result = await self.session.execute(version_query)
+            version = version_result.scalar_one_or_none()
 
-        if not version:
-            raise NotFoundError("BudgetVersion", str(budget_version_id))
+            if not version:
+                raise NotFoundError("BudgetVersion", str(budget_version_id))
 
-        # Totals from consolidation
-        revenue_query = (
-            select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
-            .where(
-                and_(
-                    BudgetConsolidation.budget_version_id == budget_version_id,
-                    BudgetConsolidation.deleted_at.is_(None),
-                    BudgetConsolidation.is_revenue.is_(True),
+            # Totals from consolidation
+            revenue_query = (
+                select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
+                .where(
+                    and_(
+                        BudgetConsolidation.budget_version_id == budget_version_id,
+                        BudgetConsolidation.deleted_at.is_(None),
+                        BudgetConsolidation.is_revenue.is_(True),
+                    )
                 )
             )
-        )
-        cost_query = (
-            select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
-            .where(
-                and_(
-                    BudgetConsolidation.budget_version_id == budget_version_id,
-                    BudgetConsolidation.deleted_at.is_(None),
-                    BudgetConsolidation.is_revenue.is_(False),
+            cost_query = (
+                select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
+                .where(
+                    and_(
+                        BudgetConsolidation.budget_version_id == budget_version_id,
+                        BudgetConsolidation.deleted_at.is_(None),
+                        BudgetConsolidation.is_revenue.is_(False),
+                    )
                 )
             )
-        )
 
-        revenue = Decimal(str((await self.session.execute(revenue_query)).scalar() or 0))
-        costs = Decimal(str((await self.session.execute(cost_query)).scalar() or 0))
-        net_result = revenue - costs
-        operating_margin_pct = float((net_result / revenue * 100) if revenue else 0)
+            revenue = Decimal(str((await self.session.execute(revenue_query)).scalar() or 0))
+            costs = Decimal(str((await self.session.execute(cost_query)).scalar() or 0))
+            net_result = revenue - costs
+            operating_margin_pct = float((net_result / revenue * 100) if revenue else 0)
 
-        # Enrollment totals
-        students_query = select(func.coalesce(func.sum(EnrollmentPlan.student_count), 0)).where(
-            and_(
-                EnrollmentPlan.budget_version_id == budget_version_id,
-                EnrollmentPlan.deleted_at.is_(None),
+            # Enrollment totals
+            students_query = select(func.coalesce(func.sum(EnrollmentPlan.student_count), 0)).where(
+                and_(
+                    EnrollmentPlan.budget_version_id == budget_version_id,
+                    EnrollmentPlan.deleted_at.is_(None),
+                )
             )
-        )
-        total_students = int((await self.session.execute(students_query)).scalar() or 0)
+            total_students = int((await self.session.execute(students_query)).scalar() or 0)
 
-        # Class totals
-        classes_query = select(func.coalesce(func.sum(ClassStructure.number_of_classes), 0)).where(
-            and_(
-                ClassStructure.budget_version_id == budget_version_id,
-                ClassStructure.deleted_at.is_(None),
+            # Class totals
+            classes_query = select(func.coalesce(func.sum(ClassStructure.number_of_classes), 0)).where(
+                and_(
+                    ClassStructure.budget_version_id == budget_version_id,
+                    ClassStructure.deleted_at.is_(None),
+                )
             )
-        )
-        total_classes = int((await self.session.execute(classes_query)).scalar() or 0)
+            total_classes = int((await self.session.execute(classes_query)).scalar() or 0)
 
-        # Teacher FTE from DHG requirements (simple_fte)
-        teacher_fte_query = select(func.coalesce(func.sum(DHGTeacherRequirement.simple_fte), 0)).where(
-            and_(
-                DHGTeacherRequirement.budget_version_id == budget_version_id,
-                DHGTeacherRequirement.deleted_at.is_(None),
+            # Teacher FTE from DHG requirements (simple_fte)
+            teacher_fte_query = select(func.coalesce(func.sum(DHGTeacherRequirement.simple_fte), 0)).where(
+                and_(
+                    DHGTeacherRequirement.budget_version_id == budget_version_id,
+                    DHGTeacherRequirement.deleted_at.is_(None),
+                )
             )
-        )
-        total_teachers_fte = Decimal(str((await self.session.execute(teacher_fte_query)).scalar() or 0))
+            total_teachers_fte = Decimal(str((await self.session.execute(teacher_fte_query)).scalar() or 0))
 
-        student_teacher_ratio = float(
-            (Decimal(str(total_students)) / total_teachers_fte) if total_teachers_fte else 0
-        )
-        capacity_utilization_pct = float(
-            (Decimal(str(total_students)) / self.MAX_CAPACITY * 100) if self.MAX_CAPACITY else 0
-        )
+            student_teacher_ratio = float(
+                (Decimal(str(total_students)) / total_teachers_fte) if total_teachers_fte else 0
+            )
+            capacity_utilization_pct = float(
+                (Decimal(str(total_students)) / self.MAX_CAPACITY * 100) if self.MAX_CAPACITY else 0
+            )
 
-        summary = {
-            "version_id": str(budget_version_id),
-            "version_name": version.name,
-            "fiscal_year": version.fiscal_year,
-            "status": version.status.value,
-            "total_revenue_sar": float(revenue),
-            "total_costs_sar": float(costs),
-            "net_result_sar": float(net_result),
-            "operating_margin_pct": operating_margin_pct,
-            "total_students": total_students,
-            "total_classes": total_classes,
-            "total_teachers_fte": float(total_teachers_fte),
-            "student_teacher_ratio": student_teacher_ratio,
-            "capacity_utilization_pct": capacity_utilization_pct,
-            "last_updated": datetime.utcnow().isoformat(),
-        }
+            summary = {
+                "version_id": str(budget_version_id),
+                "version_name": version.name,
+                "fiscal_year": version.fiscal_year,
+                "status": version.status.value,
+                "total_revenue_sar": float(revenue),
+                "total_costs_sar": float(costs),
+                "net_result_sar": float(net_result),
+                "operating_margin_pct": operating_margin_pct,
+                "total_students": total_students,
+                "total_classes": total_classes,
+                "total_teachers_fte": float(total_teachers_fte),
+                "student_teacher_ratio": student_teacher_ratio,
+                "capacity_utilization_pct": capacity_utilization_pct,
+                "last_updated": datetime.utcnow().isoformat(),
+            }
 
-        return summary
+            return summary
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve dashboard summary",
+                version_id=str(budget_version_id),
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to retrieve dashboard summary. Please try again.",
+                status_code=500,
+                details={"version_id": str(budget_version_id)},
+            ) from e
 
     async def get_enrollment_chart_data(
         self,

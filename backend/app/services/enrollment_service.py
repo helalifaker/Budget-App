@@ -11,7 +11,7 @@ from decimal import Decimal
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import aliased, selectinload
 
 from app.core.logging import logger
 from app.engine.enrollment import (
@@ -71,10 +71,14 @@ class EnrollmentService:
             - Leverages idx_enrollment_version index
         """
         try:
+            # Create aliases for joined tables to use in order_by
+            level_alias = aliased(AcademicLevel)
+            nationality_alias = aliased(NationalityType)
+
             query = (
                 select(EnrollmentPlan)
-                .join(EnrollmentPlan.level)
-                .join(EnrollmentPlan.nationality_type)
+                .join(level_alias, EnrollmentPlan.level_id == level_alias.id)
+                .join(nationality_alias, EnrollmentPlan.nationality_type_id == nationality_alias.id)
                 .where(
                     and_(
                         EnrollmentPlan.budget_version_id == version_id,
@@ -87,23 +91,24 @@ class EnrollmentService:
                     selectinload(EnrollmentPlan.budget_version),
                 )
                 .order_by(
-                    AcademicLevel.sort_order,
-                    NationalityType.sort_order,
+                    level_alias.sort_order,
+                    nationality_alias.sort_order,
                 )
             )
             result = await self.session.execute(query)
             return list(result.scalars().all())
         except SQLAlchemyError as e:
+            error_msg = f"SQLAlchemy Error: {type(e).__name__}: {e!s}"
             logger.error(
                 "Failed to retrieve enrollment plan",
                 version_id=str(version_id),
-                error=str(e),
+                error=error_msg,
                 exc_info=True,
             )
             raise ServiceException(
-                "Failed to retrieve enrollment plan. Please try again.",
+                f"Failed to retrieve enrollment plan. {error_msg}",
                 status_code=500,
-                details={"version_id": str(version_id)},
+                details={"version_id": str(version_id), "error": error_msg},
             ) from e
 
     async def get_enrollment_by_id(self, enrollment_id: uuid.UUID) -> EnrollmentPlan:

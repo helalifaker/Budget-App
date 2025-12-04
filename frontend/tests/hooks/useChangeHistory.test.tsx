@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useChangeHistory, useCellHistory, useRecentChanges } from '@/hooks/api/useChangeHistory'
 import { apiRequest } from '@/lib/api-client'
@@ -139,7 +139,9 @@ describe('useChangeHistory', () => {
 
       // Load more
       vi.mocked(apiRequest).mockResolvedValue([]) // Second page empty
-      result.current.loadMore()
+      await act(async () => {
+        result.current.loadMore()
+      })
 
       // Wait for second page to load
       await waitFor(() => {
@@ -170,7 +172,9 @@ describe('useChangeHistory', () => {
       })
 
       // Reset
-      result.current.reset()
+      await act(async () => {
+        result.current.reset()
+      })
 
       // Verify offset is back to 0
       await waitFor(() => {
@@ -189,7 +193,9 @@ describe('useChangeHistory', () => {
       })
 
       // Jump to offset 200
-      result.current.goToOffset(200)
+      await act(async () => {
+        result.current.goToOffset(200)
+      })
 
       // Verify offset updated
       await waitFor(() => {

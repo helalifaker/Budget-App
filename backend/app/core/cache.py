@@ -485,12 +485,45 @@ async def warm_cache(budget_version_id: str, entities: list[str]) -> None:
         This is a placeholder for Phase 3 when we implement predictive caching.
         Currently does nothing.
     """
-    logger.debug(
-        "cache_warming_not_implemented",
-        budget_version_id=budget_version_id,
-        entities=entities,
-        note="Will be implemented in Phase 3",
-    )
+    if not entities:
+        logger.debug(
+            "cache_warming_skipped",
+            reason="no_entities",
+            budget_version_id=budget_version_id,
+        )
+        return
+
+    if not REDIS_ENABLED:
+        logger.debug(
+            "cache_warming_skipped",
+            reason="redis_disabled",
+            budget_version_id=budget_version_id,
+            entities=entities,
+        )
+        return
+
+    try:
+        client = await get_redis_client()
+    except Exception as exc:  # pragma: no cover - safety fallback
+        logger.warning(
+            "cache_warming_skipped",
+            reason="redis_unavailable",
+            budget_version_id=budget_version_id,
+            error=str(exc),
+        )
+        return
+
+    for entity in entities:
+        cache_prefix = ENTITY_TO_CACHE_PREFIX.get(entity, entity)
+        key = f"warm:{cache_prefix}:{budget_version_id}"
+        # Store a simple marker with short TTL to indicate warm-up attempted
+        await client.set(key, "1", ex=300)
+        logger.info(
+            "cache_warm_marker_set",
+            budget_version_id=budget_version_id,
+            entity=entity,
+            key=key,
+        )
 
 
 async def clear_all_caches() -> int:

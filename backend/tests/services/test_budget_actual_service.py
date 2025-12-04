@@ -161,6 +161,36 @@ class TestImportActuals:
         assert sorted(result["periods_covered"]) == [1, 2, 3]
 
     @pytest.mark.asyncio
+    async def test_import_actuals_triggers_variance_calculation(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """Import should trigger variance calculation for covered periods."""
+        service = BudgetActualService(db_session)
+        odoo_data = [
+            {
+                "fiscal_year": 2025,
+                "period": 4,
+                "account_code": "70110",
+                "amount_sar": 100000.00,
+            },
+        ]
+
+        called_periods: list[int] = []
+
+        async def mock_calc_variance(version_id: uuid.UUID, period: int, account_code=None):
+            called_periods.append(period)
+            return []
+
+        monkeypatch.setattr(service, "calculate_variance", mock_calc_variance)
+
+        await service.import_actuals(test_budget_version.id, odoo_data)
+
+        assert called_periods == [4]
+
+    @pytest.mark.asyncio
     async def test_import_actuals_empty_list(
         self,
         db_session: AsyncSession,

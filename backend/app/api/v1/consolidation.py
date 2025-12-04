@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.cache import CacheInvalidator
 from app.database import get_db
 from app.dependencies.auth import ManagerDep, UserDep
+from app.models.consolidation import ConsolidationCategory, StatementFormat, StatementType
 from app.schemas.consolidation import (
     ApprovebudgetRequest,
     BalanceSheetResponse,
@@ -32,7 +33,6 @@ from app.schemas.consolidation import (
     SubmitForApprovalRequest,
     WorkflowActionResponse,
 )
-from app.models.consolidation import ConsolidationCategory, StatementFormat, StatementType
 from app.services.consolidation_service import ConsolidationService
 from app.services.exceptions import (
     BusinessRuleError,

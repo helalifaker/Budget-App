@@ -152,24 +152,26 @@ function AnalysisDashboardPage() {
                           <span>Résultat net</span>
                           <span
                             className={
-                              summary.net_income >= 0
+                              summary.net_result_sar >= 0
                                 ? 'text-green-700 font-semibold'
                                 : 'text-red-600 font-semibold'
                             }
                           >
-                            {formatCurrency(summary.net_income)}
+                            {formatCurrency(summary.net_result_sar)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-sm">
                           <span>Marge opérationnelle</span>
                           <div className="flex items-center gap-2">
                             <span className="font-semibold">
-                              {summary.operating_margin.toFixed(1)}%
+                              {summary.operating_margin_pct.toFixed(1)}%
                             </span>
                             <Badge
-                              variant={summary.operating_margin >= 5 ? 'default' : 'destructive'}
+                              variant={
+                                summary.operating_margin_pct >= 5 ? 'default' : 'destructive'
+                              }
                             >
-                              {summary.operating_margin >= 5 ? 'Saine' : 'Sous cible'}
+                              {summary.operating_margin_pct >= 5 ? 'Saine' : 'Sous cible'}
                             </Badge>
                           </div>
                         </div>
@@ -178,7 +180,7 @@ function AnalysisDashboardPage() {
                           <span className="font-semibold">
                             {formatCurrency(
                               summary.total_students > 0
-                                ? summary.total_costs / summary.total_students
+                                ? summary.total_costs_sar / summary.total_students
                                 : 0
                             )}
                           </span>

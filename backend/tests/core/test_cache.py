@@ -352,3 +352,12 @@ class TestCachePatternMatching:
             # Should not contain placeholder brackets
             assert "{" not in pattern
             assert "}" not in pattern
+
+
+@pytest.mark.asyncio
+async def test_warm_cache_skips_when_disabled(caplog):
+    """warm_cache should no-op when Redis is disabled (test env)."""
+    caplog.set_level("DEBUG")
+    await warm_cache("version-123", ["enrollment", "dhg_calculations"])
+
+    assert any("cache_warming_skipped" in rec.message for rec in caplog.records)

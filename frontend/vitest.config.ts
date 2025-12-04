@@ -7,12 +7,15 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@tanstack/react-router-devtools': '@tanstack/router-devtools',
     },
   },
   test: {
     environment: 'jsdom',
     setupFiles: ['tests/setup.ts', 'src/setupTests.ts'],
     globals: true,
+    include: ['tests/**/*.{test,spec}.{ts,tsx}', 'src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['node_modules/**', 'tests/e2e/**/*.{ts,tsx}'],
     env: {
       VITE_SUPABASE_URL: 'https://test-project.supabase.co',
       VITE_SUPABASE_ANON_KEY: 'test-anon-key-for-testing',

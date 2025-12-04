@@ -339,6 +339,7 @@ async def test_metrics_endpoint_returns_prometheus_payload() -> None:
     # Should contain our gauges
     assert "app_uptime_seconds" in data["metrics"]
     assert "cache_enabled" in data["metrics"]
+    assert "http_requests_total" in data["metrics"]
 
 
 # =============================================================================

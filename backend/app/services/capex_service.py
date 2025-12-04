@@ -9,11 +9,13 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import logger
 from app.models.planning import CapExPlan
 from app.services.base import BaseService
-from app.services.exceptions import ValidationError
+from app.services.exceptions import ServiceException, ValidationError
 
 
 class CapExService:
@@ -45,10 +47,26 @@ class CapExService:
 
         Returns:
             List of CapExPlan instances
+
+        Raises:
+            ServiceException: If database operation fails
         """
-        return await self.capex_plan_service.get_all(
-            filters={"budget_version_id": version_id}
-        )
+        try:
+            return await self.capex_plan_service.get_all(
+                filters={"budget_version_id": version_id}
+            )
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve CapEx plan",
+                version_id=str(version_id),
+                error=str(e),
+                exc_info=True,
+            )
+            raise ServiceException(
+                "Failed to retrieve CapEx plan. Please try again.",
+                status_code=500,
+                details={"version_id": str(version_id)},
+            ) from e
 
     async def get_capex_by_id(
         self,

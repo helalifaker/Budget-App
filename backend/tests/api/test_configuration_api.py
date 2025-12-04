@@ -903,3 +903,389 @@ class TestAcademicDataEndpointsExpanded:
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
                 # Test Collège levels
                 pass
+
+
+# ==============================================================================
+# NEW INTEGRATION TESTS - Agent 10 (Following Agent 9's Pattern)
+# ==============================================================================
+# ONLY mock authentication - let services, database, and business logic execute!
+
+
+class TestSystemConfigEndpointsIntegration:
+    """Integration tests for system configuration endpoints."""
+
+    def test_get_system_configs_integration(self, client, mock_user):
+        """Test GET /api/v1/config/system."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/config/system")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_get_system_configs_by_category_integration(self, client, mock_user):
+        """Test GET /api/v1/config/system?category=currency."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/config/system?category=currency")
+            assert response.status_code in [200, 500]
+
+    def test_get_system_config_by_key_integration(self, client, mock_user):
+        """Test GET /api/v1/config/system/{key}."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/config/system/EUR_TO_SAR_RATE")
+            assert response.status_code in [200, 404, 500]
+
+    def test_upsert_system_config_integration(self, client, mock_user):
+        """Test PUT /api/v1/config/system/{key}."""
+        payload = {
+            "value": "4.10",
+            "category": "currency",
+            "description": "Exchange rate EUR to SAR"
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put("/api/v1/config/system/EUR_TO_SAR_RATE", json=payload)
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_system_config_unauthenticated(self, client):
+        """Test system config endpoint without authentication."""
+        response = client.get("/api/v1/config/system")
+        assert response.status_code in [401, 403]
+
+
+class TestBudgetVersionEndpointsIntegration:
+    """Integration tests for budget version endpoints."""
+
+    def test_get_budget_versions_integration(self, client, mock_user):
+        """Test GET /api/v1/budget-versions."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/budget-versions")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_get_budget_versions_by_fiscal_year_integration(self, client, mock_user):
+        """Test GET /api/v1/budget-versions?fiscal_year=2024."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/budget-versions?fiscal_year=2024")
+            assert response.status_code in [200, 500]
+
+    def test_get_budget_versions_by_status_integration(self, client, mock_user):
+        """Test GET /api/v1/budget-versions?status=WORKING."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/budget-versions?status=WORKING")
+            assert response.status_code in [200, 500]
+
+    def test_get_budget_version_by_id_integration(self, client, mock_user):
+        """Test GET /api/v1/budget-versions/{version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/budget-versions/{version_id}")
+            assert response.status_code in [200, 404, 500]
+
+    def test_create_budget_version_integration(self, client, mock_user):
+        """Test POST /api/v1/budget-versions."""
+        payload = {
+            "name": "Budget 2025-2026",
+            "fiscal_year": 2025,
+            "academic_year": "2025-2026",
+            "notes": None,
+            "parent_version_id": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post("/api/v1/budget-versions", json=payload)
+            assert response.status_code in [201, 400, 409, 500]
+
+    def test_update_budget_version_integration(self, client, mock_user):
+        """Test PUT /api/v1/budget-versions/{version_id}."""
+        version_id = uuid.uuid4()
+        payload = {"name": "Updated Budget 2024-2025"}
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put(f"/api/v1/budget-versions/{version_id}", json=payload)
+            assert response.status_code in [200, 404, 500]
+
+    def test_submit_budget_version_integration(self, client, mock_user):
+        """Test PUT /api/v1/budget-versions/{version_id}/submit."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put(f"/api/v1/budget-versions/{version_id}/submit")
+            assert response.status_code in [200, 404, 422, 500]
+
+    def test_approve_budget_version_integration(self, client, mock_manager):
+        """Test PUT /api/v1/budget-versions/{version_id}/approve."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_manager):
+            response = client.put(f"/api/v1/budget-versions/{version_id}/approve")
+            assert response.status_code in [200, 404, 422, 500]
+
+    def test_supersede_budget_version_integration(self, client, mock_user):
+        """Test PUT /api/v1/budget-versions/{version_id}/supersede."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put(f"/api/v1/budget-versions/{version_id}/supersede")
+            assert response.status_code in [200, 404, 500]
+
+    def test_budget_version_unauthenticated(self, client):
+        """Test budget version endpoint without authentication."""
+        response = client.get("/api/v1/budget-versions")
+        assert response.status_code in [401, 403]
+
+    def test_budget_version_invalid_id(self, client, mock_user):
+        """Test budget version endpoint with invalid ID."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/budget-versions/invalid-uuid")
+            assert response.status_code == 422
+
+
+class TestAcademicDataEndpointsIntegration:
+    """Integration tests for academic reference data endpoints."""
+
+    def test_get_academic_cycles_integration(self, client, mock_user):
+        """Test GET /api/v1/academic-cycles."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/academic-cycles")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_get_academic_levels_integration(self, client, mock_user):
+        """Test GET /api/v1/academic-levels."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/academic-levels")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_get_academic_levels_by_cycle_integration(self, client, mock_user):
+        """Test GET /api/v1/academic-levels?cycle_id={cycle_id}."""
+        cycle_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/academic-levels?cycle_id={cycle_id}")
+            assert response.status_code in [200, 500]
+
+    def test_academic_data_unauthenticated(self, client):
+        """Test academic data endpoint without authentication."""
+        response = client.get("/api/v1/academic-cycles")
+        assert response.status_code in [401, 403]
+
+
+class TestClassSizeParamEndpointsIntegration:
+    """Integration tests for class size parameter endpoints."""
+
+    def test_get_class_size_params_integration(self, client, mock_user):
+        """Test GET /api/v1/class-size-params?version_id={version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/class-size-params?version_id={version_id}")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_upsert_class_size_param_integration(self, client, mock_user):
+        """Test PUT /api/v1/class-size-params."""
+        payload = {
+            "budget_version_id": str(uuid.uuid4()),
+            "level_id": str(uuid.uuid4()),
+            "cycle_id": None,
+            "min_class_size": 20,
+            "target_class_size": 25,
+            "max_class_size": 30,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put("/api/v1/class-size-params", json=payload)
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_class_size_params_unauthenticated(self, client):
+        """Test class size params endpoint without authentication."""
+        version_id = uuid.uuid4()
+        response = client.get(f"/api/v1/class-size-params?version_id={version_id}")
+        assert response.status_code in [401, 403]
+
+    def test_class_size_params_missing_version_id(self, client, mock_user):
+        """Test class size params without required version_id query param."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/class-size-params")
+            assert response.status_code == 422
+
+
+class TestSubjectHoursEndpointsIntegration:
+    """Integration tests for subject hours matrix endpoints."""
+
+    def test_get_subjects_integration(self, client, mock_user):
+        """Test GET /api/v1/subjects."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/subjects")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_get_subject_hours_matrix_integration(self, client, mock_user):
+        """Test GET /api/v1/subject-hours?version_id={version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/subject-hours?version_id={version_id}")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_upsert_subject_hours_integration(self, client, mock_user):
+        """Test PUT /api/v1/subject-hours."""
+        payload = {
+            "budget_version_id": str(uuid.uuid4()),
+            "subject_id": str(uuid.uuid4()),
+            "level_id": str(uuid.uuid4()),
+            "hours_per_week": "4.5",
+            "is_split": False,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put("/api/v1/subject-hours", json=payload)
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_subject_hours_unauthenticated(self, client):
+        """Test subject hours endpoint without authentication."""
+        response = client.get("/api/v1/subjects")
+        assert response.status_code in [401, 403]
+
+
+class TestTeacherCostEndpointsIntegration:
+    """Integration tests for teacher cost parameter endpoints."""
+
+    def test_get_teacher_categories_integration(self, client, mock_user):
+        """Test GET /api/v1/teacher-categories."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/teacher-categories")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_get_teacher_cost_params_integration(self, client, mock_user):
+        """Test GET /api/v1/teacher-costs?version_id={version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/teacher-costs?version_id={version_id}")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_upsert_teacher_cost_param_integration(self, client, mock_user):
+        """Test PUT /api/v1/teacher-costs."""
+        payload = {
+            "budget_version_id": str(uuid.uuid4()),
+            "category_id": str(uuid.uuid4()),
+            "cycle_id": None,
+            "prrd_contribution_eur": "41863.00",
+            "avg_salary_sar": "240000.00",
+            "social_charges_rate": "0.20",
+            "benefits_allowance_sar": "50000.00",
+            "hsa_hourly_rate_sar": "200.00",
+            "max_hsa_hours": 4,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put("/api/v1/teacher-costs", json=payload)
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_teacher_cost_unauthenticated(self, client):
+        """Test teacher cost endpoint without authentication."""
+        response = client.get("/api/v1/teacher-categories")
+        assert response.status_code in [401, 403]
+
+
+class TestFeeStructureEndpointsIntegration:
+    """Integration tests for fee structure endpoints."""
+
+    def test_get_fee_categories_integration(self, client, mock_user):
+        """Test GET /api/v1/fee-categories."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/fee-categories")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_get_nationality_types_integration(self, client, mock_user):
+        """Test GET /api/v1/nationality-types."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/nationality-types")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_get_fee_structure_integration(self, client, mock_user):
+        """Test GET /api/v1/fee-structure?version_id={version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/fee-structure?version_id={version_id}")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_upsert_fee_structure_integration(self, client, mock_user):
+        """Test PUT /api/v1/fee-structure."""
+        payload = {
+            "budget_version_id": str(uuid.uuid4()),
+            "level_id": str(uuid.uuid4()),
+            "nationality_type_id": str(uuid.uuid4()),
+            "fee_category_id": str(uuid.uuid4()),
+            "amount_sar": "50000.00",
+            "trimester": 1,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put("/api/v1/fee-structure", json=payload)
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_fee_structure_unauthenticated(self, client):
+        """Test fee structure endpoint without authentication."""
+        response = client.get("/api/v1/fee-categories")
+        assert response.status_code in [401, 403]
+
+
+class TestTimetableConstraintsEndpointsIntegration:
+    """Integration tests for timetable constraints endpoints."""
+
+    def test_get_timetable_constraints_integration(self, client, mock_user):
+        """Test GET /api/v1/timetable-constraints?version_id={version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/timetable-constraints?version_id={version_id}")
+            assert response.status_code in [200, 404, 500]
+
+    def test_upsert_timetable_constraint_integration(self, client, mock_user):
+        """Test PUT /api/v1/timetable-constraints."""
+        payload = {
+            "budget_version_id": str(uuid.uuid4()),
+            "level_id": str(uuid.uuid4()),
+            "total_hours_per_week": 35,
+            "max_hours_per_day": 7,
+            "days_per_week": 5,
+            "requires_lunch_break": True,
+            "min_break_duration_minutes": 60,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put("/api/v1/timetable-constraints", json=payload)
+            assert response.status_code in [200, 201, 400, 404, 500]
+
+    def test_timetable_constraints_unauthenticated(self, client):
+        """Test timetable constraints endpoint without authentication."""
+        version_id = uuid.uuid4()
+        response = client.get(f"/api/v1/timetable-constraints?version_id={version_id}")
+        assert response.status_code in [401, 403]

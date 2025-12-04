@@ -14,18 +14,25 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import logger
 from app.models.analysis import (
     ActualData,
     ActualDataSource,
     BudgetVsActual,
     VarianceStatus,
 )
-from app.models.consolidation import BudgetConsolidation
 from app.models.configuration import BudgetVersion, BudgetVersionStatus
+from app.models.consolidation import BudgetConsolidation
 from app.services.base import BaseService
-from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
+from app.services.exceptions import (
+    BusinessRuleError,
+    NotFoundError,
+    ServiceException,
+    ValidationError,
+)
 
 
 class BudgetActualService:
@@ -84,65 +91,89 @@ class BudgetActualService:
         Raises:
             NotFoundError: If budget version not found
             ValidationError: If import data is invalid
+            ServiceException: If database operation fails
         """
-        # Verify budget version exists
-        version_query = select(BudgetVersion).where(BudgetVersion.id == budget_version_id)
-        version_result = await self.session.execute(version_query)
-        version = version_result.scalar_one_or_none()
+        try:
+            # Verify budget version exists
+            version_query = select(BudgetVersion).where(BudgetVersion.id == budget_version_id)
+            version_result = await self.session.execute(version_query)
+            version = version_result.scalar_one_or_none()
 
-        if not version:
-            raise NotFoundError("BudgetVersion", str(budget_version_id))
+            if not version:
+                raise NotFoundError("BudgetVersion", str(budget_version_id))
 
-        # Generate batch ID if not provided
-        if not import_batch_id:
-            import_batch_id = uuid.uuid4()
+            # Generate batch ID if not provided
+            if not import_batch_id:
+                import_batch_id = uuid.uuid4()
 
-        # Import records
-        imported_records = []
-        total_amount = Decimal("0")
-        periods_covered = set()
-        fiscal_year = None
+            # Import records
+            imported_records = []
+            total_amount = Decimal("0")
+            periods_covered = set()
+            fiscal_year = None
 
-        for record in odoo_data:
-            # Validate required fields
-            if not all(k in record for k in ["fiscal_year", "period", "account_code", "amount_sar"]):
-                raise ValidationError("Missing required fields in Odoo data record")
+            for record in odoo_data:
+                # Validate required fields
+                if not all(k in record for k in ["fiscal_year", "period", "account_code", "amount_sar"]):
+                    raise ValidationError("Missing required fields in Odoo data record")
 
-            # Create ActualData record
-            actual_data = ActualData(
-                fiscal_year=record["fiscal_year"],
-                period=record["period"],
-                account_code=record["account_code"],
-                account_name=record.get("account_name"),
-                amount_sar=Decimal(str(record["amount_sar"])),
-                currency=record.get("currency", "SAR"),
-                import_batch_id=import_batch_id,
-                import_date=datetime.utcnow(),
-                source=ActualDataSource.ODOO_IMPORT,
-                transaction_date=record.get("transaction_date"),
-                description=record.get("description"),
-                is_reconciled=False,
+                # Create ActualData record
+                actual_data = ActualData(
+                    fiscal_year=record["fiscal_year"],
+                    period=record["period"],
+                    account_code=record["account_code"],
+                    account_name=record.get("account_name"),
+                    amount_sar=Decimal(str(record["amount_sar"])),
+                    currency=record.get("currency", "SAR"),
+                    import_batch_id=import_batch_id,
+                    import_date=datetime.utcnow(),
+                    source=ActualDataSource.ODOO_IMPORT,
+                    transaction_date=record.get("transaction_date"),
+                    description=record.get("description"),
+                    is_reconciled=False,
+                )
+
+                self.session.add(actual_data)
+                imported_records.append(actual_data)
+
+                # Track summary data
+                total_amount += actual_data.amount_sar
+                periods_covered.add(record["period"])
+                if not fiscal_year:
+                    fiscal_year = record["fiscal_year"]
+
+            await self.session.flush()
+
+            # After import, recalculate variances for all covered periods
+            for period in periods_covered:
+                try:
+                    await self.calculate_variance(budget_version_id, period)
+                except Exception as exc:  # pragma: no cover - safeguard
+                    # Do not fail the whole import if variance calculation fails
+                    raise ValidationError(f"Failed to calculate variance for period {period}: {exc}")
+
+            return {
+                "records_imported": len(imported_records),
+                "import_batch_id": str(import_batch_id),
+                "fiscal_year": fiscal_year,
+                "periods_covered": sorted(list(periods_covered)),
+                "total_amount_sar": float(total_amount),
+                "import_date": datetime.utcnow().isoformat(),
+            }
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to import actuals",
+                version_id=str(budget_version_id),
+                import_batch_id=str(import_batch_id) if import_batch_id else None,
+                record_count=len(odoo_data),
+                error=str(e),
+                exc_info=True,
             )
-
-            self.session.add(actual_data)
-            imported_records.append(actual_data)
-
-            # Track summary data
-            total_amount += actual_data.amount_sar
-            periods_covered.add(record["period"])
-            if not fiscal_year:
-                fiscal_year = record["fiscal_year"]
-
-        await self.session.flush()
-
-        return {
-            "records_imported": len(imported_records),
-            "import_batch_id": str(import_batch_id),
-            "fiscal_year": fiscal_year,
-            "periods_covered": sorted(list(periods_covered)),
-            "total_amount_sar": float(total_amount),
-            "import_date": datetime.utcnow().isoformat(),
-        }
+            raise ServiceException(
+                "Failed to import actuals. Please try again.",
+                status_code=500,
+                details={"version_id": str(budget_version_id)},
+            ) from e
 
     async def calculate_variance(
         self,

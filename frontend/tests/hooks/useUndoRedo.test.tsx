@@ -288,21 +288,20 @@ describe('useUndoRedo', () => {
         expect(result.current.canUndo).toBe(true)
       })
 
-      const undoPromise = act(async () => {
-        await result.current.undo()
+      let undoPromise: Promise<void> | undefined
+      await act(async () => {
+        undoPromise = result.current.undo()
       })
 
-      // Should be loading during operation
       await waitFor(() => {
         expect(result.current.isLoading).toBe(true)
       })
 
-      await undoPromise
-
-      // Should not be loading after completion
-      await waitFor(() => {
-        expect(result.current.isLoading).toBe(false)
+      await act(async () => {
+        await undoPromise
       })
+
+      expect(result.current.isLoading).toBe(false)
     })
   })
 

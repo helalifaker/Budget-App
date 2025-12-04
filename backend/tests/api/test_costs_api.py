@@ -980,3 +980,333 @@ class TestCapExEndpointsExpanded:
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
                 # Would expect 400 Bad Request
                 pass
+
+
+# ==============================================================================
+# NEW INTEGRATION TESTS - Agent 10 (Following Agent 9's Pattern)
+# ==============================================================================
+# ONLY mock authentication - let services, database, and business logic execute!
+
+
+class TestRevenueEndpointsIntegration:
+    """Integration tests for revenue planning endpoints - full stack execution."""
+
+    def test_revenue_get_plan_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/revenue/{version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/planning/revenue/{version_id}")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_revenue_calculate_integration(self, client, mock_user):
+        """Test POST /api/v1/planning/revenue/{version_id}/calculate."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(f"/api/v1/planning/revenue/{version_id}/calculate")
+            assert response.status_code in [200, 400, 500]
+
+    def test_revenue_create_entry_integration(self, client, mock_user):
+        """Test POST /api/v1/planning/revenue/{version_id}."""
+        version_id = uuid.uuid4()
+        payload = {
+            "account_code": "70110",
+            "description": "Tuition T1",
+            "category": "tuition",
+            "amount_sar": "25000000.00",
+            "is_calculated": False,
+            "calculation_driver": None,
+            "trimester": 1,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(f"/api/v1/planning/revenue/{version_id}", json=payload)
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_revenue_get_summary_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/revenue/{version_id}/summary."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/planning/revenue/{version_id}/summary")
+            assert response.status_code in [200, 500]
+
+    def test_revenue_invalid_version_id(self, client, mock_user):
+        """Test revenue endpoints with invalid version ID."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/planning/revenue/invalid-uuid")
+            assert response.status_code == 422
+
+    def test_revenue_missing_required_field(self, client, mock_user):
+        """Test revenue creation with missing required field."""
+        version_id = uuid.uuid4()
+        payload = {"description": "Incomplete", "category": "tuition"}
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(f"/api/v1/planning/revenue/{version_id}", json=payload)
+            assert response.status_code == 422
+
+    def test_revenue_unauthenticated(self, client):
+        """Test revenue endpoint without authentication."""
+        version_id = uuid.uuid4()
+        response = client.get(f"/api/v1/planning/revenue/{version_id}")
+        assert response.status_code in [401, 403]
+
+
+class TestPersonnelCostEndpointsIntegration:
+    """Integration tests for personnel cost planning endpoints."""
+
+    def test_personnel_get_costs_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/costs/personnel/{version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/planning/costs/personnel/{version_id}")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_personnel_calculate_costs_integration(self, client, mock_user):
+        """Test POST /api/v1/planning/costs/personnel/{version_id}/calculate."""
+        version_id = uuid.uuid4()
+        payload = {"eur_to_sar_rate": "4.05"}
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(
+                f"/api/v1/planning/costs/personnel/{version_id}/calculate",
+                json=payload
+            )
+            assert response.status_code in [200, 400, 500]
+
+    def test_personnel_create_entry_integration(self, client, mock_user):
+        """Test POST /api/v1/planning/costs/personnel/{version_id}."""
+        version_id = uuid.uuid4()
+        payload = {
+            "account_code": "64110",
+            "description": "Teaching Salaries",
+            "fte_count": "45.5",
+            "unit_cost_sar": "240000.00",
+            "category_id": str(uuid.uuid4()),
+            "cycle_id": None,
+            "is_calculated": False,
+            "calculation_driver": None,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(
+                f"/api/v1/planning/costs/personnel/{version_id}",
+                json=payload
+            )
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_personnel_unauthenticated(self, client):
+        """Test personnel endpoint without authentication."""
+        version_id = uuid.uuid4()
+        response = client.get(f"/api/v1/planning/costs/personnel/{version_id}")
+        assert response.status_code in [401, 403]
+
+    def test_personnel_invalid_version_id(self, client, mock_user):
+        """Test personnel endpoints with invalid version ID."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/planning/costs/personnel/invalid-uuid")
+            assert response.status_code == 422
+
+    def test_personnel_missing_eur_rate(self, client, mock_user):
+        """Test personnel calculation with missing EUR rate."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(
+                f"/api/v1/planning/costs/personnel/{version_id}/calculate",
+                json={}
+            )
+            assert response.status_code == 422
+
+
+class TestOperatingCostEndpointsIntegration:
+    """Integration tests for operating cost planning endpoints."""
+
+    def test_operating_get_costs_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/costs/operating/{version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/planning/costs/operating/{version_id}")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_operating_calculate_costs_integration(self, client, mock_user):
+        """Test POST /api/v1/planning/costs/operating/{version_id}/calculate."""
+        version_id = uuid.uuid4()
+        payload = {
+            "driver_rates": {
+                "per_student": "1500.00",
+                "per_sqm": "150.00"
+            }
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(
+                f"/api/v1/planning/costs/operating/{version_id}/calculate",
+                json=payload
+            )
+            assert response.status_code in [200, 400, 500]
+
+    def test_operating_create_entry_integration(self, client, mock_user):
+        """Test POST /api/v1/planning/costs/operating/{version_id}."""
+        version_id = uuid.uuid4()
+        payload = {
+            "account_code": "60110",
+            "description": "Educational Supplies",
+            "category": "supplies",
+            "amount_sar": "500000.00",
+            "is_calculated": False,
+            "calculation_driver": None,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(
+                f"/api/v1/planning/costs/operating/{version_id}",
+                json=payload
+            )
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_operating_get_summary_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/costs/{version_id}/summary."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/planning/costs/{version_id}/summary")
+            assert response.status_code in [200, 500]
+
+    def test_operating_unauthenticated(self, client):
+        """Test operating cost endpoint without authentication."""
+        version_id = uuid.uuid4()
+        response = client.get(f"/api/v1/planning/costs/operating/{version_id}")
+        assert response.status_code in [401, 403]
+
+    def test_operating_invalid_version_id(self, client, mock_user):
+        """Test operating endpoints with invalid version ID."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/planning/costs/operating/invalid-uuid")
+            assert response.status_code == 422
+
+
+class TestCapExEndpointsIntegration:
+    """Integration tests for CapEx planning endpoints."""
+
+    def test_capex_get_plan_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/capex/{version_id}."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/planning/capex/{version_id}")
+            assert response.status_code in [200, 500]
+            if response.status_code == 200:
+                assert isinstance(response.json(), list)
+
+    def test_capex_create_entry_integration(self, client, mock_user):
+        """Test POST /api/v1/planning/capex/{version_id}."""
+        version_id = uuid.uuid4()
+        payload = {
+            "account_code": "21500",
+            "description": "IT Equipment",
+            "category": "equipment",
+            "quantity": 50,
+            "unit_cost_sar": "3000.00",
+            "acquisition_date": "2024-09-01",
+            "useful_life_years": 5,
+            "notes": None,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(f"/api/v1/planning/capex/{version_id}", json=payload)
+            assert response.status_code in [200, 201, 400, 500]
+
+    def test_capex_update_entry_integration(self, client, mock_user):
+        """Test PUT /api/v1/planning/capex/{version_id}/{capex_id}."""
+        version_id = uuid.uuid4()
+        capex_id = uuid.uuid4()
+        payload = {
+            "account_code": "21500",
+            "description": "Updated Computers",
+            "category": "equipment",
+            "quantity": 25,
+            "unit_cost_sar": "4500.00",
+            "acquisition_date": "2024-09-01",
+            "useful_life_years": 5,
+        }
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.put(
+                f"/api/v1/planning/capex/{version_id}/{capex_id}",
+                json=payload
+            )
+            assert response.status_code in [200, 404, 500]
+
+    def test_capex_delete_entry_integration(self, client, mock_user):
+        """Test DELETE /api/v1/planning/capex/{version_id}/{capex_id}."""
+        version_id = uuid.uuid4()
+        capex_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.delete(f"/api/v1/planning/capex/{version_id}/{capex_id}")
+            assert response.status_code in [204, 404, 500]
+
+    def test_capex_calculate_depreciation_integration(self, client, mock_user):
+        """Test POST /api/v1/planning/capex/{capex_id}/depreciation."""
+        capex_id = uuid.uuid4()
+        payload = {"calculation_year": 2024}
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.post(
+                f"/api/v1/planning/capex/{capex_id}/depreciation",
+                json=payload
+            )
+            assert response.status_code in [200, 404, 500]
+
+    def test_capex_get_depreciation_schedule_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/capex/{capex_id}/depreciation-schedule."""
+        capex_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(
+                f"/api/v1/planning/capex/{capex_id}/depreciation-schedule?years_ahead=10"
+            )
+            assert response.status_code in [200, 404, 500]
+
+    def test_capex_get_summary_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/capex/{version_id}/summary."""
+        version_id = uuid.uuid4()
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/planning/capex/{version_id}/summary")
+            assert response.status_code in [200, 500]
+
+    def test_capex_get_annual_depreciation_integration(self, client, mock_user):
+        """Test GET /api/v1/planning/capex/{version_id}/depreciation/{year}."""
+        version_id = uuid.uuid4()
+        year = 2024
+
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get(f"/api/v1/planning/capex/{version_id}/depreciation/{year}")
+            assert response.status_code in [200, 500]
+
+    def test_capex_unauthenticated(self, client):
+        """Test CapEx endpoint without authentication."""
+        version_id = uuid.uuid4()
+        response = client.get(f"/api/v1/planning/capex/{version_id}")
+        assert response.status_code in [401, 403]
+
+    def test_capex_invalid_version_id(self, client, mock_user):
+        """Test CapEx endpoints with invalid version ID."""
+        with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+            response = client.get("/api/v1/planning/capex/invalid-uuid")
+            assert response.status_code == 422

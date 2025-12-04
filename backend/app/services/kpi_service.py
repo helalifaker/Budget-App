@@ -18,7 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.cache import cache_kpi_dashboard
-from app.models.configuration import AcademicLevel
+from app.models.analysis import KPICategory, KPIDefinition, KPIValue
+from app.models.configuration import AcademicLevel, BudgetVersion
 from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
 from app.models.planning import (
     ClassStructure,
@@ -26,8 +27,6 @@ from app.models.planning import (
     DHGTeacherRequirement,
     EnrollmentPlan,
 )
-from app.models.analysis import KPICategory, KPIDefinition, KPIValue
-from app.models.configuration import BudgetVersion
 from app.services.base import BaseService
 from app.services.exceptions import NotFoundError, ValidationError
 

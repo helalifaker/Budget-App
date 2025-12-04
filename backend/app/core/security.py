@@ -204,7 +204,7 @@ def verify_supabase_jwt(token: str) -> dict[str, Any] | None:
         return payload
     except JWTError as e:
         logger.error(
-            f"❌ JWT verification failed: {repr(e)}. "
+            f"❌ JWT verification failed: {e!r}. "
             f"Expected issuer: {issuer}, Expected audience: {audience}"
         )
         logger.debug(f"Token preview (first 50 chars): {token[:50]}...")

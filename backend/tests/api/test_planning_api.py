@@ -1059,7 +1059,8 @@ class TestEnrollmentAPIIntegration:
                 f"/api/v1/planning/enrollment/{test_budget_version.id}"
             )
 
-        assert response.status_code == 200
+        error_detail = response.json().get("detail", "No detail") if response.status_code != 200 and response.content else None
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}. Detail: {error_detail}"
         data = response.json()
         assert isinstance(data, list)
         assert len(data) >= len(test_enrollment_data)
