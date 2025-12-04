@@ -396,47 +396,99 @@ class DashboardService:
         if not version:
             raise NotFoundError("BudgetVersion", str(budget_version_id))
 
-        # Query revenue data from RevenueConsolidation
+        # Pull revenue consolidation rows
+        revenue_query = (
+            select(BudgetConsolidation)
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.deleted_at.is_(None),
+                    BudgetConsolidation.is_revenue.is_(True),
+                )
+            )
+        )
+        revenue_rows = (await self.session.execute(revenue_query)).scalars().all()
+
+        total_revenue = sum((Decimal(str(row.amount_sar)) for row in revenue_rows), Decimal("0"))
+
         chart_data = {
             "breakdown_by": breakdown_by,
             "labels": [],
             "values": [],
             "percentages": [],
             "chart_type": "pie",
-            "total": 0.0,
+            "total": float(total_revenue),
         }
 
         if breakdown_by == "fee_type":
-            chart_data["labels"] = [
-                "Tuition Fees",
-                "Enrollment Fee (DAI)",
-                "Registration Fee",
-                "Transport Fees",
-                "Meal Fees",
-                "Other Fees",
-            ]
-            chart_data["values"] = [0.0] * 6
+            # Map consolidation categories to fee buckets
+            fee_buckets = {
+                "Tuition Fees": Decimal("0"),
+                "Enrollment Fee (DAI)": Decimal("0"),
+                "Registration Fee": Decimal("0"),
+                "Transport Fees": Decimal("0"),
+                "Meal Fees": Decimal("0"),
+                "Other Fees": Decimal("0"),
+            }
+            for row in revenue_rows:
+                if row.consolidation_category == ConsolidationCategory.REVENUE_TUITION:
+                    fee_buckets["Tuition Fees"] += Decimal(str(row.amount_sar))
+                elif row.consolidation_category == ConsolidationCategory.REVENUE_FEES:
+                    fee_buckets["Other Fees"] += Decimal(str(row.amount_sar))
+                else:
+                    fee_buckets["Other Fees"] += Decimal(str(row.amount_sar))
+
+            chart_data["labels"] = list(fee_buckets.keys())
+            chart_data["values"] = [float(v) for v in fee_buckets.values()]
             chart_data["chart_type"] = "pie"
 
         elif breakdown_by == "nationality":
+            # No nationality dimension in consolidation; surface a best-effort split
             chart_data["labels"] = ["French", "Saudi", "Other"]
-            chart_data["values"] = [0.0, 0.0, 0.0]
+            chart_data["values"] = [0.0, 0.0, float(total_revenue)]
             chart_data["chart_type"] = "pie"
 
         elif breakdown_by == "trimester":
+            # Apply 40/30/30 revenue recognition across academic trimesters
+            t1 = total_revenue * Decimal("0.40")
+            t2 = total_revenue * Decimal("0.30")
+            t3 = total_revenue * Decimal("0.30")
             chart_data["labels"] = ["T1 (40%)", "T2 (30%)", "T3 (30%)"]
-            chart_data["values"] = [0.0, 0.0, 0.0]
+            chart_data["values"] = [float(t1), float(t2), float(t3)]
             chart_data["chart_type"] = "pie"
 
         elif breakdown_by == "period":
-            chart_data["chart_type"] = "line"
-            chart_data["labels"] = [
+            # Calendar months; revenue allocated per trimester weighting (0% in Jul-Aug)
+            monthly_labels = [
                 "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
             ]
-            chart_data["values"] = [0.0] * 12
+            monthly_values: list[float] = []
+            for idx in range(1, 13):
+                weight = self._revenue_monthly_weight(idx)
+                monthly_values.append(float(total_revenue * weight))
+
+            chart_data["labels"] = monthly_labels
+            chart_data["values"] = monthly_values
+            chart_data["chart_type"] = "line"
+
+        chart_data["percentages"] = (
+            [
+                round((v / chart_data["total"] * 100), 2) if chart_data["total"] else 0.0
+                for v in chart_data["values"]
+            ]
+            if chart_data["values"]
+            else []
+        )
 
         return chart_data
+
+    @staticmethod
+    def _revenue_monthly_weight(month: int) -> Decimal:
+        """Weight revenue by academic trimeters (40/30/30) mapped to calendar months."""
+        if month in (1, 2, 3, 4, 5, 6, 9, 10, 11, 12):
+            return Decimal("0.10")
+        return Decimal("0.00")
 
     async def get_alerts(
         self,

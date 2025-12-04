@@ -367,12 +367,12 @@ class TestCalculateVariance:
 
         assert len(result) == 1
         variance = result[0]
-        # monthly budget 100k, actual 110k, revenue variance = actual - budget
-        assert variance.variance_sar == Decimal("10000.00")
-        # ytd_budget = 200k, ytd_actual = 200k -> ytd variance 0
-        assert variance.ytd_budget_sar == Decimal("200000.00")
+        # monthly budget 120k (trimester weighting), actual 110k -> variance -10k
+        assert variance.variance_sar == Decimal("-10000.00")
+        # ytd_budget = 240k, ytd_actual = 200k -> ytd variance -40k
+        assert variance.ytd_budget_sar == Decimal("240000.00")
         assert variance.ytd_actual_sar == Decimal("200000.00")
-        assert variance.ytd_variance_sar == Decimal("0.00")
+        assert variance.ytd_variance_sar == Decimal("-40000.00")
 
 
 class TestGetVarianceReport:

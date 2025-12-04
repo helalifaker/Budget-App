@@ -226,8 +226,12 @@ class BudgetActualService:
         for actual in actuals:
             # Get annual budget amount for this account (default 0 if missing)
             budget_amount = budget_amounts.get(actual.account_code, Decimal("0"))
-            # Allocate a simple monthly budget (12-month straight-line) for variance
-            monthly_budget = budget_amount / Decimal("12")
+            # Allocate a monthly budget based on account type (revenue uses trimester weighting)
+            monthly_budget = self._monthly_budget_allocation(
+                account_code=actual.account_code,
+                annual_budget=budget_amount,
+                month=actual.period,
+            )
 
             # Calculate variance
             variance_sar = self._calculate_variance_amount(
@@ -254,7 +258,11 @@ class BudgetActualService:
             )
 
             # Calculate YTD amounts
-            ytd_budget = monthly_budget * Decimal(str(period))
+            ytd_budget = self._cumulative_budget_allocation(
+                account_code=actual.account_code,
+                annual_budget=budget_amount,
+                through_month=period,
+            )
             ytd_actual = await self._get_ytd_actual(
                 fiscal_year=version.fiscal_year,
                 account_code=actual.account_code,
@@ -549,6 +557,52 @@ class BudgetActualService:
         records = result.scalars().all()
         total = sum((Decimal(str(r.amount_sar)) for r in records), Decimal("0"))
         return total
+
+    def _monthly_budget_allocation(
+        self,
+        account_code: str,
+        annual_budget: Decimal,
+        month: int,
+    ) -> Decimal:
+        """
+        Allocate a monthly budget based on account type.
+
+        Revenue (7xxxx) follows trimester recognition (40/30/30 across Sep-Dec, Jan-Mar, Apr-Jun).
+        Expenses default to straight-line monthly allocation.
+        """
+        weight = self._monthly_weight(account_code, month)
+        return annual_budget * weight
+
+    def _cumulative_budget_allocation(
+        self,
+        account_code: str,
+        annual_budget: Decimal,
+        through_month: int,
+    ) -> Decimal:
+        """
+        Allocate year-to-date budget using the same weighting as monthly allocation.
+        """
+        cumulative_weight = sum(
+            self._monthly_weight(account_code, month)
+            for month in range(1, through_month + 1)
+        )
+        return annual_budget * cumulative_weight
+
+    @staticmethod
+    def _monthly_weight(account_code: str, month: int) -> Decimal:
+        """
+        Determine monthly weight for a given account/month.
+
+        - Revenue (7xxxx): 40% Sep-Dec (10% each), 30% Jan-Mar (10% each), 30% Apr-Jun (10% each), Jul-Aug 0%
+        - Expenses (6xxxx and others): evenly across 12 months
+        """
+        if account_code.startswith("7"):
+            if month in (1, 2, 3, 4, 5, 6, 9, 10, 11, 12):
+                return Decimal("0.10")
+            return Decimal("0.00")  # Jul-Aug carry no academic revenue
+
+        # Default straight-line for non-revenue accounts
+        return Decimal("1") / Decimal("12")
 
     def _calculate_variance_amount(
         self,

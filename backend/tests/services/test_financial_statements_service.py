@@ -490,9 +490,10 @@ class TestGetPeriodTotals:
         assert "total_expenses" in result
         assert "operating_result" in result
         assert "net_result" in result
-        assert result["total_revenue"] == Decimal("2000000.00")
-        assert result["total_expenses"] == Decimal("1500000.00")
-        assert result["operating_result"] == Decimal("500000.00")
+        # Revenue uses 40/30/30 (p1 = 60%), expenses straight-line (p1 = 50%)
+        assert result["total_revenue"] == Decimal("1200000.00")
+        assert result["total_expenses"] == Decimal("750000.00")
+        assert result["operating_result"] == Decimal("450000.00")
 
     @pytest.mark.asyncio
     async def test_get_period_totals_summer(

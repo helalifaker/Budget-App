@@ -82,17 +82,6 @@ def create_app() -> FastAPI:
         print(f"  Expected issuer: {supabase_url.rstrip('/')}/auth/v1")
     print("=" * 60)
 
-    # RBAC middleware (enforces role-based access control)
-    app.add_middleware(RBACMiddleware)
-
-    # Authentication middleware (validates JWT tokens)
-    app.add_middleware(AuthenticationMiddleware)
-
-    # Rate limiting middleware (protects against abuse)
-    # Only enable in production or when explicitly configured
-    if os.getenv("ENABLE_RATE_LIMITING", "true").lower() == "true":
-        app.add_middleware(RateLimitMiddleware)
-
     # CORS middleware should wrap authentication so preflight checks hit it first
     # Get allowed origins from environment variable, with sensible defaults
     allowed_origins_str = os.getenv(
@@ -117,6 +106,17 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # RBAC middleware (enforces role-based access control)
+    app.add_middleware(RBACMiddleware)
+
+    # Authentication middleware (validates JWT tokens)
+    app.add_middleware(AuthenticationMiddleware)
+
+    # Rate limiting middleware (protects against abuse)
+    # Only enable in production or when explicitly configured
+    if os.getenv("ENABLE_RATE_LIMITING", "true").lower() == "true":
+        app.add_middleware(RateLimitMiddleware)
 
     # Metrics middleware (increments Prometheus counter)
     app.add_middleware(RequestMetricsMiddleware)

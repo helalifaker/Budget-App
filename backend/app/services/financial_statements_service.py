@@ -197,6 +197,23 @@ class FinancialStatementsService:
                 field="period",
             )
 
+        # Period weighting:
+        # - Revenue follows trimester recognition (T1 40% Sep-Dec, T2 30% Jan-Mar, T3 30% Apr-Jun)
+        #   → p1 (Jan-Jun) = 60%, summer (Jul-Aug) = 0%, p2 (Sep-Dec) = 40%
+        # - Expenses (non-revenue) are assumed evenly distributed across months
+        revenue_weights = {
+            "p1": Decimal("0.60"),
+            "summer": Decimal("0.00"),
+            "p2": Decimal("0.40"),
+            "annual": Decimal("1.00"),
+        }
+        expense_weights = {
+            "p1": Decimal("0.50"),  # 6/12 months
+            "summer": Decimal(2) / Decimal(12),  # Jul-Aug
+            "p2": Decimal("0.3333333333"),  # 4/12 months
+            "annual": Decimal("1.00"),
+        }
+
         # Get all consolidation entries
         query = (
             select(BudgetConsolidation)
@@ -216,9 +233,9 @@ class FinancialStatementsService:
 
         for item in consolidations:
             if item.is_revenue:
-                total_revenue += item.amount_sar
+                total_revenue += item.amount_sar * revenue_weights[period]
             else:
-                total_expenses += item.amount_sar
+                total_expenses += item.amount_sar * expense_weights[period]
 
         operating_result = total_revenue - total_expenses
         net_result = operating_result  # Simplified - no financial income/expenses
