@@ -94,16 +94,18 @@ const ConfigurationVersionsRoute = ConfigurationVersionsRouteImport.update({
   path: '/configuration/versions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfigurationTeacherCostsRoute = ConfigurationTeacherCostsRouteImport.update({
-  id: '/configuration/teacher-costs',
-  path: '/configuration/teacher-costs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConfigurationSubjectHoursRoute = ConfigurationSubjectHoursRouteImport.update({
-  id: '/configuration/subject-hours',
-  path: '/configuration/subject-hours',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const ConfigurationTeacherCostsRoute =
+  ConfigurationTeacherCostsRouteImport.update({
+    id: '/configuration/teacher-costs',
+    path: '/configuration/teacher-costs',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ConfigurationSubjectHoursRoute =
+  ConfigurationSubjectHoursRouteImport.update({
+    id: '/configuration/subject-hours',
+    path: '/configuration/subject-hours',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ConfigurationFeesRoute = ConfigurationFeesRouteImport.update({
   id: '/configuration/fees',
   path: '/configuration/fees',
