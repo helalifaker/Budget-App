@@ -491,6 +491,7 @@ class FinancialStatementLine(BaseModel):
     statement: Mapped[FinancialStatement] = relationship(
         "FinancialStatement",
         lazy="selectin",
+        overlaps="lines",
     )
 
     def __repr__(self) -> str:

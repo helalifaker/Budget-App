@@ -4,11 +4,15 @@ import * as Sentry from '@sentry/react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from 'sonner'
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
 import { AuthProvider } from './contexts/AuthProvider'
 import { queryClient } from './lib/query-client'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import App from './App'
 import './index.css'
+
+// Register AG Grid modules (required for AG Grid v34+)
+ModuleRegistry.registerModules([AllCommunityModule])
 
 // Initialize Sentry BEFORE React rendering
 if (import.meta.env.VITE_SENTRY_DSN_FRONTEND) {

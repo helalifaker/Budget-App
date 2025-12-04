@@ -14,11 +14,16 @@ from decimal import Decimal
 import pytest
 from app.models.configuration import BudgetVersion
 from app.models.strategic import (
+    ProjectionCategory,
     ScenarioType,
 )
 from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
 from app.services.strategic_service import StrategicService
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.consolidation import (
+    BudgetConsolidation,
+    ConsolidationCategory,
+)
 
 # Skip tests for methods not yet implemented
 SKIP_NOT_IMPLEMENTED = pytest.mark.skip(
@@ -241,6 +246,115 @@ class TestProjectionCalculation:
         )
 
         assert result is not None
+
+    @pytest.mark.asyncio
+    async def test_recalculate_projections_uses_base_version_totals(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+    ):
+        """Recalculation should use base budget version aggregates and reflect new growth."""
+        revenue_amount = Decimal("100000.00")
+        personnel_amount = Decimal("60000.00")
+        operating_amount = Decimal("30000.00")
+
+        db_session.add_all(
+            [
+                BudgetConsolidation(
+                    id=uuid.uuid4(),
+                    budget_version_id=test_budget_version.id,
+                    account_code="70110",
+                    account_name="Tuition",
+                    consolidation_category=ConsolidationCategory.REVENUE_TUITION,
+                    is_revenue=True,
+                    amount_sar=revenue_amount,
+                    source_table="revenue_plans",
+                    source_count=1,
+                    is_calculated=True,
+                ),
+                BudgetConsolidation(
+                    id=uuid.uuid4(),
+                    budget_version_id=test_budget_version.id,
+                    account_code="64110",
+                    account_name="Teaching Salaries",
+                    consolidation_category=ConsolidationCategory.PERSONNEL_TEACHING,
+                    is_revenue=False,
+                    amount_sar=personnel_amount,
+                    source_table="personnel_cost_plans",
+                    source_count=1,
+                    is_calculated=True,
+                ),
+                BudgetConsolidation(
+                    id=uuid.uuid4(),
+                    budget_version_id=test_budget_version.id,
+                    account_code="60610",
+                    account_name="Supplies",
+                    consolidation_category=ConsolidationCategory.OPERATING_SUPPLIES,
+                    is_revenue=False,
+                    amount_sar=operating_amount,
+                    source_table="operating_cost_plans",
+                    source_count=1,
+                    is_calculated=True,
+                ),
+            ]
+        )
+        await db_session.flush()
+
+        service = StrategicService(db_session)
+        plan = await service.create_strategic_plan(
+            base_version_id=test_budget_version.id,
+            plan_name="Recalc Test Plan",
+        )
+
+        scenario = next(
+            s for s in plan.scenarios if s.scenario_type == ScenarioType.BASE_CASE
+        )
+
+        # Trigger recalculation with higher enrollment growth
+        updated = await service.update_assumptions(
+            scenario_id=scenario.id,
+            enrollment_growth_rate=Decimal("0.10"),
+            recalculate_projections=True,
+        )
+
+        refreshed = await service.scenario_service.get_by_id(updated.id)
+        projections = refreshed.projections
+
+        assert len(projections) == 15  # 3 categories x 5 years
+
+        revenue_year1 = next(
+            p
+            for p in projections
+            if p.year == 1 and p.category == ProjectionCategory.REVENUE
+        )
+        revenue_year2 = next(
+            p
+            for p in projections
+            if p.year == 2 and p.category == ProjectionCategory.REVENUE
+        )
+        personnel_year1 = next(
+            p
+            for p in projections
+            if p.year == 1 and p.category == ProjectionCategory.PERSONNEL_COSTS
+        )
+        personnel_year2 = next(
+            p
+            for p in projections
+            if p.year == 2 and p.category == ProjectionCategory.PERSONNEL_COSTS
+        )
+
+        assert revenue_year1.amount_sar == revenue_amount
+        expected_revenue_year2 = revenue_amount * (
+            (Decimal("1") + updated.enrollment_growth_rate)
+            * (Decimal("1") + updated.fee_increase_rate)
+        )
+        assert revenue_year2.amount_sar == expected_revenue_year2
+
+        assert personnel_year1.amount_sar == personnel_amount
+        expected_personnel_year2 = personnel_amount * (
+            Decimal("1") + updated.salary_inflation_rate
+        )
+        assert personnel_year2.amount_sar == expected_personnel_year2
 
 
 class TestStrategicInitiatives:

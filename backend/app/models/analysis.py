@@ -663,6 +663,7 @@ class DashboardWidget(BaseModel):
     dashboard_config: Mapped[DashboardConfig] = relationship(
         "DashboardConfig",
         lazy="selectin",
+        overlaps="widgets",
     )
 
     def __repr__(self) -> str:

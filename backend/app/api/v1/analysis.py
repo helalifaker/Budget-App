@@ -365,6 +365,20 @@ async def get_recent_activity(
 
 
 @router.get(
+    "/activity",
+    response_model=list[ActivityLogEntry],
+)
+async def get_recent_activity_no_version(
+    limit: int = Query(10, ge=1, le=100, description="Maximum activities to return"),
+    current_user: UserDep = None,
+    dashboard_service: DashboardService = Depends(get_dashboard_service),
+):
+    """Get recent activity log (without version_id)."""
+    activities = await dashboard_service.get_recent_activity(None, limit)
+    return [ActivityLogEntry(**activity) for activity in activities]
+
+
+@router.get(
     "/dashboard/compare",
     response_model=ComparisonResponse,
 )

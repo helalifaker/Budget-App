@@ -35,6 +35,20 @@ export const BudgetVersionSchema = z.object({
 
 export type BudgetVersion = z.infer<typeof BudgetVersionSchema>
 
+// System Configuration
+export const SystemConfigSchema = z.object({
+  id: z.string().uuid(),
+  key: z.string(),
+  value: z.record(z.string(), z.any()), // JSONB stored as key-value object
+  category: z.string(),
+  description: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export type SystemConfig = z.infer<typeof SystemConfigSchema>
+
 // Enrollment
 export const EnrollmentSchema = z.object({
   id: z.string().uuid(),
@@ -288,7 +302,7 @@ export const SubjectSchema = z.object({
 
 export type Subject = z.infer<typeof SubjectSchema>
 
-// Teacher Category
+// Teacher Categories
 export const TeacherCategorySchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
@@ -306,18 +320,35 @@ export const TeacherCostParamSchema = z.object({
   budget_version_id: z.string().uuid(),
   category_id: z.string().uuid(),
   cycle_id: z.string().uuid().nullable(),
-  prrd_contribution_eur: z.number().min(0).nullable(),
-  avg_salary_sar: z.number().min(0).nullable(),
-  social_charges_rate: z.number().min(0).max(1),
-  benefits_allowance_sar: z.number().min(0),
-  hsa_hourly_rate_sar: z.number().min(0),
-  max_hsa_hours: z.number().min(0).max(10),
+  prrd_contribution_eur: z.number().nullable(),
+  avg_salary_sar: z.number().nullable(),
+  social_charges_rate: z.number(),
+  benefits_allowance_sar: z.number(),
+  hsa_hourly_rate_sar: z.number(),
+  max_hsa_hours: z.number(),
   notes: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 })
 
 export type TeacherCostParam = z.infer<typeof TeacherCostParamSchema>
+
+// Timetable Constraints
+export const TimetableConstraintSchema = z.object({
+  id: z.string().uuid(),
+  budget_version_id: z.string().uuid(),
+  level_id: z.string().uuid(),
+  total_hours_per_week: z.number(),
+  max_hours_per_day: z.number(),
+  days_per_week: z.number(),
+  requires_lunch_break: z.boolean(),
+  min_break_duration_minutes: z.number(),
+  notes: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export type TimetableConstraint = z.infer<typeof TimetableConstraintSchema>
 
 // Consolidation
 export const ConsolidationStatusSchema = z.object({
@@ -458,13 +489,20 @@ export type StrategicPlan = z.infer<typeof StrategicPlanSchema>
 
 // Dashboard
 export const DashboardSummarySchema = z.object({
+  version_id: z.string(),
+  version_name: z.string(),
+  fiscal_year: z.number(),
+  status: z.string(),
+  total_revenue_sar: z.number(),
+  total_costs_sar: z.number(),
+  net_result_sar: z.number(),
+  operating_margin_pct: z.number(),
   total_students: z.number(),
   total_classes: z.number(),
-  total_teachers: z.number(),
-  total_revenue: z.number(),
-  total_costs: z.number(),
-  net_income: z.number(),
-  operating_margin: z.number(),
+  total_teachers_fte: z.number(),
+  student_teacher_ratio: z.number(),
+  capacity_utilization_pct: z.number(),
+  last_updated: z.string(),
 })
 
 export type DashboardSummary = z.infer<typeof DashboardSummarySchema>

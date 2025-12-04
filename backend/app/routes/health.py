@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 import httpx
+from prometheus_client import CollectorRegistry, Gauge, generate_latest
+from app.core.cache import REDIS_ENABLED
 from app.core.logging import logger
 from app.database import get_db
 from fastapi import APIRouter, Depends, status
@@ -161,33 +163,41 @@ async def readiness(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
 @router.get("/health/metrics")
 async def metrics() -> dict[str, Any]:
     """
-    Prometheus metrics endpoint (placeholder).
+    Prometheus metrics snapshot (basic gauges).
 
-    Will expose application metrics in Prometheus format in Phase 2:
-    - Request counts and latencies
-    - Database connection pool stats
-    - Cache hit/miss rates
-    - Business metrics (active budgets, calculations/sec)
-
-    Returns:
-        dict: Placeholder response with planned metrics list
-
-    Status Codes:
-        200: Metrics endpoint available (not yet implemented)
-
-    Note:
-        Prometheus metrics will be implemented in Phase 2 using prometheus-client library.
+    Returns a plaintext metrics payload plus metadata; can be scraped
+    or displayed in JSON for quick debugging. Designed to be extended
+    later by wiring middleware counters.
     """
+    registry = CollectorRegistry()
+
+    uptime_gauge = Gauge(
+        "app_uptime_seconds",
+        "Application uptime in seconds (set at request time)",
+        registry=registry,
+    )
+    uptime_gauge.set(time.time())
+
+    cache_enabled_gauge = Gauge(
+        "cache_enabled",
+        "Redis cache enabled flag (1 = enabled, 0 = disabled)",
+        registry=registry,
+    )
+    cache_enabled_gauge.set(1 if REDIS_ENABLED else 0)
+
+    http_requests_total = Gauge(
+        "http_requests_total",
+        "Total HTTP requests handled (placeholder until middleware increments)",
+        registry=registry,
+    )
+    http_requests_total.set(0)
+
+    metrics_payload = generate_latest(registry).decode("utf-8")
+
     return {
-        "status": "not_implemented",
-        "note": "Prometheus metrics will be implemented in Phase 2",
-        "planned_metrics": [
-            "http_requests_total",
-            "http_request_duration_seconds",
-            "db_connections_active",
-            "cache_hits_total",
-            "budget_calculations_total",
-        ],
+        "status": "ok",
+        "content_type": "text/plain; version=0.0.4",
+        "metrics": metrics_payload,
     }
 
 

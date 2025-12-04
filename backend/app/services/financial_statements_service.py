@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 from app.models.configuration import BudgetVersion
 from app.models.consolidation import (
     BudgetConsolidation,
+    ConsolidationCategory,
     FinancialStatement,
     FinancialStatementLine,
     LineType,
@@ -637,10 +638,49 @@ class FinancialStatementsService:
         self,
         budget_version_id: uuid.UUID,
     ) -> list[dict]:
-        """Calculate cash flow statement lines (placeholder)."""
+        """Calculate cash flow statement lines using consolidation data."""
+        capex_categories = {
+            ConsolidationCategory.CAPEX_EQUIPMENT,
+            ConsolidationCategory.CAPEX_IT,
+            ConsolidationCategory.CAPEX_FURNITURE,
+            ConsolidationCategory.CAPEX_BUILDING,
+            ConsolidationCategory.CAPEX_SOFTWARE,
+        }
+
+        query = (
+            select(BudgetConsolidation)
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.deleted_at.is_(None),
+                )
+            )
+            .order_by(BudgetConsolidation.account_code)
+        )
+        result = await self.session.execute(query)
+        consolidations = result.scalars().all()
+
+        operating_entries: list[BudgetConsolidation] = []
+        investing_entries: list[BudgetConsolidation] = []
+
+        for item in consolidations:
+            if item.consolidation_category in capex_categories:
+                investing_entries.append(item)
+            else:
+                operating_entries.append(item)
+
+        def _signed_amount(entry: BudgetConsolidation) -> Decimal:
+            return entry.amount_sar if entry.is_revenue else -entry.amount_sar
+
+        operating_total = sum((_signed_amount(e) for e in operating_entries), start=Decimal("0.00"))
+        investing_total = sum((_signed_amount(e) for e in investing_entries), start=Decimal("0.00"))
+        financing_total = Decimal("0.00")  # No financing data yet
+        net_change = operating_total + investing_total + financing_total
+
         lines = []
         line_number = 1
 
+        # Header
         lines.append({
             "line_number": line_number,
             "line_type": LineType.SECTION_HEADER,
@@ -650,6 +690,110 @@ class FinancialStatementsService:
             "amount_sar": None,
             "is_bold": True,
             "is_underlined": False,
+        })
+        line_number += 1
+
+        # Operating activities
+        lines.append({
+            "line_number": line_number,
+            "line_type": LineType.ACCOUNT_GROUP,
+            "indent_level": 1,
+            "line_code": None,
+            "line_description": "Flux de trésorerie liés aux activités opérationnelles",
+            "amount_sar": None,
+            "is_bold": True,
+            "is_underlined": False,
+        })
+        line_number += 1
+
+        for entry in operating_entries:
+            lines.append({
+                "line_number": line_number,
+                "line_type": LineType.ACCOUNT_LINE,
+                "indent_level": 2,
+                "line_code": entry.account_code,
+                "line_description": entry.account_name,
+                "amount_sar": _signed_amount(entry),
+                "is_bold": False,
+                "is_underlined": False,
+                "source_consolidation_category": entry.consolidation_category.value,
+            })
+            line_number += 1
+
+        lines.append({
+            "line_number": line_number,
+            "line_type": LineType.SUBTOTAL,
+            "indent_level": 1,
+            "line_code": None,
+            "line_description": "Total flux opérationnels",
+            "amount_sar": operating_total,
+            "is_bold": True,
+            "is_underlined": True,
+        })
+        line_number += 1
+
+        # Investing activities
+        lines.append({
+            "line_number": line_number,
+            "line_type": LineType.ACCOUNT_GROUP,
+            "indent_level": 1,
+            "line_code": None,
+            "line_description": "Flux de trésorerie liés aux activités d'investissement",
+            "amount_sar": None,
+            "is_bold": True,
+            "is_underlined": False,
+        })
+        line_number += 1
+
+        for entry in investing_entries:
+            lines.append({
+                "line_number": line_number,
+                "line_type": LineType.ACCOUNT_LINE,
+                "indent_level": 2,
+                "line_code": entry.account_code,
+                "line_description": entry.account_name,
+                "amount_sar": _signed_amount(entry),
+                "is_bold": False,
+                "is_underlined": False,
+                "source_consolidation_category": entry.consolidation_category.value,
+            })
+            line_number += 1
+
+        lines.append({
+            "line_number": line_number,
+            "line_type": LineType.SUBTOTAL,
+            "indent_level": 1,
+            "line_code": None,
+            "line_description": "Total flux d'investissement",
+            "amount_sar": investing_total,
+            "is_bold": True,
+            "is_underlined": True,
+        })
+        line_number += 1
+
+        # Financing placeholder (no data yet, but keep structure for clarity)
+        lines.append({
+            "line_number": line_number,
+            "line_type": LineType.SUBTOTAL,
+            "indent_level": 1,
+            "line_code": None,
+            "line_description": "Total flux de financement",
+            "amount_sar": financing_total,
+            "is_bold": True,
+            "is_underlined": True,
+        })
+        line_number += 1
+
+        # Net change
+        lines.append({
+            "line_number": line_number,
+            "line_type": LineType.TOTAL,
+            "indent_level": 0,
+            "line_code": None,
+            "line_description": "Variation nette de trésorerie",
+            "amount_sar": net_change,
+            "is_bold": True,
+            "is_underlined": True,
         })
 
         return lines

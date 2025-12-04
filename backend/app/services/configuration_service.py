@@ -33,6 +33,7 @@ from app.models.configuration import (
     SystemConfig,
     TeacherCategory,
     TeacherCostParam,
+    TimetableConstraint,
 )
 from app.services.base import BaseService
 from app.services.exceptions import (
@@ -63,6 +64,7 @@ class ConfigurationService:
         self.subject_hours_service = BaseService(SubjectHoursMatrix, session)
         self.teacher_cost_service = BaseService(TeacherCostParam, session)
         self.fee_structure_service = BaseService(FeeStructure, session)
+        self.timetable_constraint_service = BaseService(TimetableConstraint, session)
 
     async def get_system_config(self, key: str) -> SystemConfig | None:
         """
@@ -771,3 +773,102 @@ class ConfigurationService:
             )
         else:
             return await self.fee_structure_service.create(data, user_id=user_id)
+
+    # ========================================================================
+    # Timetable Constraints (Module 6)
+    # ========================================================================
+
+    async def get_timetable_constraints(
+        self,
+        version_id: uuid.UUID,
+    ) -> list[TimetableConstraint]:
+        """
+        Get timetable constraints for a budget version.
+
+        Args:
+            version_id: Budget version UUID
+
+        Returns:
+            List of TimetableConstraint instances
+        """
+        query = (
+            select(TimetableConstraint)
+            .where(
+                and_(
+                    TimetableConstraint.budget_version_id == version_id,
+                    TimetableConstraint.deleted_at.is_(None),
+                )
+            )
+            .options(selectinload(TimetableConstraint.level))
+            .order_by(TimetableConstraint.level_id)
+        )
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def upsert_timetable_constraint(
+        self,
+        version_id: uuid.UUID,
+        level_id: uuid.UUID,
+        total_hours_per_week: Decimal,
+        max_hours_per_day: Decimal,
+        days_per_week: int,
+        requires_lunch_break: bool,
+        min_break_duration_minutes: int,
+        notes: str | None,
+        user_id: uuid.UUID,
+    ) -> TimetableConstraint:
+        """
+        Create or update timetable constraint.
+
+        Args:
+            version_id: Budget version UUID
+            level_id: Academic level UUID
+            total_hours_per_week: Total student hours per week
+            max_hours_per_day: Maximum hours per day
+            days_per_week: School days per week (4-6)
+            requires_lunch_break: Whether lunch break is required
+            min_break_duration_minutes: Minimum break duration (minutes)
+            notes: Optional notes
+            user_id: User ID for audit trail
+
+        Returns:
+            TimetableConstraint instance
+
+        Raises:
+            ValidationError: If max_hours_per_day > total_hours_per_week
+        """
+        # Validate cross-field constraint
+        if max_hours_per_day > total_hours_per_week:
+            raise ValidationError(
+                "max_hours_per_day cannot exceed total_hours_per_week"
+            )
+
+        query = select(TimetableConstraint).where(
+            and_(
+                TimetableConstraint.budget_version_id == version_id,
+                TimetableConstraint.level_id == level_id,
+                TimetableConstraint.deleted_at.is_(None),
+            )
+        )
+        result = await self.session.execute(query)
+        existing = result.scalar_one_or_none()
+
+        data = {
+            "budget_version_id": version_id,
+            "level_id": level_id,
+            "total_hours_per_week": total_hours_per_week,
+            "max_hours_per_day": max_hours_per_day,
+            "days_per_week": days_per_week,
+            "requires_lunch_break": requires_lunch_break,
+            "min_break_duration_minutes": min_break_duration_minutes,
+            "notes": notes,
+        }
+
+        if existing:
+            return await self.timetable_constraint_service.update(
+                existing.id,
+                data,
+                user_id=user_id,
+            )
+        else:
+            return await self.timetable_constraint_service.create(data, user_id=user_id)

@@ -49,7 +49,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # Optional app-level toggle for test environments
         if getattr(request.app.state, "skip_auth_for_tests", False):
             request.state.user_role = "planner"
-            request.state.user_id = "test-user"
+            request.state.user_id = "00000000-0000-0000-0000-000000000001"
             return await call_next(request)
 
         # Skip authentication for public paths
@@ -104,12 +104,23 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Invalid or expired token"},
             )
 
-        user_id = payload.get("sub", "unknown")
-        logger.info(f"JWT verification successful for {request.url.path}, user: {user_id}")
+        user_id = payload.get("sub")
+        if not user_id:
+            logger.error(f"JWT payload missing 'sub' field. Payload keys: {payload.keys()}")
+            print("[AUTH] ERROR: JWT payload missing 'sub' field")
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "JWT token missing user ID"},
+            )
+
+        logger.info(
+            f"JWT verification successful for {request.url.path}, user: {user_id}"
+        )
+        print(f"[AUTH] ✅ JWT verified, user_id: {user_id}, type: {type(user_id)}")
 
         # Add user information to request state
-        request.state.user_id = payload.get("sub")
-        request.state.user_email = payload.get("email")
+        request.state.user_id = user_id
+        request.state.user_email = payload.get("email", "")
         request.state.user_role = payload.get("role", "planner")
         request.state.user_metadata = payload.get("user_metadata", {})
 

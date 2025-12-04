@@ -5,6 +5,7 @@ This is the entry point for the FastAPI backend server.
 """
 
 import os
+import sys
 
 import sentry_sdk
 from fastapi import FastAPI
@@ -61,8 +62,12 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
     )
-    app.state.skip_auth_for_tests = os.getenv("SKIP_AUTH_FOR_TESTS", "true").lower() == "true"
-    app.state.skip_rate_limit_for_tests = os.getenv("SKIP_RATE_LIMIT_FOR_TESTS", "true").lower() == "true"
+    # Auto-enable test bypass during pytest runs, otherwise use env var (default: false)
+    is_pytest = "pytest" in sys.modules or os.getenv("PYTEST_CURRENT_TEST") is not None
+    skip_auth_env = os.getenv("SKIP_AUTH_FOR_TESTS", "false").lower() == "true"
+    app.state.skip_auth_for_tests = is_pytest or skip_auth_env
+    skip_rate_limit_env = os.getenv("SKIP_RATE_LIMIT_FOR_TESTS", "false").lower() == "true"
+    app.state.skip_rate_limit_for_tests = is_pytest or skip_rate_limit_env
 
     # Debug: Print environment variable status on startup
     supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")

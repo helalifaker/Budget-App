@@ -2,6 +2,44 @@
 
 This guide explains how to configure Supabase JWT authentication for the EFIR Budget Planning backend.
 
+## Quick Start (TL;DR)
+
+**For new developers setting up the project:**
+
+1. **Get Supabase JWT Secret:**
+   - Dashboard: https://supabase.com/dashboard/project/ssxwmxqvafesyldycqzy
+   - Settings > API > JWT Settings > **JWT Secret** (click copy icon)
+
+2. **Configure Backend:**
+   ```bash
+   cd backend
+   # Add to .env.local:
+   SUPABASE_URL=https://ssxwmxqvafesyldycqzy.supabase.co
+   SUPABASE_JWT_SECRET=<paste-your-jwt-secret>
+   # SKIP_AUTH_FOR_TESTS is auto-enabled during pytest
+   ```
+
+3. **Create Dev Users** (one-time setup):
+   ```bash
+   cd backend
+   source .venv/bin/activate
+   python -m scripts.seed_dev_users
+   ```
+
+4. **Start Backend:**
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+5. **Login:** Use development credentials:
+   - admin@efir.local / Admin123!
+   - planner@efir.local / Planner123!
+   - viewer@efir.local / Viewer123!
+
+✅ You should see no 401 errors and be able to access the API with valid JWT tokens.
+
+---
+
 ## Problem
 
 If you're seeing `401 Unauthorized` errors after successful login, it means the backend cannot verify Supabase JWT tokens because the `SUPABASE_JWT_SECRET` environment variable is not configured.
@@ -118,6 +156,98 @@ For production, set `SUPABASE_JWT_SECRET` as an environment variable in your dep
 - **Kubernetes**: Use Secrets
 - **AWS/GCP/Azure**: Use their secrets management services
 
+## Troubleshooting
+
+### Issue: "Invalid user ID format: test-user"
+
+**Root Cause:** Test bypass mode is incorrectly enabled in development.
+
+**Solution:**
+1. Remove `SKIP_AUTH_FOR_TESTS=true` from `backend/.env.local`
+2. The test bypass is now **auto-enabled during pytest runs only**
+3. In development, real JWT authentication should be used
+4. Restart backend server
+
+**Why this happens:**
+- Old setup had test bypass enabled by default
+- This set `user_id = "test-user"` (a string, not UUID)
+- Backend expects UUID format for all user IDs
+- Now fixed: test bypass only activates during pytest runs
+
+### Issue: Frontend shows "Using placeholder Supabase configuration"
+
+**Root Cause:** Frontend `.env.local` not configured.
+
+**Solution:**
+1. Create `frontend/.env.local`:
+   ```bash
+   VITE_SUPABASE_URL=https://ssxwmxqvafesyldycqzy.supabase.co
+   VITE_SUPABASE_ANON_KEY=<your-anon-key>
+   VITE_API_BASE_URL=http://localhost:8000/api/v1
+   ```
+2. Get anon key from Supabase Dashboard > Settings > API
+3. Restart frontend dev server (`pnpm dev`)
+
+### Issue: "JWT verification failed: Signature verification failed"
+
+**Root Cause:** Wrong JWT secret or secret from different project.
+
+**Solution:**
+1. Verify you're copying the **JWT Secret**, not:
+   - ❌ anon (public) key
+   - ❌ service_role key
+   - ❌ Database password
+2. Dashboard > Settings > API > **JWT Settings** > JWT Secret
+3. Copy exact value (should be ~88 characters, base64-encoded)
+4. Update `SUPABASE_JWT_SECRET` in `backend/.env.local`
+5. Restart backend server
+
+### Issue: "JWT verification failed: Invalid issuer"
+
+**Root Cause:** `SUPABASE_URL` doesn't match your project.
+
+**Solution:**
+1. Verify project URL in Supabase Dashboard
+2. Should be: `https://ssxwmxqvafesyldycqzy.supabase.co`
+3. Update `SUPABASE_URL` in `backend/.env.local`
+4. Restart backend
+
+### Issue: Tests failing after disabling test bypass
+
+**This should not happen!** Test bypass is now auto-enabled during pytest.
+
+**If it happens:**
+1. Verify pytest is installed in venv
+2. Check `sys.modules` contains `pytest` during test run
+3. The fix detects pytest automatically via `"pytest" in sys.modules`
+
+### Issue: Login succeeds but API calls return 401
+
+**Diagnosis Steps:**
+
+1. **Check Frontend Console:**
+   ```
+   [api-client] ✅ Adding Authorization header, token length: 500+
+   ```
+   ✅ If you see this, frontend is working correctly
+
+2. **Check Backend Logs:**
+   ```
+   [AUTH] Token received, length: 500+
+   [AUTH] ❌ JWT verification failed: ...
+   ```
+   This tells you the specific verification error
+
+3. **Common Causes:**
+   - Backend JWT secret doesn't match Supabase project
+   - Backend `SUPABASE_URL` incorrect
+   - Token expired (rare - auto-refreshes)
+
+**Solution:**
+- Review error message in backend logs
+- Verify `SUPABASE_JWT_SECRET` and `SUPABASE_URL` match Dashboard
+- Check that JWT secret is from the correct Supabase project
+
 ## Additional Resources
 
 - [Supabase JWT Documentation](https://supabase.com/docs/guides/auth/jwts)
@@ -128,4 +258,5 @@ For production, set `SUPABASE_JWT_SECRET` as an environment variable in your dep
 
 **Last Updated:** 2025-12-03
 **Maintained By:** EFIR Development Team
+
 

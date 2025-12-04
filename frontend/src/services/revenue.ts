@@ -1,19 +1,26 @@
 import { apiRequest } from '@/lib/api-client'
 import { RevenueLineItem, PaginatedResponse } from '@/types/api'
+import { withServiceErrorHandling } from './utils'
 
 export const revenueApi = {
   getAll: async (versionId: string) => {
-    return apiRequest<PaginatedResponse<RevenueLineItem>>({
-      method: 'GET',
-      url: `/planning/revenue/${versionId}`,
-    })
+    return withServiceErrorHandling(
+      apiRequest<PaginatedResponse<RevenueLineItem>>({
+        method: 'GET',
+        url: `/planning/revenue/${versionId}`,
+      }),
+      'revenue: get all'
+    )
   },
 
   getById: async (id: string) => {
-    return apiRequest<RevenueLineItem>({
-      method: 'GET',
-      url: `/planning/revenue/item/${id}`,
-    })
+    return withServiceErrorHandling(
+      apiRequest<RevenueLineItem>({
+        method: 'GET',
+        url: `/planning/revenue/item/${id}`,
+      }),
+      'revenue: get by id'
+    )
   },
 
   create: async (data: {
@@ -27,11 +34,14 @@ export const revenueApi = {
     annual_amount: number
     notes?: string
   }) => {
-    return apiRequest<RevenueLineItem>({
-      method: 'POST',
-      url: '/planning/revenue',
-      data,
-    })
+    return withServiceErrorHandling(
+      apiRequest<RevenueLineItem>({
+        method: 'POST',
+        url: '/planning/revenue',
+        data,
+      }),
+      'revenue: create'
+    )
   },
 
   update: async (
@@ -44,25 +54,34 @@ export const revenueApi = {
       notes?: string
     }
   ) => {
-    return apiRequest<RevenueLineItem>({
-      method: 'PUT',
-      url: `/planning/revenue/${id}`,
-      data,
-    })
+    return withServiceErrorHandling(
+      apiRequest<RevenueLineItem>({
+        method: 'PUT',
+        url: `/planning/revenue/${id}`,
+        data,
+      }),
+      'revenue: update'
+    )
   },
 
   delete: async (id: string) => {
-    return apiRequest<void>({
-      method: 'DELETE',
-      url: `/planning/revenue/${id}`,
-    })
+    return withServiceErrorHandling(
+      apiRequest<void>({
+        method: 'DELETE',
+        url: `/planning/revenue/${id}`,
+      }),
+      'revenue: delete'
+    )
   },
 
   calculateRevenue: async (versionId: string) => {
-    return apiRequest<{ success: boolean; message: string }>({
-      method: 'POST',
-      url: `/planning/revenue/${versionId}/calculate`,
-    })
+    return withServiceErrorHandling(
+      apiRequest<{ success: boolean; message: string }>({
+        method: 'POST',
+        url: `/planning/revenue/${versionId}/calculate`,
+      }),
+      'revenue: calculate'
+    )
   },
 
   bulkUpdate: async (
@@ -75,10 +94,13 @@ export const revenueApi = {
       annual_amount?: number
     }>
   ) => {
-    return apiRequest<{ success: boolean; count: number }>({
-      method: 'POST',
-      url: `/planning/revenue/${versionId}/bulk-update`,
-      data: { updates },
-    })
+    return withServiceErrorHandling(
+      apiRequest<{ success: boolean; count: number }>({
+        method: 'POST',
+        url: `/planning/revenue/${versionId}/bulk-update`,
+        data: { updates },
+      }),
+      'revenue: bulk update'
+    )
   },
 }

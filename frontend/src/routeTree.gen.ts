@@ -22,12 +22,15 @@ import { Route as PlanningCapexRouteImport } from './routes/planning/capex'
 import { Route as ConsolidationStatementsRouteImport } from './routes/consolidation/statements'
 import { Route as ConsolidationBudgetRouteImport } from './routes/consolidation/budget'
 import { Route as ConfigurationVersionsRouteImport } from './routes/configuration/versions'
+import { Route as ConfigurationTimetableRouteImport } from './routes/configuration/timetable'
 import { Route as ConfigurationTeacherCostsRouteImport } from './routes/configuration/teacher-costs'
+import { Route as ConfigurationSystemRouteImport } from './routes/configuration/system'
 import { Route as ConfigurationSubjectHoursRouteImport } from './routes/configuration/subject-hours'
 import { Route as ConfigurationFeesRouteImport } from './routes/configuration/fees'
 import { Route as ConfigurationClassSizesRouteImport } from './routes/configuration/class-sizes'
 import { Route as AnalysisVarianceRouteImport } from './routes/analysis/variance'
 import { Route as AnalysisKpisRouteImport } from './routes/analysis/kpis'
+import { Route as AnalysisDashboardsRouteImport } from './routes/analysis/dashboards'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -94,18 +97,26 @@ const ConfigurationVersionsRoute = ConfigurationVersionsRouteImport.update({
   path: '/configuration/versions',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfigurationTeacherCostsRoute =
-  ConfigurationTeacherCostsRouteImport.update({
-    id: '/configuration/teacher-costs',
-    path: '/configuration/teacher-costs',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ConfigurationSubjectHoursRoute =
-  ConfigurationSubjectHoursRouteImport.update({
-    id: '/configuration/subject-hours',
-    path: '/configuration/subject-hours',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ConfigurationTimetableRoute = ConfigurationTimetableRouteImport.update({
+  id: '/configuration/timetable',
+  path: '/configuration/timetable',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigurationTeacherCostsRoute = ConfigurationTeacherCostsRouteImport.update({
+  id: '/configuration/teacher-costs',
+  path: '/configuration/teacher-costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigurationSystemRoute = ConfigurationSystemRouteImport.update({
+  id: '/configuration/system',
+  path: '/configuration/system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigurationSubjectHoursRoute = ConfigurationSubjectHoursRouteImport.update({
+  id: '/configuration/subject-hours',
+  path: '/configuration/subject-hours',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConfigurationFeesRoute = ConfigurationFeesRouteImport.update({
   id: '/configuration/fees',
   path: '/configuration/fees',
@@ -126,17 +137,25 @@ const AnalysisKpisRoute = AnalysisKpisRouteImport.update({
   path: '/analysis/kpis',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalysisDashboardsRoute = AnalysisDashboardsRouteImport.update({
+  id: '/analysis/dashboards',
+  path: '/analysis/dashboards',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/analysis/dashboards': typeof AnalysisDashboardsRoute
   '/analysis/kpis': typeof AnalysisKpisRoute
   '/analysis/variance': typeof AnalysisVarianceRoute
   '/configuration/class-sizes': typeof ConfigurationClassSizesRoute
   '/configuration/fees': typeof ConfigurationFeesRoute
   '/configuration/subject-hours': typeof ConfigurationSubjectHoursRoute
+  '/configuration/system': typeof ConfigurationSystemRoute
   '/configuration/teacher-costs': typeof ConfigurationTeacherCostsRoute
+  '/configuration/timetable': typeof ConfigurationTimetableRoute
   '/configuration/versions': typeof ConfigurationVersionsRoute
   '/consolidation/budget': typeof ConsolidationBudgetRoute
   '/consolidation/statements': typeof ConsolidationStatementsRoute
@@ -152,12 +171,15 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/analysis/dashboards': typeof AnalysisDashboardsRoute
   '/analysis/kpis': typeof AnalysisKpisRoute
   '/analysis/variance': typeof AnalysisVarianceRoute
   '/configuration/class-sizes': typeof ConfigurationClassSizesRoute
   '/configuration/fees': typeof ConfigurationFeesRoute
   '/configuration/subject-hours': typeof ConfigurationSubjectHoursRoute
+  '/configuration/system': typeof ConfigurationSystemRoute
   '/configuration/teacher-costs': typeof ConfigurationTeacherCostsRoute
+  '/configuration/timetable': typeof ConfigurationTimetableRoute
   '/configuration/versions': typeof ConfigurationVersionsRoute
   '/consolidation/budget': typeof ConsolidationBudgetRoute
   '/consolidation/statements': typeof ConsolidationStatementsRoute
@@ -174,12 +196,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/analysis/dashboards': typeof AnalysisDashboardsRoute
   '/analysis/kpis': typeof AnalysisKpisRoute
   '/analysis/variance': typeof AnalysisVarianceRoute
   '/configuration/class-sizes': typeof ConfigurationClassSizesRoute
   '/configuration/fees': typeof ConfigurationFeesRoute
   '/configuration/subject-hours': typeof ConfigurationSubjectHoursRoute
+  '/configuration/system': typeof ConfigurationSystemRoute
   '/configuration/teacher-costs': typeof ConfigurationTeacherCostsRoute
+  '/configuration/timetable': typeof ConfigurationTimetableRoute
   '/configuration/versions': typeof ConfigurationVersionsRoute
   '/consolidation/budget': typeof ConsolidationBudgetRoute
   '/consolidation/statements': typeof ConsolidationStatementsRoute
@@ -197,12 +222,15 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/login'
+    | '/analysis/dashboards'
     | '/analysis/kpis'
     | '/analysis/variance'
     | '/configuration/class-sizes'
     | '/configuration/fees'
     | '/configuration/subject-hours'
+    | '/configuration/system'
     | '/configuration/teacher-costs'
+    | '/configuration/timetable'
     | '/configuration/versions'
     | '/consolidation/budget'
     | '/consolidation/statements'
@@ -218,12 +246,15 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/login'
+    | '/analysis/dashboards'
     | '/analysis/kpis'
     | '/analysis/variance'
     | '/configuration/class-sizes'
     | '/configuration/fees'
     | '/configuration/subject-hours'
+    | '/configuration/system'
     | '/configuration/teacher-costs'
+    | '/configuration/timetable'
     | '/configuration/versions'
     | '/consolidation/budget'
     | '/consolidation/statements'
@@ -239,12 +270,15 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/login'
+    | '/analysis/dashboards'
     | '/analysis/kpis'
     | '/analysis/variance'
     | '/configuration/class-sizes'
     | '/configuration/fees'
     | '/configuration/subject-hours'
+    | '/configuration/system'
     | '/configuration/teacher-costs'
+    | '/configuration/timetable'
     | '/configuration/versions'
     | '/consolidation/budget'
     | '/consolidation/statements'
@@ -261,12 +295,15 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  AnalysisDashboardsRoute: typeof AnalysisDashboardsRoute
   AnalysisKpisRoute: typeof AnalysisKpisRoute
   AnalysisVarianceRoute: typeof AnalysisVarianceRoute
   ConfigurationClassSizesRoute: typeof ConfigurationClassSizesRoute
   ConfigurationFeesRoute: typeof ConfigurationFeesRoute
   ConfigurationSubjectHoursRoute: typeof ConfigurationSubjectHoursRoute
+  ConfigurationSystemRoute: typeof ConfigurationSystemRoute
   ConfigurationTeacherCostsRoute: typeof ConfigurationTeacherCostsRoute
+  ConfigurationTimetableRoute: typeof ConfigurationTimetableRoute
   ConfigurationVersionsRoute: typeof ConfigurationVersionsRoute
   ConsolidationBudgetRoute: typeof ConsolidationBudgetRoute
   ConsolidationStatementsRoute: typeof ConsolidationStatementsRoute
@@ -372,11 +409,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfigurationVersionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuration/timetable': {
+      id: '/configuration/timetable'
+      path: '/configuration/timetable'
+      fullPath: '/configuration/timetable'
+      preLoaderRoute: typeof ConfigurationTimetableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/configuration/teacher-costs': {
       id: '/configuration/teacher-costs'
       path: '/configuration/teacher-costs'
       fullPath: '/configuration/teacher-costs'
       preLoaderRoute: typeof ConfigurationTeacherCostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuration/system': {
+      id: '/configuration/system'
+      path: '/configuration/system'
+      fullPath: '/configuration/system'
+      preLoaderRoute: typeof ConfigurationSystemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuration/subject-hours': {
@@ -414,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalysisKpisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analysis/dashboards': {
+      id: '/analysis/dashboards'
+      path: '/analysis/dashboards'
+      fullPath: '/analysis/dashboards'
+      preLoaderRoute: typeof AnalysisDashboardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -421,12 +479,15 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  AnalysisDashboardsRoute: AnalysisDashboardsRoute,
   AnalysisKpisRoute: AnalysisKpisRoute,
   AnalysisVarianceRoute: AnalysisVarianceRoute,
   ConfigurationClassSizesRoute: ConfigurationClassSizesRoute,
   ConfigurationFeesRoute: ConfigurationFeesRoute,
   ConfigurationSubjectHoursRoute: ConfigurationSubjectHoursRoute,
+  ConfigurationSystemRoute: ConfigurationSystemRoute,
   ConfigurationTeacherCostsRoute: ConfigurationTeacherCostsRoute,
+  ConfigurationTimetableRoute: ConfigurationTimetableRoute,
   ConfigurationVersionsRoute: ConfigurationVersionsRoute,
   ConsolidationBudgetRoute: ConsolidationBudgetRoute,
   ConsolidationStatementsRoute: ConsolidationStatementsRoute,

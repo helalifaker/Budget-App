@@ -13,6 +13,7 @@ const navigation = [
       { name: 'Subject Hours', href: '/configuration/subject-hours' },
       { name: 'Teacher Costs', href: '/configuration/teacher-costs' },
       { name: 'Fee Structure', href: '/configuration/fees' },
+      { name: 'Timetable', href: '/configuration/timetable' },
     ],
   },
   {

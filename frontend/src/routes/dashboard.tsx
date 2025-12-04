@@ -64,25 +64,25 @@ function DashboardPage() {
   const costData = [
     {
       period: 'Current',
-      personnel: summary?.total_costs ? summary.total_costs * 0.7 : 0,
-      operating: summary?.total_costs ? summary.total_costs * 0.3 : 0,
+      personnel: summary?.total_costs_sar ? summary.total_costs_sar * 0.7 : 0,
+      operating: summary?.total_costs_sar ? summary.total_costs_sar * 0.3 : 0,
     },
   ]
 
   const revenueData = [
     {
       category: 'Tuition',
-      amount: summary?.total_revenue ? summary.total_revenue * 0.85 : 0,
+      amount: summary?.total_revenue_sar ? summary.total_revenue_sar * 0.85 : 0,
       color: '#10B981',
     },
     {
       category: 'DAI',
-      amount: summary?.total_revenue ? summary.total_revenue * 0.1 : 0,
+      amount: summary?.total_revenue_sar ? summary.total_revenue_sar * 0.1 : 0,
       color: '#3B82F6',
     },
     {
       category: 'Other',
-      amount: summary?.total_revenue ? summary.total_revenue * 0.05 : 0,
+      amount: summary?.total_revenue_sar ? summary.total_revenue_sar * 0.05 : 0,
       color: '#F59E0B',
     },
   ]
@@ -151,19 +151,19 @@ function DashboardPage() {
                     />
                     <SummaryCard
                       title="Total Teachers"
-                      value={summary.total_teachers.toLocaleString()}
+                      value={summary.total_teachers_fte.toLocaleString()}
                       icon={<GraduationCap className="w-5 h-5" />}
                       subtitle="FTE"
                     />
                     <SummaryCard
                       title="Total Revenue"
-                      value={formatCurrency(summary.total_revenue)}
+                      value={formatCurrency(summary.total_revenue_sar)}
                       icon={<DollarSign className="w-5 h-5" />}
                       valueClassName="text-green-600"
                     />
                     <SummaryCard
                       title="Total Costs"
-                      value={formatCurrency(summary.total_costs)}
+                      value={formatCurrency(summary.total_costs_sar)}
                       icon={<DollarSign className="w-5 h-5" />}
                       valueClassName="text-red-600"
                     />
@@ -284,21 +284,21 @@ function DashboardPage() {
                       <div>
                         <div className="text-sm text-gray-600 mb-2">Net Income</div>
                         <div
-                          className={`text-3xl font-bold ${summary.net_income >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                          className={`text-3xl font-bold ${summary.net_result_sar >= 0 ? 'text-green-600' : 'text-red-600'}`}
                         >
-                          {formatCurrency(summary.net_income)}
+                          {formatCurrency(summary.net_result_sar)}
                         </div>
                       </div>
                       <div>
                         <div className="text-sm text-gray-600 mb-2">Operating Margin</div>
                         <div className="text-3xl font-bold">
-                          {summary.operating_margin.toFixed(1)}%
+                          {summary.operating_margin_pct.toFixed(1)}%
                         </div>
                         <Badge
-                          variant={summary.operating_margin >= 5 ? 'default' : 'destructive'}
+                          variant={summary.operating_margin_pct >= 5 ? 'default' : 'destructive'}
                           className="mt-2"
                         >
-                          {summary.operating_margin >= 5 ? 'Healthy' : 'Below Target'}
+                          {summary.operating_margin_pct >= 5 ? 'Healthy' : 'Below Target'}
                         </Badge>
                       </div>
                       <div>
@@ -306,7 +306,7 @@ function DashboardPage() {
                         <div className="text-3xl font-bold">
                           {formatCurrency(
                             summary.total_students > 0
-                              ? summary.total_costs / summary.total_students
+                              ? summary.total_costs_sar / summary.total_students
                               : 0
                           )}
                         </div>

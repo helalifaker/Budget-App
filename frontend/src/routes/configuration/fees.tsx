@@ -1,18 +1,18 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { requireAuth } from '@/lib/auth-guard'
-import { useState, useEffect, useMemo, useCallback } from 'react'
 import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
+import { requireAuth } from '@/lib/auth-guard'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { DataTableLazy } from '@/components/DataTableLazy'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
+import { DataTableLazy } from '@/components/DataTableLazy'
 import { AlertCircle } from 'lucide-react'
 import {
   useFeeStructure,
-  useUpdateFeeStructure,
   useFeeCategories,
   useNationalityTypes,
   useLevels,
+  useUpdateFeeStructure,
 } from '@/hooks/api/useConfiguration'
 import { FeeStructure } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
@@ -23,98 +23,37 @@ export const Route = createFileRoute('/configuration/fees')({
 })
 
 function FeesPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const [selectedVersionId, setSelectedVersionId] = useState('')
   const [rowData, setRowData] = useState<FeeStructure[]>([])
 
-  const {
-    data: feeStructureData,
-    isLoading: feesLoading,
-    error: feesError,
-  } = useFeeStructure(selectedVersionId)
-  const { data: feeCategoriesData, isLoading: categoriesLoading } = useFeeCategories()
-  const { data: nationalityTypesData, isLoading: nationalitiesLoading } = useNationalityTypes()
-  const { data: levelsData, isLoading: levelsLoading } = useLevels()
-
+  const { data: feeRows, isLoading, error } = useFeeStructure(selectedVersionId)
+  const { data: feeCategories } = useFeeCategories()
+  const { data: nationalityTypes } = useNationalityTypes()
+  const { data: levels } = useLevels()
   const updateMutation = useUpdateFeeStructure()
 
-  const isLoading = feesLoading || categoriesLoading || nationalitiesLoading || levelsLoading
-
   useEffect(() => {
-    if (feeStructureData) {
-      setRowData(feeStructureData)
+    if (feeRows) {
+      setRowData(feeRows)
     }
-  }, [feeStructureData])
+  }, [feeRows])
 
-  const getLevelName = useCallback(
-    (levelId: string) => {
-      return levelsData?.find((l) => l.id === levelId)?.name || levelId
-    },
-    [levelsData]
+  const getFeeCategoryName = useCallback(
+    (id: string) =>
+      feeCategories?.find((c) => c.id === id)?.name_en ||
+      feeCategories?.find((c) => c.id === id)?.name_fr ||
+      id,
+    [feeCategories]
   )
 
   const getNationalityName = useCallback(
-    (nationalityTypeId: string) => {
-      return (
-        nationalityTypesData?.find((n) => n.id === nationalityTypeId)?.name || nationalityTypeId
-      )
-    },
-    [nationalityTypesData]
+    (id: string) => nationalityTypes?.find((n) => n.id === id)?.name || id,
+    [nationalityTypes]
   )
 
-  const getFeeCategoryName = useCallback(
-    (feeCategoryId: string) => {
-      return feeCategoriesData?.find((c) => c.id === feeCategoryId)?.name_fr || feeCategoryId
-    },
-    [feeCategoriesData]
-  )
-
-  const getSiblingDiscountApplicable = useCallback(
-    (feeCategoryId: string) => {
-      const category = feeCategoriesData?.find((c) => c.id === feeCategoryId)
-      return category?.allows_sibling_discount ? 'Oui' : 'Non'
-    },
-    [feeCategoriesData]
-  )
-
-  const formatCurrency = useCallback((value: number | null | undefined): string => {
-    if (value == null) return ''
-    return new Intl.NumberFormat('fr-FR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value)
-  }, [])
-
-  const handleCellValueChanged = useCallback(
-    async (event: CellValueChangedEvent<FeeStructure>) => {
-      const updatedRow = event.data
-      if (!updatedRow) return
-
-      const field = event.column.getColId()
-      const newValue = event.newValue
-      const oldValue = event.oldValue
-
-      if (newValue === oldValue) return
-
-      if (field === 'amount_sar' && newValue < 0) {
-        toastMessages.error.validation('Le montant doit être positif ou nul')
-        event.node.setDataValue(field, oldValue)
-        return
-      }
-
-      const updatedData = {
-        [field]: newValue,
-      }
-
-      try {
-        await updateMutation.mutateAsync({
-          id: updatedRow.id,
-          ...updatedData,
-        })
-      } catch {
-        event.node.setDataValue(field, oldValue)
-      }
-    },
-    [updateMutation]
+  const getLevelName = useCallback(
+    (id: string) => levels?.find((l) => l.id === id)?.name || id,
+    [levels]
   )
 
   const columnDefs: ColDef<FeeStructure>[] = useMemo(
@@ -122,93 +61,108 @@ function FeesPage() {
       {
         field: 'level_id',
         headerName: 'Niveau',
-        flex: 2,
-        editable: false,
-        valueGetter: (params) => {
-          const levelId = params.data?.level_id
-          return levelId ? getLevelName(levelId) : ''
-        },
+        valueFormatter: (params) => getLevelName(params.value),
+        flex: 1.2,
         filter: 'agTextColumnFilter',
       },
       {
         field: 'nationality_type_id',
         headerName: 'Nationalité',
-        flex: 2,
-        editable: false,
-        valueGetter: (params) => {
-          const nationalityId = params.data?.nationality_type_id
-          return nationalityId ? getNationalityName(nationalityId) : ''
-        },
+        valueFormatter: (params) => getNationalityName(params.value),
+        flex: 1.1,
         filter: 'agTextColumnFilter',
       },
       {
         field: 'fee_category_id',
         headerName: 'Catégorie',
-        flex: 2,
-        editable: false,
-        valueGetter: (params) => {
-          const categoryId = params.data?.fee_category_id
-          return categoryId ? getFeeCategoryName(categoryId) : ''
-        },
+        valueFormatter: (params) => getFeeCategoryName(params.value),
+        flex: 1.2,
         filter: 'agTextColumnFilter',
       },
       {
         field: 'trimester',
         headerName: 'Trimestre',
-        flex: 1,
-        editable: false,
-        valueGetter: (params) => {
-          const trimester = params.data?.trimester
-          return trimester ? `T${trimester}` : 'Annuel'
-        },
-        filter: 'agTextColumnFilter',
+        editable: true,
+        cellEditor: 'agNumberCellEditor',
+        cellEditorParams: { min: 1, max: 3, precision: 0 },
+        valueFormatter: (params) => params.value ?? 'Annuel',
+        flex: 0.8,
       },
       {
         field: 'amount_sar',
         headerName: 'Montant (SAR)',
-        flex: 1.5,
         editable: true,
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          precision: 2,
-        },
-        filter: 'agNumberColumnFilter',
-        valueFormatter: (params) => formatCurrency(params.value),
-      },
-      {
-        headerName: 'Réduction Fratrie',
-        flex: 1.5,
-        editable: false,
-        valueGetter: (params) => {
-          const categoryId = params.data?.fee_category_id
-          return categoryId ? getSiblingDiscountApplicable(categoryId) : 'Non'
-        },
-        filter: 'agTextColumnFilter',
+        cellEditorParams: { min: 0, max: 500000, precision: 2 },
+        valueFormatter: (params) =>
+          params.value == null
+            ? ''
+            : Number(params.value).toLocaleString('fr-FR', { maximumFractionDigits: 2 }),
+        flex: 1,
       },
       {
         field: 'notes',
         headerName: 'Notes',
-        flex: 2,
         editable: true,
-        cellEditor: 'agLargeTextCellEditor',
-        filter: 'agTextColumnFilter',
+        flex: 1.2,
       },
     ],
-    [
-      getLevelName,
-      getNationalityName,
-      getFeeCategoryName,
-      getSiblingDiscountApplicable,
-      formatCurrency,
-    ]
+    [getFeeCategoryName, getNationalityName, getLevelName]
+  )
+
+  const handleCellValueChanged = useCallback(
+    async (event: CellValueChangedEvent<FeeStructure>) => {
+      const updatedRow = event.data
+      const field = event.column.getColId()
+      const newValue = event.newValue
+      const oldValue = event.oldValue
+
+      if (!updatedRow || newValue === oldValue) return
+
+      if (field === 'amount_sar' && (newValue == null || Number(newValue) < 0)) {
+        toastMessages.error.validation('Le montant doit être positif')
+        event.node.setDataValue(field, oldValue)
+        return
+      }
+
+      if (field === 'trimester' && newValue != null) {
+        const parsed = Number(newValue)
+        if (parsed < 1 || parsed > 3) {
+          toastMessages.error.validation('Le trimestre doit être 1, 2 ou 3 (ou vide pour annuel)')
+          event.node.setDataValue(field, oldValue)
+          return
+        }
+      }
+
+      const payload = {
+        budget_version_id: updatedRow.budget_version_id,
+        level_id: updatedRow.level_id,
+        nationality_type_id: updatedRow.nationality_type_id,
+        fee_category_id: updatedRow.fee_category_id,
+        amount_sar: field === 'amount_sar' ? Number(newValue) : updatedRow.amount_sar,
+        trimester:
+          field === 'trimester'
+            ? newValue == null
+              ? null
+              : Number(newValue)
+            : updatedRow.trimester,
+        notes: field === 'notes' ? newValue : updatedRow.notes,
+      }
+
+      try {
+        await updateMutation.mutateAsync(payload)
+      } catch {
+        event.node.setDataValue(field, oldValue)
+      }
+    },
+    [updateMutation]
   )
 
   return (
     <MainLayout>
       <PageContainer
-        title="Structure Tarifaire"
-        description="Configuration des frais de scolarité par niveau, nationalité et catégorie"
+        title="Fee Structure"
+        description="Configure tuition and other fee amounts by level, nationality and category"
       >
         <div className="space-y-4">
           <BudgetVersionSelector value={selectedVersionId} onChange={setSelectedVersionId} />
@@ -227,8 +181,8 @@ function FeesPage() {
               <div className="flex items-center gap-2 p-4 bg-info-50 border border-info-200 rounded-lg">
                 <AlertCircle className="h-4 w-4 text-info-600" />
                 <p className="text-sm text-info-800">
-                  Les cellules Montant et Notes sont modifiables. Cliquez pour éditer les valeurs.
-                  Les changements sont automatiquement sauvegardés.
+                  Les montants sont en SAR. Laissez le trimestre vide pour les frais annuels, sinon
+                  1-3 pour la scolarité trimestrielle.
                 </p>
               </div>
 
@@ -236,8 +190,8 @@ function FeesPage() {
                 rowData={rowData}
                 columnDefs={columnDefs}
                 loading={isLoading}
-                error={feesError}
-                pagination={true}
+                error={error}
+                pagination
                 paginationPageSize={50}
                 onCellValueChanged={handleCellValueChanged}
                 defaultColDef={{

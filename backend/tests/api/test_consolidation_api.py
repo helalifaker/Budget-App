@@ -862,3 +862,398 @@ class TestConsolidationEdgeCases:
 
                     assert response.status_code == 500
                     assert "Failed to submit budget" in response.json()["detail"]
+
+
+# ==============================================================================
+# Test: Additional Coverage Tests
+# ==============================================================================
+
+
+class TestConsolidationAdditionalCoverage:
+    """Additional tests to achieve 95% coverage."""
+
+    def test_approve_budget_generic_exception(self, client, mock_budget_version):
+        """Test approve budget with generic exception."""
+        version_id = mock_budget_version.id
+
+        mock_manager = MagicMock()
+        mock_manager.id = uuid.uuid4()
+        mock_manager.role = "finance_director"
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.approve_budget.side_effect = RuntimeError("Database error")
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.require_manager", return_value=mock_manager):
+                response = client.post(f"/api/v1/consolidation/{version_id}/approve")
+
+                assert response.status_code == 500
+                assert "Failed to approve budget" in response.json()["detail"]
+
+    def test_validation_endpoint_generic_exception(self, client, mock_user):
+        """Test validation endpoint with generic exception."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.validate_completeness.side_effect = RuntimeError("Validation error")
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/{version_id}/validation")
+
+                assert response.status_code == 500
+                assert "Failed to validate budget" in response.json()["detail"]
+
+    def test_get_income_statement_generic_exception(self, client, mock_user):
+        """Test income statement with generic exception."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_income_statement.side_effect = RuntimeError("Statement generation error")
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/statements/income/{version_id}")
+
+                assert response.status_code == 500
+                assert "Failed to get income statement" in response.json()["detail"]
+
+    def test_get_balance_sheet_generic_exception(self, client, mock_user):
+        """Test balance sheet with generic exception."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_balance_sheet.side_effect = RuntimeError("Balance sheet error")
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/statements/balance/{version_id}")
+
+                assert response.status_code == 500
+                assert "Failed to get balance sheet" in response.json()["detail"]
+
+    def test_get_period_totals_generic_exception(self, client, mock_user):
+        """Test period totals with generic exception."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_period_totals.side_effect = RuntimeError("Period totals error")
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/statements/{version_id}/periods")
+
+                assert response.status_code == 500
+                assert "Failed to get period totals" in response.json()["detail"]
+
+    def test_get_specific_period_total_generic_exception(self, client, mock_user):
+        """Test specific period total with generic exception."""
+        version_id = uuid.uuid4()
+        period = "p1"
+
+        with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_period_totals.side_effect = RuntimeError("Period error")
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/statements/{version_id}/periods/{period}")
+
+                assert response.status_code == 500
+                assert "Failed to get period total" in response.json()["detail"]  # Singular, not plural
+
+    def test_get_consolidation_summary_generic_exception(self, client, mock_user):
+        """Test consolidation summary with generic exception."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_consolidation.side_effect = RuntimeError("Summary error")
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/{version_id}/summary")
+
+                assert response.status_code == 500
+                assert "Failed to get consolidation summary" in response.json()["detail"]
+
+    def test_consolidate_budget_not_found(self, client, mock_user):
+        """Test consolidate budget when version not found."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            from app.services.exceptions import NotFoundError
+
+            mock_service = AsyncMock()
+            mock_service.consolidate_budget.side_effect = NotFoundError("BudgetVersion", version_id)
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.post(f"/api/v1/consolidation/{version_id}/consolidate")
+
+                assert response.status_code == 404
+                assert "not found" in response.json()["detail"].lower()
+
+    def test_submit_for_approval_not_found(self, client, mock_user):
+        """Test submit for approval when version not found."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            from app.services.exceptions import NotFoundError
+
+            mock_service = AsyncMock()
+            mock_manager = MagicMock()
+            mock_manager.id = uuid.uuid4()
+            mock_service.submit_for_approval.side_effect = NotFoundError("BudgetVersion", version_id)
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                with patch("app.dependencies.auth.require_manager", return_value=mock_manager):
+                    response = client.post(f"/api/v1/consolidation/{version_id}/submit")
+
+                    assert response.status_code == 404
+                    assert "not found" in response.json()["detail"].lower()
+
+    def test_approve_budget_not_found(self, client):
+        """Test approve budget when version not found."""
+        version_id = uuid.uuid4()
+
+        mock_manager = MagicMock()
+        mock_manager.id = uuid.uuid4()
+        mock_manager.role = "finance_director"
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            from app.services.exceptions import NotFoundError
+
+            mock_service = AsyncMock()
+            mock_service.approve_budget.side_effect = NotFoundError("BudgetVersion", version_id)
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.require_manager", return_value=mock_manager):
+                response = client.post(f"/api/v1/consolidation/{version_id}/approve")
+
+                assert response.status_code == 404
+                assert "not found" in response.json()["detail"].lower()
+
+    def test_validation_not_found(self, client, mock_user):
+        """Test validation when version not found."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            from app.services.exceptions import NotFoundError
+
+            mock_service = AsyncMock()
+            mock_service.validate_completeness.side_effect = NotFoundError("BudgetVersion", version_id)
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/{version_id}/validation")
+
+                assert response.status_code == 404
+                assert "not found" in response.json()["detail"].lower()
+
+    def test_get_consolidation_with_large_dataset(self, client, mock_user, mock_budget_version):
+        """Test GET consolidation with large number of line items."""
+        version_id = mock_budget_version.id
+
+        # Create large dataset
+        large_items = [
+            MagicMock(
+                id=uuid.uuid4(),
+                budget_version_id=version_id,
+                source_table="revenue_plans" if i % 2 == 0 else "personnel_cost_plans",
+                account_code=f"7{i:04d}" if i % 2 == 0 else f"6{i:04d}",
+                description=f"Item {i}",
+                amount_sar=Decimal(str(i * 1000)),
+                is_revenue=(i % 2 == 0),
+                source_count=1,
+                notes=f"Note {i}",
+            )
+            for i in range(100)
+        ]
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_consolidation.return_value = large_items
+            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/{version_id}")
+
+                assert response.status_code == 200
+                data = response.json()
+                # Should have categorized the items
+                assert len(data["revenue_items"]) + len(data["personnel_items"]) >= 100
+
+    def test_get_balance_sheet_unbalanced(self, client, mock_user, mock_budget_version):
+        """Test balance sheet when assets != liabilities (unbalanced)."""
+        version_id = mock_budget_version.id
+
+        from datetime import datetime
+
+        assets_statement = {
+            "id": uuid.uuid4(),
+            "budget_version_id": version_id,
+            "statement_type": "balance_sheet",
+            "statement_format": "pcg",
+            "statement_name": "Assets",
+            "fiscal_year": 2025,
+            "total_amount_sar": Decimal("100000000"),
+            "is_calculated": True,
+            "notes": None,
+            "lines": [],
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+
+        liabilities_statement = {
+            "id": uuid.uuid4(),
+            "budget_version_id": version_id,
+            "statement_type": "balance_sheet",
+            "statement_format": "pcg",
+            "statement_name": "Liabilities",
+            "fiscal_year": 2025,
+            "total_amount_sar": Decimal("95000000"),  # Unbalanced!
+            "is_calculated": True,
+            "notes": None,
+            "lines": [],
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+
+        assets_mock = MagicMock()
+        assets_mock.total_amount_sar = Decimal("100000000")
+        assets_mock.__dict__.update(assets_statement)
+
+        liabilities_mock = MagicMock()
+        liabilities_mock.total_amount_sar = Decimal("95000000")
+        liabilities_mock.__dict__.update(liabilities_statement)
+
+        with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_balance_sheet.return_value = {
+                "assets": assets_mock,
+                "liabilities": liabilities_mock,
+            }
+            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/statements/balance/{version_id}")
+
+                assert response.status_code == 200
+                data = response.json()
+                assert "assets" in data
+                assert "liabilities" in data
+                assert data["is_balanced"] is False  # Unbalanced!
+
+    def test_get_all_period_totals_with_data(self, client, mock_user, mock_budget_version):
+        """Test getting period totals with actual data returned."""
+        version_id = mock_budget_version.id
+
+        with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
+            mock_service = AsyncMock()
+            # Return dict directly (endpoint wraps it in list)
+            mock_service.get_period_totals.return_value = {
+                "total_revenue": "20000000",
+                "total_expenses": "18000000",
+                "operating_result": "2000000",
+                "net_result": "2000000",
+            }
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/statements/{version_id}/periods")
+
+                assert response.status_code == 200
+                data = response.json()
+                # Endpoint should return list with data for each period
+                assert isinstance(data, list)
+                assert len(data) == 4  # p1, summer, p2, annual
+
+    def test_consolidation_with_zero_amounts(self, client, mock_user, mock_budget_version):
+        """Test consolidation with all zero amounts."""
+        version_id = mock_budget_version.id
+
+        zero_items = [
+            MagicMock(
+                id=uuid.uuid4(),
+                budget_version_id=version_id,
+                source_table="revenue_plans",
+                account_code="70110",
+                description="Zero Revenue",
+                amount_sar=Decimal("0"),
+                is_revenue=True,
+                source_count=0,
+                notes="",
+            )
+        ]
+
+        with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_consolidation.return_value = zero_items
+            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/{version_id}")
+
+                assert response.status_code == 200
+                data = response.json()
+                assert data["total_revenue"] == "0.00"
+
+    def test_invalid_uuid_format_consolidation(self, client, mock_user):
+        """Test consolidation endpoints with invalid UUID format."""
+        response = client.get("/api/v1/consolidation/not-a-uuid")
+
+        # FastAPI should return 422 for invalid UUID
+        assert response.status_code == 422
+
+    def test_invalid_uuid_format_income_statement(self, client, mock_user):
+        """Test income statement with invalid UUID format."""
+        response = client.get("/api/v1/consolidation/statements/income/not-a-uuid")
+
+        assert response.status_code == 422
+
+    def test_invalid_uuid_format_balance_sheet(self, client, mock_user):
+        """Test balance sheet with invalid UUID format."""
+        response = client.get("/api/v1/consolidation/statements/balance/not-a-uuid")
+
+        assert response.status_code == 422
+
+    def test_get_income_statement_ifrs_format(self, client, mock_user, mock_budget_version):
+        """Test income statement with IFRS format explicitly specified."""
+        version_id = mock_budget_version.id
+
+        from datetime import datetime
+
+        with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
+            mock_service = AsyncMock()
+            mock_service.get_income_statement.return_value = {
+                "id": uuid.uuid4(),
+                "budget_version_id": version_id,
+                "statement_type": "income_statement",
+                "statement_format": "ifrs",
+                "statement_name": "Income Statement IFRS",
+                "fiscal_year": 2025,
+                "total_amount_sar": Decimal("5000000"),
+                "is_calculated": True,
+                "notes": None,
+                "lines": [],
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+            }
+            mock_svc.return_value = mock_service
+
+            with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
+                response = client.get(f"/api/v1/consolidation/statements/income/{version_id}?format=ifrs")
+
+                assert response.status_code == 200
+                data = response.json()
+                assert data["statement_format"] == "ifrs"

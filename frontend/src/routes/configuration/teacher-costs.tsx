@@ -1,17 +1,17 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { requireAuth } from '@/lib/auth-guard'
-import { useState, useEffect, useMemo, useCallback } from 'react'
 import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
+import { requireAuth } from '@/lib/auth-guard'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { DataTableLazy } from '@/components/DataTableLazy'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
+import { DataTableLazy } from '@/components/DataTableLazy'
 import { AlertCircle } from 'lucide-react'
 import {
   useTeacherCosts,
-  useUpdateTeacherCost,
   useTeacherCategories,
   useCycles,
+  useUpdateTeacherCost,
 } from '@/hooks/api/useConfiguration'
 import { TeacherCostParam } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
@@ -22,247 +22,173 @@ export const Route = createFileRoute('/configuration/teacher-costs')({
 })
 
 function TeacherCostsPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const [selectedVersionId, setSelectedVersionId] = useState('')
   const [rowData, setRowData] = useState<TeacherCostParam[]>([])
 
-  const {
-    data: teacherCostsData,
-    isLoading: costsLoading,
-    error: costsError,
-  } = useTeacherCosts(selectedVersionId)
-  const { data: categoriesData } = useTeacherCategories()
-  const { data: cyclesData } = useCycles()
-
+  const { data: teacherCosts, isLoading, error } = useTeacherCosts(selectedVersionId)
+  const { data: categories } = useTeacherCategories()
+  const { data: cycles } = useCycles()
   const updateMutation = useUpdateTeacherCost()
 
   useEffect(() => {
-    if (teacherCostsData) {
-      setRowData(teacherCostsData)
+    if (teacherCosts) {
+      setRowData(teacherCosts)
     }
-  }, [teacherCostsData])
+  }, [teacherCosts])
 
   const getCategoryName = useCallback(
-    (categoryId: string) => {
-      return categoriesData?.find((c) => c.id === categoryId)?.name_fr || categoryId
-    },
-    [categoriesData]
+    (id: string) => categories?.find((c) => c.id === id)?.name_en || id,
+    [categories]
   )
 
   const getCycleName = useCallback(
-    (cycleId: string | null) => {
-      if (!cycleId) return 'Tous'
-      return cyclesData?.find((c) => c.id === cycleId)?.name || cycleId
+    (id: string | null) => {
+      if (!id) return 'All cycles'
+      return cycles?.find((c) => c.id === id)?.name || id
     },
-    [cyclesData]
-  )
-
-  const formatCurrency = useCallback((value: number | null | undefined): string => {
-    if (value == null) return ''
-    return new Intl.NumberFormat('fr-FR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value)
-  }, [])
-
-  const handleCellValueChanged = useCallback(
-    async (event: CellValueChangedEvent<TeacherCostParam>) => {
-      const updatedRow = event.data
-      if (!updatedRow) return
-
-      const field = event.column.getColId()
-      const newValue = event.newValue
-      const oldValue = event.oldValue
-
-      // Skip if value didn't change
-      if (newValue === oldValue) return
-
-      // Validation rules
-      if (field === 'social_charges_rate') {
-        const rate = newValue / 100 // Convert from percentage display to decimal
-        if (rate < 0 || rate > 1) {
-          toastMessages.error.validation('Le taux de charges sociales doit être entre 0% et 100%')
-          event.node.setDataValue(field, oldValue)
-          return
-        }
-      }
-
-      if (field === 'max_hsa_hours') {
-        if (newValue < 0 || newValue > 10) {
-          toastMessages.error.validation('Les heures HSA maximum doivent être entre 0 et 10')
-          event.node.setDataValue(field, oldValue)
-          return
-        }
-      }
-
-      if (
-        field === 'prrd_contribution_eur' ||
-        field === 'avg_salary_sar' ||
-        field === 'benefits_allowance_sar' ||
-        field === 'hsa_hourly_rate_sar'
-      ) {
-        if (newValue != null && newValue < 0) {
-          toastMessages.error.validation('Les montants ne peuvent pas être négatifs')
-          event.node.setDataValue(field, oldValue)
-          return
-        }
-      }
-
-      // Prepare update data with all required fields
-      const updateData = {
-        budget_version_id: updatedRow.budget_version_id,
-        category_id: updatedRow.category_id,
-        cycle_id: updatedRow.cycle_id,
-        prrd_contribution_eur:
-          field === 'prrd_contribution_eur' ? newValue : updatedRow.prrd_contribution_eur,
-        avg_salary_sar: field === 'avg_salary_sar' ? newValue : updatedRow.avg_salary_sar,
-        social_charges_rate:
-          field === 'social_charges_rate' ? newValue / 100 : updatedRow.social_charges_rate,
-        benefits_allowance_sar:
-          field === 'benefits_allowance_sar' ? newValue : updatedRow.benefits_allowance_sar,
-        hsa_hourly_rate_sar:
-          field === 'hsa_hourly_rate_sar' ? newValue : updatedRow.hsa_hourly_rate_sar,
-        max_hsa_hours: field === 'max_hsa_hours' ? newValue : updatedRow.max_hsa_hours,
-        notes: field === 'notes' ? newValue : updatedRow.notes,
-      }
-
-      try {
-        await updateMutation.mutateAsync(updateData)
-      } catch {
-        // Revert on error (error is already handled by mutation's onError)
-        event.node.setDataValue(field, oldValue)
-      }
-    },
-    [updateMutation]
+    [cycles]
   )
 
   const columnDefs: ColDef<TeacherCostParam>[] = useMemo(
     () => [
       {
         field: 'category_id',
-        headerName: 'Catégorie',
-        flex: 2,
+        headerName: 'Category',
         valueFormatter: (params) => getCategoryName(params.value),
+        flex: 1.5,
         filter: 'agTextColumnFilter',
       },
       {
         field: 'cycle_id',
         headerName: 'Cycle',
-        flex: 1.5,
         valueFormatter: (params) => getCycleName(params.value),
+        flex: 1.2,
         filter: 'agTextColumnFilter',
       },
       {
         field: 'prrd_contribution_eur',
         headerName: 'PRRD (EUR)',
-        flex: 1.5,
         editable: true,
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          precision: 2,
-        },
-        filter: 'agNumberColumnFilter',
-        valueFormatter: (params) => formatCurrency(params.value),
+        cellEditorParams: { min: 0, max: 100000, precision: 2 },
+        valueFormatter: (params) =>
+          params.value == null
+            ? ''
+            : Number(params.value).toLocaleString('fr-FR', { maximumFractionDigits: 2 }),
+        flex: 1,
       },
       {
         field: 'avg_salary_sar',
-        headerName: 'Salaire Moyen (SAR)',
-        flex: 2,
+        headerName: 'Salary (SAR)',
         editable: true,
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          precision: 2,
-        },
-        filter: 'agNumberColumnFilter',
-        valueFormatter: (params) => formatCurrency(params.value),
+        cellEditorParams: { min: 0, max: 1000000, precision: 2 },
+        valueFormatter: (params) =>
+          params.value == null
+            ? ''
+            : Number(params.value).toLocaleString('fr-FR', { maximumFractionDigits: 0 }),
+        flex: 1,
       },
       {
         field: 'social_charges_rate',
-        headerName: 'Charges Sociales (%)',
-        flex: 1.8,
+        headerName: 'Charges (%)',
         editable: true,
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 100,
-          precision: 2,
-        },
-        filter: 'agNumberColumnFilter',
-        valueGetter: (params) => {
-          if (params.data?.social_charges_rate == null) return null
-          return params.data.social_charges_rate * 100
-        },
-        valueSetter: (params) => {
-          if (params.data) {
-            params.data.social_charges_rate = params.newValue / 100
-          }
-          return true
-        },
-        valueFormatter: (params) => {
-          if (params.value == null) return ''
-          return `${params.value.toFixed(2)}%`
-        },
+        cellEditorParams: { min: 0, max: 1, precision: 4 },
+        valueFormatter: (params) =>
+          params.value == null ? '' : `${(Number(params.value) * 100).toFixed(2)}%`,
+        flex: 1,
       },
       {
         field: 'benefits_allowance_sar',
-        headerName: 'Indemnités (SAR)',
-        flex: 1.8,
+        headerName: 'Allowances (SAR)',
         editable: true,
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          precision: 2,
-        },
-        filter: 'agNumberColumnFilter',
-        valueFormatter: (params) => formatCurrency(params.value),
+        cellEditorParams: { min: 0, max: 200000, precision: 2 },
+        valueFormatter: (params) =>
+          params.value == null
+            ? ''
+            : Number(params.value).toLocaleString('fr-FR', { maximumFractionDigits: 0 }),
+        flex: 1,
       },
       {
         field: 'hsa_hourly_rate_sar',
-        headerName: 'Taux Horaire HSA (SAR)',
-        flex: 2.2,
+        headerName: 'HSA Rate (SAR)',
         editable: true,
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          precision: 2,
-        },
-        filter: 'agNumberColumnFilter',
-        valueFormatter: (params) => formatCurrency(params.value),
+        cellEditorParams: { min: 0, max: 2000, precision: 2 },
+        valueFormatter: (params) =>
+          params.value == null
+            ? ''
+            : Number(params.value).toLocaleString('fr-FR', { maximumFractionDigits: 2 }),
+        flex: 1,
       },
       {
         field: 'max_hsa_hours',
-        headerName: 'HSA Max (heures)',
-        flex: 1.8,
+        headerName: 'Max HSA Hours',
         editable: true,
         cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 10,
-          precision: 1,
-        },
-        filter: 'agNumberColumnFilter',
-        valueFormatter: (params) => {
-          if (params.value == null) return ''
-          return params.value.toFixed(1)
-        },
+        cellEditorParams: { min: 0, max: 10, precision: 2 },
+        flex: 1,
       },
       {
         field: 'notes',
         headerName: 'Notes',
-        flex: 2,
         editable: true,
-        filter: 'agTextColumnFilter',
+        flex: 1.2,
       },
     ],
-    [getCategoryName, getCycleName, formatCurrency]
+    [getCategoryName, getCycleName]
+  )
+
+  const handleCellValueChanged = useCallback(
+    async (event: CellValueChangedEvent<TeacherCostParam>) => {
+      const updatedRow = event.data
+      if (!updatedRow || !selectedVersionId) return
+
+      const field = event.column.getColId()
+      const newValue = event.newValue
+      const oldValue = event.oldValue
+
+      if (newValue === oldValue) return
+
+      if (field !== 'notes' && (newValue == null || Number(newValue) < 0)) {
+        toastMessages.error.validation('La valeur doit être positive')
+        event.node.setDataValue(field, oldValue)
+        return
+      }
+
+      const payload = {
+        budget_version_id: updatedRow.budget_version_id,
+        category_id: updatedRow.category_id,
+        cycle_id: updatedRow.cycle_id,
+        prrd_contribution_eur:
+          field === 'prrd_contribution_eur' ? Number(newValue) : updatedRow.prrd_contribution_eur,
+        avg_salary_sar: field === 'avg_salary_sar' ? Number(newValue) : updatedRow.avg_salary_sar,
+        social_charges_rate:
+          field === 'social_charges_rate' ? Number(newValue) : updatedRow.social_charges_rate,
+        benefits_allowance_sar:
+          field === 'benefits_allowance_sar' ? Number(newValue) : updatedRow.benefits_allowance_sar,
+        hsa_hourly_rate_sar:
+          field === 'hsa_hourly_rate_sar' ? Number(newValue) : updatedRow.hsa_hourly_rate_sar,
+        max_hsa_hours: field === 'max_hsa_hours' ? Number(newValue) : updatedRow.max_hsa_hours,
+        notes: field === 'notes' ? newValue : updatedRow.notes,
+      }
+
+      try {
+        await updateMutation.mutateAsync(payload)
+      } catch {
+        event.node.setDataValue(field, oldValue)
+      }
+    },
+    [selectedVersionId, updateMutation]
   )
 
   return (
     <MainLayout>
       <PageContainer
-        title="Coûts des Enseignants"
-        description="Configuration des coûts par catégorie d'enseignants (AEFE/Local)"
+        title="Teacher Costs"
+        description="Configure teacher salary, charges and overtime assumptions by category"
       >
         <div className="space-y-4">
           <BudgetVersionSelector value={selectedVersionId} onChange={setSelectedVersionId} />
@@ -271,8 +197,7 @@ function TeacherCostsPage() {
             <div className="flex items-center gap-2 p-4 bg-sand-50 border border-sand-200 rounded-lg">
               <AlertCircle className="h-4 w-4 text-sand-600" />
               <p className="text-sm text-sand-800">
-                Veuillez sélectionner une version budgétaire pour voir les paramètres de coûts des
-                enseignants.
+                Veuillez sélectionner une version budgétaire pour voir les coûts enseignants.
               </p>
             </div>
           )}
@@ -282,18 +207,17 @@ function TeacherCostsPage() {
               <div className="flex items-center gap-2 p-4 bg-info-50 border border-info-200 rounded-lg">
                 <AlertCircle className="h-4 w-4 text-info-600" />
                 <p className="text-sm text-info-800">
-                  Les cellules sont modifiables. Cliquez pour éditer les valeurs. Les changements
-                  sont automatiquement sauvegardés. Les charges sociales sont affichées en
-                  pourcentage (ex: 21% = 0.21).
+                  Modifiez directement les cellules pour mettre à jour les paramètres de coûts. Les
+                  valeurs doivent être positives. Les montants PRRD sont en EUR, les autres en SAR.
                 </p>
               </div>
 
               <DataTableLazy
                 rowData={rowData}
                 columnDefs={columnDefs}
-                loading={costsLoading}
-                error={costsError}
-                pagination={true}
+                loading={isLoading}
+                error={error}
+                pagination
                 paginationPageSize={50}
                 onCellValueChanged={handleCellValueChanged}
                 defaultColDef={{

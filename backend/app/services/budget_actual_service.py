@@ -22,6 +22,7 @@ from app.models.analysis import (
     BudgetVsActual,
     VarianceStatus,
 )
+from app.models.consolidation import BudgetConsolidation
 from app.models.configuration import BudgetVersion, BudgetVersionStatus
 from app.services.base import BaseService
 from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
@@ -171,9 +172,8 @@ class BudgetActualService:
         if not version:
             raise NotFoundError("BudgetVersion", str(budget_version_id))
 
-        # Get budget amounts from consolidation
-        # This would query BudgetConsolidation table
-        # For now, placeholder implementation
+        # Get budget amounts from consolidation (annual amounts)
+        budget_amounts = await self._get_budget_amounts(budget_version_id, account_code)
 
         # Get actual amounts for period
         actual_query = select(ActualData).where(
@@ -193,19 +193,21 @@ class BudgetActualService:
         # Calculate variance for each account
         variances = []
         for actual in actuals:
-            # Get budget amount for this account
-            budget_amount = Decimal("0")  # Would query from BudgetConsolidation
+            # Get annual budget amount for this account (default 0 if missing)
+            budget_amount = budget_amounts.get(actual.account_code, Decimal("0"))
+            # Allocate a simple monthly budget (12-month straight-line) for variance
+            monthly_budget = budget_amount / Decimal("12")
 
             # Calculate variance
             variance_sar = self._calculate_variance_amount(
                 account_code=actual.account_code,
-                budget_amount=budget_amount,
+                budget_amount=monthly_budget,
                 actual_amount=actual.amount_sar,
             )
 
             variance_percent = Decimal("0")
-            if budget_amount != 0:
-                variance_percent = (variance_sar / budget_amount) * 100
+            if monthly_budget != 0:
+                variance_percent = (variance_sar / monthly_budget) * 100
 
             # Determine variance status
             variance_status = self._determine_variance_status(
@@ -221,8 +223,12 @@ class BudgetActualService:
             )
 
             # Calculate YTD amounts
-            ytd_budget = Decimal("0")  # Would calculate YTD from consolidation
-            ytd_actual = Decimal("0")  # Would calculate YTD from actuals
+            ytd_budget = monthly_budget * Decimal(str(period))
+            ytd_actual = await self._get_ytd_actual(
+                fiscal_year=version.fiscal_year,
+                account_code=actual.account_code,
+                through_period=period,
+            )
             ytd_variance = self._calculate_variance_amount(
                 account_code=actual.account_code,
                 budget_amount=ytd_budget,
@@ -330,7 +336,7 @@ class BudgetActualService:
             query = query.where(BudgetVsActual.account_code.like(account_code_pattern))
 
         if material_only:
-            query = query.where(BudgetVsActual.is_material is True)
+            query = query.where(BudgetVsActual.is_material.is_(True))
 
         query = query.order_by(BudgetVsActual.account_code, BudgetVsActual.period)
 
@@ -453,6 +459,65 @@ class BudgetActualService:
         # Implementation would be added here
 
         return forecast_version
+
+    async def _get_budget_amounts(
+        self,
+        budget_version_id: uuid.UUID,
+        account_code: str | None = None,
+    ) -> dict[str, Decimal]:
+        """
+        Fetch consolidated budget amounts keyed by account code.
+
+        Args:
+            budget_version_id: Budget version to pull consolidation for
+            account_code: Optional specific account filter
+
+        Returns:
+            Dict of account_code -> annual budget amount
+        """
+        query = select(BudgetConsolidation).where(
+            and_(
+                BudgetConsolidation.budget_version_id == budget_version_id,
+                BudgetConsolidation.deleted_at.is_(None),
+            )
+        )
+
+        if account_code:
+            query = query.where(BudgetConsolidation.account_code == account_code)
+
+        result = await self.session.execute(query)
+        consolidations = result.scalars().all()
+        return {c.account_code: Decimal(c.amount_sar) for c in consolidations}
+
+    async def _get_ytd_actual(
+        self,
+        fiscal_year: int,
+        account_code: str,
+        through_period: int,
+    ) -> Decimal:
+        """
+        Aggregate actuals from period 1 through the given period.
+
+        Args:
+            fiscal_year: Fiscal year to filter
+            account_code: Account code to aggregate
+            through_period: Inclusive period upper bound (1-12)
+
+        Returns:
+            Decimal total of actual amounts
+        """
+        ytd_query = select(ActualData).where(
+            and_(
+                ActualData.fiscal_year == fiscal_year,
+                ActualData.period <= through_period,
+                ActualData.account_code == account_code,
+                ActualData.deleted_at.is_(None),
+            )
+        )
+        result = await self.session.execute(ytd_query)
+        records = result.scalars().all()
+        total = sum((Decimal(str(r.amount_sar)) for r in records), Decimal("0"))
+        return total
 
     def _calculate_variance_amount(
         self,

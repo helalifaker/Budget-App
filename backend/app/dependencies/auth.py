@@ -80,12 +80,22 @@ async def get_current_user(request: Request) -> CurrentUser:
             detail="Not authenticated",
         )
 
+    # Log the actual user_id value for debugging
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.debug(f"Attempting to convert user_id to UUID: {user_id} (type: {type(user_id)})")
+
     try:
-        user_uuid = uuid.UUID(user_id)
-    except (ValueError, AttributeError):
+        # Ensure user_id is a string before UUID conversion
+        user_id_str = str(user_id).strip()
+        user_uuid = uuid.UUID(user_id_str)
+    except (ValueError, AttributeError, TypeError) as e:
+        logger.error(
+            f"Failed to convert user_id to UUID: {user_id} (type: {type(user_id)}), error: {e}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user ID format",
+            detail=f"Invalid user ID format: {user_id}",
         )
 
     return CurrentUser(

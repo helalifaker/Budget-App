@@ -25,6 +25,12 @@ export const configurationKeys = {
     budgetVersionId
       ? ([...configurationKeys.all, 'fee-structure', budgetVersionId] as const)
       : ([...configurationKeys.all, 'fee-structure'] as const),
+  systemConfigs: (category?: string) =>
+    category
+      ? ([...configurationKeys.all, 'system-configs', category] as const)
+      : ([...configurationKeys.all, 'system-configs'] as const),
+  timetableConstraints: (budgetVersionId: string) =>
+    [...configurationKeys.all, 'timetable-constraints', budgetVersionId] as const,
 }
 
 export function useLevels() {
@@ -190,12 +196,9 @@ export function useUpdateTeacherCost() {
       max_hsa_hours: number
       notes?: string | null
     }) => configurationApi.teacherCosts.update(data),
-    onSuccess: () => {
-      // Invalidate the teacher costs query for the affected budget version
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.all,
-        predicate: (query) =>
-          query.queryKey[0] === 'configuration' && query.queryKey[1] === 'teacher-costs',
+        queryKey: configurationKeys.teacherCosts(variables.budget_version_id),
       })
       toastMessages.success.updated('Paramètre de coûts enseignants')
     },
@@ -226,15 +229,89 @@ export function useUpdateFeeStructure() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (data: Partial<import('@/types/api').FeeStructure> & { id: string }) =>
-      configurationApi.feeStructure.update(data),
-    onSuccess: () => {
+    mutationFn: (data: {
+      budget_version_id: string
+      level_id: string
+      nationality_type_id: string
+      fee_category_id: string
+      amount_sar: number
+      trimester?: number | null
+      notes?: string | null
+    }) => configurationApi.feeStructure.update(data),
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.all,
-        predicate: (query) =>
-          query.queryKey[0] === 'configuration' && query.queryKey[1] === 'fee-structure',
+        queryKey: configurationKeys.feeStructure(variables.budget_version_id),
       })
       toastMessages.success.updated('Structure tarifaire')
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
+// ============================================================================
+// System Configuration (Module 1)
+// ============================================================================
+
+export function useSystemConfigs(category?: string) {
+  return useQuery({
+    queryKey: configurationKeys.systemConfigs(category),
+    queryFn: () => configurationApi.systemConfig.getAll(category),
+    staleTime: 30 * 60 * 1000, // 30 minutes - configuration data changes rarely
+  })
+}
+
+export function useUpdateSystemConfig() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ key, data }: { key: string; data: unknown }) =>
+      configurationApi.systemConfig.update(key, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.systemConfigs(),
+      })
+      toastMessages.success.updated('Configuration système')
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
+// ============================================================================
+// Timetable Constraints (Module 6)
+// ============================================================================
+
+export function useTimetableConstraints(budgetVersionId: string) {
+  return useQuery({
+    queryKey: configurationKeys.timetableConstraints(budgetVersionId),
+    queryFn: () => configurationApi.timetableConstraints.getAll(budgetVersionId),
+    enabled: !!budgetVersionId,
+    staleTime: 30 * 60 * 1000,
+  })
+}
+
+export function useUpdateTimetableConstraint() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: {
+      budget_version_id: string
+      level_id: string
+      total_hours_per_week: number
+      max_hours_per_day: number
+      days_per_week: number
+      requires_lunch_break: boolean
+      min_break_duration_minutes: number
+      notes?: string | null
+    }) => configurationApi.timetableConstraints.update(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.timetableConstraints(variables.budget_version_id),
+      })
+      toastMessages.success.updated('Contrainte horaire')
     },
     onError: (error: Error) => {
       toastMessages.error.custom(error.message)

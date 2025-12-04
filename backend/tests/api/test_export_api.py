@@ -499,3 +499,403 @@ class TestExportEdgeCases:
 
                 # Should handle None kpi_definition gracefully
                 assert response.status_code == 200
+
+    def test_export_large_dataset_excel(self, client, mock_user):
+        """Test Excel export with large dataset."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_consolidation = MagicMock()
+                mock_consolidation.budget_version = MagicMock(name="Budget 2025")
+                mock_consolidation.total_revenue = Decimal("999999999.99")
+                mock_consolidation.total_personnel_costs = Decimal("500000000.00")
+                mock_consolidation.total_operating_costs = Decimal("200000000.00")
+                mock_consolidation.total_capex = Decimal("100000000.00")
+                mock_consolidation.net_result = Decimal("199999999.99")
+                mock_service.get_consolidation.return_value = mock_consolidation
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/excel")
+
+                assert response.status_code == 200
+
+    def test_export_csv_special_characters(self, client, mock_user):
+        """Test CSV export with special characters in data."""
+        version_id = uuid.uuid4()
+
+        special_items = [
+            {
+                "account_code": "70110",
+                "account_name": 'Scolarité T1, "Maternelle"',
+                "consolidation_category": "tuition",
+                "is_revenue": True,
+                "amount_sar": Decimal("5000000.00"),
+                "source_table": "revenue_plan",
+            }
+        ]
+
+        with patch(
+            "app.api.v1.export.ConsolidationService"
+        ) as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.calculate_line_items.return_value = special_items
+            mock_service_class.return_value = mock_service
+
+            response = client.get(f"/api/v1/export/budget/{version_id}/csv")
+
+            assert response.status_code == 200
+            assert "Scolarité" in response.text or "Scolarit" in response.text
+
+    def test_export_csv_utf8_encoding(self, client, mock_user):
+        """Test CSV export with UTF-8 characters."""
+        version_id = uuid.uuid4()
+
+        utf8_items = [
+            {
+                "account_code": "70110",
+                "account_name": "Scolarité Élémentaire",
+                "consolidation_category": "tuition",
+                "is_revenue": True,
+                "amount_sar": Decimal("3000000.00"),
+                "source_table": "revenue_plan",
+            }
+        ]
+
+        with patch(
+            "app.api.v1.export.ConsolidationService"
+        ) as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.calculate_line_items.return_value = utf8_items
+            mock_service_class.return_value = mock_service
+
+            response = client.get(f"/api/v1/export/budget/{version_id}/csv")
+
+            assert response.status_code == 200
+
+    def test_export_csv_large_dataset(self, client, mock_user):
+        """Test CSV export with large number of line items."""
+        version_id = uuid.uuid4()
+
+        large_items = [
+            {
+                "account_code": f"7{i:04d}",
+                "account_name": f"Line Item {i}",
+                "consolidation_category": "revenue",
+                "is_revenue": True,
+                "amount_sar": Decimal(str(i * 1000)),
+                "source_table": "revenue_plan",
+            }
+            for i in range(100)
+        ]
+
+        with patch(
+            "app.api.v1.export.ConsolidationService"
+        ) as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.calculate_line_items.return_value = large_items
+            mock_service_class.return_value = mock_service
+
+            response = client.get(f"/api/v1/export/budget/{version_id}/csv")
+
+            assert response.status_code == 200
+            lines = response.text.split("\n")
+            assert len(lines) >= 100
+
+    def test_export_pdf_empty_consolidation(self, client, mock_user):
+        """Test PDF export with empty consolidation."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.reportlab") as mock_reportlab:
+            mock_lib = MagicMock()
+            mock_lib.colors = MagicMock()
+            mock_lib.pagesizes.A4 = (595, 842)
+            mock_lib.units.cm = 28.35
+            mock_lib.styles.ParagraphStyle = MagicMock()
+            mock_lib.styles.getSampleStyleSheet = MagicMock(
+                return_value={
+                    "Heading1": MagicMock(),
+                    "Heading2": MagicMock(),
+                    "Normal": MagicMock(),
+                }
+            )
+            mock_reportlab.lib = mock_lib
+            mock_reportlab.platypus = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_consolidation = MagicMock()
+                mock_consolidation.budget_version = None
+                mock_consolidation.total_revenue = None
+                mock_consolidation.total_personnel_costs = None
+                mock_consolidation.total_operating_costs = None
+                mock_consolidation.total_capex = None
+                mock_consolidation.net_result = None
+                mock_service.get_consolidation.return_value = mock_consolidation
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/pdf")
+
+                assert response.status_code == 200
+
+    def test_export_excel_zero_values(self, client, mock_user):
+        """Test Excel export with all zero values."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_consolidation = MagicMock()
+                mock_consolidation.budget_version = MagicMock(name="Empty Budget")
+                mock_consolidation.total_revenue = Decimal("0")
+                mock_consolidation.total_personnel_costs = Decimal("0")
+                mock_consolidation.total_operating_costs = Decimal("0")
+                mock_consolidation.total_capex = Decimal("0")
+                mock_consolidation.net_result = Decimal("0")
+                mock_service.get_consolidation.return_value = mock_consolidation
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/excel")
+
+                assert response.status_code == 200
+
+    def test_export_kpi_negative_variances(self, client, mock_user):
+        """Test KPI export with negative variances."""
+        version_id = uuid.uuid4()
+
+        kpi_data = [
+            MagicMock(
+                kpi_definition=MagicMock(
+                    code="TEST_KPI",
+                    name_en="Test KPI",
+                    target_value=Decimal("100")
+                ),
+                calculated_value=Decimal("80"),
+                variance_from_target=Decimal("-20")
+            )
+        ]
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+            mock_openpyxl.utils.get_column_letter = lambda x: chr(64 + x)
+
+            with patch("app.api.v1.export.KPIService") as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_all_kpis.return_value = kpi_data
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/kpi/{version_id}/excel")
+
+                assert response.status_code == 200
+
+    def test_export_csv_missing_optional_fields(self, client, mock_user):
+        """Test CSV export with line items missing optional fields."""
+        version_id = uuid.uuid4()
+
+        minimal_items = [
+            {
+                "account_code": "70110",
+                # Missing account_name, category, etc.
+            }
+        ]
+
+        with patch(
+            "app.api.v1.export.ConsolidationService"
+        ) as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.calculate_line_items.return_value = minimal_items
+            mock_service_class.return_value = mock_service
+
+            response = client.get(f"/api/v1/export/budget/{version_id}/csv")
+
+            assert response.status_code == 200
+            assert "70110" in response.text
+
+    def test_export_concurrent_excel_requests(self, client, mock_user, mock_consolidation_data):
+        """Test multiple concurrent Excel export requests."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_consolidation.return_value = mock_consolidation_data
+                mock_service_class.return_value = mock_service
+
+                # Make multiple concurrent requests
+                responses = [
+                    client.get(f"/api/v1/export/budget/{version_id}/excel")
+                    for _ in range(3)
+                ]
+
+                # All should succeed
+                for response in responses:
+                    assert response.status_code == 200
+
+    def test_export_service_timeout(self, client, mock_user):
+        """Test export with service timeout."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_openpyxl.Workbook = MagicMock()
+            mock_openpyxl.styles = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_consolidation.side_effect = TimeoutError("Service timeout")
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/excel")
+
+                # Should return 404 or 500 (generic exception handling)
+                assert response.status_code in (404, 500)
+
+    def test_export_invalid_query_params(self, client, mock_user):
+        """Test export with invalid query parameters."""
+        version_id = uuid.uuid4()
+
+        response = client.get(
+            f"/api/v1/export/budget/{version_id}/excel?include_details=invalid"
+        )
+
+        # FastAPI validation should catch invalid boolean
+        assert response.status_code == 422
+
+    def test_export_kpi_null_values(self, client, mock_user):
+        """Test KPI export with null calculated values."""
+        version_id = uuid.uuid4()
+
+        kpi_data = [
+            MagicMock(
+                kpi_definition=MagicMock(
+                    code="NULL_KPI",
+                    name_en="Null KPI",
+                    target_value=None
+                ),
+                calculated_value=None,
+                variance_from_target=None
+            )
+        ]
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+            mock_openpyxl.utils.get_column_letter = lambda x: chr(64 + x)
+
+            with patch("app.api.v1.export.KPIService") as mock_service_class:
+                mock_service = AsyncMock()
+                mock_service.get_all_kpis.return_value = kpi_data
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/kpi/{version_id}/excel")
+
+                assert response.status_code == 200
+
+    def test_export_pdf_large_amounts(self, client, mock_user):
+        """Test PDF export with very large amounts."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.reportlab") as mock_reportlab:
+            mock_lib = MagicMock()
+            mock_lib.colors = MagicMock()
+            mock_lib.pagesizes.A4 = (595, 842)
+            mock_lib.units.cm = 28.35
+            mock_lib.styles.ParagraphStyle = MagicMock()
+            mock_lib.styles.getSampleStyleSheet = MagicMock(
+                return_value={
+                    "Heading1": MagicMock(),
+                    "Heading2": MagicMock(),
+                    "Normal": MagicMock(),
+                }
+            )
+            mock_reportlab.lib = mock_lib
+            mock_reportlab.platypus = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_consolidation = MagicMock()
+                mock_consolidation.budget_version = MagicMock(name="Large Budget")
+                mock_consolidation.budget_version.status = MagicMock(value="APPROVED")
+                mock_consolidation.total_revenue = Decimal("999999999999.99")
+                mock_consolidation.total_personnel_costs = Decimal("500000000000.00")
+                mock_consolidation.total_operating_costs = Decimal("200000000000.00")
+                mock_consolidation.total_capex = Decimal("100000000000.00")
+                mock_consolidation.net_result = Decimal("199999999999.99")
+                mock_service.get_consolidation.return_value = mock_consolidation
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/pdf")
+
+                assert response.status_code == 200
+
+    def test_export_csv_boolean_fields(self, client, mock_user):
+        """Test CSV export with boolean fields properly formatted."""
+        version_id = uuid.uuid4()
+
+        items_with_booleans = [
+            {
+                "account_code": "70110",
+                "account_name": "Revenue Item",
+                "consolidation_category": "revenue",
+                "is_revenue": True,
+                "amount_sar": Decimal("1000000.00"),
+                "source_table": "revenue_plan",
+            },
+            {
+                "account_code": "64110",
+                "account_name": "Cost Item",
+                "consolidation_category": "personnel",
+                "is_revenue": False,
+                "amount_sar": Decimal("500000.00"),
+                "source_table": "cost_plan",
+            }
+        ]
+
+        with patch(
+            "app.api.v1.export.ConsolidationService"
+        ) as mock_service_class:
+            mock_service = AsyncMock()
+            mock_service.calculate_line_items.return_value = items_with_booleans
+            mock_service_class.return_value = mock_service
+
+            response = client.get(f"/api/v1/export/budget/{version_id}/csv")
+
+            assert response.status_code == 200
+            assert "True" in response.text or "False" in response.text

@@ -22,6 +22,9 @@ from app.models.analysis import KPICategory, KPIDefinition, KPIValue
 from app.models.configuration import BudgetVersion, BudgetVersionStatus
 from app.services.exceptions import NotFoundError, ValidationError
 from app.services.kpi_service import KPIService
+from app.models.planning import DHGSubjectHours
+from app.models.configuration import AcademicLevel, Subject
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture
@@ -584,6 +587,49 @@ class TestKPICalculation:
 
         with pytest.raises(NotFoundError):
             await kpi_service.calculate_kpis(budget_version_id=uuid.uuid4())
+
+
+# ==============================================================================
+# Test: KPI Calculation Data (DHG splits)
+# ==============================================================================
+
+
+class TestKpiCalculationDataWithDhg:
+    """Tests for DHG-driven KPI data aggregation."""
+
+    @pytest.mark.asyncio
+    async def test_teacher_fte_split_by_level(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        subjects: dict[str, Subject],
+        academic_levels: dict[str, AcademicLevel],
+        test_user_id: uuid.UUID,
+        test_dhg_data: dict,
+    ):
+        """Verify primary/secondary teacher FTE are split from DHG hours."""
+        # Add primary DHG hours to drive primary FTE (secondary covered by test_dhg_data)
+        db_session.add(
+            DHGSubjectHours(
+                id=uuid.uuid4(),
+                budget_version_id=test_budget_version.id,
+                subject_id=subjects["MATH"].id,
+                level_id=academic_levels["PS"].id,
+                number_of_classes=2,
+                hours_per_class_per_week=Decimal("6.0"),
+                total_hours_per_week=Decimal("12.0"),
+                is_split=False,
+                created_by_id=test_user_id,
+            )
+        )
+        await db_session.flush()
+
+        service = KPIService(db_session)
+        kpi_data = await service._get_kpi_calculation_data(test_budget_version.id)
+
+        assert kpi_data["primary_teacher_fte"] == Decimal("0.50")
+        # Secondary hours from test_dhg_data: 13.5 + 15.0 = 28.5 → 28.5/18 = 1.58
+        assert kpi_data["secondary_teacher_fte"] == Decimal("1.58")
 
 
 # ==============================================================================

@@ -158,45 +158,78 @@ class TestJWTToken:
 class TestSupabaseJWT:
     """Test Supabase JWT verification."""
 
-    @patch.dict(os.environ, {"SUPABASE_JWT_SECRET": "supabase-secret-key"})
     def test_verify_supabase_jwt_with_custom_secret(self):
         """Test Supabase JWT verification with custom secret."""
-        # Create token with Supabase secret
-        from app.core.security import SECRET_KEY, create_access_token
+        from jose import jwt
+        from app.core.security import ALGORITHM
 
-        # Temporarily use Supabase secret
-        original_secret = os.environ.get("SUPABASE_JWT_SECRET")
-        data = {"user_id": "123", "sub": "user-uuid"}
+        # Create a valid Supabase JWT with proper claims
+        secret = "test-supabase-jwt-secret"
+        supabase_url = "https://test.supabase.co"
+        data = {
+            "sub": "user-uuid-123",
+            "aud": "authenticated",
+            "iss": f"{supabase_url}/auth/v1",  # Required: issuer claim
+            "role": "authenticated",
+            "email": "test@example.com",
+        }
 
-        # Create token using the same secret that verify_supabase_jwt will use
-        token = create_access_token(data)
+        # Create token with the secret
+        token = jwt.encode(data, secret, algorithm=ALGORITHM)
 
-        # Verify with Supabase function
-        decoded = verify_supabase_jwt(token)
+        # Mock os.getenv in the security module where it's actually called
+        with patch("app.core.security.os.getenv") as mock_getenv:
+            def getenv_side_effect(key, default=""):
+                if key == "SUPABASE_JWT_SECRET":
+                    return secret
+                elif key == "SUPABASE_URL":
+                    return supabase_url
+                return default
 
-        # Should decode successfully (using default SECRET_KEY if SUPABASE_JWT_SECRET not set)
-        assert decoded is not None
+            mock_getenv.side_effect = getenv_side_effect
+
+            # Verify with Supabase function
+            decoded = verify_supabase_jwt(token)
+
+            # Should decode successfully
+            assert decoded is not None
+            assert decoded["sub"] == "user-uuid-123"
+            assert decoded["aud"] == "authenticated"
+            assert decoded["iss"] == f"{supabase_url}/auth/v1"
 
     def test_verify_supabase_jwt_invalid_token(self):
         """Test Supabase JWT verification with invalid token."""
         invalid_token = "invalid.token.here"
-        decoded = verify_supabase_jwt(invalid_token)
 
-        assert decoded is None
+        # Mock os.getenv to provide a secret (even though token is invalid)
+        with patch("app.core.security.os.getenv") as mock_getenv:
+            def getenv_side_effect(key, default=""):
+                if key == "SUPABASE_JWT_SECRET":
+                    return "test-secret"
+                elif key == "SUPABASE_URL":
+                    return "https://test.supabase.co"
+                return default
+
+            mock_getenv.side_effect = getenv_side_effect
+
+            decoded = verify_supabase_jwt(invalid_token)
+            assert decoded is None
 
     def test_verify_supabase_jwt_uses_default_secret(self):
-        """Test that Supabase JWT uses default secret if env var not set."""
-        # Clear SUPABASE_JWT_SECRET
-        with patch.dict(os.environ, {}, clear=False):
-            if "SUPABASE_JWT_SECRET" in os.environ:
-                del os.environ["SUPABASE_JWT_SECRET"]
+        """Test that Supabase JWT returns None if secret not configured."""
+        from jose import jwt
+        from app.core.security import ALGORITHM
 
-            data = {"user_id": "123"}
-            token = create_access_token(data)
+        data = {"sub": "123", "aud": "authenticated"}
+        token = jwt.encode(data, "any-secret", algorithm=ALGORITHM)
 
-            # Should use default SECRET_KEY
+        # Mock os.getenv to return empty string (secret not configured)
+        with patch("app.core.security.os.getenv") as mock_getenv:
+            mock_getenv.return_value = ""
+
+            # Should return None when SUPABASE_JWT_SECRET not set
             decoded = verify_supabase_jwt(token)
-            assert decoded is not None
+            assert decoded is None
 
 
 class TestSecurityEdgeCases:

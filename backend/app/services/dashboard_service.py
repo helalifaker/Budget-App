@@ -13,10 +13,13 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.configuration import BudgetVersion, BudgetVersionStatus
+from app.models.configuration import AcademicLevel, BudgetVersion, BudgetVersionStatus
+from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
+from app.models.planning import ClassStructure, EnrollmentPlan
+from app.models.planning import DHGTeacherRequirement
 from app.services.exceptions import NotFoundError
 
 
@@ -42,6 +45,7 @@ class DashboardService:
             session: Async database session
         """
         self.session = session
+        self.MAX_CAPACITY = Decimal("1875")
 
     async def get_dashboard_summary(
         self,
@@ -75,22 +79,81 @@ class DashboardService:
         if not version:
             raise NotFoundError("BudgetVersion", str(budget_version_id))
 
-        # Get aggregated data
-        # This would query from consolidated tables
-        # For now, return placeholder structure
+        # Totals from consolidation
+        revenue_query = (
+            select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.deleted_at.is_(None),
+                    BudgetConsolidation.is_revenue.is_(True),
+                )
+            )
+        )
+        cost_query = (
+            select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.deleted_at.is_(None),
+                    BudgetConsolidation.is_revenue.is_(False),
+                )
+            )
+        )
+
+        revenue = Decimal(str((await self.session.execute(revenue_query)).scalar() or 0))
+        costs = Decimal(str((await self.session.execute(cost_query)).scalar() or 0))
+        net_result = revenue - costs
+        operating_margin_pct = float((net_result / revenue * 100) if revenue else 0)
+
+        # Enrollment totals
+        students_query = select(func.coalesce(func.sum(EnrollmentPlan.student_count), 0)).where(
+            and_(
+                EnrollmentPlan.budget_version_id == budget_version_id,
+                EnrollmentPlan.deleted_at.is_(None),
+            )
+        )
+        total_students = int((await self.session.execute(students_query)).scalar() or 0)
+
+        # Class totals
+        classes_query = select(func.coalesce(func.sum(ClassStructure.number_of_classes), 0)).where(
+            and_(
+                ClassStructure.budget_version_id == budget_version_id,
+                ClassStructure.deleted_at.is_(None),
+            )
+        )
+        total_classes = int((await self.session.execute(classes_query)).scalar() or 0)
+
+        # Teacher FTE from DHG requirements (simple_fte)
+        teacher_fte_query = select(func.coalesce(func.sum(DHGTeacherRequirement.simple_fte), 0)).where(
+            and_(
+                DHGTeacherRequirement.budget_version_id == budget_version_id,
+                DHGTeacherRequirement.deleted_at.is_(None),
+            )
+        )
+        total_teachers_fte = Decimal(str((await self.session.execute(teacher_fte_query)).scalar() or 0))
+
+        student_teacher_ratio = float(
+            (Decimal(str(total_students)) / total_teachers_fte) if total_teachers_fte else 0
+        )
+        capacity_utilization_pct = float(
+            (Decimal(str(total_students)) / self.MAX_CAPACITY * 100) if self.MAX_CAPACITY else 0
+        )
+
         summary = {
             "version_id": str(budget_version_id),
             "version_name": version.name,
             "fiscal_year": version.fiscal_year,
             "status": version.status.value,
-            "total_revenue_sar": 0.0,
-            "total_costs_sar": 0.0,
-            "net_result_sar": 0.0,
-            "operating_margin_pct": 0.0,
-            "total_students": 0,
-            "total_teachers_fte": 0.0,
-            "student_teacher_ratio": 0.0,
-            "capacity_utilization_pct": 0.0,
+            "total_revenue_sar": float(revenue),
+            "total_costs_sar": float(costs),
+            "net_result_sar": float(net_result),
+            "operating_margin_pct": operating_margin_pct,
+            "total_students": total_students,
+            "total_classes": total_classes,
+            "total_teachers_fte": float(total_teachers_fte),
+            "student_teacher_ratio": student_teacher_ratio,
+            "capacity_utilization_pct": capacity_utilization_pct,
             "last_updated": datetime.utcnow().isoformat(),
         }
 
@@ -126,9 +189,25 @@ class DashboardService:
         if not version:
             raise NotFoundError("BudgetVersion", str(budget_version_id))
 
-        # Query enrollment data
-        # This would aggregate from EnrollmentPlan table
-        chart_data = {
+        base_query = (
+            select(
+                EnrollmentPlan.student_count,
+                EnrollmentPlan.level_id,
+                EnrollmentPlan.nationality_type_id,
+            )
+            .where(
+                and_(
+                    EnrollmentPlan.budget_version_id == budget_version_id,
+                    EnrollmentPlan.deleted_at.is_(None),
+                )
+            )
+            .join(AcademicLevel, AcademicLevel.id == EnrollmentPlan.level_id)
+        )
+
+        result = await self.session.execute(base_query)
+        rows = result.fetchall()
+
+        chart_data: dict[str, Any] = {
             "breakdown_by": breakdown_by,
             "labels": [],
             "values": [],
@@ -137,20 +216,58 @@ class DashboardService:
         }
 
         if breakdown_by == "level":
+            # Group by level code
+            level_totals: dict[str, int] = {}
+            for row in rows:
+                level = row._mapping["level_id"]
+                level_obj = await self.session.get(AcademicLevel, level)
+                if not level_obj:
+                    continue
+                level_totals[level_obj.code] = level_totals.get(level_obj.code, 0) + int(
+                    row._mapping["student_count"]
+                )
+            # Preserve order by sort_order
+            ordered_levels = (
+                await self.session.execute(
+                    select(AcademicLevel.code).order_by(AcademicLevel.sort_order)
+                )
+            ).scalars().all()
+            chart_data["labels"] = ordered_levels
+            chart_data["values"] = [level_totals.get(code, 0) for code in ordered_levels]
             chart_data["chart_type"] = "bar"
-            chart_data["labels"] = ["PS", "MS", "GS", "CP", "CE1", "CE2", "CM1", "CM2", "6ème", "5ème", "4ème", "3ème", "2nde", "1ère", "Term"]
-            chart_data["values"] = [0] * 15
-
-        elif breakdown_by == "nationality":
-            chart_data["chart_type"] = "pie"
-            chart_data["labels"] = ["French", "Saudi", "Other"]
-            chart_data["values"] = [0, 0, 0]
 
         elif breakdown_by == "cycle":
-            chart_data["chart_type"] = "pie"
-            chart_data["labels"] = ["Maternelle", "Élémentaire", "Collège", "Lycée"]
-            chart_data["values"] = [0, 0, 0, 0]
+            # Group by cycle name
+            from app.models.configuration import AcademicCycle
 
+            cycle_totals: dict[str, int] = {}
+            for row in rows:
+                level_obj = await self.session.get(AcademicLevel, row._mapping["level_id"])
+                if not level_obj:
+                    continue
+                cycle_obj = await self.session.get(AcademicCycle, level_obj.cycle_id)
+                name = cycle_obj.name_en if cycle_obj else "Unknown"
+                cycle_totals[name] = cycle_totals.get(name, 0) + int(row._mapping["student_count"])
+
+            chart_data["labels"] = list(cycle_totals.keys())
+            chart_data["values"] = list(cycle_totals.values())
+            chart_data["chart_type"] = "pie"
+
+        elif breakdown_by == "nationality":
+            # Group by nationality id (labels resolved lazily from configuration)
+            from app.models.configuration import NationalityType
+
+            nat_totals: dict[str, int] = {}
+            for row in rows:
+                nat = await self.session.get(NationalityType, row._mapping["nationality_type_id"])
+                name = nat.name_en if nat else "Unknown"
+                nat_totals[name] = nat_totals.get(name, 0) + int(row._mapping["student_count"])
+
+            chart_data["labels"] = list(nat_totals.keys())
+            chart_data["values"] = list(nat_totals.values())
+            chart_data["chart_type"] = "pie"
+
+        chart_data["total"] = sum(chart_data["values"]) if chart_data["values"] else 0
         return chart_data
 
     async def get_cost_breakdown(
@@ -184,8 +301,7 @@ class DashboardService:
         if not version:
             raise NotFoundError("BudgetVersion", str(budget_version_id))
 
-        # Query cost data from CostConsolidation
-        chart_data = {
+        chart_data: dict[str, Any] = {
             "breakdown_by": breakdown_by,
             "labels": [],
             "values": [],
@@ -194,28 +310,43 @@ class DashboardService:
             "total": 0.0,
         }
 
+        base_query = (
+            select(
+                BudgetConsolidation.consolidation_category,
+                func.sum(BudgetConsolidation.amount_sar),
+            )
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.deleted_at.is_(None),
+                    BudgetConsolidation.is_revenue.is_(False),
+                )
+            )
+            .group_by(BudgetConsolidation.consolidation_category)
+        )
+
+        result = await self.session.execute(base_query)
+        rows = result.fetchall()
+
         if breakdown_by == "category":
-            chart_data["labels"] = [
-                "Personnel Costs",
-                "Operating Costs",
-                "Facility Costs",
-                "Administrative Costs",
-                "Other Costs",
-            ]
-            chart_data["values"] = [0.0] * 5
+            labels: list[str] = []
+            values: list[float] = []
+            for row in rows:
+                labels.append(row._mapping["consolidation_category"].value)
+                values.append(float(row._mapping[1] or 0))
+            chart_data["labels"] = labels
+            chart_data["values"] = values
             chart_data["chart_type"] = "pie"
 
-        elif breakdown_by == "account":
-            chart_data["chart_type"] = "bar"
-            # Would populate from PCG account structure
-
-        elif breakdown_by == "period":
-            chart_data["chart_type"] = "line"
-            chart_data["labels"] = [
-                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+        chart_data["total"] = float(sum(chart_data["values"])) if chart_data["values"] else 0.0
+        chart_data["percentages"] = (
+            [
+                round((v / chart_data["total"] * 100), 2) if chart_data["total"] else 0.0
+                for v in chart_data["values"]
             ]
-            chart_data["values"] = [0.0] * 12
+            if chart_data["values"]
+            else []
+        )
 
         return chart_data
 

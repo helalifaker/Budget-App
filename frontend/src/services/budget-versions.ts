@@ -1,20 +1,27 @@
 import { apiRequest } from '@/lib/api-client'
 import { BudgetVersion, PaginatedResponse } from '@/types/api'
+import { withServiceErrorHandling } from './utils'
 
 export const budgetVersionsApi = {
   getAll: async (params?: { page?: number; page_size?: number }) => {
-    return apiRequest<PaginatedResponse<BudgetVersion>>({
-      method: 'GET',
-      url: '/budget-versions',
-      params,
-    })
+    return withServiceErrorHandling(
+      apiRequest<PaginatedResponse<BudgetVersion>>({
+        method: 'GET',
+        url: '/budget-versions',
+        params,
+      }),
+      'budget-versions: get all'
+    )
   },
 
   getById: async (id: string) => {
-    return apiRequest<BudgetVersion>({
-      method: 'GET',
-      url: `/budget-versions/${id}`,
-    })
+    return withServiceErrorHandling(
+      apiRequest<BudgetVersion>({
+        method: 'GET',
+        url: `/budget-versions/${id}`,
+      }),
+      'budget-versions: get by id'
+    )
   },
 
   create: async (data: {
@@ -23,47 +30,65 @@ export const budgetVersionsApi = {
     academic_year: string
     notes?: string
   }) => {
-    return apiRequest<BudgetVersion>({
-      method: 'POST',
-      url: '/budget-versions',
-      data,
-    })
+    return withServiceErrorHandling(
+      apiRequest<BudgetVersion>({
+        method: 'POST',
+        url: '/budget-versions',
+        data,
+      }),
+      'budget-versions: create'
+    )
   },
 
   update: async (id: string, data: { name?: string; notes?: string }) => {
-    return apiRequest<BudgetVersion>({
-      method: 'PUT',
-      url: `/budget-versions/${id}`,
-      data,
-    })
+    return withServiceErrorHandling(
+      apiRequest<BudgetVersion>({
+        method: 'PUT',
+        url: `/budget-versions/${id}`,
+        data,
+      }),
+      'budget-versions: update'
+    )
   },
 
   delete: async (id: string) => {
-    return apiRequest<void>({
-      method: 'DELETE',
-      url: `/budget-versions/${id}`,
-    })
+    return withServiceErrorHandling(
+      apiRequest<void>({
+        method: 'DELETE',
+        url: `/budget-versions/${id}`,
+      }),
+      'budget-versions: delete'
+    )
   },
 
   submit: async (id: string) => {
-    return apiRequest<BudgetVersion>({
-      method: 'POST',
-      url: `/budget-versions/${id}/submit`,
-    })
+    return withServiceErrorHandling(
+      apiRequest<BudgetVersion>({
+        method: 'POST',
+        url: `/budget-versions/${id}/submit`,
+      }),
+      'budget-versions: submit'
+    )
   },
 
   approve: async (id: string) => {
-    return apiRequest<BudgetVersion>({
-      method: 'POST',
-      url: `/budget-versions/${id}/approve`,
-    })
+    return withServiceErrorHandling(
+      apiRequest<BudgetVersion>({
+        method: 'POST',
+        url: `/budget-versions/${id}/approve`,
+      }),
+      'budget-versions: approve'
+    )
   },
 
   clone: async (id: string, data: { name: string }) => {
-    return apiRequest<BudgetVersion>({
-      method: 'POST',
-      url: `/budget-versions/${id}/clone`,
-      data,
-    })
+    return withServiceErrorHandling(
+      apiRequest<BudgetVersion>({
+        method: 'POST',
+        url: `/budget-versions/${id}/clone`,
+        data,
+      }),
+      'budget-versions: clone'
+    )
   },
 }

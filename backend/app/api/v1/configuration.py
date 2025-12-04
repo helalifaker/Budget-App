@@ -38,6 +38,8 @@ from app.schemas.configuration import (
     TeacherCategoryResponse,
     TeacherCostParamCreate,
     TeacherCostParamResponse,
+    TimetableConstraintCreate,
+    TimetableConstraintResponse,
 )
 from app.services.configuration_service import ConfigurationService
 from app.services.exceptions import (
@@ -755,3 +757,75 @@ async def upsert_fee_structure(
         return fee
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+# ============================================================================
+# Timetable Constraints (Module 6)
+# ============================================================================
+
+
+@router.get("/timetable-constraints", response_model=list[TimetableConstraintResponse])
+async def get_timetable_constraints(
+    version_id: uuid.UUID = Query(..., description="Budget version ID"),
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Get timetable constraints for a budget version.
+
+    Args:
+        version_id: Budget version UUID
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        List of timetable constraints
+
+    Raises:
+        HTTPException: 404 if budget version not found
+    """
+    try:
+        constraints = await config_service.get_timetable_constraints(version_id)
+        return constraints
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.put("/timetable-constraints", response_model=TimetableConstraintResponse)
+async def upsert_timetable_constraint(
+    constraint_data: TimetableConstraintCreate,
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Create or update timetable constraint.
+
+    Args:
+        constraint_data: Timetable constraint data
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        Created or updated timetable constraint
+
+    Raises:
+        HTTPException: 400 if validation fails (e.g., max_hours_per_day > total_hours_per_week)
+        HTTPException: 404 if budget version or level not found
+    """
+    try:
+        constraint = await config_service.upsert_timetable_constraint(
+            version_id=constraint_data.budget_version_id,
+            level_id=constraint_data.level_id,
+            total_hours_per_week=constraint_data.total_hours_per_week,
+            max_hours_per_day=constraint_data.max_hours_per_day,
+            days_per_week=constraint_data.days_per_week,
+            requires_lunch_break=constraint_data.requires_lunch_break,
+            min_break_duration_minutes=constraint_data.min_break_duration_minutes,
+            notes=constraint_data.notes,
+            user_id=user.user_id,
+        )
+        return constraint
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

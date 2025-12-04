@@ -12,10 +12,11 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
 from app.models.configuration import BudgetVersion
 from app.models.strategic import (
     InitiativeStatus,
@@ -487,6 +488,10 @@ class StrategicService:
                 fee_increase_rate=assumptions["fee_increase_rate"],
                 salary_inflation_rate=assumptions["salary_inflation_rate"],
                 operating_inflation_rate=assumptions["operating_inflation_rate"],
+                additional_assumptions={
+                    "base_version_id": str(base_version_id),
+                    "projection_years": years,
+                },
             )
 
             self.session.add(scenario)
@@ -515,15 +520,7 @@ class StrategicService:
         # Get scenario
         scenario = await self.scenario_service.get_by_id(scenario_id)
 
-        # Get base year data from budget version
-        # This would aggregate from consolidation tables
-        base_data = {
-            "revenue": Decimal("55515000"),  # Placeholder
-            "personnel_costs": Decimal("28500000"),  # Placeholder
-            "operating_costs": Decimal("18500000"),  # Placeholder
-            "capex": Decimal("2500000"),  # Placeholder
-            "depreciation": Decimal("1500000"),  # Placeholder
-        }
+        base_data = await self._get_base_projection_inputs(base_version_id)
 
         # Calculate projections for each year
         for year in range(1, years + 1):
@@ -629,10 +626,25 @@ class StrategicService:
 
         await self.session.flush()
 
-        # Recalculate
-        # This would need the base version ID, which we'd get from the scenario
-        # For now, placeholder
-        pass
+        scenario = await self.scenario_service.get_by_id(scenario_id)
+        assumptions = scenario.additional_assumptions or {}
+        base_version_id_value = assumptions.get("base_version_id")
+        if not base_version_id_value:
+            raise BusinessRuleError(
+                "missing_base_version",
+                "Scenario is missing base budget version for projections",
+            )
+
+        try:
+            base_version_id = uuid.UUID(str(base_version_id_value))
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("Invalid base_version_id in scenario assumptions") from exc
+
+        years = int(assumptions.get("projection_years", 5))
+        if years < 1 or years > 5:
+            years = 5
+
+        await self._calculate_scenario_projections(scenario_id, base_version_id, years)
 
     async def _get_projection(
         self,
@@ -661,3 +673,78 @@ class StrategicService:
 
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
+
+    async def _get_base_projection_inputs(
+        self,
+        base_version_id: uuid.UUID,
+    ) -> dict[str, Decimal]:
+        """
+        Aggregate Year 1 base amounts from consolidation tables.
+
+        Args:
+            base_version_id: Budget version to source Year 1 values
+
+        Returns:
+            Dictionary with revenue, personnel_costs, operating_costs, capex, depreciation
+        """
+        personnel_categories = [
+            ConsolidationCategory.PERSONNEL_TEACHING,
+            ConsolidationCategory.PERSONNEL_ADMIN,
+            ConsolidationCategory.PERSONNEL_SUPPORT,
+            ConsolidationCategory.PERSONNEL_SOCIAL,
+        ]
+        operating_categories = [
+            ConsolidationCategory.OPERATING_SUPPLIES,
+            ConsolidationCategory.OPERATING_UTILITIES,
+            ConsolidationCategory.OPERATING_MAINTENANCE,
+            ConsolidationCategory.OPERATING_INSURANCE,
+            ConsolidationCategory.OPERATING_OTHER,
+        ]
+        capex_categories = [
+            ConsolidationCategory.CAPEX_EQUIPMENT,
+            ConsolidationCategory.CAPEX_IT,
+            ConsolidationCategory.CAPEX_FURNITURE,
+            ConsolidationCategory.CAPEX_BUILDING,
+            ConsolidationCategory.CAPEX_SOFTWARE,
+        ]
+
+        def _to_decimal(value: Any) -> Decimal:
+            return Decimal("0") if value is None else Decimal(str(value))
+
+        revenue_query = select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0)).where(
+            and_(
+                BudgetConsolidation.budget_version_id == base_version_id,
+                BudgetConsolidation.is_revenue.is_(True),
+            )
+        )
+        personnel_query = select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0)).where(
+            and_(
+                BudgetConsolidation.budget_version_id == base_version_id,
+                BudgetConsolidation.consolidation_category.in_(personnel_categories),
+            )
+        )
+        operating_query = select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0)).where(
+            and_(
+                BudgetConsolidation.budget_version_id == base_version_id,
+                BudgetConsolidation.consolidation_category.in_(operating_categories),
+            )
+        )
+        capex_query = select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0)).where(
+            and_(
+                BudgetConsolidation.budget_version_id == base_version_id,
+                BudgetConsolidation.consolidation_category.in_(capex_categories),
+            )
+        )
+
+        revenue = _to_decimal((await self.session.execute(revenue_query)).scalar())
+        personnel_costs = _to_decimal((await self.session.execute(personnel_query)).scalar())
+        operating_costs = _to_decimal((await self.session.execute(operating_query)).scalar())
+        capex = _to_decimal((await self.session.execute(capex_query)).scalar())
+
+        return {
+            "revenue": revenue,
+            "personnel_costs": personnel_costs,
+            "operating_costs": operating_costs,
+            "capex": capex,
+            "depreciation": Decimal("0"),
+        }

@@ -366,3 +366,115 @@ class TestOptimisticLocking:
         """Test version 0 is rejected."""
         with pytest.raises(Exception):
             CellUpdateRequest(value_numeric=Decimal("100"), version=0)
+
+
+class TestCreateCell:
+    """Tests for creating new planning cells."""
+
+    @pytest.mark.asyncio
+    async def test_create_cell_success(self):
+        """Test successful cell creation."""
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_row = MagicMock()
+
+        cell_id = uuid4()
+        budget_version_id = uuid4()
+        entity_id = uuid4()
+        user_id = uuid4()
+
+        mock_row._mapping = {
+            "id": cell_id,
+            "budget_version_id": budget_version_id,
+            "module_code": "enrollment",
+            "entity_id": entity_id,
+            "field_name": "student_count",
+            "period_code": "2025",
+            "value_numeric": Decimal("100"),
+            "value_text": None,
+            "value_type": "numeric",
+            "is_locked": False,
+            "lock_reason": None,
+            "locked_by": None,
+            "locked_at": None,
+            "version": 1,
+            "modified_by": user_id,
+            "modified_at": datetime.utcnow(),
+            "created_by_id": user_id,
+            "created_by": user_id,
+            "created_at": datetime.utcnow(),
+        }
+        mock_result.fetchone.return_value = mock_row
+        mock_session.execute.return_value = mock_result
+        mock_session.commit = AsyncMock()
+
+        service = WritebackService(mock_session)
+        data = CellCreateRequest(
+            budget_version_id=budget_version_id,
+            module_code="enrollment",
+            entity_id=entity_id,
+            field_name="student_count",
+            period_code="2025",
+            value_numeric=Decimal("100"),
+            value_type="numeric",
+        )
+
+        result = await service.create_cell(data, user_id)
+
+        assert result.id == cell_id
+        assert result.value_numeric == Decimal("100")
+        assert result.version == 1
+        mock_session.commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_cell_with_text_value(self):
+        """Test creating cell with text value."""
+        mock_session = AsyncMock(spec=AsyncSession)
+        mock_result = MagicMock()
+        mock_row = MagicMock()
+
+        cell_id = uuid4()
+        budget_version_id = uuid4()
+        entity_id = uuid4()
+        user_id = uuid4()
+
+        mock_row._mapping = {
+            "id": cell_id,
+            "budget_version_id": budget_version_id,
+            "module_code": "consolidation",
+            "entity_id": entity_id,
+            "field_name": "notes",
+            "period_code": "2025",
+            "value_numeric": None,
+            "value_text": "Budget note",
+            "value_type": "text",
+            "is_locked": False,
+            "lock_reason": None,
+            "locked_by": None,
+            "locked_at": None,
+            "version": 1,
+            "modified_by": user_id,
+            "modified_at": datetime.utcnow(),
+            "created_by_id": user_id,
+            "created_by": user_id,
+            "created_at": datetime.utcnow(),
+        }
+        mock_result.fetchone.return_value = mock_row
+        mock_session.execute.return_value = mock_result
+        mock_session.commit = AsyncMock()
+
+        service = WritebackService(mock_session)
+        data = CellCreateRequest(
+            budget_version_id=budget_version_id,
+            module_code="consolidation",
+            entity_id=entity_id,
+            field_name="notes",
+            period_code="2025",
+            value_text="Budget note",
+            value_type="text",
+        )
+
+        result = await service.create_cell(data, user_id)
+
+        assert result.value_text == "Budget note"
+        assert result.value_numeric is None

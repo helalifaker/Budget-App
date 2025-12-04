@@ -20,6 +20,7 @@ from app.models.analysis import (
     VarianceStatus,
 )
 from app.models.configuration import BudgetVersion
+from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
 from app.services.budget_actual_service import BudgetActualService
 from app.services.exceptions import NotFoundError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -279,6 +280,69 @@ class TestCalculateVariance:
 
         # Should update existing, not create new
         assert len(result1) == len(result2)
+
+    @pytest.mark.asyncio
+    async def test_calculate_variance_uses_consolidation_and_ytd(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+    ):
+        """Variance uses consolidated budget and aggregates YTD actuals."""
+        # Annual budget 1.2M => monthly 100k
+        consolidation = BudgetConsolidation(
+            budget_version_id=test_budget_version.id,
+            account_code="70110",
+            account_name="Tuition",
+            consolidation_category=ConsolidationCategory.REVENUE_TUITION,
+            is_revenue=True,
+            amount_sar=Decimal("1200000.00"),
+            source_table="revenue_plans",
+            source_count=12,
+            is_calculated=True,
+        )
+        db_session.add(consolidation)
+
+        # Actuals for periods 1 and 2
+        actual_p1 = ActualData(
+            fiscal_year=test_budget_version.fiscal_year,
+            period=1,
+            account_code="70110",
+            account_name="Tuition T1",
+            amount_sar=Decimal("90000.00"),
+            currency="SAR",
+            source=ActualDataSource.ODOO_IMPORT,
+            import_batch_id=uuid.uuid4(),
+            import_date=datetime.utcnow(),
+        )
+        actual_p2 = ActualData(
+            fiscal_year=test_budget_version.fiscal_year,
+            period=2,
+            account_code="70110",
+            account_name="Tuition T2",
+            amount_sar=Decimal("110000.00"),
+            currency="SAR",
+            source=ActualDataSource.ODOO_IMPORT,
+            import_batch_id=uuid.uuid4(),
+            import_date=datetime.utcnow(),
+        )
+        db_session.add_all([actual_p1, actual_p2])
+        await db_session.flush()
+
+        service = BudgetActualService(db_session)
+        result = await service.calculate_variance(
+            test_budget_version.id,
+            period=2,
+            account_code="70110",
+        )
+
+        assert len(result) == 1
+        variance = result[0]
+        # monthly budget 100k, actual 110k, revenue variance = actual - budget
+        assert variance.variance_sar == Decimal("10000.00")
+        # ytd_budget = 200k, ytd_actual = 200k -> ytd variance 0
+        assert variance.ytd_budget_sar == Decimal("200000.00")
+        assert variance.ytd_actual_sar == Decimal("200000.00")
+        assert variance.ytd_variance_sar == Decimal("0.00")
 
 
 class TestGetVarianceReport:

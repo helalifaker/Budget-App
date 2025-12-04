@@ -353,6 +353,74 @@ class TestCalculateStatementLines:
         line_descriptions = [line.get("line_description") for line in lines]
         assert "TABLEAU DE FLUX DE TRÉSORERIE" in line_descriptions
 
+    @pytest.mark.asyncio
+    async def test_cash_flow_totals_and_signs(
+        self,
+        db_session: AsyncSession,
+        test_budget_version: BudgetVersion,
+        test_user_id: uuid.UUID,
+    ):
+        """Cash flow subtotals should reflect operating and investing cash movements."""
+        revenue = BudgetConsolidation(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            source_table="revenue_plans",
+            source_count=1,
+            is_calculated=True,
+            consolidation_category=ConsolidationCategory.REVENUE_TUITION,
+            account_code="70110",
+            account_name="Tuition",
+            amount_sar=Decimal("1000000.00"),
+            is_revenue=True,
+            created_by_id=test_user_id,
+        )
+        expense = BudgetConsolidation(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            source_table="operating_costs",
+            source_count=1,
+            is_calculated=True,
+            consolidation_category=ConsolidationCategory.OPERATING_SUPPLIES,
+            account_code="60610",
+            account_name="Supplies",
+            amount_sar=Decimal("400000.00"),
+            is_revenue=False,
+            created_by_id=test_user_id,
+        )
+        capex = BudgetConsolidation(
+            id=uuid.uuid4(),
+            budget_version_id=test_budget_version.id,
+            source_table="capex_plans",
+            source_count=1,
+            is_calculated=True,
+            consolidation_category=ConsolidationCategory.CAPEX_EQUIPMENT,
+            account_code="21540",
+            account_name="Equipment",
+            amount_sar=Decimal("200000.00"),
+            is_revenue=False,
+            created_by_id=test_user_id,
+        )
+        db_session.add_all([revenue, expense, capex])
+        await db_session.flush()
+
+        service = FinancialStatementsService(db_session)
+        lines = await service.calculate_statement_lines(
+            test_budget_version.id,
+            StatementType.CASH_FLOW,
+            StatementFormat.FRENCH_PCG,
+        )
+
+        def _find(description: str) -> dict:
+            return next(line for line in lines if line["line_description"] == description)
+
+        operating_subtotal = _find("Total flux opérationnels")
+        investing_subtotal = _find("Total flux d'investissement")
+        net_change = _find("Variation nette de trésorerie")
+
+        assert operating_subtotal["amount_sar"] == Decimal("600000.00")
+        assert investing_subtotal["amount_sar"] == Decimal("-200000.00")
+        assert net_change["amount_sar"] == Decimal("400000.00")
+
 
 class TestGetPeriodTotals:
     """Tests for period totals calculation."""

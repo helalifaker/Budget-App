@@ -9,7 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.configuration import BudgetVersionStatus
 
@@ -393,6 +393,85 @@ class FeeStructureUpdate(BaseModel):
 
 class FeeStructureResponse(FeeStructureBase):
     """Schema for fee structure response."""
+
+    id: uuid.UUID
+    budget_version_id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ============================================================================
+# Timetable Constraints Schemas (Module 6)
+# ============================================================================
+
+
+class TimetableConstraintBase(BaseModel):
+    """Base schema for timetable constraints."""
+
+    level_id: uuid.UUID = Field(..., description="Academic level")
+    total_hours_per_week: Decimal = Field(
+        ..., ge=0, le=60, decimal_places=2, description="Total student hours per week"
+    )
+    max_hours_per_day: Decimal = Field(
+        ..., ge=0, le=12, decimal_places=2, description="Maximum hours per day"
+    )
+    days_per_week: int = Field(..., ge=4, le=6, description="School days per week")
+    requires_lunch_break: bool = Field(
+        True, description="Whether lunch break is required"
+    )
+    min_break_duration_minutes: int = Field(
+        60, ge=30, le=120, description="Minimum break duration (minutes)"
+    )
+    notes: str | None = None
+
+
+class TimetableConstraintCreate(TimetableConstraintBase):
+    """Schema for creating timetable constraint."""
+
+    budget_version_id: uuid.UUID = Field(..., description="Budget version")
+
+    @model_validator(mode="after")
+    def validate_max_hours(self) -> "TimetableConstraintCreate":
+        """Validate max_hours_per_day ≤ total_hours_per_week."""
+        if self.max_hours_per_day > self.total_hours_per_week:
+            raise ValueError(
+                "max_hours_per_day cannot exceed total_hours_per_week"
+            )
+        return self
+
+
+class TimetableConstraintUpdate(BaseModel):
+    """Schema for updating timetable constraint."""
+
+    budget_version_id: uuid.UUID | None = None
+    level_id: uuid.UUID | None = None
+    total_hours_per_week: Decimal | None = Field(
+        None, ge=0, le=60, decimal_places=2
+    )
+    max_hours_per_day: Decimal | None = Field(None, ge=0, le=12, decimal_places=2)
+    days_per_week: int | None = Field(None, ge=4, le=6)
+    requires_lunch_break: bool | None = None
+    min_break_duration_minutes: int | None = Field(None, ge=30, le=120)
+    notes: str | None = None
+
+    @model_validator(mode="after")
+    def validate_max_hours(self) -> "TimetableConstraintUpdate":
+        """Validate max_hours_per_day ≤ total_hours_per_week if both provided."""
+        if (
+            self.max_hours_per_day is not None
+            and self.total_hours_per_week is not None
+            and self.max_hours_per_day > self.total_hours_per_week
+        ):
+            raise ValueError(
+                "max_hours_per_day cannot exceed total_hours_per_week"
+            )
+        return self
+
+
+class TimetableConstraintResponse(TimetableConstraintBase):
+    """Schema for timetable constraint response."""
 
     id: uuid.UUID
     budget_version_id: uuid.UUID

@@ -18,6 +18,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.cache import cache_kpi_dashboard
+from app.models.configuration import AcademicLevel
+from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
+from app.models.planning import (
+    ClassStructure,
+    DHGSubjectHours,
+    DHGTeacherRequirement,
+    EnrollmentPlan,
+)
 from app.models.analysis import KPICategory, KPIDefinition, KPIValue
 from app.models.configuration import BudgetVersion
 from app.services.base import BaseService
@@ -452,32 +460,183 @@ class KPIService:
         Returns:
             Dictionary with aggregated data for calculations
         """
-        # This would aggregate data from:
-        # - EnrollmentPlan (student counts)
-        # - ClassStructure (class counts)
-        # - DHGSubjectHours (teaching hours)
-        # - TeacherAllocation (FTE counts)
-        # - RevenueConsolidation (revenue)
-        # - CostConsolidation (costs, personnel costs)
+        from sqlalchemy import func
 
-        # For now, return a placeholder structure
-        # This will be populated by querying related tables
+        def _to_decimal(value: Any) -> Decimal:
+            if value is None:
+                return Decimal("0")
+            if isinstance(value, Decimal):
+                return value
+            return Decimal(str(value))
+
+        # Enrollment totals
+        total_students_query = select(func.coalesce(func.sum(EnrollmentPlan.student_count), 0)).where(
+            and_(EnrollmentPlan.budget_version_id == budget_version_id, EnrollmentPlan.deleted_at.is_(None))
+        )
+        total_students = _to_decimal((await self.session.execute(total_students_query)).scalar())
+
+        primary_students_query = (
+            select(func.coalesce(func.sum(EnrollmentPlan.student_count), 0))
+            .join(AcademicLevel, AcademicLevel.id == EnrollmentPlan.level_id)
+            .where(
+                and_(
+                    EnrollmentPlan.budget_version_id == budget_version_id,
+                    EnrollmentPlan.deleted_at.is_(None),
+                    AcademicLevel.is_secondary.is_(False),
+                )
+            )
+        )
+        primary_students = _to_decimal((await self.session.execute(primary_students_query)).scalar())
+
+        secondary_students_query = (
+            select(func.coalesce(func.sum(EnrollmentPlan.student_count), 0))
+            .join(AcademicLevel, AcademicLevel.id == EnrollmentPlan.level_id)
+            .where(
+                and_(
+                    EnrollmentPlan.budget_version_id == budget_version_id,
+                    EnrollmentPlan.deleted_at.is_(None),
+                    AcademicLevel.is_secondary.is_(True),
+                )
+            )
+        )
+        secondary_students = _to_decimal((await self.session.execute(secondary_students_query)).scalar())
+
+        # Classes
+        total_classes_query = select(func.coalesce(func.sum(ClassStructure.number_of_classes), 0)).where(
+            and_(ClassStructure.budget_version_id == budget_version_id, ClassStructure.deleted_at.is_(None))
+        )
+        total_classes = _to_decimal((await self.session.execute(total_classes_query)).scalar())
+
+        primary_classes_query = (
+            select(func.coalesce(func.sum(ClassStructure.number_of_classes), 0))
+            .join(AcademicLevel, AcademicLevel.id == ClassStructure.level_id)
+            .where(
+                and_(
+                    ClassStructure.budget_version_id == budget_version_id,
+                    ClassStructure.deleted_at.is_(None),
+                    AcademicLevel.is_secondary.is_(False),
+                )
+            )
+        )
+        primary_classes = _to_decimal((await self.session.execute(primary_classes_query)).scalar())
+
+        secondary_classes_query = (
+            select(func.coalesce(func.sum(ClassStructure.number_of_classes), 0))
+            .join(AcademicLevel, AcademicLevel.id == ClassStructure.level_id)
+            .where(
+                and_(
+                    ClassStructure.budget_version_id == budget_version_id,
+                    ClassStructure.deleted_at.is_(None),
+                    AcademicLevel.is_secondary.is_(True),
+                )
+            )
+        )
+        secondary_classes = _to_decimal((await self.session.execute(secondary_classes_query)).scalar())
+
+        # DHG hours
+        total_hours_query = select(func.coalesce(func.sum(DHGSubjectHours.total_hours_per_week), 0)).where(
+            and_(DHGSubjectHours.budget_version_id == budget_version_id, DHGSubjectHours.deleted_at.is_(None))
+        )
+        total_teaching_hours = _to_decimal((await self.session.execute(total_hours_query)).scalar())
+
+        primary_hours_query = (
+            select(func.coalesce(func.sum(DHGSubjectHours.total_hours_per_week), 0))
+            .join(AcademicLevel, AcademicLevel.id == DHGSubjectHours.level_id)
+            .where(
+                and_(
+                    DHGSubjectHours.budget_version_id == budget_version_id,
+                    DHGSubjectHours.deleted_at.is_(None),
+                    AcademicLevel.is_secondary.is_(False),
+                )
+            )
+        )
+        primary_teaching_hours = _to_decimal((await self.session.execute(primary_hours_query)).scalar())
+
+        secondary_hours_query = (
+            select(func.coalesce(func.sum(DHGSubjectHours.total_hours_per_week), 0))
+            .join(AcademicLevel, AcademicLevel.id == DHGSubjectHours.level_id)
+            .where(
+                and_(
+                    DHGSubjectHours.budget_version_id == budget_version_id,
+                    DHGSubjectHours.deleted_at.is_(None),
+                    AcademicLevel.is_secondary.is_(True),
+                )
+            )
+        )
+        secondary_teaching_hours = _to_decimal((await self.session.execute(secondary_hours_query)).scalar())
+
+        # Teacher FTE (use simple_fte to capture total need)
+        teacher_fte_query = select(func.coalesce(func.sum(DHGTeacherRequirement.simple_fte), 0)).where(
+            and_(
+                DHGTeacherRequirement.budget_version_id == budget_version_id,
+                DHGTeacherRequirement.deleted_at.is_(None),
+            )
+        )
+        total_teacher_fte = _to_decimal((await self.session.execute(teacher_fte_query)).scalar())
+
+        # Consolidation totals
+        revenue_query = (
+            select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.deleted_at.is_(None),
+                    BudgetConsolidation.is_revenue.is_(True),
+                )
+            )
+        )
+        total_revenue_sar = _to_decimal((await self.session.execute(revenue_query)).scalar())
+
+        cost_query = (
+            select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.deleted_at.is_(None),
+                    BudgetConsolidation.is_revenue.is_(False),
+                )
+            )
+        )
+        total_costs_sar = _to_decimal((await self.session.execute(cost_query)).scalar())
+
+        personnel_categories = [
+            ConsolidationCategory.PERSONNEL_TEACHING,
+            ConsolidationCategory.PERSONNEL_ADMIN,
+            ConsolidationCategory.PERSONNEL_SUPPORT,
+            ConsolidationCategory.PERSONNEL_SOCIAL,
+        ]
+        personnel_query = (
+            select(func.coalesce(func.sum(BudgetConsolidation.amount_sar), 0))
+            .where(
+                and_(
+                    BudgetConsolidation.budget_version_id == budget_version_id,
+                    BudgetConsolidation.deleted_at.is_(None),
+                    BudgetConsolidation.consolidation_category.in_(personnel_categories),
+                )
+            )
+        )
+        personnel_costs_sar = _to_decimal((await self.session.execute(personnel_query)).scalar())
+
         return {
-            "total_students": 0,
-            "primary_students": 0,
-            "secondary_students": 0,
-            "total_classes": 0,
-            "primary_classes": 0,
-            "secondary_classes": 0,
-            "total_teaching_hours": Decimal("0"),
-            "primary_teaching_hours": Decimal("0"),
-            "secondary_teaching_hours": Decimal("0"),
-            "total_teacher_fte": Decimal("0"),
-            "primary_teacher_fte": Decimal("0"),
-            "secondary_teacher_fte": Decimal("0"),
-            "total_revenue_sar": Decimal("0"),
-            "total_costs_sar": Decimal("0"),
-            "personnel_costs_sar": Decimal("0"),
+            "total_students": int(total_students),
+            "primary_students": int(primary_students),
+            "secondary_students": int(secondary_students),
+            "total_classes": int(total_classes),
+            "primary_classes": int(primary_classes),
+            "secondary_classes": int(secondary_classes),
+            "total_teaching_hours": total_teaching_hours,
+            "primary_teaching_hours": primary_teaching_hours,
+            "secondary_teaching_hours": secondary_teaching_hours,
+            "total_teacher_fte": total_teacher_fte,
+            "primary_teacher_fte": (primary_teaching_hours / Decimal("24")).quantize(Decimal("0.01"))
+            if primary_teaching_hours > 0
+            else Decimal("0"),
+            "secondary_teacher_fte": (secondary_teaching_hours / Decimal("18")).quantize(Decimal("0.01"))
+            if secondary_teaching_hours > 0
+            else Decimal("0"),
+            "total_revenue_sar": total_revenue_sar,
+            "total_costs_sar": total_costs_sar,
+            "personnel_costs_sar": personnel_costs_sar,
             "max_capacity": 1875,
         }
 
