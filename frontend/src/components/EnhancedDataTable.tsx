@@ -36,8 +36,10 @@ import type { RealtimeChange } from '@/types/writeback'
 import { CellCommentDialog } from './CellCommentDialog'
 import { CellHistoryDialog } from './CellHistoryDialog'
 
-export interface EnhancedDataTableProps<TData = unknown>
-  extends Omit<AgGridReactProps<TData>, 'onCellValueChanged'> {
+export interface EnhancedDataTableProps<TData = unknown> extends Omit<
+  AgGridReactProps<TData>,
+  'onCellValueChanged'
+> {
   budgetVersionId: string
   moduleCode: string
   enableWriteback?: boolean
@@ -84,7 +86,8 @@ export function EnhancedDataTable<TData = unknown>({
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false)
 
   // Writeback hook for cell updates and locking
-  const { updateCell, lockCell, unlockCell, isUpdating, isLocking } = usePlanningWriteback(budgetVersionId)
+  const { updateCell, lockCell, unlockCell, isUpdating, isLocking } =
+    usePlanningWriteback(budgetVersionId)
 
   // User presence tracking
   const { activeUsers, broadcast } = useUserPresence({

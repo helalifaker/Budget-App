@@ -148,7 +148,7 @@ interface SubjectHoursItem {
   subject_name?: string
   level_name?: string
   hours_per_week: number
-  split_class: boolean
+  is_split: boolean
   number_of_classes?: number
 }
 
@@ -165,7 +165,7 @@ function SubjectHoursTab({ data, isLoading }: { data: SubjectHoursItem[]; isLoad
     },
     {
       headerName: 'Split Class',
-      field: 'split_class',
+      field: 'is_split',
       width: 120,
       cellRenderer: (params: { value: boolean; setValue: (value: boolean) => void }) => (
         <input

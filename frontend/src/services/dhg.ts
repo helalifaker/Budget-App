@@ -10,10 +10,7 @@ export const dhgApi = {
     })
   },
 
-  updateSubjectHours: async (
-    id: string,
-    data: { hours_per_week: number; split_class: boolean }
-  ) => {
+  updateSubjectHours: async (id: string, data: { hours_per_week: number; is_split: boolean }) => {
     return apiRequest<SubjectHours>({
       method: 'PUT',
       url: `/planning/dhg/subject-hours/${id}`,
@@ -23,7 +20,7 @@ export const dhgApi = {
 
   bulkUpdateSubjectHours: async (
     versionId: string,
-    updates: Array<{ id: string; hours_per_week: number; split_class: boolean }>
+    updates: Array<{ id: string; hours_per_week: number; is_split: boolean }>
   ) => {
     return apiRequest<{ success: boolean; count: number }>({
       method: 'POST',

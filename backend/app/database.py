@@ -22,15 +22,19 @@ from app.core.logging import logger
 # Use override=True to ensure backend-specific values take precedence over root .env files
 env_file = Path(__file__).parent.parent / ".env.local"
 if env_file.exists():
-    load_dotenv(env_file, override=True)
+    load_dotenv(env_file, override=False)
 else:
-    load_dotenv(override=True)  # Load from .env if .env.local doesn't exist
+    load_dotenv(override=False)  # Load from .env if .env.local doesn't exist
 
-# Get database URL from environment
-_raw_database_url = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:password@localhost:5432/postgres",
-)
+# Prefer lightweight in-memory SQLite during test runs to avoid external DBs
+if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("PYTEST_RUNNING"):
+    _raw_database_url = "sqlite+aiosqlite:///:memory:"
+else:
+    # Get database URL from environment
+    _raw_database_url = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://postgres:password@localhost:5432/postgres",
+    )
 
 # Normalize URL scheme for SQLAlchemy 2.x compatibility
 # - Convert 'postgres://' to 'postgresql://'
@@ -52,16 +56,23 @@ DIRECT_URL = os.getenv("DIRECT_URL", DATABASE_URL)
 # - NullPool for serverless/connection pooler environments (Supabase)
 # - statement_cache_size=0 for pgbouncer transaction mode compatibility
 # Note: connect_args passes parameters to the asyncpg.connect() function
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
-    pool_pre_ping=True,
-    poolclass=NullPool,  # Recommended for Supabase connection pooler
-    connect_args={
-        "statement_cache_size": 0,  # Disable prepared statements for pgbouncer
-        "server_settings": {},  # Empty dict to ensure asyncpg accepts the parameter
-    },
-)
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
+        future=True,
+    )
+else:
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
+        pool_pre_ping=True,
+        poolclass=NullPool,  # Recommended for Supabase connection pooler
+        connect_args={
+            "statement_cache_size": 0,  # Disable prepared statements for pgbouncer
+            "server_settings": {},  # Empty dict to ensure asyncpg accepts the parameter
+        },
+    )
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(

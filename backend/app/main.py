@@ -64,6 +64,18 @@ def create_app() -> FastAPI:
     app.state.skip_auth_for_tests = os.getenv("SKIP_AUTH_FOR_TESTS", "true").lower() == "true"
     app.state.skip_rate_limit_for_tests = os.getenv("SKIP_RATE_LIMIT_FOR_TESTS", "true").lower() == "true"
 
+    # Debug: Print environment variable status on startup
+    supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")
+    supabase_url = os.getenv("SUPABASE_URL", "")
+    print("=" * 60)
+    print("[STARTUP] Environment Variables Status:")
+    print(f"  SUPABASE_JWT_SECRET configured: {bool(supabase_jwt_secret)}")
+    print(f"  SUPABASE_JWT_SECRET length: {len(supabase_jwt_secret) if supabase_jwt_secret else 0}")
+    print(f"  SUPABASE_URL: {supabase_url or 'NOT SET'}")
+    if supabase_url:
+        print(f"  Expected issuer: {supabase_url.rstrip('/')}/auth/v1")
+    print("=" * 60)
+
     # RBAC middleware (enforces role-based access control)
     app.add_middleware(RBACMiddleware)
 

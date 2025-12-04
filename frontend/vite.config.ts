@@ -192,8 +192,12 @@ export default defineConfig({
     exclude: [
       'ag-grid-community', // Lazy load
       'ag-grid-react',
-      'recharts',
       'framer-motion',
+      // Note: recharts is NOT excluded - let Vite handle it and its dependencies (es-toolkit)
     ],
+    // Force proper ES module resolution
+    esbuildOptions: {
+      target: 'esnext',
+    },
   },
 })

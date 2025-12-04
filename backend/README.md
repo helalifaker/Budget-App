@@ -167,12 +167,26 @@ DIRECT_URL=postgresql://user:pass@host:5432/db?sslmode=require
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your-service-role-key
-JWT_SECRET=your-jwt-secret
+SUPABASE_JWT_SECRET=your-jwt-secret-from-supabase-dashboard
 
 # Optional
 DEBUG=true
 CORS_ORIGINS=["http://localhost:5173"]
 ```
+
+#### Supabase JWT Authentication
+
+**⚠️ Required for API Authentication**
+
+The `SUPABASE_JWT_SECRET` is required for the backend to verify Supabase JWT tokens from authenticated users. Without it, all API calls will return `401 Unauthorized` even after successful login.
+
+**How to get your JWT Secret:**
+1. Go to Supabase Dashboard → Your Project → Settings → API
+2. Scroll to **JWT Settings** section
+3. Copy the **JWT Secret** (not the anon key or service role key)
+4. Add to `backend/.env.local` as: `SUPABASE_JWT_SECRET=your-secret-here`
+
+**See [SETUP_JWT_AUTH.md](./SETUP_JWT_AUTH.md) for detailed setup instructions and troubleshooting.**
 
 ## Running the Application
 

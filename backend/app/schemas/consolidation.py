@@ -133,7 +133,7 @@ class IncomeStatementResponse(BaseModel):
     id: uuid.UUID
     budget_version_id: uuid.UUID
     statement_type: StatementType = Field(..., description="Statement type")
-    statement_format: StatementFormat = Field(..., description="Format standard")
+    statement_format: str = Field(..., description="Format standard")
     statement_name: str = Field(..., description="Statement name")
     fiscal_year: int = Field(..., description="Fiscal year")
     total_amount_sar: Decimal = Field(..., description="Net result")

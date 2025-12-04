@@ -50,6 +50,22 @@ from app.services.exceptions import (
 router = APIRouter(prefix="/api/v1", tags=["configuration"])
 
 
+@router.get("/debug-token")
+async def debug_token(user: UserDep = ...):
+    """
+    Debug endpoint to test JWT token verification.
+    
+    Returns the decoded token claims to confirm authentication is working.
+    """
+    return {
+        "sub": user.user_id,
+        "email": user.user_email,
+        "role": user.user_role,
+        "status": "authenticated",
+        "message": "JWT token verified successfully",
+    }
+
+
 def get_config_service(db: AsyncSession = Depends(get_db)) -> ConfigurationService:
     """
     Dependency to get configuration service instance.

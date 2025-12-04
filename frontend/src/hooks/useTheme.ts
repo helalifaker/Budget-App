@@ -7,46 +7,46 @@
  * - CSS class toggle on document root
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react'
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'dark' | 'system'
 
 interface UseThemeReturn {
-  theme: Theme;
-  resolvedTheme: 'light' | 'dark';
-  setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
+  theme: Theme
+  resolvedTheme: 'light' | 'dark'
+  setTheme: (theme: Theme) => void
+  toggleTheme: () => void
 }
 
-const STORAGE_KEY = 'efir-theme';
+const STORAGE_KEY = 'efir-theme'
 
 /**
  * Get the system's preferred color scheme.
  */
 function getSystemTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (typeof window === 'undefined') return 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 /**
  * Get the stored theme preference or default to system.
  */
 function getStoredTheme(): Theme {
-  if (typeof window === 'undefined') return 'system';
-  const stored = localStorage.getItem(STORAGE_KEY);
+  if (typeof window === 'undefined') return 'system'
+  const stored = localStorage.getItem(STORAGE_KEY)
   if (stored === 'light' || stored === 'dark' || stored === 'system') {
-    return stored;
+    return stored
   }
-  return 'system';
+  return 'system'
 }
 
 /**
  * Apply theme class to document root.
  */
 function applyTheme(resolvedTheme: 'light' | 'dark'): void {
-  const root = document.documentElement;
-  root.classList.remove('light', 'dark');
-  root.classList.add(resolvedTheme);
+  const root = document.documentElement
+  root.classList.remove('light', 'dark')
+  root.classList.add(resolvedTheme)
 }
 
 /**
@@ -69,46 +69,46 @@ function applyTheme(resolvedTheme: 'light' | 'dark'): void {
  * ```
  */
 export function useTheme(): UseThemeReturn {
-  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme());
-  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() => getSystemTheme());
+  const [theme, setThemeState] = useState<Theme>(() => getStoredTheme())
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() => getSystemTheme())
 
   // Calculate resolved theme
-  const resolvedTheme = theme === 'system' ? systemTheme : theme;
+  const resolvedTheme = theme === 'system' ? systemTheme : theme
 
   // Listen for system theme changes
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
 
     const handleChange = (e: MediaQueryListEvent) => {
-      setSystemTheme(e.matches ? 'dark' : 'light');
-    };
+      setSystemTheme(e.matches ? 'dark' : 'light')
+    }
 
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
 
   // Apply theme when it changes
   useEffect(() => {
-    applyTheme(resolvedTheme);
-  }, [resolvedTheme]);
+    applyTheme(resolvedTheme)
+  }, [resolvedTheme])
 
   // Set theme with persistence
   const setTheme = useCallback((newTheme: Theme) => {
-    setThemeState(newTheme);
-    localStorage.setItem(STORAGE_KEY, newTheme);
-  }, []);
+    setThemeState(newTheme)
+    localStorage.setItem(STORAGE_KEY, newTheme)
+  }, [])
 
   // Toggle between light and dark (skipping system)
   const toggleTheme = useCallback(() => {
-    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
-  }, [resolvedTheme, setTheme]);
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')
+  }, [resolvedTheme, setTheme])
 
   return {
     theme,
     resolvedTheme,
     setTheme,
     toggleTheme,
-  };
+  }
 }
 
-export default useTheme;
+export default useTheme

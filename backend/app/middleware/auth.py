@@ -62,31 +62,50 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                 return await call_next(request)
 
         # Extract authorization header
-        auth_header = request.headers.get("Authorization")
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # Try both lowercase and capitalized header names
+        auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
 
         if not auth_header:
+            logger.warning(f"❌ Authorization header missing for {request.url.path}")
+            print(f"[AUTH] Auth header missing/invalid for {request.url.path}")
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Authorization header missing"},
             )
 
         # Validate Bearer token format
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != "bearer":
+        if not auth_header.startswith("Bearer "):
+            logger.warning(f"❌ Invalid Authorization header format for {request.url.path}")
+            print(f"[AUTH] Invalid header format (prefix only): {auth_header[:20]}")
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Invalid authorization header format. Expected: Bearer <token>"},
             )
 
-        token = parts[1]
+        token = auth_header.split(" ", 1)[1]
+        logger.info(
+            f"📥 JWT token received for {request.url.path}, "
+            f"length: {len(token)}, preview: {token[:20]}..."
+        )
+        print(f"[AUTH] Token received, length: {len(token)}, prefix: {token[:20]}...")
 
         # Verify JWT token
         payload = verify_supabase_jwt(token)
         if not payload:
+            logger.warning(
+                f"JWT verification failed for {request.url.path}. "
+                f"Check backend logs for details."
+            )
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Invalid or expired token"},
             )
+
+        user_id = payload.get("sub", "unknown")
+        logger.info(f"JWT verification successful for {request.url.path}, user: {user_id}")
 
         # Add user information to request state
         request.state.user_id = payload.get("sub")

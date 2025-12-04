@@ -73,6 +73,62 @@ export const NationalityTypeSchema = z.object({
 
 export type NationalityType = z.infer<typeof NationalityTypeSchema>
 
+// Fee Category
+export const FeeCategorySchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name_fr: z.string(),
+  name_en: z.string(),
+  account_code: z.string(),
+  is_recurring: z.boolean(),
+  allows_sibling_discount: z.boolean(),
+})
+
+export type FeeCategory = z.infer<typeof FeeCategorySchema>
+
+// Fee Structure
+export const FeeStructureSchema = z.object({
+  id: z.string().uuid(),
+  budget_version_id: z.string().uuid(),
+  level_id: z.string().uuid(),
+  nationality_type_id: z.string().uuid(),
+  fee_category_id: z.string().uuid(),
+  amount_sar: z.number().min(0),
+  trimester: z.number().min(1).max(3).nullable().optional(),
+  notes: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export type FeeStructure = z.infer<typeof FeeStructureSchema>
+
+// Cycle
+export const CycleSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export type Cycle = z.infer<typeof CycleSchema>
+
+// Class Size Parameters
+export const ClassSizeParamSchema = z.object({
+  id: z.string().uuid(),
+  budget_version_id: z.string().uuid(),
+  level_id: z.string().uuid().nullable(),
+  cycle_id: z.string().uuid().nullable(),
+  min_class_size: z.number().int().min(1).max(50),
+  target_class_size: z.number().int().min(1).max(50),
+  max_class_size: z.number().int().min(1).max(50),
+  notes: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export type ClassSizeParam = z.infer<typeof ClassSizeParamSchema>
+
 // Class Structure
 export const ClassStructureSchema = z.object({
   id: z.string().uuid(),
@@ -100,14 +156,15 @@ export const DHGEntrySchema = z.object({
 
 export type DHGEntry = z.infer<typeof DHGEntrySchema>
 
-// Subject Hours (DHG)
+// Subject Hours (Configuration)
 export const SubjectHoursSchema = z.object({
   id: z.string().uuid(),
   budget_version_id: z.string().uuid(),
   level_id: z.string().uuid(),
   subject_id: z.string().uuid(),
-  hours_per_week: z.number(),
-  split_class: z.boolean(),
+  hours_per_week: z.number().min(0).max(12), // 0-12 hours, backend uses Decimal with 2 decimal places
+  is_split: z.boolean(), // Whether classes are split (half-size groups)
+  notes: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
 })
@@ -230,6 +287,37 @@ export const SubjectSchema = z.object({
 })
 
 export type Subject = z.infer<typeof SubjectSchema>
+
+// Teacher Category
+export const TeacherCategorySchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name_fr: z.string(),
+  name_en: z.string(),
+  description: z.string().nullable(),
+  is_aefe: z.boolean(),
+})
+
+export type TeacherCategory = z.infer<typeof TeacherCategorySchema>
+
+// Teacher Cost Parameters
+export const TeacherCostParamSchema = z.object({
+  id: z.string().uuid(),
+  budget_version_id: z.string().uuid(),
+  category_id: z.string().uuid(),
+  cycle_id: z.string().uuid().nullable(),
+  prrd_contribution_eur: z.number().min(0).nullable(),
+  avg_salary_sar: z.number().min(0).nullable(),
+  social_charges_rate: z.number().min(0).max(1),
+  benefits_allowance_sar: z.number().min(0),
+  hsa_hourly_rate_sar: z.number().min(0),
+  max_hsa_hours: z.number().min(0).max(10),
+  notes: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export type TeacherCostParam = z.infer<typeof TeacherCostParamSchema>
 
 // Consolidation
 export const ConsolidationStatusSchema = z.object({

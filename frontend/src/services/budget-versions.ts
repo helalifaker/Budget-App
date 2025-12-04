@@ -5,7 +5,7 @@ export const budgetVersionsApi = {
   getAll: async (params?: { page?: number; page_size?: number }) => {
     return apiRequest<PaginatedResponse<BudgetVersion>>({
       method: 'GET',
-      url: '/configuration/budget-versions',
+      url: '/budget-versions',
       params,
     })
   },
@@ -13,7 +13,7 @@ export const budgetVersionsApi = {
   getById: async (id: string) => {
     return apiRequest<BudgetVersion>({
       method: 'GET',
-      url: `/configuration/budget-versions/${id}`,
+      url: `/budget-versions/${id}`,
     })
   },
 
@@ -25,7 +25,7 @@ export const budgetVersionsApi = {
   }) => {
     return apiRequest<BudgetVersion>({
       method: 'POST',
-      url: '/configuration/budget-versions',
+      url: '/budget-versions',
       data,
     })
   },
@@ -33,7 +33,7 @@ export const budgetVersionsApi = {
   update: async (id: string, data: { name?: string; notes?: string }) => {
     return apiRequest<BudgetVersion>({
       method: 'PUT',
-      url: `/configuration/budget-versions/${id}`,
+      url: `/budget-versions/${id}`,
       data,
     })
   },
@@ -41,28 +41,28 @@ export const budgetVersionsApi = {
   delete: async (id: string) => {
     return apiRequest<void>({
       method: 'DELETE',
-      url: `/configuration/budget-versions/${id}`,
+      url: `/budget-versions/${id}`,
     })
   },
 
   submit: async (id: string) => {
     return apiRequest<BudgetVersion>({
       method: 'POST',
-      url: `/configuration/budget-versions/${id}/submit`,
+      url: `/budget-versions/${id}/submit`,
     })
   },
 
   approve: async (id: string) => {
     return apiRequest<BudgetVersion>({
       method: 'POST',
-      url: `/configuration/budget-versions/${id}/approve`,
+      url: `/budget-versions/${id}/approve`,
     })
   },
 
   clone: async (id: string, data: { name: string }) => {
     return apiRequest<BudgetVersion>({
       method: 'POST',
-      url: `/configuration/budget-versions/${id}/clone`,
+      url: `/budget-versions/${id}/clone`,
       data,
     })
   },

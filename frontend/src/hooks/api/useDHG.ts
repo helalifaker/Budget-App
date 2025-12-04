@@ -26,7 +26,7 @@ export function useUpdateSubjectHours() {
       data,
     }: {
       id: string
-      data: { hours_per_week: number; split_class: boolean }
+      data: { hours_per_week: number; is_split: boolean }
     }) => dhgApi.updateSubjectHours(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dhgKeys.all })
@@ -43,7 +43,7 @@ export function useBulkUpdateSubjectHours() {
       updates,
     }: {
       versionId: string
-      updates: Array<{ id: string; hours_per_week: number; split_class: boolean }>
+      updates: Array<{ id: string; hours_per_week: number; is_split: boolean }>
     }) => dhgApi.bulkUpdateSubjectHours(versionId, updates),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: dhgKeys.subjectHours(variables.versionId) })

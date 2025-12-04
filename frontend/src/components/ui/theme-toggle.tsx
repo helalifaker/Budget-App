@@ -7,12 +7,12 @@
  * - Keyboard support
  */
 
-import { Moon, Sun } from 'lucide-react';
-import { useTheme } from '@/hooks/useTheme';
-import { Button } from '@/components/ui/button';
+import { Moon, Sun } from 'lucide-react'
+import { useTheme } from '@/hooks/useTheme'
+import { Button } from '@/components/ui/button'
 
 interface ThemeToggleProps {
-  className?: string;
+  className?: string
 }
 
 /**
@@ -24,7 +24,7 @@ interface ThemeToggleProps {
  * ```
  */
 export function ThemeToggle({ className }: ThemeToggleProps) {
-  const { resolvedTheme, toggleTheme } = useTheme();
+  const { resolvedTheme, toggleTheme } = useTheme()
 
   return (
     <Button
@@ -50,7 +50,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         {resolvedTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       </span>
     </Button>
-  );
+  )
 }
 
-export default ThemeToggle;
+export default ThemeToggle

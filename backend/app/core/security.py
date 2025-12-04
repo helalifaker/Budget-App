@@ -110,10 +110,13 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
 
 def verify_supabase_jwt(token: str) -> dict[str, Any] | None:
     """
-    Verify a Supabase JWT token.
+    Verify a Supabase JWT token with proper issuer and audience validation.
 
-    Supabase uses JWT tokens for authentication. This function verifies
-    the token signature and extracts the user information.
+    Supabase uses JWT tokens for authentication. This function verifies:
+    - Token signature using SUPABASE_JWT_SECRET
+    - Issuer claim (iss) matches Supabase auth endpoint
+    - Audience claim (aud) is "authenticated"
+    - Token expiration (exp)
 
     Args:
         token: Supabase JWT token
@@ -125,13 +128,84 @@ def verify_supabase_jwt(token: str) -> dict[str, Any] | None:
         In production, you should use Supabase's JWT secret from environment variables.
         The secret is available in your Supabase project settings under API > JWT Secret.
     """
-    supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", SECRET_KEY)
+    import logging
+    logger = logging.getLogger(__name__)
 
+    supabase_jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "").strip().strip('"').strip("'")
+    supabase_url = os.getenv("SUPABASE_URL", "").strip().strip('"').strip("'")
+
+    # Debug: Print env var status
+    logger.info(
+        f"JWT env present: {bool(supabase_jwt_secret)}, "
+        f"secret length: {len(supabase_jwt_secret) if supabase_jwt_secret else 0}, "
+        f"SUPABASE_URL: {supabase_url or 'NOT SET'}"
+    )
+
+    if not supabase_jwt_secret:
+        logger.error(
+            "SUPABASE_JWT_SECRET not configured. "
+            "Get JWT secret from Supabase Dashboard > Settings > API > JWT Secret. "
+            "Add it to backend/.env.local as: SUPABASE_JWT_SECRET=your-secret-here"
+        )
+        return None
+
+    # Build issuer URL from SUPABASE_URL
+    # Format: https://[project-id].supabase.co/auth/v1
+    if supabase_url:
+        # Remove trailing slash and append /auth/v1
+        issuer = f"{supabase_url.rstrip('/')}/auth/v1"
+        logger.debug(f"Using issuer from SUPABASE_URL: {issuer}")
+    else:
+        # Fallback: use default for project ssxwmxqvafesyldycqzy
+        issuer = "https://ssxwmxqvafesyldycqzy.supabase.co/auth/v1"
+        logger.warning(
+            "SUPABASE_URL not set, using default issuer. "
+            "Set SUPABASE_URL in backend/.env.local for proper issuer validation."
+        )
+
+    audience = "authenticated"
+    algorithms = ["HS256"]
+
+    # Debug: Decode token without verification to inspect claims
     try:
-        return jwt.decode(token, supabase_jwt_secret, algorithms=[ALGORITHM])
-    except JWTError:
-        # Fallback to default secret to maintain compatibility with tokens
-        try:
-            return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        except JWTError:
-            return None
+        header = jwt.get_unverified_header(token)
+        payload_unverified = jwt.get_unverified_claims(token)
+        logger.info(
+            f"Token inspection (unverified): "
+            f"alg={header.get('alg')}, "
+            f"aud={payload_unverified.get('aud')}, "
+            f"iss={payload_unverified.get('iss')}, "
+            f"sub={payload_unverified.get('sub', 'N/A')[:20]}..."
+        )
+    except Exception as e:
+        logger.warning(f"Failed to decode token for inspection: {e}")
+
+    # Verify token with all checks
+    try:
+        payload = jwt.decode(
+            token,
+            supabase_jwt_secret,
+            algorithms=algorithms,
+            audience=audience,
+            issuer=issuer,
+            options={
+                "verify_signature": True,
+                "verify_aud": True,
+                "verify_iss": True,
+                "verify_exp": True,
+            },
+        )
+        user_id = payload.get("sub", "unknown")
+        email = payload.get("email", "unknown")
+        logger.info(
+            f"✅ JWT verified successfully. User: {user_id}, Email: {email}, "
+            f"Issuer: {payload.get('iss', 'N/A')}, Audience: {payload.get('aud', 'N/A')}"
+        )
+        return payload
+    except JWTError as e:
+        logger.error(
+            f"❌ JWT verification failed: {repr(e)}. "
+            f"Expected issuer: {issuer}, Expected audience: {audience}"
+        )
+        logger.debug(f"Token preview (first 50 chars): {token[:50]}...")
+        return None

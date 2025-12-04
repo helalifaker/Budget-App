@@ -21,28 +21,28 @@
  * ```
  */
 export function announce(message: string, priority: 'polite' | 'assertive' = 'polite'): void {
-  const announcer = getOrCreateAnnouncer(priority);
-  announcer.textContent = '';
+  const announcer = getOrCreateAnnouncer(priority)
+  announcer.textContent = ''
   // Small delay to ensure screen readers detect the change
   requestAnimationFrame(() => {
-    announcer.textContent = message;
-  });
+    announcer.textContent = message
+  })
 }
 
 /**
  * Get or create the ARIA live region announcer element.
  */
 function getOrCreateAnnouncer(priority: 'polite' | 'assertive'): HTMLElement {
-  const id = `efir-announcer-${priority}`;
-  let announcer = document.getElementById(id);
+  const id = `efir-announcer-${priority}`
+  let announcer = document.getElementById(id)
 
   if (!announcer) {
-    announcer = document.createElement('div');
-    announcer.id = id;
-    announcer.setAttribute('aria-live', priority);
-    announcer.setAttribute('aria-atomic', 'true');
-    announcer.setAttribute('role', 'status');
-    announcer.className = 'sr-only';
+    announcer = document.createElement('div')
+    announcer.id = id
+    announcer.setAttribute('aria-live', priority)
+    announcer.setAttribute('aria-atomic', 'true')
+    announcer.setAttribute('role', 'status')
+    announcer.className = 'sr-only'
     announcer.style.cssText = `
       position: absolute;
       width: 1px;
@@ -53,11 +53,11 @@ function getOrCreateAnnouncer(priority: 'polite' | 'assertive'): HTMLElement {
       clip: rect(0, 0, 0, 0);
       white-space: nowrap;
       border-width: 0;
-    `;
-    document.body.appendChild(announcer);
+    `
+    document.body.appendChild(announcer)
   }
 
-  return announcer;
+  return announcer
 }
 
 /**
@@ -74,39 +74,39 @@ function getOrCreateAnnouncer(priority: 'polite' | 'assertive'): HTMLElement {
  * ```
  */
 export function focusTrap(container: HTMLElement | null): () => void {
-  if (!container) return () => {};
+  if (!container) return () => {}
 
   const focusableElements = container.querySelectorAll<HTMLElement>(
     'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-  );
+  )
 
-  if (focusableElements.length === 0) return () => {};
+  if (focusableElements.length === 0) return () => {}
 
-  const firstElement = focusableElements[0];
-  const lastElement = focusableElements[focusableElements.length - 1];
+  const firstElement = focusableElements[0]
+  const lastElement = focusableElements[focusableElements.length - 1]
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key !== 'Tab') return;
+    if (e.key !== 'Tab') return
 
     if (e.shiftKey) {
       if (document.activeElement === firstElement) {
-        e.preventDefault();
-        lastElement.focus();
+        e.preventDefault()
+        lastElement.focus()
       }
     } else {
       if (document.activeElement === lastElement) {
-        e.preventDefault();
-        firstElement.focus();
+        e.preventDefault()
+        firstElement.focus()
       }
     }
-  };
+  }
 
-  container.addEventListener('keydown', handleKeyDown);
-  firstElement.focus();
+  container.addEventListener('keydown', handleKeyDown)
+  firstElement.focus()
 
   return () => {
-    container.removeEventListener('keydown', handleKeyDown);
-  };
+    container.removeEventListener('keydown', handleKeyDown)
+  }
 }
 
 /**
@@ -122,28 +122,28 @@ export function focusTrap(container: HTMLElement | null): () => void {
  * ```
  */
 export function skipToMain(mainContentId: string): void {
-  const main = document.getElementById(mainContentId);
+  const main = document.getElementById(mainContentId)
   if (main) {
-    main.setAttribute('tabindex', '-1');
-    main.focus();
-    main.removeAttribute('tabindex');
+    main.setAttribute('tabindex', '-1')
+    main.focus()
+    main.removeAttribute('tabindex')
   }
 }
 
 /**
  * Generate unique IDs for accessible form elements.
  */
-let idCounter = 0;
+let idCounter = 0
 export function generateId(prefix: string = 'efir'): string {
-  idCounter += 1;
-  return `${prefix}-${idCounter}`;
+  idCounter += 1
+  return `${prefix}-${idCounter}`
 }
 
 /**
  * Check if reduced motion is preferred.
  */
 export function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /**
@@ -153,7 +153,7 @@ export function prefersReducedMotion(): boolean {
 export function ariaDescribedBy(
   id: string | undefined
 ): { 'aria-describedby': string } | Record<string, never> {
-  return id ? { 'aria-describedby': id } : {};
+  return id ? { 'aria-describedby': id } : {}
 }
 
 /**
@@ -163,7 +163,7 @@ export function ariaDescribedBy(
 export function ariaLabelledBy(
   id: string | undefined
 ): { 'aria-labelledby': string } | Record<string, never> {
-  return id ? { 'aria-labelledby': id } : {};
+  return id ? { 'aria-labelledby': id } : {}
 }
 
 /**
@@ -179,8 +179,8 @@ export function getInteractiveRole(
     radio: 'radio',
     tab: 'tab',
     menuitem: 'menuitem',
-  };
-  return roles[element] || 'button';
+  }
+  return roles[element] || 'button'
 }
 
 /**
@@ -192,10 +192,10 @@ export function getInteractiveRole(
 export function onEscapeKey(callback: () => void): () => void {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      callback();
+      callback()
     }
-  };
+  }
 
-  document.addEventListener('keydown', handleKeyDown);
-  return () => document.removeEventListener('keydown', handleKeyDown);
+  document.addEventListener('keydown', handleKeyDown)
+  return () => document.removeEventListener('keydown', handleKeyDown)
 }

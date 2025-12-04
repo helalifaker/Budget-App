@@ -36,7 +36,13 @@ if (import.meta.env.VITE_SENTRY_DSN_FRONTEND) {
   })
 }
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+// Ensure root element exists before rendering
+const rootElement = document.getElementById('root')
+if (!rootElement) {
+  throw new Error('Root element not found. Make sure index.html has <div id="root"></div>')
+}
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
