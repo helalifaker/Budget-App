@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Plus, Trash2, Calculator } from 'lucide-react'
+import { Plus, Trash2, Calculator, Users, TrendingUp, Globe } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   useEnrollments,
   useCreateEnrollment,
@@ -70,6 +71,59 @@ function EnrollmentPlanningPage() {
     }
   }, [enrollmentsData])
 
+  const getLevelName = useCallback(
+    (levelId: string) => {
+      return levelsData?.find((l) => l.id === levelId)?.name || levelId
+    },
+    [levelsData]
+  )
+
+  const getNationalityTypeName = useCallback(
+    (nationalityTypeId: string) => {
+      return (
+        nationalityTypesData?.find((n) => n.id === nationalityTypeId)?.name || nationalityTypeId
+      )
+    },
+    [nationalityTypesData]
+  )
+
+  // Calculate summary statistics
+  const statistics = useMemo(() => {
+    const totalStudents = rowData.reduce((sum, enrollment) => sum + enrollment.student_count, 0)
+
+    // Calculate by nationality
+    const byNationality = rowData.reduce(
+      (acc, enrollment) => {
+        const nationalityName = getNationalityTypeName(enrollment.nationality_type_id)
+        acc[nationalityName] = (acc[nationalityName] || 0) + enrollment.student_count
+        return acc
+      },
+      {} as Record<string, number>
+    )
+
+    // Calculate by level (group by cycle)
+    const byLevel = rowData.reduce(
+      (acc, enrollment) => {
+        const levelName = getLevelName(enrollment.level_id)
+        acc[levelName] = (acc[levelName] || 0) + enrollment.student_count
+        return acc
+      },
+      {} as Record<string, number>
+    )
+
+    // Capacity utilization (EFIR total capacity ~1,875 students)
+    const totalCapacity = 1875
+    const capacityUtilization = totalCapacity > 0 ? (totalStudents / totalCapacity) * 100 : 0
+
+    return {
+      totalStudents,
+      byNationality,
+      byLevel,
+      capacityUtilization: Math.round(capacityUtilization * 10) / 10,
+      totalCapacity,
+    }
+  }, [rowData, getLevelName, getNationalityTypeName])
+
   const handleCreate = async (formData: EnrollmentFormData) => {
     if (!selectedVersionId) {
       toastMessages.warning.selectVersion()
@@ -111,22 +165,6 @@ function EnrollmentPlanningPage() {
       // Error toast is handled by the mutation's onError
     }
   }
-
-  const getLevelName = useCallback(
-    (levelId: string) => {
-      return levelsData?.find((l) => l.id === levelId)?.name || levelId
-    },
-    [levelsData]
-  )
-
-  const getNationalityTypeName = useCallback(
-    (nationalityTypeId: string) => {
-      return (
-        nationalityTypesData?.find((n) => n.id === nationalityTypeId)?.name || nationalityTypeId
-      )
-    },
-    [nationalityTypesData]
-  )
 
   const columnDefs: ColDef<Enrollment>[] = useMemo(
     () => [
@@ -221,6 +259,100 @@ function EnrollmentPlanningPage() {
             className="max-w-md"
           />
         </div>
+
+        {selectedVersionId && rowData.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {/* Total Students */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+                <Users className="h-4 w-4 text-twilight-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{statistics.totalStudents}</div>
+                <p className="text-xs text-twilight-600 mt-1">
+                  Across all levels and nationalities
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Capacity Utilization */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Capacity</CardTitle>
+                <TrendingUp className="h-4 w-4 text-twilight-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{statistics.capacityUtilization}%</div>
+                <p className="text-xs text-twilight-600 mt-1">
+                  {statistics.totalStudents} / {statistics.totalCapacity} max
+                </p>
+                <div className="w-full bg-twilight-200 rounded-full h-2 mt-2">
+                  <div
+                    className={`h-2 rounded-full ${
+                      statistics.capacityUtilization > 90
+                        ? 'bg-error-600'
+                        : statistics.capacityUtilization > 75
+                          ? 'bg-warning-600'
+                          : 'bg-success-600'
+                    }`}
+                    style={{ width: `${Math.min(statistics.capacityUtilization, 100)}%` }}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* By Nationality */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">By Nationality</CardTitle>
+                <Globe className="h-4 w-4 text-twilight-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {Object.entries(statistics.byNationality)
+                    .slice(0, 3)
+                    .map(([nationality, count]) => (
+                      <div key={nationality} className="flex justify-between text-sm">
+                        <span className="text-twilight-700">{nationality}</span>
+                        <span className="font-medium">{count}</span>
+                      </div>
+                    ))}
+                  {Object.keys(statistics.byNationality).length > 3 && (
+                    <p className="text-xs text-twilight-600 mt-2">
+                      +{Object.keys(statistics.byNationality).length - 3} more
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* By Level Summary */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">By Level</CardTitle>
+                <Users className="h-4 w-4 text-twilight-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {Object.entries(statistics.byLevel)
+                    .slice(0, 3)
+                    .map(([level, count]) => (
+                      <div key={level} className="flex justify-between text-sm">
+                        <span className="text-twilight-700">{level}</span>
+                        <span className="font-medium">{count}</span>
+                      </div>
+                    ))}
+                  {Object.keys(statistics.byLevel).length > 3 && (
+                    <p className="text-xs text-twilight-600 mt-2">
+                      +{Object.keys(statistics.byLevel).length - 3} more
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {selectedVersionId ? (
           <DataTableLazy
