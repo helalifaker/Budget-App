@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import { ColDef } from 'ag-grid-community'
+import { ColDef, themeQuartz } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
@@ -18,8 +18,6 @@ import {
   useCalculateFTE,
 } from '@/hooks/api/useDHG'
 import { Users, Clock, AlertTriangle, TrendingUp, Calculator, Save } from 'lucide-react'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-quartz.css'
 
 export const Route = createFileRoute('/planning/dhg')({
   component: DHGPage,
@@ -198,7 +196,7 @@ function SubjectHoursTab({ data, isLoading }: { data: SubjectHoursItem[]; isLoad
         </p>
       </CardHeader>
       <CardContent>
-        <div className="ag-theme-quartz" style={{ height: 600 }}>
+        <div style={{ height: 600 }}>
           <AgGridReact
             rowData={data}
             columnDefs={columnDefs}
@@ -208,6 +206,7 @@ function SubjectHoursTab({ data, isLoading }: { data: SubjectHoursItem[]; isLoad
               resizable: true,
             }}
             loading={isLoading}
+            theme={themeQuartz}
           />
         </div>
       </CardContent>
@@ -280,7 +279,7 @@ function TeacherFTETab({ data, isLoading }: { data: TeacherFTEItem[]; isLoading:
         </div>
       </CardHeader>
       <CardContent>
-        <div className="ag-theme-quartz" style={{ height: 600 }}>
+        <div style={{ height: 600 }}>
           <AgGridReact
             rowData={data}
             columnDefs={columnDefs}
@@ -290,6 +289,7 @@ function TeacherFTETab({ data, isLoading }: { data: TeacherFTEItem[]; isLoading:
               resizable: true,
             }}
             loading={isLoading}
+            theme={themeQuartz}
           />
         </div>
       </CardContent>
@@ -367,7 +367,7 @@ function TRMDTab({ data, isLoading }: { data: TRMDItem[]; isLoading: boolean }) 
         </p>
       </CardHeader>
       <CardContent>
-        <div className="ag-theme-quartz" style={{ height: 600 }}>
+        <div style={{ height: 600 }}>
           <AgGridReact
             rowData={data}
             columnDefs={columnDefs}
@@ -377,6 +377,7 @@ function TRMDTab({ data, isLoading }: { data: TRMDItem[]; isLoading: boolean }) 
               resizable: true,
             }}
             loading={isLoading}
+            theme={themeQuartz}
           />
         </div>
       </CardContent>
@@ -445,7 +446,7 @@ function HSATab({ data, isLoading }: { data: HSAItem[]; isLoading: boolean }) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="ag-theme-quartz" style={{ height: 600 }}>
+        <div style={{ height: 600 }}>
           <AgGridReact
             rowData={data}
             columnDefs={columnDefs}
@@ -455,6 +456,7 @@ function HSATab({ data, isLoading }: { data: HSAItem[]; isLoading: boolean }) {
               resizable: true,
             }}
             loading={isLoading}
+            theme={themeQuartz}
             onCellValueChanged={(event) => {
               const hours = event.data.hsa_hours
               if (hours > 4) {

@@ -107,11 +107,45 @@ export function LoginPage() {
           </form>
 
           {/* Development helper */}
-          {import.meta.env.DEV && (
+          {import.meta.env.DEV && import.meta.env.VITE_E2E_TEST_MODE === 'true' && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800 font-medium mb-2">Test Mode Active</p>
+              <p className="text-xs text-blue-700 mb-3">
+                Using mock authentication. Choose a test account:
+              </p>
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between bg-white p-2 rounded">
+                  <span className="font-medium text-blue-900">Admin:</span>
+                  <code className="text-blue-700">admin@efir.local</code>
+                </div>
+                <div className="flex items-center justify-between bg-white p-2 rounded">
+                  <span className="font-medium text-blue-900">Manager:</span>
+                  <code className="text-blue-700">manager@efir.local</code>
+                </div>
+                <div className="flex items-center justify-between bg-white p-2 rounded">
+                  <span className="font-medium text-blue-900">HR:</span>
+                  <code className="text-blue-700">hr@efir.local</code>
+                </div>
+                <div className="flex items-center justify-between bg-white p-2 rounded">
+                  <span className="font-medium text-blue-900">Academic:</span>
+                  <code className="text-blue-700">academic@efir.local</code>
+                </div>
+                <div className="flex items-center justify-between bg-white p-2 rounded">
+                  <span className="font-medium text-blue-900">Viewer:</span>
+                  <code className="text-blue-700">user@efir.local</code>
+                </div>
+                <p className="text-blue-600 font-medium mt-2 pt-2 border-t border-blue-200">
+                  Password: <code className="bg-blue-100 px-2 py-0.5 rounded">password123</code>
+                </p>
+              </div>
+            </div>
+          )}
+          {import.meta.env.DEV && import.meta.env.VITE_E2E_TEST_MODE !== 'true' && (
             <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800 font-medium mb-2">Development Mode</p>
               <p className="text-xs text-yellow-700">
-                Use test credentials or configure Supabase in your .env file
+                Configure Supabase credentials in your .env file or enable test mode by setting{' '}
+                <code className="bg-yellow-100 px-1 rounded">VITE_E2E_TEST_MODE=true</code>
               </p>
             </div>
           )}

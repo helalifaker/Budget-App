@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import { ColDef, ICellRendererParams } from 'ag-grid-community'
+import { ColDef, ICellRendererParams, themeQuartz } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
@@ -14,8 +14,6 @@ import { CurrencyRenderer } from '@/components/grid/CurrencyRenderer'
 import { AccountCodeRenderer } from '@/components/grid/AccountCodeRenderer'
 import { useCapEx, useDepreciationSchedule } from '@/hooks/api/useCapEx'
 import { Building2, Laptop, Wrench, TrendingDown, Plus, Download, Eye } from 'lucide-react'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-quartz.css'
 
 export const Route = createFileRoute('/planning/capex')({
   component: CapExPage,
@@ -213,7 +211,7 @@ function CapExPage() {
                       </p>
                     </CardHeader>
                     <CardContent>
-                      <div className="ag-theme-quartz" style={{ height: 600 }}>
+                      <div style={{ height: 600 }}>
                         <AgGridReact
                           rowData={capexItems}
                           columnDefs={columnDefs}
@@ -223,6 +221,7 @@ function CapExPage() {
                             resizable: true,
                           }}
                           loading={isLoading}
+                          theme={themeQuartz}
                         />
                       </div>
                     </CardContent>

@@ -1,7 +1,6 @@
 import { AgGridReact, AgGridReactProps } from 'ag-grid-react'
 import { useCallback, useMemo } from 'react'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-quartz.css'
+import { themeQuartz } from 'ag-grid-community'
 
 interface DataTableProps<TData = unknown> extends AgGridReactProps<TData> {
   loading?: boolean
@@ -45,7 +44,7 @@ export function DataTable<TData = unknown>({
   }
 
   return (
-    <div className="ag-theme-quartz h-[600px] rounded-card border border-sand-200 overflow-hidden">
+    <div className="h-[600px] rounded-card border border-sand-200 overflow-hidden">
       {loading && (
         <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
           <div className="text-twilight-600">Loading...</div>
@@ -59,6 +58,7 @@ export function DataTable<TData = unknown>({
         pagination={props.pagination !== undefined ? props.pagination : true}
         paginationPageSize={props.paginationPageSize || 50}
         domLayout="normal"
+        theme={themeQuartz}
       />
     </div>
   )

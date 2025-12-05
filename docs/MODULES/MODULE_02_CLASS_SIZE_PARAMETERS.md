@@ -743,19 +743,79 @@ def test_rls_manager_working_version():
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-01 | System | Initial documentation: class_size_parameters and atsem_requirements tables with RLS policies |
+| 1.1 | 2025-12-05 | Claude Code | Enhanced Future Enhancements section with detailed 4-feature roadmap; added reference to MODULE_02_FUTURE_ENHANCEMENTS.md (96-page comprehensive specification) |
 
-## Future Enhancements (Phase 5-6)
+## Future Enhancements
 
-1. **Parameter Management UI**: Visual interface for setting class size parameters by cycle/level
-2. **Scenario Modeling**: What-if analysis tool to test different class size assumptions
-3. **Historical Comparison**: Compare class size parameters across multiple budget years
-4. **Optimization Calculator**: Recommend optimal class sizes based on enrollment and constraints
-5. **Visual Distribution**: Show student distribution across classes graphically
-6. **ATSEM Cost Calculator**: Immediate cost impact preview when changing ATSEM ratios
-7. **Batch Parameter Updates**: Update multiple cycles/levels simultaneously
-8. **Template Library**: Save and reuse parameter sets (conservative, base, optimistic scenarios)
-9. **Validation Warnings**: Alert when parameters deviate significantly from AEFE benchmarks
-10. **Integration with Enrollment**: Real-time class count updates as enrollment projections change
+**Status**: Planned for future implementation (comprehensive specification available)
+
+**Documentation**: See [MODULE_02_FUTURE_ENHANCEMENTS.md](./MODULE_02_FUTURE_ENHANCEMENTS.md) for complete technical specifications, implementation plans, and estimates.
+
+### Four Major Enhancement Features
+
+#### 1. Visual Distribution 📊 (Week 1, 5 days)
+Interactive charts and visualizations for data-driven planning:
+- **Student Distribution Chart**: Bar chart showing students per class by level, color-coded by utilization
+- **Cost Breakdown Chart**: Stacked bar chart of personnel costs by cycle (Teachers, ATSEM, Admin)
+- **AEFE Comparison Chart**: Line chart comparing current class sizes vs AEFE benchmarks
+- **Trend Chart**: Multi-year historical view of class size evolution
+- **Export Capability**: PNG, PDF, and Excel formats for board presentations
+- **Business Value**: Visual feedback for capacity planning, cost transparency, stakeholder communication
+
+#### 2. Scenario Modeling 🎯 (Week 2, 6-7 days)
+What-if analysis tool for comparing different class size strategies:
+- **Create Scenarios**: Conservative, Base, Optimistic, or Custom parameter sets
+- **Side-by-Side Comparison**: Compare 2-4 scenarios with cost/FTE/capacity impacts
+- **Impact Analysis**: Automatic recalculation of classes, teacher FTE, and costs
+- **Scenario Actions**: Copy, edit, delete, or accept scenarios
+- **Database Changes**: 2 new tables (`class_size_scenarios`, `class_size_scenario_params`)
+- **Business Value**: Risk planning, decision support, budget flexibility
+
+#### 3. Optimization Calculator 🤖 (Week 3, 7 days)
+AI-powered recommendations for optimal class size parameters:
+- **Three Optimization Goals**:
+  - Minimize Cost (maximize class sizes within limits)
+  - Maximize Quality (minimize class sizes for better student-teacher ratios)
+  - Balanced Approach (optimal cost-quality tradeoff)
+- **Constraint Configuration**: AEFE benchmarks, custom min/max overrides, budget ceilings
+- **Recommendation Output**: Suggested parameters with cost savings, FTE impact, and confidence scores
+- **AEFE Compliance**: Automatic checking of H/E ratios and quality standards
+- **Business Value**: 5-15% cost savings, data-driven decisions, objective parameter selection
+
+#### 4. Real-time Integration ⚡ (Week 4, 4 days)
+Live synchronization and collaborative editing:
+- **Parameter Synchronization**: Real-time updates when other users modify parameters
+- **Enrollment Change Propagation**: Auto-recalculate classes when enrollment data changes
+- **User Presence Indicators**: See who else is viewing/editing the same budget
+- **Conflict Detection**: Optimistic locking with version tracking (HTTP 409 Conflict)
+- **Connection Status**: Live/Connecting/Disconnected badge with auto-reconnect
+- **Business Value**: Collaboration, data consistency, conflict prevention
+
+### Implementation Overview
+
+**Total Effort**: 3-4 weeks (phased implementation)
+
+**Technical Approach**:
+- **Backend**: 3 new calculation engines (distribution, comparison, optimization)
+- **Database**: 3 new tables for scenarios and recommendations
+- **Frontend**: 10+ new components (charts, dialogs, presence indicators)
+- **Infrastructure**: Leverages existing Recharts, Supabase Realtime, and calculation engines
+- **Testing**: 80%+ coverage target with comprehensive unit, integration, and E2E tests
+
+**Implementation Order** (lowest risk first):
+1. Visual Distribution (immediate value, no database changes)
+2. Scenario Modeling (foundation for optimization)
+3. Optimization Calculator (complex algorithm)
+4. Real-time Integration (polish feature)
+
+**Key Benefits**:
+- Transform Module 2 from parameter management into intelligent planning platform
+- Enable data-driven decision making with visual feedback
+- Support multiple "what-if" scenarios for risk planning
+- Provide AI-powered optimization recommendations
+- Enable real-time collaboration for multi-user teams
+
+For detailed technical specifications, database schemas, API endpoints, testing strategies, and implementation estimates, see the complete [Future Enhancements Documentation](./MODULE_02_FUTURE_ENHANCEMENTS.md).
 
 ## Notes
 

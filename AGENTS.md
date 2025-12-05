@@ -1,34 +1,40 @@
-# Repository Guidelines
+# Agent & Repository Guide
 
-## Project Structure & Module Organization
-- Monorepo root scripts orchestrate both stacks; see `package.json` for shared tasks.
-- `frontend/` — React 19 + Vite + TypeScript; UI components, hooks, and routing live under `src/`; Playwright setup in `tests/` or `src/__tests__/`.
-- `backend/` — FastAPI app in `app/` (api/, engine/, models/, schemas/, services/); Alembic migrations in `alembic/versions/`; pytest suites in `tests/`.
-- `docs/` holds module specs and database guides; `.claude/` and `CLAUDE.md` define agent boundaries and should be consulted before changing cross-domain logic.
+## Primary References
+- `CLAUDE.md` — primary source of truth for standards, formulas, and architecture; read before any change.
+- `.claude/AGENT_ORCHESTRATION.md` + `.claude/agents/*` — 14-agent boundaries and routing rules (product-architect is business-rule source).
+- `README.md`, `backend/README.md`, `frontend/README.md` — current stack/version details and workflow notes.
 
-## Build, Test, and Development Commands
-- `pnpm dev` — run frontend dev server and backend Uvicorn hot-reload together.
-- `pnpm build` — build the frontend bundle; backend is compiled/type-checked during lint/typecheck steps.
-- `pnpm lint` — ESLint+Prettier for frontend and Ruff for backend.
-- `pnpm typecheck` — TS `tsc --noEmit` plus backend `mypy`.
-- `pnpm test` — Vitest + backend pytest. For focused work: `pnpm --filter efir-budget-frontend test`, `cd backend && .venv/bin/pytest`.
-- E2E/UI: `cd frontend && pnpm test:e2e` (Playwright); bundle analysis: `cd frontend && pnpm build:analyze`.
+## Stack Snapshot
+- Frontend: React 19.2 + Vite 7 + TypeScript 5.9; Tailwind 4/shadcn-ui; AG Grid 34.3; TanStack Router/Query; React Hook Form + Zod; Supabase JS.
+- Backend: FastAPI 0.123.4 on Python >=3.11 (<3.15); Pydantic 2.12; SQLAlchemy 2.0; Alembic migrations; async stack (`asyncpg`).
+- Tooling: pnpm workspaces; Husky + lint-staged; ESLint 9/Prettier for frontend; Ruff (line length 100) + mypy (py 3.12 target) + pytest for backend; Playwright + Vitest for E2E/unit.
 
-## Coding Style & Naming Conventions
-- Frontend: Prettier formatting (2-space indent), ESLint rules enforced; React components PascalCase; hooks/components in `src/` co-locate tests as `*.test.tsx`.
-- Backend: Ruff line length 100; Pydantic/SQLAlchemy models PascalCase; functions/vars snake_case; keep calculation engines pure (no I/O) and call them from services/APIs only.
-- Type safety is mandatory: TypeScript strictness on, Python type hints plus mypy; avoid TODO stubs—implement complete logic per `CLAUDE.md`.
+## Project Layout
+- Monorepo root orchestrates both stacks (`package.json` scripts). Key dirs: `frontend/` (React app under `src/`), `backend/` (FastAPI in `app/` with api/ engine/ models/ schemas/ services/), `docs/` (module specs/database guides), `.claude/` (agent configs).
+- Alembic migrations live in `backend/alembic/versions/`; frontend Playwright setup under `frontend/tests/` and `src/__tests__/`.
 
-## Testing Guidelines
-- Frameworks: Vitest (unit), Playwright (E2E), pytest (backend). Target ≥80% coverage (see `TEST_COVERAGE_*` docs); prefer `pytest -q` for fast runs.
-- Naming: frontend tests `*.test.ts(x)`; backend tests `tests/test_*.py`. Mock external services; keep engine tests side-effect free.
-- Before PR: run `pnpm lint`, `pnpm typecheck`, `pnpm test`; attach Playwright report when modifying flows.
+## Commands (root unless noted)
+- `pnpm dev` — runs frontend dev server + backend Uvicorn reload via concurrently.
+- `pnpm build` — frontend build (tsc + Vite).
+- `pnpm lint` — frontend ESLint/Prettier + backend Ruff.
+- `pnpm typecheck` — frontend `tsc --noEmit` + backend mypy.
+- `pnpm test` — Vitest then backend pytest. Focus: `pnpm --filter efir-budget-frontend test`; `cd backend && .venv/bin/pytest`.
+- E2E/bundle: `cd frontend && pnpm test:e2e`; `cd frontend && pnpm build:analyze`.
 
-## Commit & Pull Request Guidelines
-- History follows Conventional Commit style (`feat:`, `fix:`, `chore:`, `test:`). Use imperative mood and concise scope (e.g., `feat: add DHG allocation grid`).
-- PRs should include: summary, scope of modules touched, test command results, and screenshots/GIFs for UI changes. Link related issues/docs (e.g., module spec in `docs/`).
-- Respect agent boundaries: route business rules to `product-architect-agent`, API changes to `backend-api-specialist`, DB changes to `database-supabase-agent`; note the responsible agent in PR descriptions.
+## Coding Standards & Boundaries
+- Frontend: TypeScript strict, 2-space Prettier; React components PascalCase; co-locate tests as `*.test.tsx`; server state via TanStack Query; forms via React Hook Form + Zod; no business/calculation logic in UI.
+- Backend: Functions/vars snake_case; models/schemas PascalCase; engines in `app/engine` stay pure/no I/O; FastAPI routes/services call engines; schema changes only through Alembic migrations; follow DI patterns and Pydantic validation.
+- Agent routing: business rules → `product-architect-agent`; DB/migrations → `database-supabase-agent`; APIs → `backend-api-specialist`; calculations → `backend-engine-agent`; UI → `frontend-ui-agent`; multi-domain → `efir-master-agent`.
 
-## Security & Configuration Tips
-- Do not commit secrets; keep `.env.local` in `frontend/` and `backend/` with Supabase URLs/keys and database URLs.
-- Enable MFA with Supabase accounts; when touching auth/RLS, consult `SETUP_JWT_AUTH.md` and `security-rls-agent` guidance.
+## Testing Expectations
+- Frameworks: Vitest (frontend), Playwright (E2E), pytest (backend). Target ≥80% coverage (see `TEST_COVERAGE_*` docs).
+- Naming: frontend `*.test.ts(x)`; backend `tests/test_*.py`. Mock external services; keep engine tests side-effect free. Prefer `pytest -q` for speed.
+- Before PR: run `pnpm lint`, `pnpm typecheck`, `pnpm test`; attach Playwright report when flows change.
+
+## Git & PR Hygiene
+- Conventional Commits (`feat:`, `fix:`, `chore:`, `test:` …), imperative scope (e.g., `feat: add DHG allocation grid`).
+- PRs include summary, modules touched, test commands/results, screenshots/GIFs for UI, and link to relevant docs/specs; note responsible agent when crossing domains.
+
+## Security & Config
+- Never commit secrets. Use `.env.local` in both `frontend/` and `backend/` for Supabase/database URLs/keys (see `SETUP_JWT_AUTH.md` for auth/RLS). Keep MFA enabled on Supabase.

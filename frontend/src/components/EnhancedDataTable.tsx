@@ -24,8 +24,7 @@ import type {
   CellClickedEvent,
   GetContextMenuItems,
 } from 'ag-grid-community'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-quartz.css'
+import { themeQuartz } from 'ag-grid-community'
 import { Loader2 } from 'lucide-react'
 import { Badge } from './ui/badge'
 import { cn } from '@/lib/utils'
@@ -375,7 +374,6 @@ export function EnhancedDataTable<TData = unknown>({
       {/* AG Grid */}
       <div
         className={cn(
-          'ag-theme-quartz',
           'relative rounded-card border border-sand-200 overflow-hidden'
         )}
       >
@@ -407,6 +405,7 @@ export function EnhancedDataTable<TData = unknown>({
           domLayout="normal"
           pagination={props.pagination !== undefined ? props.pagination : true}
           paginationPageSize={props.paginationPageSize || 50}
+          theme={themeQuartz}
         />
       </div>
 

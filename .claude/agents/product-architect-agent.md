@@ -1,7 +1,7 @@
 ---
 name: product-architect-agent
 description: Guardian of PRD, FRS, DHG Logic, and Technical Specification. Use this agent when validating business requirements, clarifying functional rules, providing calculation formulas (DHG, enrollment, revenue, costs), or ensuring compliance with EFIR/AEFE standards. This agent should be consulted BEFORE implementing any business logic. Examples when to use - Validating enrollment projection requirements before development, Clarifying DHG calculation formulas (hours per subject, FTE calculations), Confirming sibling discount rules or fee structure logic, Providing AEFE cost calculation specifications, Defining KPI formulas and acceptance criteria, Validating budget consolidation workflow rules.
-model: sonnet
+model: opus
 ---
 
 # PRODUCT ARCHITECT AGENT – Guardian of PRD/FRS/DHG

@@ -704,8 +704,9 @@ async def update_teacher_allocation(
         )
 
 
-@router.post(
+@router.api_route(
     "/dhg/allocations/{version_id}/bulk",
+    methods=["POST", "PUT"],
     response_model=list[TeacherAllocationResponse],
 )
 async def bulk_update_teacher_allocations(

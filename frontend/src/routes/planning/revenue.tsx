@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import { ColDef } from 'ag-grid-community'
+import { ColDef, themeQuartz } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
@@ -13,8 +13,6 @@ import { AccountCodeRenderer } from '@/components/grid/AccountCodeRenderer'
 import { CurrencyRenderer } from '@/components/grid/CurrencyRenderer'
 import { useRevenue, useCalculateRevenue } from '@/hooks/api/useRevenue'
 import { DollarSign, TrendingUp, Calculator, Download } from 'lucide-react'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-quartz.css'
 
 export const Route = createFileRoute('/planning/revenue')({
   component: RevenuePage,
@@ -200,7 +198,7 @@ function RevenuePage() {
                       </p>
                     </CardHeader>
                     <CardContent>
-                      <div className="ag-theme-quartz" style={{ height: 600 }}>
+                      <div style={{ height: 600 }}>
                         <AgGridReact
                           rowData={revenueItems}
                           columnDefs={columnDefs}
@@ -212,6 +210,7 @@ function RevenuePage() {
                           loading={isLoading}
                           groupDisplayType="groupRows"
                           groupDefaultExpanded={-1}
+                          theme={themeQuartz}
                         />
                       </div>
                     </CardContent>

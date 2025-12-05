@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import logger
 from app.models.configuration import AcademicLevel, BudgetVersion, BudgetVersionStatus
-from app.models.consolidation import BudgetConsolidation
+from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
 from app.models.planning import ClassStructure, DHGTeacherRequirement, EnrollmentPlan
 from app.services.exceptions import NotFoundError, ServiceException
 

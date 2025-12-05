@@ -137,15 +137,24 @@ This application provides integrated workforce planning through annual budget an
 │   │   ├── models/        # SQLAlchemy models (18 modules)
 │   │   ├── schemas/       # Pydantic schemas
 │   │   └── services/      # Business logic services
-│   ├── alembic/           # Database migrations (7 migrations)
+│   ├── alembic/           # Database migrations (10 migrations)
 │   └── tests/             # Pytest tests
-├── docs/                  # Documentation (COMPLETE)
+├── foundation/            # Core specifications (PRD, TSD, requirements)
+├── docs/                  # Documentation (organized by type)
 │   ├── MODULES/           # 18 module specifications (100% complete)
-│   └── DATABASE/          # Database design and setup guides
+│   ├── user-guides/       # User documentation
+│   ├── developer-guides/  # Developer documentation
+│   ├── testing/           # Test coverage and E2E guides
+│   ├── status/            # Current status (living documents)
+│   ├── agent-work/        # Recent agent reports
+│   ├── archive/           # Historical documentation
+│   └── database/          # Database design and setup guides
 ├── .claude/               # Agent configuration
 │   └── agents/            # 14 specialized agents
 ├── .github/
 │   └── workflows/         # CI/CD workflows
+├── CLAUDE.md              # Primary agent reference
+├── DOCUMENTATION_INDEX.md # Complete documentation navigation
 └── README.md              # This file
 ```
 
@@ -229,17 +238,26 @@ GitHub Actions automatically runs on push/PR:
 
 ## Documentation
 
+**📚 [Complete Documentation Index](./DOCUMENTATION_INDEX.md)** - Master navigation for all 146 documentation files
+
 ### For AI Agents
 - **[CLAUDE.md](./CLAUDE.md)**: **PRIMARY AGENT REFERENCE** - Complete development guidelines, architecture, standards (1000+ lines)
 - **[.claude/AGENT_ORCHESTRATION.md](./.claude/AGENT_ORCHESTRATION.md)**: 14-agent system, orchestration rules, boundaries
 - **[.claude/agents/](./.claude/agents/)**: Individual agent configuration files
+- **[docs/AGENT_DOCUMENTATION_STANDARDS.md](./docs/AGENT_DOCUMENTATION_STANDARDS.md)**: Where agents create documentation
 
 ### For All Developers
-- **[PRD v1.2](./EFIR_Budget_App_PRD_v1_2.md)**: Product Requirements Document
-- **[TSD v1.2](./EFIR_Budget_App_TSD_v1_2.md)**: Technical Specification Document
-- **[Module Specifications](./EFIR_Module_Technical_Specification.md)**: Detailed module specifications and formulas
-- **[Workforce Planning Logic](./EFIR_Workforce_Planning_Logic.md)**: DHG methodology and calculations
-- **[Data Summary](./EFIR_Data_Summary_v2.md)**: Historical data and reference information
+- **[Foundation Documents](./foundation/)**: Core specifications and requirements
+  - [PRD v1.2](./foundation/EFIR_Budget_App_PRD_v1.2.md): Product Requirements Document
+  - [TSD v1.2](./foundation/EFIR_Budget_App_TSD_v1.2.md): Technical Specification Document
+  - [Module Specifications](./foundation/EFIR_Module_Technical_Specification.md): Complete 18-module specification
+  - [Workforce Planning Logic](./foundation/EFIR_Workforce_Planning_Logic.md): DHG methodology
+  - [Data Summary](./foundation/EFIR_Data_Summary_v2.md): Historical data and reference
+
+### User & Developer Guides
+- **[User Guides](./docs/user-guides/)**: End-user documentation
+- **[Developer Guides](./docs/developer-guides/)**: Developer setup, API docs, integration guides
+- **[Module Specifications](./docs/MODULES/)**: All 18 modules across 5 layers
 
 ## Key Concepts
 

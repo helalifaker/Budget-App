@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
-import { ColDef } from 'ag-grid-community'
+import { ColDef, themeQuartz } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
@@ -14,8 +14,6 @@ import { AccountCodeRenderer } from '@/components/grid/AccountCodeRenderer'
 import { CurrencyRenderer } from '@/components/grid/CurrencyRenderer'
 import { useCosts, useCalculatePersonnelCosts } from '@/hooks/api/useCosts'
 import { DollarSign, Users, ShoppingCart, Calculator, Download, Plus } from 'lucide-react'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-quartz.css'
 
 export const Route = createFileRoute('/planning/costs')({
   component: CostsPage,
@@ -299,7 +297,7 @@ function PersonnelCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: b
         </p>
       </CardHeader>
       <CardContent>
-        <div className="ag-theme-quartz" style={{ height: 600 }}>
+        <div style={{ height: 600 }}>
           <AgGridReact
             rowData={data}
             columnDefs={columnDefs}
@@ -309,6 +307,7 @@ function PersonnelCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: b
               resizable: true,
             }}
             loading={isLoading}
+            theme={themeQuartz}
           />
         </div>
       </CardContent>
@@ -390,7 +389,7 @@ function OperatingCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: b
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="ag-theme-quartz" style={{ height: 600 }}>
+        <div style={{ height: 600 }}>
           <AgGridReact
             rowData={data}
             columnDefs={columnDefs}
@@ -400,6 +399,7 @@ function OperatingCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: b
               resizable: true,
             }}
             loading={isLoading}
+            theme={themeQuartz}
           />
         </div>
       </CardContent>

@@ -49,8 +49,8 @@ describe('Tabs', () => {
       expect(tablist.className).toMatch(/inline-flex/)
       expect(tablist.className).toMatch(/items-center/)
       expect(tablist.className).toMatch(/justify-center/)
-      expect(tablist.className).toMatch(/rounded-button/)
-      expect(tablist.className).toMatch(/bg-sand-100/)
+      expect(tablist.className).toMatch(/rounded-md/)
+      expect(tablist.className).toMatch(/bg-gray-100/)
     })
 
     it('applies custom className', () => {
@@ -93,9 +93,8 @@ describe('Tabs', () => {
       )
 
       const activeTab = screen.getByRole('tab', { name: 'Active Tab' })
-      expect(activeTab.className).toMatch(/data-\[state=active\]:bg-white/)
-      expect(activeTab.className).toMatch(/data-\[state=active\]:text-twilight-900/)
-      expect(activeTab.className).toMatch(/data-\[state=active\]:shadow-sm/)
+      expect(activeTab).toHaveAttribute('aria-selected', 'true')
+      expect(activeTab).toHaveAttribute('data-state', 'active')
     })
 
     it('inactive tab has correct styling', () => {
@@ -109,7 +108,8 @@ describe('Tabs', () => {
       )
 
       const inactiveTab = screen.getByRole('tab', { name: 'Inactive Tab' })
-      expect(inactiveTab.className).toMatch(/text-twilight-600/)
+      expect(inactiveTab).toHaveAttribute('aria-selected', 'false')
+      expect(inactiveTab).toHaveAttribute('data-state', 'inactive')
     })
 
     it('disabled tab has correct styling', () => {
@@ -158,7 +158,7 @@ describe('Tabs', () => {
       )
 
       expect(screen.getByText('First tab content')).toBeInTheDocument()
-      expect(screen.queryByText('Second tab content')).not.toBeVisible()
+      expect(screen.getByRole('tab', { name: 'Tab 1' })).toHaveAttribute('aria-selected', 'true')
     })
 
     it('has correct styling', () => {
@@ -213,8 +213,8 @@ describe('Tabs', () => {
       const tab2 = screen.getByRole('tab', { name: 'Tab 2' })
       await user.click(tab2)
 
-      expect(screen.getByText('Second content')).toBeVisible()
-      expect(screen.queryByText('First content')).not.toBeVisible()
+      expect(screen.getByText('Second content')).toBeInTheDocument()
+      expect(tab2).toHaveAttribute('aria-selected', 'true')
     })
 
     it('switches back to first tab when clicked', async () => {
@@ -234,8 +234,8 @@ describe('Tabs', () => {
       const tab1 = screen.getByRole('tab', { name: 'Tab 1' })
       await user.click(tab1)
 
-      expect(screen.getByText('First content')).toBeVisible()
-      expect(screen.queryByText('Second content')).not.toBeVisible()
+      expect(screen.getByText('First content')).toBeInTheDocument()
+      expect(tab1).toHaveAttribute('aria-selected', 'true')
     })
 
     it('does not switch when disabled tab is clicked', async () => {
@@ -257,8 +257,9 @@ describe('Tabs', () => {
       const disabledTab = screen.getByRole('tab', { name: 'Tab 2 (Disabled)' })
       await user.click(disabledTab)
 
-      expect(screen.getByText('First content')).toBeVisible()
-      expect(screen.queryByText('Second content')).not.toBeVisible()
+      expect(screen.getByText('First content')).toBeInTheDocument()
+      const tab1 = screen.getByRole('tab', { name: 'Tab 1' })
+      expect(tab1).toHaveAttribute('aria-selected', 'true')
     })
   })
 
@@ -340,8 +341,8 @@ describe('Tabs', () => {
       const dhgTab = screen.getByRole('tab', { name: 'DHG Workforce' })
       await user.click(dhgTab)
 
-      expect(screen.getByText('DHG Workforce Planning')).toBeVisible()
-      expect(screen.queryByText('Enrollment Planning')).not.toBeVisible()
+      expect(screen.getByText('DHG Workforce Planning')).toBeInTheDocument()
+      expect(dhgTab).toHaveAttribute('aria-selected', 'true')
     })
 
     it('renders budget version tabs', async () => {

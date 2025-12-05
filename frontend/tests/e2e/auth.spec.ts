@@ -27,8 +27,8 @@ test.describe('Authentication', () => {
     // Verify redirect to dashboard
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
 
-    // Verify dashboard elements are visible
-    await expect(page.locator('text=/budget|dashboard/i')).toBeVisible()
+    // Verify dashboard heading is visible
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   })
 
   test('login with invalid credentials shows error', async ({ page }) => {
@@ -113,7 +113,7 @@ test.describe('Authentication', () => {
 
     // Should still be on dashboard
     await expect(page).toHaveURL(/\/dashboard/)
-    await expect(page.locator('text=/budget|dashboard/i')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
   })
 
   test('remember me functionality (if implemented)', async ({ page }) => {

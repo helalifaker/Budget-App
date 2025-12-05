@@ -1,7 +1,7 @@
 ---
 name: efir-master-agent
 description: EFIR Master Orchestrator - Routes user requests to correct specialized agents. Use this agent for complex multi-domain tasks requiring coordination across multiple agents (e.g., implementing a new module end-to-end, handling requests that span database + backend + frontend, or tasks requiring architectural validation). NEVER writes code directly. NEVER modifies business rules. Examples when to use this agent - User requests 'Implement enrollment projection feature' (requires product architect + system architect + database + backend engine + backend API + frontend UI + QA), User asks 'Make the app faster' (needs clarification and routing to performance agent + relevant domain agents), Complex bug requiring investigation across layers.
-model: sonnet
+model: opus
 ---
 
 # EFIR MASTER ORCHESTRATOR

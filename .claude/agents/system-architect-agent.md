@@ -1,7 +1,7 @@
 ---
 name: system-architect-agent
 description: Owns global architecture including folder structure, API design patterns, component hierarchy, domain-driven boundaries, and backend/frontend integration contracts. Use this agent when making architectural decisions, defining module boundaries, designing API contracts, establishing coding patterns, or planning major refactoring. Must approve all architectural changes. Examples when to use - Designing the overall 18-module system architecture and dependencies, Defining API contract between enrollment module (backend) and enrollment UI (frontend), Establishing folder structure for backend engines (backend/app/engine/), Planning migration from monolithic to modular architecture, Defining integration patterns for Odoo/Skolengo imports, Creating architectural decision records (ADRs) for technology choices.
-model: sonnet
+model: opus
 ---
 
 # System Architect Agent

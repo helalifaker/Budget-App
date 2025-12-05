@@ -48,7 +48,7 @@ from app.models.planning import (
     EnrollmentPlan,
 )
 from sqlalchemy import UUID as SQLUUID
-from sqlalchemy import String, text
+from sqlalchemy import String, event, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
 
@@ -75,6 +75,31 @@ class User(Base):
         SQLUUID(as_uuid=True), primary_key=True, default=uuid4
     )
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+# ==============================================================================
+# SQLite Schema Stripping for Cross-Database Compatibility
+# ==============================================================================
+
+
+def strip_schema_from_sql(sql_str: str) -> str:
+    """
+    Strip PostgreSQL schema prefixes from SQL for SQLite compatibility.
+
+    Converts:
+        efir_budget.table_name -> table_name
+        auth.users -> users
+
+    This is necessary because SQLite doesn't support PostgreSQL-style schemas.
+    """
+    import re
+
+    # Replace schema.table patterns with just table
+    # Match efir_budget.table_name or auth.table_name
+    sql_str = re.sub(r'\befir_budget\.', '', sql_str)
+    sql_str = re.sub(r'\bauth\.', '', sql_str)
+
+    return sql_str
 
 
 @pytest.fixture(scope="session")
@@ -107,18 +132,56 @@ async def engine(test_database_url: str):
 
     Creates all tables in the test database including auth schema.
     """
-    engine = create_async_engine(
-        test_database_url,
-        echo=False,  # Set to True for SQL debugging
-    )
+    # For SQLite, use schema translation to strip PostgreSQL schemas
+    # This is the recommended SQLAlchemy 2.0 approach for cross-database compatibility
+    if test_database_url.startswith("sqlite"):
+        engine = create_async_engine(
+            test_database_url,
+            echo=False,  # Set to True for SQL debugging
+            execution_options={
+                "schema_translate_map": {
+                    "efir_budget": None,  # Translate efir_budget schema to no schema (main database)
+                    "auth": None,  # Translate auth schema to no schema
+                }
+            },
+        )
+    else:
+        engine = create_async_engine(
+            test_database_url,
+            echo=False,
+        )
 
     async with engine.begin() as conn:
         # For SQLite tests, temporarily remove schema from metadata to create tables
         # in the main database (SQLite doesn't support PostgreSQL-style schemas)
         if test_database_url.startswith("sqlite"):
-            # Temporarily set all table schemas to None for SQLite
+            # Step 1: Strip schema from all tables
             for table in Base.metadata.tables.values():
                 table.schema = None
+
+            # Step 2: Strip schema from all ForeignKey constraints
+            # This is critical because ForeignKey definitions like ForeignKey("efir_budget.table.column")
+            # cause SQLAlchemy to generate queries with schema prefixes
+            for table in Base.metadata.tables.values():
+                for constraint in table.constraints:
+                    if hasattr(constraint, 'elements'):
+                        # ForeignKeyConstraint has 'elements' attribute containing ForeignKey objects
+                        for fk_element in constraint.elements:
+                            if hasattr(fk_element, '_colspec'):
+                                # Strip schema from ForeignKey._colspec (e.g., "efir_budget.table.column" -> "table.column")
+                                original_colspec = fk_element._colspec
+                                if '.' in original_colspec:
+                                    parts = original_colspec.split('.')
+                                    if len(parts) == 3:  # schema.table.column
+                                        fk_element._colspec = f"{parts[1]}.{parts[2]}"
+
+                            # Also strip schema from target_fullname if it exists
+                            if hasattr(fk_element, 'target_fullname'):
+                                target = fk_element.target_fullname
+                                if '.' in target:
+                                    parts = target.split('.')
+                                    if len(parts) == 3:  # schema.table.column
+                                        fk_element.target_fullname = f"{parts[1]}.{parts[2]}"
 
             # Debug: Print tables being created
             print(f"\n🔍 Creating {len(Base.metadata.tables)} tables for SQLite tests")
@@ -287,6 +350,90 @@ async def academic_levels(
             sort_order=12,
             is_secondary=True,
         ),
+        # Elementary levels (Élémentaire) - CE1 through CM2
+        "CE1": AcademicLevel(
+            id=uuid4(),
+            code="CE1",
+            name_en="CE1",
+            name_fr="CE1",
+            cycle_id=academic_cycles["elementaire"].id,
+            sort_order=5,
+            is_secondary=False,
+        ),
+        "CE2": AcademicLevel(
+            id=uuid4(),
+            code="CE2",
+            name_en="CE2",
+            name_fr="CE2",
+            cycle_id=academic_cycles["elementaire"].id,
+            sort_order=6,
+            is_secondary=False,
+        ),
+        "CM1": AcademicLevel(
+            id=uuid4(),
+            code="CM1",
+            name_en="CM1",
+            name_fr="CM1",
+            cycle_id=academic_cycles["elementaire"].id,
+            sort_order=7,
+            is_secondary=False,
+        ),
+        "CM2": AcademicLevel(
+            id=uuid4(),
+            code="CM2",
+            name_en="CM2",
+            name_fr="CM2",
+            cycle_id=academic_cycles["elementaire"].id,
+            sort_order=8,
+            is_secondary=False,
+        ),
+        # Middle school levels (Collège) - 4ème and 3ème
+        "4EME": AcademicLevel(
+            id=uuid4(),
+            code="4EME",
+            name_en="4ème",
+            name_fr="4ème",
+            cycle_id=academic_cycles["college"].id,
+            sort_order=13,
+            is_secondary=True,
+        ),
+        "3EME": AcademicLevel(
+            id=uuid4(),
+            code="3EME",
+            name_en="3ème",
+            name_fr="3ème",
+            cycle_id=academic_cycles["college"].id,
+            sort_order=14,
+            is_secondary=True,
+        ),
+        # High school levels (Lycée) - 2nde, 1ère, Terminale
+        "2NDE": AcademicLevel(
+            id=uuid4(),
+            code="2NDE",
+            name_en="2nde",
+            name_fr="2nde",
+            cycle_id=academic_cycles["lycee"].id,
+            sort_order=15,
+            is_secondary=True,
+        ),
+        "1ERE": AcademicLevel(
+            id=uuid4(),
+            code="1ERE",
+            name_en="1ère",
+            name_fr="1ère",
+            cycle_id=academic_cycles["lycee"].id,
+            sort_order=16,
+            is_secondary=True,
+        ),
+        "TERM": AcademicLevel(
+            id=uuid4(),
+            code="TERM",
+            name_en="Terminale",
+            name_fr="Terminale",
+            cycle_id=academic_cycles["lycee"].id,
+            sort_order=17,
+            is_secondary=True,
+        ),
     }
 
     db_session.add_all(levels.values())
@@ -362,6 +509,74 @@ async def subjects(db_session: AsyncSession) -> dict[str, Subject]:
             name_en="English",
             name_fr="Anglais",
             category="core",
+            is_active=True,
+        ),
+        # Science subjects
+        "SVT": Subject(
+            id=uuid4(),
+            code="SVT",
+            name_en="Life and Earth Sciences",
+            name_fr="Sciences de la Vie et de la Terre",
+            category="specialty",
+            is_active=True,
+        ),
+        "PHYS": Subject(
+            id=uuid4(),
+            code="PHYS",
+            name_en="Physics-Chemistry",
+            name_fr="Physique-Chimie",
+            category="core",
+            is_active=True,
+        ),
+        # Language subjects
+        "LV2": Subject(
+            id=uuid4(),
+            code="LV2",
+            name_en="Second Foreign Language",
+            name_fr="Langue Vivante 2",
+            category="core",
+            is_active=True,
+        ),
+        # Humanities and Social Sciences
+        "PHILO": Subject(
+            id=uuid4(),
+            code="PHILO",
+            name_en="Philosophy",
+            name_fr="Philosophie",
+            category="core",
+            is_active=True,
+        ),
+        "ECO": Subject(
+            id=uuid4(),
+            code="ECO",
+            name_en="Economics",
+            name_fr="Sciences Économiques",
+            category="specialty",
+            is_active=True,
+        ),
+        # Arts and Physical Education
+        "ART": Subject(
+            id=uuid4(),
+            code="ART",
+            name_en="Visual Arts",
+            name_fr="Arts Plastiques",
+            category="elective",
+            is_active=True,
+        ),
+        "EPS": Subject(
+            id=uuid4(),
+            code="EPS",
+            name_en="Physical Education",
+            name_fr="Éducation Physique et Sportive",
+            category="core",
+            is_active=True,
+        ),
+        "MUS": Subject(
+            id=uuid4(),
+            code="MUS",
+            name_en="Music Education",
+            name_fr="Éducation Musicale",
+            category="elective",
             is_active=True,
         ),
     }
@@ -839,3 +1054,44 @@ async def test_system_config(
     await db_session.flush()
 
     return config
+
+
+@pytest.fixture
+async def system_configs(
+    db_session: AsyncSession, test_user_id: UUID
+) -> dict[str, SystemConfig]:
+    """Create comprehensive system configurations for integration tests."""
+    configs = {
+        "EUR_TO_SAR_RATE": SystemConfig(
+            id=uuid4(),
+            key="eur_to_sar_rate",
+            value={"rate": 3.75, "effective_date": "2025-01-01"},
+            category="exchange_rates",
+            description="EUR to SAR exchange rate for AEFE cost calculations",
+            is_active=True,
+            created_by_id=test_user_id,
+        ),
+        "SCHOOL_CAPACITY": SystemConfig(
+            id=uuid4(),
+            key="school_capacity",
+            value={"max_students": 1875, "warning_threshold": 1800},
+            category="general",
+            description="Maximum student enrollment capacity",
+            is_active=True,
+            created_by_id=test_user_id,
+        ),
+        "FISCAL_YEAR_START": SystemConfig(
+            id=uuid4(),
+            key="fiscal_year_start",
+            value={"month": 1, "day": 1, "format": "MM-DD"},
+            category="general",
+            description="Fiscal year start date (January 1st)",
+            is_active=True,
+            created_by_id=test_user_id,
+        ),
+    }
+
+    db_session.add_all(configs.values())
+    await db_session.flush()
+
+    return configs

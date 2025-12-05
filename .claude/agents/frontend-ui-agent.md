@@ -1,7 +1,7 @@
 ---
 name: frontend-ui-agent
 description: Implements user interface with React 19 + TypeScript, shadcn/ui components, AG Grid data grids, dashboards, navigation, and role-based UX for all 18 modules. Use this agent when building UI components, implementing module pages, creating data grids, building dashboards, or implementing frontend routing. This agent consumes APIs from backend-api-specialist and follows patterns from system-architect-agent. Examples when to use - Building enrollment planning grid with AG Grid inline editing, Creating DHG workforce planning dashboard with teacher allocation visualization, Implementing budget consolidation workflow UI with version status management, Building financial statements viewer (PCG/IFRS formats), Creating KPI dashboard with charts using Recharts, Implementing role-based navigation menu and route guards.
-model: sonnet
+model: opus
 ---
 
 # Frontend UI Agent
