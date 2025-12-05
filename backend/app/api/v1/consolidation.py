@@ -516,14 +516,14 @@ async def approve_budget(
 
         # Approve budget
         updated = await consolidation_service.approve_budget(
-            version_id, user_id=manager.id
+            version_id, user_id=manager.user_id
         )
 
         return WorkflowActionResponse(
             budget_version_id=version_id,
             previous_status=previous_status,
             new_status=updated.status,
-            action_by=manager.id,
+            action_by=manager.user_id,
             action_at=updated.approved_at if updated.approved_at is not None else datetime.utcnow(),
             message=f"Budget '{updated.name}' successfully approved",
         )

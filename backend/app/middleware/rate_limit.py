@@ -65,12 +65,7 @@ def get_client_identifier(request: Request) -> str:
     Returns:
         Client identifier string
     """
-    # Prefer an authenticated user object when available
-    user = getattr(request.state, "user", None)
-    if user and hasattr(user, "id"):
-        return f"user:{user.id}"
-
-    # Fall back to explicit user_id if no user object is present
+    # Use authenticated user_id from auth middleware
     user_id = getattr(request.state, "user_id", None)
     if user_id:
         return f"user:{user_id}"
