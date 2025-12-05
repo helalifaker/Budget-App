@@ -11,6 +11,7 @@ Enrollment → Class Structure → DHG → Personnel Costs → Budget Consolidat
 When enrollment changes, all dependent caches are automatically invalidated.
 """
 
+import asyncio
 import os
 from collections.abc import Callable
 from typing import Any, TypeVar
@@ -31,14 +32,184 @@ _TESTING = bool(os.getenv("PYTEST_CURRENT_TEST") or os.getenv("PYTEST_RUNNING"))
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 REDIS_ENABLED = os.getenv("REDIS_ENABLED", "false").lower() == "true" and not _TESTING
 
-# Initialize cashews cache backend
-if REDIS_ENABLED:
-    cache.setup(REDIS_URL)
-else:
-    logger.warning("redis_disabled", message="Redis caching is disabled via REDIS_ENABLED=false")
+# New configuration variables for resilience
+REDIS_REQUIRED = os.getenv("REDIS_REQUIRED", "false").lower() == "true"
+REDIS_CONNECT_TIMEOUT = float(os.getenv("REDIS_CONNECT_TIMEOUT", "5"))
+REDIS_SOCKET_TIMEOUT = float(os.getenv("REDIS_SOCKET_TIMEOUT", "5"))
+REDIS_MAX_RETRIES = int(os.getenv("REDIS_MAX_RETRIES", "3"))
+
+# Cache initialization state
+_cache_initialized: bool = False
+_cache_initialization_lock: asyncio.Lock | None = None
+_cache_initialization_error: Exception | None = None
 
 # Redis client for manual operations (cache stats, invalidation)
 redis_client: redis.Redis | None = None
+
+
+def _get_initialization_lock() -> asyncio.Lock:
+    """Get or create asyncio lock for cache initialization (lazy)."""
+    global _cache_initialization_lock
+    if _cache_initialization_lock is None:
+        _cache_initialization_lock = asyncio.Lock()
+    return _cache_initialization_lock
+
+
+async def initialize_cache() -> bool:
+    """
+    Initialize Redis cache with timeout and error handling.
+
+    This is called during application startup, not at module import time.
+    Supports graceful degradation if Redis is unavailable.
+
+    Returns:
+        True if cache initialized successfully, False otherwise
+
+    Raises:
+        RuntimeError: If REDIS_REQUIRED=true and Redis unavailable
+    """
+    global _cache_initialized, _cache_initialization_error
+
+    if not REDIS_ENABLED:
+        logger.info("cache_initialization_skipped", reason="redis_disabled")
+        return False
+
+    if _cache_initialized:
+        logger.debug("cache_already_initialized")
+        return True
+
+    async with _get_initialization_lock():
+        # Double-check after acquiring lock
+        if _cache_initialized:
+            return True
+
+        try:
+            # Configure cashews (synchronous but fast - no I/O)
+            cache.setup(REDIS_URL, client_side_cache=False)
+            logger.info("cache_setup_configured", url=REDIS_URL)
+
+            # Verify connection with timeout
+            test_client = redis.from_url(
+                REDIS_URL,
+                decode_responses=True,
+                socket_connect_timeout=REDIS_CONNECT_TIMEOUT,
+            )
+
+            # Test connectivity
+            await asyncio.wait_for(
+                test_client.ping(),
+                timeout=REDIS_SOCKET_TIMEOUT,
+            )
+
+            await test_client.close()
+
+            _cache_initialized = True
+            logger.info("cache_initialization_success", url=REDIS_URL)
+            return True
+
+        except TimeoutError as exc:
+            _cache_initialization_error = exc
+            logger.error(
+                "cache_initialization_timeout",
+                url=REDIS_URL,
+                connect_timeout=REDIS_CONNECT_TIMEOUT,
+            )
+            if REDIS_REQUIRED:
+                raise RuntimeError(
+                    f"Redis connection timeout after {REDIS_CONNECT_TIMEOUT}s. "
+                    f"Set REDIS_REQUIRED=false to allow graceful degradation."
+                ) from exc
+            return False
+
+        except redis.ConnectionError as exc:
+            _cache_initialization_error = exc
+            logger.error(
+                "cache_initialization_connection_error",
+                url=REDIS_URL,
+                error=str(exc),
+            )
+            if REDIS_REQUIRED:
+                raise RuntimeError(
+                    f"Redis connection failed: {exc}. "
+                    f"Ensure Redis is running: brew services start redis"
+                ) from exc
+            return False
+
+        except Exception as exc:
+            _cache_initialization_error = exc
+            logger.error(
+                "cache_initialization_failed",
+                url=REDIS_URL,
+                error=str(exc),
+                error_type=type(exc).__name__,
+            )
+            if REDIS_REQUIRED:
+                raise RuntimeError(f"Redis initialization failed: {exc}") from exc
+            return False
+
+
+def get_cache_status() -> dict[str, Any]:
+    """
+    Get cache initialization status for health checks.
+
+    Returns:
+        dict with status, initialized flag, and error info
+    """
+    if not REDIS_ENABLED:
+        return {
+            "status": "disabled",
+            "enabled": False,
+            "initialized": False,
+            "message": "Redis caching is disabled via REDIS_ENABLED=false",
+        }
+
+    if _cache_initialized:
+        return {
+            "status": "ok",
+            "enabled": True,
+            "initialized": True,
+            "url": REDIS_URL.split("@")[-1] if "@" in REDIS_URL else REDIS_URL,
+        }
+
+    if _cache_initialization_error:
+        return {
+            "status": "error",
+            "enabled": True,
+            "initialized": False,
+            "error": str(_cache_initialization_error),
+            "error_type": type(_cache_initialization_error).__name__,
+        }
+
+    return {
+        "status": "not_initialized",
+        "enabled": True,
+        "initialized": False,
+        "message": "Cache not yet initialized",
+    }
+
+
+def validate_redis_config() -> list[str]:
+    """
+    Validate Redis configuration at startup.
+
+    Returns:
+        List of configuration errors (empty if valid)
+    """
+    errors = []
+
+    if REDIS_ENABLED and not REDIS_URL:
+        errors.append("REDIS_ENABLED=true but REDIS_URL not set")
+
+    if REDIS_CONNECT_TIMEOUT <= 0:
+        errors.append(f"REDIS_CONNECT_TIMEOUT must be positive (got {REDIS_CONNECT_TIMEOUT})")
+
+    if REDIS_SOCKET_TIMEOUT <= 0:
+        errors.append(f"REDIS_SOCKET_TIMEOUT must be positive (got {REDIS_SOCKET_TIMEOUT})")
+
+    if REDIS_REQUIRED and not REDIS_ENABLED:
+        errors.append("REDIS_REQUIRED=true requires REDIS_ENABLED=true")
+
+    return errors
 
 
 async def get_redis_client() -> redis.Redis:
@@ -53,7 +224,11 @@ async def get_redis_client() -> redis.Redis:
     """
     global redis_client
     if redis_client is None:
-        redis_client = await redis.from_url(REDIS_URL, decode_responses=True)
+        redis_client = redis.from_url(
+            REDIS_URL,
+            decode_responses=True,
+            socket_connect_timeout=REDIS_CONNECT_TIMEOUT,
+        )
         logger.info("redis_client_created", url=REDIS_URL)
     return redis_client
 

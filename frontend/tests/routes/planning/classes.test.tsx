@@ -5,21 +5,28 @@ import { Route as ClassesRoute } from '@/routes/planning/classes'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
-let mockClassStructuresData: any = null
-let mockLevelsData: any = null
-const mockCreateMutation = vi.fn()
+let mockClassStructuresData: Record<string, unknown>[] | null = null
+let mockLevelsData: Record<string, unknown>[] | null = null
 const mockUpdateMutation = vi.fn()
-const mockDeleteMutation = vi.fn()
 const mockCalculateMutation = vi.fn()
 
+// Type definitions for mock props
+type MockProps = Record<string, unknown>
+interface ClassRow {
+  id: string
+  level_id: string
+  number_of_classes: number
+  avg_class_size: number
+}
+
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: (path: string) => (config: any) => ({
+  createFileRoute: (path: string) => (config: MockProps) => ({
     ...config,
     path,
   }),
-  Link: ({ to, children, className }: any) => (
-    <a href={to} className={className}>
-      {children}
+  Link: ({ to, children, className }: MockProps) => (
+    <a href={to as string} className={className as string}>
+      {children as React.ReactNode}
     </a>
   ),
   useNavigate: () => mockNavigate,
@@ -30,27 +37,29 @@ vi.mock('@/lib/auth-guard', () => ({
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: any) => <div data-testid="main-layout">{children}</div>,
+  MainLayout: ({ children }: MockProps) => (
+    <div data-testid="main-layout">{children as React.ReactNode}</div>
+  ),
 }))
 
 vi.mock('@/components/layout/PageContainer', () => ({
-  PageContainer: ({ title, description, actions, children }: any) => (
+  PageContainer: ({ title, description, actions, children }: MockProps) => (
     <div data-testid="page-container">
-      <h1>{title}</h1>
-      {description && <p>{description}</p>}
-      {actions && <div data-testid="page-actions">{actions}</div>}
-      {children}
+      <h1>{title as string}</h1>
+      {description && <p>{description as string}</p>}
+      {actions && <div data-testid="page-actions">{actions as React.ReactNode}</div>}
+      {children as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/BudgetVersionSelector', () => ({
-  BudgetVersionSelector: ({ value, onChange }: any) => (
+  BudgetVersionSelector: ({ value, onChange }: MockProps) => (
     <div data-testid="budget-version-selector">
       <select
         data-testid="version-select"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={value as string}
+        onChange={(e) => (onChange as (v: string) => void)(e.target.value)}
       >
         <option value="">Select version</option>
         <option value="v1">2025-2026</option>
@@ -61,7 +70,7 @@ vi.mock('@/components/BudgetVersionSelector', () => ({
 }))
 
 vi.mock('@/components/DataTableLazy', () => ({
-  DataTableLazy: ({ rowData, loading, error }: any) => {
+  DataTableLazy: ({ rowData, loading, error }: MockProps) => {
     if (loading) {
       return <div data-testid="data-table-loading">Loading...</div>
     }
@@ -70,7 +79,7 @@ vi.mock('@/components/DataTableLazy', () => ({
     }
     return (
       <div data-testid="data-table">
-        {rowData?.map((row: any) => (
+        {(rowData as ClassRow[] | undefined)?.map((row) => (
           <div key={row.id} data-testid="class-structure-row">
             {row.level_id}: {row.number_of_classes} classes, avg {row.avg_class_size} students
           </div>
@@ -81,12 +90,12 @@ vi.mock('@/components/DataTableLazy', () => ({
 }))
 
 vi.mock('@/components/FormDialog', () => ({
-  FormDialog: ({ open, title, children, onSubmit }: any) =>
+  FormDialog: ({ open, title, children, onSubmit }: MockProps) =>
     open ? (
       <div data-testid="form-dialog">
-        <h2>{title}</h2>
-        <form onSubmit={onSubmit} data-testid="class-structure-form">
-          {children}
+        <h2>{title as string}</h2>
+        <form onSubmit={onSubmit as React.FormEventHandler} data-testid="class-structure-form">
+          {children as React.ReactNode}
         </form>
       </div>
     ) : null,
@@ -98,22 +107,19 @@ vi.mock('@/hooks/api/useClassStructure', () => ({
     isLoading: false,
     error: null,
   }),
-  useCreateClassStructure: () => ({
-    mutateAsync: mockCreateMutation,
-    isPending: false,
-  }),
+  // Note: useCreateClassStructure and useDeleteClassStructure removed - backend doesn't support them
   useUpdateClassStructure: () => ({
     mutateAsync: mockUpdateMutation,
-    isPending: false,
-  }),
-  useDeleteClassStructure: () => ({
-    mutateAsync: mockDeleteMutation,
     isPending: false,
   }),
   useCalculateClassStructure: () => ({
     mutateAsync: mockCalculateMutation,
     isPending: false,
   }),
+  classStructureKeys: {
+    all: ['class-structure'],
+    list: (versionId: string) => ['class-structure', 'list', versionId],
+  },
 }))
 
 vi.mock('@/hooks/api/useConfiguration', () => ({
@@ -137,31 +143,30 @@ describe('Class Structure Route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockClassStructuresData = {
-      items: [
-        {
-          id: '1',
-          level_id: 'cp',
-          number_of_classes: 4,
-          avg_class_size: 24,
-          budget_version_id: 'v1',
-        },
-        {
-          id: '2',
-          level_id: 'ce1',
-          number_of_classes: 3,
-          avg_class_size: 26,
-          budget_version_id: 'v1',
-        },
-        {
-          id: '3',
-          level_id: 'ce2',
-          number_of_classes: 3,
-          avg_class_size: 25,
-          budget_version_id: 'v1',
-        },
-      ],
-    }
+    // API returns arrays directly (not { items: [...] })
+    mockClassStructuresData = [
+      {
+        id: '1',
+        level_id: 'cp',
+        number_of_classes: 4,
+        avg_class_size: 24,
+        budget_version_id: 'v1',
+      },
+      {
+        id: '2',
+        level_id: 'ce1',
+        number_of_classes: 3,
+        avg_class_size: 26,
+        budget_version_id: 'v1',
+      },
+      {
+        id: '3',
+        level_id: 'ce2',
+        number_of_classes: 3,
+        avg_class_size: 25,
+        budget_version_id: 'v1',
+      },
+    ]
 
     mockLevelsData = [
       { id: 'cp', name: 'CP', cycle: 'Elementary' },
@@ -353,7 +358,7 @@ describe('Class Structure Route', () => {
     })
 
     it('handles empty class structure data', async () => {
-      mockClassStructuresData = { items: [] }
+      mockClassStructuresData = []
       const user = userEvent.setup()
 
       render(<ClassStructurePage />)

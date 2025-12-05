@@ -21,7 +21,7 @@ from app.engine.enrollment import (
     calculate_enrollment_projection,
 )
 from app.models.configuration import AcademicLevel, NationalityType
-from app.models.planning import EnrollmentPlan
+from app.models.planning import EnrollmentPlan, NationalityDistribution
 from app.services.base import BaseService
 from app.services.exceptions import (
     BusinessRuleError,
@@ -436,3 +436,417 @@ class EnrollmentService:
                     "max_capacity": self.EFIR_MAX_CAPACITY,
                 },
             )
+
+    # ==========================================================================
+    # Nationality Distribution Methods
+    # ==========================================================================
+
+    async def get_distributions(
+        self, version_id: uuid.UUID
+    ) -> list[NationalityDistribution]:
+        """
+        Get nationality distributions for a budget version.
+
+        Args:
+            version_id: Budget version UUID
+
+        Returns:
+            List of NationalityDistribution instances with level relationships
+
+        Raises:
+            ServiceException: If database operation fails
+        """
+        try:
+            query = (
+                select(NationalityDistribution)
+                .where(NationalityDistribution.budget_version_id == version_id)
+                .options(
+                    selectinload(NationalityDistribution.level).selectinload(
+                        AcademicLevel.cycle
+                    ),
+                )
+                .join(AcademicLevel, NationalityDistribution.level_id == AcademicLevel.id)
+                .order_by(AcademicLevel.sort_order)
+            )
+            result = await self.session.execute(query)
+            return list(result.scalars().all())
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to retrieve nationality distributions",
+                version_id=str(version_id),
+                error=str(e),
+            )
+            raise ServiceException(
+                f"Failed to retrieve distributions: {e}",
+                status_code=500,
+            ) from e
+
+    async def bulk_upsert_distributions(
+        self,
+        version_id: uuid.UUID,
+        distributions: list[dict],
+        user_id: uuid.UUID | None = None,
+    ) -> list[NationalityDistribution]:
+        """
+        Bulk upsert nationality distributions for a budget version.
+
+        Validates that percentages sum to 100% for each level before saving.
+
+        Args:
+            version_id: Budget version UUID
+            distributions: List of distribution dicts with level_id and percentages
+            user_id: User ID for audit trail
+
+        Returns:
+            List of upserted NationalityDistribution instances
+
+        Raises:
+            ValidationError: If percentages don't sum to 100%
+            ServiceException: If database operation fails
+        """
+        # Validate each distribution sums to 100%
+        for dist in distributions:
+            total = (
+                Decimal(str(dist.get("french_pct", 0)))
+                + Decimal(str(dist.get("saudi_pct", 0)))
+                + Decimal(str(dist.get("other_pct", 0)))
+            )
+            if total != Decimal("100"):
+                raise ValidationError(
+                    f"Percentages must sum to 100%, got {total}%",
+                    field="distributions",
+                    details={"level_id": str(dist.get("level_id")), "total": str(total)},
+                )
+
+        try:
+            results = []
+            for dist_data in distributions:
+                level_id = dist_data["level_id"]
+
+                # Check if distribution exists
+                query = select(NationalityDistribution).where(
+                    and_(
+                        NationalityDistribution.budget_version_id == version_id,
+                        NationalityDistribution.level_id == level_id,
+                    )
+                )
+                result = await self.session.execute(query)
+                existing = result.scalar_one_or_none()
+
+                if existing:
+                    # Update existing
+                    existing.french_pct = Decimal(str(dist_data["french_pct"]))
+                    existing.saudi_pct = Decimal(str(dist_data["saudi_pct"]))
+                    existing.other_pct = Decimal(str(dist_data["other_pct"]))
+                    results.append(existing)
+                else:
+                    # Create new
+                    new_dist = NationalityDistribution(
+                        id=uuid.uuid4(),
+                        budget_version_id=version_id,
+                        level_id=level_id,
+                        french_pct=Decimal(str(dist_data["french_pct"])),
+                        saudi_pct=Decimal(str(dist_data["saudi_pct"])),
+                        other_pct=Decimal(str(dist_data["other_pct"])),
+                    )
+                    self.session.add(new_dist)
+                    results.append(new_dist)
+
+            await self.session.commit()
+
+            # Reload with relationships
+            return await self.get_distributions(version_id)
+
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(
+                "Failed to upsert distributions",
+                version_id=str(version_id),
+                error=str(e),
+            )
+            raise ServiceException(
+                f"Failed to upsert distributions: {e}",
+                status_code=500,
+            ) from e
+
+    async def get_enrollment_totals_by_level(
+        self, version_id: uuid.UUID
+    ) -> list[dict]:
+        """
+        Get enrollment totals aggregated by level (summing across nationalities).
+
+        Args:
+            version_id: Budget version UUID
+
+        Returns:
+            List of dicts with level_id and total_students
+        """
+        try:
+            query = (
+                select(
+                    EnrollmentPlan.level_id,
+                    func.sum(EnrollmentPlan.student_count).label("total_students"),
+                )
+                .where(
+                    and_(
+                        EnrollmentPlan.budget_version_id == version_id,
+                        EnrollmentPlan.deleted_at.is_(None),
+                    )
+                )
+                .group_by(EnrollmentPlan.level_id)
+            )
+            result = await self.session.execute(query)
+            rows = result.all()
+
+            return [
+                {"level_id": row.level_id, "total_students": row.total_students or 0}
+                for row in rows
+            ]
+        except SQLAlchemyError as e:
+            logger.error(
+                "Failed to get enrollment totals",
+                version_id=str(version_id),
+                error=str(e),
+            )
+            raise ServiceException(
+                f"Failed to get enrollment totals: {e}",
+                status_code=500,
+            ) from e
+
+    async def bulk_upsert_enrollment_totals(
+        self,
+        version_id: uuid.UUID,
+        totals: list[dict],
+        user_id: uuid.UUID | None = None,
+    ) -> list[EnrollmentPlan]:
+        """
+        Bulk upsert enrollment totals by level.
+
+        This replaces the individual level×nationality entries with new totals,
+        distributing students according to nationality percentages.
+
+        Args:
+            version_id: Budget version UUID
+            totals: List of dicts with level_id and total_students
+            user_id: User ID for audit trail
+
+        Returns:
+            List of enrollment entries
+
+        Raises:
+            BusinessRuleError: If capacity exceeded or distributions missing
+        """
+        # Validate total capacity
+        total_students = sum(t.get("total_students", 0) for t in totals)
+        if total_students > self.EFIR_MAX_CAPACITY:
+            raise BusinessRuleError(
+                "CAPACITY_EXCEEDED",
+                f"Total enrollment ({total_students}) exceeds capacity "
+                f"({self.EFIR_MAX_CAPACITY})",
+            )
+
+        # Get distributions for calculating breakdown
+        distributions = await self.get_distributions(version_id)
+        dist_by_level = {d.level_id: d for d in distributions}
+
+        # Get nationality types
+        query = select(NationalityType).order_by(NationalityType.sort_order)
+        result = await self.session.execute(query)
+        nationality_types = {nt.code: nt for nt in result.scalars().all()}
+
+        if not nationality_types:
+            raise BusinessRuleError(
+                "NO_NATIONALITY_TYPES",
+                "Nationality types not configured. Run database migrations.",
+            )
+
+        try:
+            # Delete existing enrollment for this version
+            delete_query = select(EnrollmentPlan).where(
+                and_(
+                    EnrollmentPlan.budget_version_id == version_id,
+                    EnrollmentPlan.deleted_at.is_(None),
+                )
+            )
+            result = await self.session.execute(delete_query)
+            existing_enrollments = result.scalars().all()
+            for enrollment in existing_enrollments:
+                await self.session.delete(enrollment)
+
+            # Create new enrollment entries based on totals and distributions
+            new_enrollments = []
+            for total_data in totals:
+                level_id = total_data["level_id"]
+                total = total_data["total_students"]
+
+                if total == 0:
+                    continue
+
+                dist = dist_by_level.get(level_id)
+
+                # Calculate breakdown using percentages or default equal split
+                if dist:
+                    french_count = round(total * dist.french_pct / 100)
+                    saudi_count = round(total * dist.saudi_pct / 100)
+                    other_count = total - french_count - saudi_count  # Remainder
+                else:
+                    # Default: equal distribution if no percentages set
+                    french_count = total // 3
+                    saudi_count = total // 3
+                    other_count = total - french_count - saudi_count
+
+                # Create entries for each nationality
+                nationality_counts = [
+                    ("FRENCH", french_count),
+                    ("SAUDI", saudi_count),
+                    ("OTHER", other_count),
+                ]
+
+                for nat_code, count in nationality_counts:
+                    if count <= 0:
+                        continue
+                    nat_type = nationality_types.get(nat_code)
+                    if not nat_type:
+                        continue
+
+                    enrollment = EnrollmentPlan(
+                        id=uuid.uuid4(),
+                        budget_version_id=version_id,
+                        level_id=level_id,
+                        nationality_type_id=nat_type.id,
+                        student_count=count,
+                    )
+                    self.session.add(enrollment)
+                    new_enrollments.append(enrollment)
+
+            await self.session.commit()
+            return await self.get_enrollment_plan(version_id)
+
+        except SQLAlchemyError as e:
+            await self.session.rollback()
+            logger.error(
+                "Failed to upsert enrollment totals",
+                version_id=str(version_id),
+                error=str(e),
+            )
+            raise ServiceException(
+                f"Failed to upsert enrollment totals: {e}",
+                status_code=500,
+            ) from e
+
+    async def get_enrollment_with_distribution(
+        self, version_id: uuid.UUID
+    ) -> dict:
+        """
+        Get complete enrollment data with distributions and calculated breakdown.
+
+        Returns a comprehensive view combining:
+        - Enrollment totals by level
+        - Nationality distribution percentages
+        - Calculated breakdown (students by level × nationality)
+        - Summary statistics
+
+        Args:
+            version_id: Budget version UUID
+
+        Returns:
+            Dict with totals, distributions, breakdown, and summary
+        """
+        # Get all academic levels with cycle info
+        query = (
+            select(AcademicLevel)
+            .options(selectinload(AcademicLevel.cycle))
+            .order_by(AcademicLevel.sort_order)
+        )
+        result = await self.session.execute(query)
+        levels = list(result.scalars().all())
+
+        # Get distributions
+        distributions = await self.get_distributions(version_id)
+        dist_by_level = {d.level_id: d for d in distributions}
+
+        # Get enrollment data
+        enrollments = await self.get_enrollment_plan(version_id)
+
+        # Build totals by level
+        totals_by_level: dict[uuid.UUID, int] = {}
+        enrollment_by_level_nat: dict[tuple, int] = {}
+
+        for enrollment in enrollments:
+            level_id = enrollment.level_id
+            nat_code = enrollment.nationality_type.code
+            totals_by_level[level_id] = (
+                totals_by_level.get(level_id, 0) + enrollment.student_count
+            )
+            enrollment_by_level_nat[(level_id, nat_code)] = enrollment.student_count
+
+        # Build response structures
+        totals = []
+        breakdown = []
+
+        for level in levels:
+            total_students = totals_by_level.get(level.id, 0)
+            totals.append({
+                "level_id": level.id,
+                "total_students": total_students,
+            })
+
+            # Get actual counts or calculate from distribution
+            french_count = enrollment_by_level_nat.get((level.id, "FRENCH"), 0)
+            saudi_count = enrollment_by_level_nat.get((level.id, "SAUDI"), 0)
+            other_count = enrollment_by_level_nat.get((level.id, "OTHER"), 0)
+
+            # Get percentages from distribution or calculate from actuals
+            dist = dist_by_level.get(level.id)
+            if dist:
+                french_pct = dist.french_pct
+                saudi_pct = dist.saudi_pct
+                other_pct = dist.other_pct
+            elif total_students > 0:
+                french_pct = Decimal(french_count * 100 / total_students).quantize(
+                    Decimal("0.01")
+                )
+                saudi_pct = Decimal(saudi_count * 100 / total_students).quantize(
+                    Decimal("0.01")
+                )
+                other_pct = Decimal("100") - french_pct - saudi_pct
+            else:
+                french_pct = Decimal("0")
+                saudi_pct = Decimal("0")
+                other_pct = Decimal("0")
+
+            breakdown.append({
+                "level_id": level.id,
+                "level_code": level.code,
+                "level_name": level.name_fr or level.name_en,
+                "cycle_code": level.cycle.code if level.cycle else "",
+                "total_students": total_students,
+                "french_count": french_count,
+                "saudi_count": saudi_count,
+                "other_count": other_count,
+                "french_pct": french_pct,
+                "saudi_pct": saudi_pct,
+                "other_pct": other_pct,
+            })
+
+        # Build summary
+        summary = await self.get_enrollment_summary(version_id)
+
+        return {
+            "totals": totals,
+            "distributions": [
+                {
+                    "id": d.id,
+                    "budget_version_id": d.budget_version_id,
+                    "level_id": d.level_id,
+                    "french_pct": d.french_pct,
+                    "saudi_pct": d.saudi_pct,
+                    "other_pct": d.other_pct,
+                    "created_at": d.created_at,
+                    "updated_at": d.updated_at,
+                }
+                for d in distributions
+            ],
+            "breakdown": breakdown,
+            "summary": summary,
+        }

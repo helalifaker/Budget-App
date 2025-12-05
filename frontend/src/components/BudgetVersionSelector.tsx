@@ -26,21 +26,26 @@ export function BudgetVersionSelector({
 }: BudgetVersionSelectorProps) {
   const { data: versions, isLoading } = useBudgetVersions()
 
+  // Use empty string when value is undefined to keep Select controlled
+  // This prevents React's "changing from uncontrolled to controlled" warning
+  const controlledValue = value ?? ''
+
   const getStatusBadge = (status: BudgetVersion['status']) => {
     const variants: Record<BudgetVersion['status'], 'default' | 'info' | 'success' | 'warning'> = {
-      WORKING: 'info',
-      SUBMITTED: 'warning',
-      APPROVED: 'success',
-      SUPERSEDED: 'default',
+      working: 'info',
+      submitted: 'warning',
+      approved: 'success',
+      forecast: 'info',
+      superseded: 'default',
     }
-    return <Badge variant={variants[status]}>{status}</Badge>
+    return <Badge variant={variants[status]}>{status.toUpperCase()}</Badge>
   }
 
   if (isLoading) {
     return (
       <div className={className}>
         <Label>{label}</Label>
-        <Select disabled>
+        <Select value={controlledValue} disabled>
           <SelectTrigger className="w-[300px]">
             <SelectValue placeholder="Loading..." />
           </SelectTrigger>
@@ -49,26 +54,33 @@ export function BudgetVersionSelector({
     )
   }
 
+  // Handle empty state - no versions exist
+  const hasVersions = versions?.items && versions.items.length > 0
+
   return (
     <div className={className}>
       <Label>{label}</Label>
-      <Select value={value} onValueChange={onChange}>
+      <Select value={controlledValue} onValueChange={onChange} disabled={!hasVersions}>
         <SelectTrigger className="w-[300px]">
-          <SelectValue placeholder="Select budget version" />
+          <SelectValue
+            placeholder={hasVersions ? 'Select budget version' : 'No budget versions available'}
+          />
         </SelectTrigger>
-        <SelectContent>
-          {versions?.items.map((version) => (
-            <SelectItem key={version.id} value={version.id}>
-              <div className="flex items-center justify-between gap-4 min-w-[250px]">
-                <span className="font-medium">{version.name}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500">FY{version.fiscal_year}</span>
-                  {getStatusBadge(version.status)}
+        {hasVersions && (
+          <SelectContent>
+            {versions.items.map((version) => (
+              <SelectItem key={version.id} value={version.id}>
+                <div className="flex items-center justify-between gap-4 min-w-[250px]">
+                  <span className="font-medium">{version.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500">FY{version.fiscal_year}</span>
+                    {getStatusBadge(version.status)}
+                  </div>
                 </div>
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        )}
       </Select>
     </div>
   )

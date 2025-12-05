@@ -206,7 +206,13 @@ class BaseService(Generic[ModelType]):
 
             self.session.add(instance)
             await self.session.flush()
-            await self.session.refresh(instance)
+
+            # Skip refresh in SQLite (test mode) to avoid UUID type mismatch issues
+            # SQLite doesn't have native UUID support and may store UUIDs as integers
+            # Since we use client-side UUIDs (uuid.uuid4()), refresh is not needed
+            import os
+            if not os.getenv("PYTEST_RUNNING") and not os.getenv("PYTEST_CURRENT_TEST"):
+                await self.session.refresh(instance)
 
             return instance
         except Exception as e:

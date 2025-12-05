@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from 'sonner'
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
 import { AuthProvider } from './contexts/AuthProvider'
+import { BudgetVersionProvider } from './contexts/BudgetVersionProvider'
 import { queryClient } from './lib/query-client'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import App from './App'
@@ -51,20 +52,23 @@ ReactDOM.createRoot(rootElement).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <App />
-          <Toaster
-            position="top-right"
-            richColors
-            closeButton
-            duration={4000}
-            toastOptions={{
-              style: {
-                fontFamily: 'Inter, system-ui, sans-serif',
-              },
-            }}
-          />
-          {/* React Query DevTools - only in development */}
-          {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+          {/* BudgetVersionProvider must be inside AuthProvider (uses auth for API calls) */}
+          <BudgetVersionProvider>
+            <App />
+            <Toaster
+              position="top-right"
+              richColors
+              closeButton
+              duration={4000}
+              toastOptions={{
+                style: {
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                },
+              }}
+            />
+            {/* React Query DevTools - only in development */}
+            {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+          </BudgetVersionProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

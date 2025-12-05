@@ -14,22 +14,18 @@ export {
 // Enrollment
 export {
   useEnrollments,
-  useEnrollment,
   useCreateEnrollment,
   useUpdateEnrollment,
   useDeleteEnrollment,
-  useCalculateProjections,
-  useBulkUpdateEnrollments,
+  useEnrollmentSummary,
+  useProjectEnrollment,
   enrollmentKeys,
 } from './useEnrollment'
 
 // Class Structure
 export {
   useClassStructures,
-  useClassStructure,
-  useCreateClassStructure,
   useUpdateClassStructure,
-  useDeleteClassStructure,
   useCalculateClassStructure,
   classStructureKeys,
 } from './useClassStructure'

@@ -131,7 +131,7 @@ async def calculate_revenue(
     try:
         result = await revenue_service.calculate_revenue_from_enrollment(
             budget_version_id=version_id,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return result
     except ValidationError as e:
@@ -170,7 +170,7 @@ async def create_revenue_entry(
             calculation_driver=revenue_data.calculation_driver,
             trimester=revenue_data.trimester,
             notes=revenue_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return entry
     except ValidationError as e:
@@ -255,7 +255,7 @@ async def calculate_personnel_costs(
         result = await cost_service.calculate_personnel_costs_from_dhg(
             version_id=version_id,
             eur_to_sar_rate=calculation_request.eur_to_sar_rate,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return result
     except ValidationError as e:
@@ -295,7 +295,7 @@ async def create_personnel_cost_entry(
             is_calculated=cost_data.is_calculated,
             calculation_driver=cost_data.calculation_driver,
             notes=cost_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return entry
     except ValidationError as e:
@@ -356,7 +356,7 @@ async def calculate_operating_costs(
         result = await cost_service.calculate_operating_costs(
             version_id=version_id,
             cost_drivers=calculation_request.driver_rates,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return result
     except ValidationError as e:
@@ -394,7 +394,7 @@ async def create_operating_cost_entry(
             is_calculated=cost_data.is_calculated,
             calculation_driver=cost_data.calculation_driver,
             notes=cost_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return entry
     except ValidationError as e:
@@ -486,7 +486,7 @@ async def create_capex_entry(
             acquisition_date=capex_data.acquisition_date,
             useful_life_years=capex_data.useful_life_years,
             notes=capex_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return entry
     except ValidationError as e:
@@ -527,7 +527,7 @@ async def update_capex_entry(
             acquisition_date=capex_data.acquisition_date,
             useful_life_years=capex_data.useful_life_years,
             notes=capex_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return entry
     except NotFoundError as e:

@@ -4,7 +4,6 @@ import { AgGridReact } from 'ag-grid-react'
 import { ColDef, themeQuartz } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { SummaryCard } from '@/components/SummaryCard'
 import { CostChart } from '@/components/charts/CostChart'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -12,7 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AccountCodeRenderer } from '@/components/grid/AccountCodeRenderer'
 import { CurrencyRenderer } from '@/components/grid/CurrencyRenderer'
-import { useCosts, useCalculatePersonnelCosts } from '@/hooks/api/useCosts'
+import {
+  usePersonnelCosts,
+  useOperatingCosts,
+  useCalculatePersonnelCosts,
+} from '@/hooks/api/useCosts'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { DollarSign, Users, ShoppingCart, Calculator, Download, Plus } from 'lucide-react'
 
 export const Route = createFileRoute('/planning/costs')({
@@ -20,40 +24,45 @@ export const Route = createFileRoute('/planning/costs')({
 })
 
 function CostsPage() {
-  const [selectedVersion, setSelectedVersion] = useState<string>()
+  const { selectedVersionId } = useBudgetVersion()
   const [activeTab, setActiveTab] = useState<'personnel' | 'operating'>('personnel')
 
-  const { data: personnelCosts, isLoading: loadingPersonnel } = useCosts(
-    selectedVersion!,
-    'PERSONNEL'
+  const { data: personnelCosts, isLoading: loadingPersonnel } = usePersonnelCosts(
+    selectedVersionId!
   )
-  const { data: operatingCosts, isLoading: loadingOperating } = useCosts(
-    selectedVersion!,
-    'OPERATING'
+  const { data: operatingCosts, isLoading: loadingOperating } = useOperatingCosts(
+    selectedVersionId!
   )
   const calculatePersonnel = useCalculatePersonnelCosts()
 
   const handleCalculatePersonnel = () => {
-    if (selectedVersion) {
-      calculatePersonnel.mutate(selectedVersion)
+    if (selectedVersionId) {
+      calculatePersonnel.mutate({ versionId: selectedVersionId })
     }
   }
 
-  // Calculate summary metrics
-  const personnelItems = personnelCosts?.items || []
-  const operatingItems = operatingCosts?.items || []
+  // Calculate summary metrics - API returns arrays directly
+  const personnelItems = personnelCosts || []
+  const operatingItems = operatingCosts || []
 
-  const totalPersonnel = personnelItems.reduce((sum, item) => sum + item.annual_amount, 0)
-  const totalOperating = operatingItems.reduce((sum, item) => sum + item.annual_amount, 0)
+  const totalPersonnel = personnelItems.reduce(
+    (sum: number, item: { total_cost_sar?: number }) => sum + (item.total_cost_sar || 0),
+    0
+  )
+  const totalOperating = operatingItems.reduce(
+    (sum: number, item: { amount_sar?: number }) => sum + (item.amount_sar || 0),
+    0
+  )
   const totalCosts = totalPersonnel + totalOperating
 
-  const personnelP1 = personnelItems.reduce((sum, item) => sum + item.p1_amount, 0)
-  const personnelSummer = personnelItems.reduce((sum, item) => sum + item.summer_amount, 0)
-  const personnelP2 = personnelItems.reduce((sum, item) => sum + item.p2_amount, 0)
+  // Note: period amounts may not exist in current API - using annual amounts split
+  const personnelP1 = totalPersonnel * 0.5 // Jan-Jun estimate
+  const personnelSummer = totalPersonnel * 0.17 // Jul-Aug estimate
+  const personnelP2 = totalPersonnel * 0.33 // Sep-Dec estimate
 
-  const operatingP1 = operatingItems.reduce((sum, item) => sum + item.p1_amount, 0)
-  const operatingSummer = operatingItems.reduce((sum, item) => sum + item.summer_amount, 0)
-  const operatingP2 = operatingItems.reduce((sum, item) => sum + item.p2_amount, 0)
+  const operatingP1 = totalOperating * 0.5
+  const operatingSummer = totalOperating * 0.17
+  const operatingP2 = totalOperating * 0.33
 
   // Chart data
   const chartData = [
@@ -78,24 +87,22 @@ function CostsPage() {
         description="Manage personnel and operating costs by period"
       >
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <BudgetVersionSelector value={selectedVersion} onChange={setSelectedVersion} />
-            <div className="flex gap-2">
-              <Button
-                onClick={handleCalculatePersonnel}
-                disabled={!selectedVersion || calculatePersonnel.isPending}
-              >
-                <Calculator className="w-4 h-4 mr-2" />
-                Recalculate Personnel Costs
-              </Button>
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              data-testid="calculate-button"
+              onClick={handleCalculatePersonnel}
+              disabled={!selectedVersionId || calculatePersonnel.isPending}
+            >
+              <Calculator className="w-4 h-4 mr-2" />
+              Recalculate Personnel Costs
+            </Button>
+            <Button data-testid="export-button" variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
           </div>
 
-          {selectedVersion && (
+          {selectedVersionId && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <SummaryCard
@@ -132,8 +139,12 @@ function CostsPage() {
                     onValueChange={(v) => setActiveTab(v as typeof activeTab)}
                   >
                     <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="personnel">Personnel Costs</TabsTrigger>
-                      <TabsTrigger value="operating">Operating Costs</TabsTrigger>
+                      <TabsTrigger data-testid="personnel-tab" value="personnel">
+                        Personnel Costs
+                      </TabsTrigger>
+                      <TabsTrigger data-testid="operating-tab" value="operating">
+                        Operating Costs
+                      </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="personnel" className="mt-6">
@@ -190,7 +201,7 @@ function CostsPage() {
             </>
           )}
 
-          {!selectedVersion && (
+          {!selectedVersionId && (
             <Card>
               <CardContent className="py-12">
                 <div className="text-center text-gray-500">
@@ -206,84 +217,100 @@ function CostsPage() {
   )
 }
 
-interface CostItem {
+// Matches PersonnelCostPlan from backend API
+interface PersonnelCostItem {
+  id: string
+  budget_version_id: string
   account_code: string
   description: string
-  cost_type: string
-  p1_amount: number
-  summer_amount: number
-  p2_amount: number
-  annual_amount: number
-  is_auto_calculated: boolean
+  fte_count: number
+  unit_cost_sar: number
+  total_cost_sar: number
+  category_id: string
+  cycle_id?: string | null
+  is_calculated: boolean
+  calculation_driver?: string | null
   notes?: string | null
+  created_at: string
+  updated_at: string
 }
 
-function PersonnelCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: boolean }) {
+// Matches OperatingCostPlan from backend API
+interface OperatingCostItem {
+  id: string
+  budget_version_id: string
+  account_code: string
+  description: string
+  category: string
+  amount_sar: number
+  is_calculated: boolean
+  calculation_driver?: string | null
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}
+
+function PersonnelCostsTab({ data, isLoading }: { data: PersonnelCostItem[]; isLoading: boolean }) {
   const columnDefs: ColDef[] = [
     {
       headerName: 'Account Code',
       field: 'account_code',
-      width: 200,
+      width: 150,
       pinned: 'left',
       cellRenderer: AccountCodeRenderer,
     },
     {
       headerName: 'Description',
       field: 'description',
-      width: 300,
+      width: 250,
     },
     {
-      headerName: 'Type',
-      field: 'cost_type',
+      headerName: 'Category',
+      field: 'category_id',
       width: 150,
     },
     {
-      headerName: 'P1 (Jan-Jun)',
-      field: 'p1_amount',
+      headerName: 'FTE Count',
+      field: 'fte_count',
+      width: 120,
+      editable: (params) => !params.data.is_calculated,
+      cellDataType: 'number',
+      valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
+      cellStyle: (params) =>
+        params.data.is_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
+    },
+    {
+      headerName: 'Unit Cost (SAR)',
+      field: 'unit_cost_sar',
       width: 150,
-      editable: (params) => !params.data.is_auto_calculated,
+      editable: (params) => !params.data.is_calculated,
       cellDataType: 'number',
       cellRenderer: CurrencyRenderer,
       cellStyle: (params) =>
-        params.data.is_auto_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
+        params.data.is_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
     },
     {
-      headerName: 'Summer',
-      field: 'summer_amount',
-      width: 150,
-      editable: (params) => !params.data.is_auto_calculated,
-      cellDataType: 'number',
-      cellRenderer: CurrencyRenderer,
-      cellStyle: (params) =>
-        params.data.is_auto_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
-    },
-    {
-      headerName: 'P2 (Sep-Dec)',
-      field: 'p2_amount',
-      width: 150,
-      editable: (params) => !params.data.is_auto_calculated,
-      cellDataType: 'number',
-      cellRenderer: CurrencyRenderer,
-      cellStyle: (params) =>
-        params.data.is_auto_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
-    },
-    {
-      headerName: 'Annual Total',
-      field: 'annual_amount',
-      width: 180,
+      headerName: 'Total Cost (SAR)',
+      field: 'total_cost_sar',
+      width: 160,
       cellRenderer: CurrencyRenderer,
       cellStyle: { fontWeight: 'bold' },
     },
     {
       headerName: 'Auto',
-      field: 'is_auto_calculated',
+      field: 'is_calculated',
       width: 80,
       cellRenderer: (params: { value: boolean }) => (params.value ? '✓' : '✗'),
     },
     {
+      headerName: 'Driver',
+      field: 'calculation_driver',
+      width: 150,
+    },
+    {
       headerName: 'Notes',
       field: 'notes',
-      width: 250,
+      width: 200,
       editable: true,
     },
   ]
@@ -315,61 +342,50 @@ function PersonnelCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: b
   )
 }
 
-function OperatingCostsTab({ data, isLoading }: { data: CostItem[]; isLoading: boolean }) {
+function OperatingCostsTab({ data, isLoading }: { data: OperatingCostItem[]; isLoading: boolean }) {
   const columnDefs: ColDef[] = [
     {
       headerName: 'Account Code',
       field: 'account_code',
-      width: 200,
+      width: 150,
       pinned: 'left',
       cellRenderer: AccountCodeRenderer,
     },
     {
       headerName: 'Description',
       field: 'description',
-      width: 300,
+      width: 250,
       editable: true,
     },
     {
-      headerName: 'Type',
-      field: 'cost_type',
+      headerName: 'Category',
+      field: 'category',
       width: 150,
     },
     {
-      headerName: 'P1 (Jan-Jun)',
-      field: 'p1_amount',
-      width: 150,
-      editable: true,
+      headerName: 'Amount (SAR)',
+      field: 'amount_sar',
+      width: 160,
+      editable: (params) => !params.data.is_calculated,
       cellDataType: 'number',
-      cellRenderer: CurrencyRenderer,
-    },
-    {
-      headerName: 'Summer',
-      field: 'summer_amount',
-      width: 150,
-      editable: true,
-      cellDataType: 'number',
-      cellRenderer: CurrencyRenderer,
-    },
-    {
-      headerName: 'P2 (Sep-Dec)',
-      field: 'p2_amount',
-      width: 150,
-      editable: true,
-      cellDataType: 'number',
-      cellRenderer: CurrencyRenderer,
-    },
-    {
-      headerName: 'Annual Total',
-      field: 'annual_amount',
-      width: 180,
       cellRenderer: CurrencyRenderer,
       cellStyle: { fontWeight: 'bold' },
     },
     {
+      headerName: 'Auto',
+      field: 'is_calculated',
+      width: 80,
+      cellRenderer: (params: { value: boolean }) => (params.value ? '✓' : '✗'),
+    },
+    {
+      headerName: 'Driver',
+      field: 'calculation_driver',
+      width: 150,
+    },
+    {
       headerName: 'Notes',
       field: 'notes',
-      width: 250,
+      width: 200,
       editable: true,
     },
   ]

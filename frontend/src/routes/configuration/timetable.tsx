@@ -4,7 +4,6 @@ import { ColDef, CellValueChangedEvent, ValueGetterParams } from 'ag-grid-commun
 import { requireAuth } from '@/lib/auth-guard'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { DataTableLazy } from '@/components/DataTableLazy'
 import { AlertCircle } from 'lucide-react'
 import {
@@ -14,6 +13,7 @@ import {
 } from '@/hooks/api/useConfiguration'
 import { TimetableConstraint } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 
 export const Route = createFileRoute('/configuration/timetable')({
   beforeLoad: requireAuth,
@@ -21,10 +21,10 @@ export const Route = createFileRoute('/configuration/timetable')({
 })
 
 function TimetablePage() {
-  const [selectedVersionId, setSelectedVersionId] = useState('')
+  const { selectedVersionId } = useBudgetVersion()
   const [rowData, setRowData] = useState<TimetableConstraint[]>([])
 
-  const { data: constraints, isLoading, error } = useTimetableConstraints(selectedVersionId)
+  const { data: constraints, isLoading, error } = useTimetableConstraints(selectedVersionId!)
   const { data: levels } = useLevels()
   const updateMutation = useUpdateTimetableConstraint()
 
@@ -35,7 +35,7 @@ function TimetablePage() {
   }, [constraints])
 
   const getLevelName = useCallback(
-    (id: string) => levels?.find((l) => l.id === id)?.name || id,
+    (id: string) => levels?.find((l) => l.id === id)?.name_en || id,
     [levels]
   )
 
@@ -188,8 +188,6 @@ function TimetablePage() {
         description="Définir les limites hebdomadaires (heures/jour, heures/semaine, pauses) pour valider les emplois du temps DHG"
       >
         <div className="space-y-4">
-          <BudgetVersionSelector value={selectedVersionId} onChange={setSelectedVersionId} />
-
           {!selectedVersionId ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-900">
               <AlertCircle className="mb-2 h-5 w-5" />

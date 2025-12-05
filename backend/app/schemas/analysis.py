@@ -183,24 +183,20 @@ class ChartDataResponse(BaseModel):
 class AlertResponse(BaseModel):
     """System alert."""
 
-    alert_type: str
-    severity: AlertSeverityEnum
-    title: str
+    id: str
+    type: str  # INFO, WARNING, ERROR
     message: str
-    metric_value: float | None
-    threshold_value: float | None
-    created_at: str
+    timestamp: str
 
 
 class ActivityLogEntry(BaseModel):
     """Activity log entry."""
 
-    activity_type: str
-    description: str
-    version_id: str
-    version_name: str
-    user_id: str | None
+    id: str
+    action: str
+    user: str
     timestamp: str
+    details: str | None = None
 
 
 class VersionComparisonData(BaseModel):

@@ -1,13 +1,15 @@
 /**
- * EFIR Budget Planning Application - Sahara Twilight Theme
+ * EFIR Budget Planning Application - Sahara Luxe Theme
+ * Enhanced premium light theme with gold accents and warm shadows
  * Global styles and Tailwind CSS imports
  */
 
 @import 'tailwindcss';
 
 /**
- * Sahara Twilight Theme Configuration
- * Color Palette inspired by desert twilight with gold, brown, and white tones.
+ * Sahara Luxe Theme Configuration
+ * Premium light theme: warm cream backgrounds, gold accents, elegant typography
+ * Inspired by luxury fintech and hotel booking interfaces
  */
 @theme {
   /* Sahara Twilight Color Palette */
@@ -100,12 +102,54 @@
   --color-info-800: #768aa4;
   --color-info-900: #65768e;
 
+  /* ═══════════════════════════════════════════════════════════════
+   * SAHARA LUXE - Premium Accent Colors
+   * ═══════════════════════════════════════════════════════════════ */
+
+  /* Premium Gold - Rich luxury accent */
+  --color-luxe-gold: #d4af37;
+  --color-luxe-gold-light: #e4c55a;
+  --color-luxe-gold-dark: #b8982f;
+  --color-luxe-gold-muted: rgba(212, 175, 55, 0.15);
+  --color-luxe-gold-glow: rgba(212, 175, 55, 0.25);
+
+  /* Cream backgrounds for luxury feel */
+  --color-luxe-cream: #fdfbf7;
+  --color-luxe-cream-dark: #f9f5ef;
+
+  /* Premium borders */
+  --color-luxe-border: rgba(212, 175, 55, 0.3);
+  --color-luxe-border-subtle: rgba(0, 0, 0, 0.04);
+
   /* Custom box shadows */
   --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-kpi: 0 4px 6px -1px rgba(237, 173, 62, 0.1), 0 2px 4px -2px rgba(237, 173, 62, 0.1);
   --shadow-kpi-hover: 0 10px 20px -3px rgba(237, 173, 62, 0.2),
     0 4px 8px -4px rgba(237, 173, 62, 0.2);
+
+  /* ═══════════════════════════════════════════════════════════════
+   * SAHARA LUXE - Premium Shadows (warm brown tint)
+   * ═══════════════════════════════════════════════════════════════ */
+  --shadow-luxe-sm: 0 1px 2px rgba(74, 53, 32, 0.06),
+    0 1px 3px rgba(74, 53, 32, 0.04);
+  --shadow-luxe-md: 0 4px 6px rgba(74, 53, 32, 0.07),
+    0 2px 4px rgba(74, 53, 32, 0.04);
+  --shadow-luxe-lg: 0 10px 25px rgba(74, 53, 32, 0.1),
+    0 4px 10px rgba(74, 53, 32, 0.05);
+  --shadow-luxe-xl: 0 20px 40px rgba(74, 53, 32, 0.12),
+    0 8px 16px rgba(74, 53, 32, 0.06);
+
+  /* Gold glow shadows for interactive elements */
+  --shadow-gold-glow: 0 0 20px rgba(212, 175, 55, 0.2);
+  --shadow-gold-glow-lg: 0 0 40px rgba(212, 175, 55, 0.25),
+    0 0 60px rgba(212, 175, 55, 0.1);
+
+  /* Elevated card with gold accent */
+  --shadow-luxe-card: 0 2px 8px rgba(74, 53, 32, 0.08),
+    0 1px 3px rgba(74, 53, 32, 0.04);
+  --shadow-luxe-card-hover: 0 12px 28px rgba(74, 53, 32, 0.12),
+    0 4px 12px rgba(212, 175, 55, 0.08);
 
   /* Border radius */
   --radius-card: 0.75rem;
@@ -118,6 +162,8 @@
   /* Font families */
   --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-family-serif: 'DM Serif Display', Georgia, serif;
+  --font-family-display: 'Playfair Display', 'DM Serif Display', Georgia, serif;
+  --font-family-mono: 'Space Mono', 'DM Mono', 'Fira Code', monospace;
 
   /* Font sizes */
   --font-size-display-1: 4.5rem;
@@ -162,6 +208,104 @@
     100% {
       transform: scale(1);
       opacity: 1;
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+   * SAHARA LUXE - Premium Animations
+   * ═══════════════════════════════════════════════════════════════ */
+
+  /* Elegant hover lift */
+  @keyframes hoverLift {
+    0% {
+      transform: translateY(0);
+      box-shadow: var(--shadow-luxe-card);
+    }
+    100% {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-luxe-card-hover);
+    }
+  }
+
+  /* Gold shimmer effect */
+  @keyframes goldShimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  /* Subtle pulse for active states */
+  @keyframes luxePulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  /* Count up number animation helper */
+  @keyframes countUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Smooth expand/collapse */
+  @keyframes expandIn {
+    0% {
+      opacity: 0;
+      max-height: 0;
+      transform: scaleY(0.95);
+    }
+    100% {
+      opacity: 1;
+      max-height: 500px;
+      transform: scaleY(1);
+    }
+  }
+
+  /* Gold border glow pulse */
+  @keyframes goldGlowPulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 2px var(--color-luxe-gold-muted);
+    }
+    50% {
+      box-shadow: 0 0 0 4px var(--color-luxe-gold-glow);
+    }
+  }
+
+  /* Slide in from right (for sidebar stats) */
+  @keyframes slideInRight {
+    0% {
+      opacity: 0;
+      transform: translateX(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Tab underline slide */
+  @keyframes tabUnderline {
+    0% {
+      width: 0;
+      left: 50%;
+    }
+    100% {
+      width: 100%;
+      left: 0;
     }
   }
 }
@@ -369,6 +513,229 @@
 
   .bg-gradient-gold {
     background: linear-gradient(135deg, #ffda66 0%, #edad3e 100%);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+   * SAHARA LUXE - Premium Utility Classes
+   * ═══════════════════════════════════════════════════════════════ */
+
+  /* Typography - Display font for luxury headings */
+  .font-display {
+    font-family: var(--font-family-display);
+  }
+
+  .font-mono-numbers {
+    font-family: var(--font-family-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Luxury background gradients */
+  .bg-luxe-cream {
+    background: linear-gradient(180deg, #fdfbf7 0%, #f9f5ef 100%);
+  }
+
+  .bg-luxe-gold-gradient {
+    background: linear-gradient(135deg, #e4c55a 0%, #d4af37 50%, #b8982f 100%);
+  }
+
+  .bg-luxe-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(212, 175, 55, 0.08) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: goldShimmer 3s ease-in-out infinite;
+  }
+
+  /* Premium shadows */
+  .shadow-luxe-sm {
+    box-shadow: var(--shadow-luxe-sm);
+  }
+
+  .shadow-luxe-md {
+    box-shadow: var(--shadow-luxe-md);
+  }
+
+  .shadow-luxe-lg {
+    box-shadow: var(--shadow-luxe-lg);
+  }
+
+  .shadow-luxe-xl {
+    box-shadow: var(--shadow-luxe-xl);
+  }
+
+  .shadow-gold-glow {
+    box-shadow: var(--shadow-gold-glow);
+  }
+
+  .shadow-luxe-card {
+    box-shadow: var(--shadow-luxe-card);
+  }
+
+  /* Hover effects */
+  .hover-lift {
+    transition:
+      transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-luxe-card-hover);
+  }
+
+  .hover-gold-glow {
+    transition: box-shadow 0.3s ease;
+  }
+
+  .hover-gold-glow:hover {
+    box-shadow: var(--shadow-gold-glow);
+  }
+
+  /* Gold border utilities */
+  .border-luxe-gold {
+    border-color: var(--color-luxe-border);
+  }
+
+  .ring-luxe-gold {
+    --tw-ring-color: var(--color-luxe-gold);
+  }
+
+  .focus-gold:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-luxe-gold-muted), var(--shadow-gold-glow);
+  }
+
+  /* Luxury card styles */
+  .luxe-card {
+    @apply bg-white rounded-xl;
+    @apply border border-sand-100;
+    @apply transition-all duration-300 ease-out;
+    box-shadow: var(--shadow-luxe-card);
+  }
+
+  .luxe-card:hover {
+    box-shadow: var(--shadow-luxe-card-hover);
+    transform: translateY(-2px);
+  }
+
+  .luxe-card-elevated {
+    @apply bg-white rounded-xl;
+    @apply border border-sand-100;
+    box-shadow: var(--shadow-luxe-lg);
+  }
+
+  /* Gold accent utilities */
+  .text-luxe-gold {
+    color: var(--color-luxe-gold);
+  }
+
+  .bg-luxe-gold {
+    background-color: var(--color-luxe-gold);
+  }
+
+  .bg-luxe-gold-muted {
+    background-color: var(--color-luxe-gold-muted);
+  }
+
+  /* Premium animations */
+  .animate-hover-lift {
+    animation: hoverLift 0.3s ease forwards;
+  }
+
+  .animate-luxe-pulse {
+    animation: luxePulse 2s ease-in-out infinite;
+  }
+
+  .animate-count-up {
+    animation: countUp 0.5s ease-out forwards;
+  }
+
+  .animate-expand-in {
+    animation: expandIn 0.3s ease-out forwards;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.4s ease-out forwards;
+  }
+
+  .animate-gold-glow-pulse {
+    animation: goldGlowPulse 2s ease-in-out infinite;
+  }
+
+  /* Stagger animation delays for lists */
+  .stagger-1 {
+    animation-delay: 0.05s;
+  }
+  .stagger-2 {
+    animation-delay: 0.1s;
+  }
+  .stagger-3 {
+    animation-delay: 0.15s;
+  }
+  .stagger-4 {
+    animation-delay: 0.2s;
+  }
+  .stagger-5 {
+    animation-delay: 0.25s;
+  }
+
+  /* Premium transition easings */
+  .ease-luxe {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .ease-luxe-bounce {
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Tab underline animation */
+  .tab-underline {
+    position: relative;
+  }
+
+  .tab-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: var(--color-luxe-gold);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tab-underline:hover::after,
+  .tab-underline.active::after {
+    width: 100%;
+    left: 0;
+  }
+
+  /* Sidebar item hover effect */
+  .sidebar-item-luxe {
+    @apply relative pl-4 transition-all duration-200;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: 3px solid transparent;
+  }
+
+  .sidebar-item-luxe:hover {
+    @apply bg-sand-50 pl-5;
+    border-left-color: var(--color-luxe-gold-muted);
+  }
+
+  .sidebar-item-luxe.active {
+    @apply bg-sand-100 font-medium;
+    border-left-color: var(--color-luxe-gold);
+  }
+
+  /* Number display for metrics */
+  .metric-number {
+    @apply text-brown-900 tracking-tight;
+    font-family: var(--font-family-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' on, 'lnum' on;
   }
 }
 

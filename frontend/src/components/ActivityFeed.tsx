@@ -30,11 +30,15 @@ export function ActivityFeed({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
-  const getActionColor = (action: string): string => {
-    if (action.toLowerCase().includes('create')) return 'bg-green-100 text-green-800'
-    if (action.toLowerCase().includes('update')) return 'bg-blue-100 text-blue-800'
-    if (action.toLowerCase().includes('delete')) return 'bg-red-100 text-red-800'
-    if (action.toLowerCase().includes('approve')) return 'bg-purple-100 text-purple-800'
+  const getActionColor = (action: string | undefined): string => {
+    // Defensive check: handle undefined/null action
+    if (!action) return 'bg-gray-100 text-gray-800'
+
+    const actionLower = action.toLowerCase()
+    if (actionLower.includes('create')) return 'bg-green-100 text-green-800'
+    if (actionLower.includes('update')) return 'bg-blue-100 text-blue-800'
+    if (actionLower.includes('delete')) return 'bg-red-100 text-red-800'
+    if (actionLower.includes('approve')) return 'bg-purple-100 text-purple-800'
     return 'bg-gray-100 text-gray-800'
   }
 
@@ -58,9 +62,11 @@ export function ActivityFeed({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm text-gray-900">{activity.user}</span>
+                    <span className="font-medium text-sm text-gray-900">
+                      {activity.user || 'Unknown User'}
+                    </span>
                     <Badge className={cn('text-xs', getActionColor(activity.action))}>
-                      {activity.action}
+                      {activity.action || 'Unknown Action'}
                     </Badge>
                   </div>
                   {activity.details && (
@@ -68,7 +74,9 @@ export function ActivityFeed({
                   )}
                   <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
                     <ClockIcon className="w-3 h-3" />
-                    <span>{formatTimestamp(activity.timestamp)}</span>
+                    <span>
+                      {activity.timestamp ? formatTimestamp(activity.timestamp) : 'Unknown time'}
+                    </span>
                   </div>
                 </div>
               </div>

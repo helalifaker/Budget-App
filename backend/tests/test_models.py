@@ -124,10 +124,12 @@ class TestAuditTrail:
         from app.models.base import AuditMixin
 
         # Check that audit fields are defined
+        # created_at and updated_at are in annotations
         assert "created_at" in AuditMixin.__annotations__
         assert "updated_at" in AuditMixin.__annotations__
-        assert "created_by_id" in AuditMixin.__annotations__
-        assert "updated_by_id" in AuditMixin.__annotations__
+        # created_by_id and updated_by_id are declared_attr (not in __annotations__)
+        assert hasattr(AuditMixin, "created_by_id")
+        assert hasattr(AuditMixin, "updated_by_id")
 
     def test_audit_fields_are_nullable(self):
         """Test that created_by_id and updated_by_id are nullable (CRITICAL-3 fix)."""

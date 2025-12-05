@@ -13,6 +13,7 @@ Version: 3.0.0
 from __future__ import annotations
 
 import enum
+import os
 import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -30,7 +31,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel, VersionedMixin
+from app.models.base import BaseModel, VersionedMixin, get_schema
 
 if TYPE_CHECKING:
     from app.models.configuration import BudgetVersion
@@ -131,7 +132,7 @@ class BudgetConsolidation(BaseModel, VersionedMixin):
             "amount_sar >= 0 OR is_revenue = false",
             name="ck_consolidation_revenue_positive",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Note: budget_version_id is inherited from VersionedMixin
@@ -149,7 +150,7 @@ class BudgetConsolidation(BaseModel, VersionedMixin):
         comment="Account name (e.g., 'Scolarité T1', 'Salaires enseignants')",
     )
     consolidation_category: Mapped[ConsolidationCategory] = mapped_column(
-        Enum(ConsolidationCategory, schema="efir_budget"),
+        Enum(ConsolidationCategory, schema=get_schema("efir_budget")),
         nullable=False,
         index=True,
         comment="Grouping category for reporting",
@@ -284,20 +285,20 @@ class FinancialStatement(BaseModel, VersionedMixin):
             "statement_format",
             name="uk_statement_version_type_format",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Note: budget_version_id is inherited from VersionedMixin
 
     # Statement Configuration
     statement_type: Mapped[StatementType] = mapped_column(
-        Enum(StatementType, schema="efir_budget"),
+        Enum(StatementType, schema=get_schema("efir_budget")),
         nullable=False,
         index=True,
         comment="Type of financial statement",
     )
     statement_format: Mapped[StatementFormat] = mapped_column(
-        Enum(StatementFormat, schema="efir_budget"),
+        Enum(StatementFormat, schema=get_schema("efir_budget")),
         nullable=False,
         index=True,
         comment="Accounting standard format",
@@ -421,13 +422,13 @@ class FinancialStatementLine(BaseModel):
             "line_number > 0",
             name="ck_statement_line_number_positive",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Foreign Keys
     statement_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.financial_statements.id", ondelete="CASCADE"),
+        ForeignKey("financial_statements.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Financial statement this line belongs to",
@@ -440,7 +441,7 @@ class FinancialStatementLine(BaseModel):
         comment="Sequential line number for ordering (1, 2, 3, ...)",
     )
     line_type: Mapped[LineType] = mapped_column(
-        Enum(LineType, schema="efir_budget"),
+        Enum(LineType, schema=get_schema("efir_budget")),
         nullable=False,
         comment="Type of line (header, account, subtotal, total)",
     )

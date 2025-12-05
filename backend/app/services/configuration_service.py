@@ -207,6 +207,38 @@ class ConfigurationService:
             order_by="created_at",
         )
 
+    async def get_budget_versions_paginated(
+        self,
+        page: int = 1,
+        page_size: int = 50,
+        fiscal_year: int | None = None,
+        status: BudgetVersionStatus | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get paginated budget versions.
+
+        Args:
+            page: Page number (1-indexed)
+            page_size: Records per page
+            fiscal_year: Optional fiscal year filter
+            status: Optional status filter
+
+        Returns:
+            Paginated response with items, total, page, page_size, total_pages
+        """
+        filters = {}
+        if fiscal_year:
+            filters["fiscal_year"] = fiscal_year
+        if status:
+            filters["status"] = status
+
+        return await self.budget_version_service.get_paginated(
+            page=page,
+            page_size=page_size,
+            filters=filters,
+            order_by="created_at",
+        )
+
     async def create_budget_version(
         self,
         name: str,
@@ -351,6 +383,226 @@ class ConfigurationService:
             {"status": BudgetVersionStatus.SUPERSEDED},
             user_id=user_id,
         )
+
+    async def delete_budget_version(
+        self,
+        version_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> None:
+        """
+        Delete (soft delete) a budget version.
+
+        Business Rule: Cannot delete approved budget versions - they must be superseded instead
+        to maintain audit trail and prevent accidental deletion of approved budgets.
+
+        Args:
+            version_id: Budget version UUID
+            user_id: User ID performing deletion
+
+        Raises:
+            NotFoundError: If version not found
+            BusinessRuleError: If version is approved (cannot delete approved budgets)
+        """
+        version = await self.get_budget_version(version_id)
+
+        # Business rule: Cannot delete approved versions
+        if version.status == BudgetVersionStatus.APPROVED:
+            raise BusinessRuleError(
+                "CANNOT_DELETE_APPROVED",
+                "Cannot delete approved budget versions. Please use supersede instead to maintain audit trail.",
+            )
+
+        await self.budget_version_service.soft_delete(version_id, user_id=user_id)
+
+    async def clone_budget_version(
+        self,
+        source_version_id: uuid.UUID,
+        name: str,
+        fiscal_year: int,
+        academic_year: str,
+        clone_configuration: bool = True,
+        user_id: uuid.UUID | None = None,
+    ) -> BudgetVersion:
+        """
+        Clone a budget version to create a new baseline for the next fiscal year.
+
+        This is the recommended way to create next year's budget based on current year's
+        configuration. Clones the budget version metadata and optionally all configuration data.
+
+        Args:
+            source_version_id: Source budget version UUID to clone
+            name: New version name
+            fiscal_year: Target fiscal year
+            academic_year: Target academic year
+            clone_configuration: Whether to clone configuration data (default: True)
+            user_id: User ID for audit trail
+
+        Returns:
+            Newly created BudgetVersion instance
+
+        Raises:
+            NotFoundError: If source version not found
+            ConflictError: If working version exists for target fiscal year
+        """
+        # 1. Validate source exists
+        source_version = await self.get_budget_version(source_version_id)
+
+        # 2. Check for existing working version in target year
+        existing_working = await self.budget_version_service.exists(
+            {
+                "fiscal_year": fiscal_year,
+                "status": BudgetVersionStatus.WORKING,
+            }
+        )
+
+        if existing_working:
+            raise ConflictError(
+                f"A working budget version already exists for fiscal year {fiscal_year}. "
+                "Please submit or supersede it first."
+            )
+
+        # 3. Create new version with source as parent
+        new_version = await self.budget_version_service.create(
+            {
+                "name": name,
+                "fiscal_year": fiscal_year,
+                "academic_year": academic_year,
+                "status": BudgetVersionStatus.WORKING,
+                "notes": f"Cloned from {source_version.name}",
+                "is_baseline": False,
+                "parent_version_id": source_version_id,
+            },
+            user_id=user_id,
+        )
+
+        # 4. Clone configuration data if requested
+        if clone_configuration:
+            await self._clone_configuration_data(
+                source_version_id=source_version_id,
+                target_version_id=new_version.id,
+                user_id=user_id,
+            )
+
+        # Refresh to get the complete object
+        await self.session.refresh(new_version)
+        return new_version
+
+    async def _clone_configuration_data(
+        self,
+        source_version_id: uuid.UUID,
+        target_version_id: uuid.UUID,
+        user_id: uuid.UUID | None = None,
+    ) -> None:
+        """
+        Clone configuration data from source to target version.
+
+        Copies:
+        - Class size parameters (Module 2)
+        - Subject hours matrix (Module 3)
+        - Teacher cost parameters (Module 4)
+        - Fee structure (Module 5)
+
+        Does NOT copy planning data (enrollment, classes, DHG, revenue, costs, capex)
+        as these are recalculated from scratch.
+
+        Args:
+            source_version_id: Source version ID
+            target_version_id: Target version ID
+            user_id: User ID for audit trail
+        """
+        # 1. Clone Class Size Parameters
+        source_class_sizes = await self.session.execute(
+            select(ClassSizeParam).where(
+                and_(
+                    ClassSizeParam.budget_version_id == source_version_id,
+                    ClassSizeParam.deleted_at.is_(None),
+                )
+            )
+        )
+        for source in source_class_sizes.scalars().all():
+            await self.class_size_param_service.create(
+                {
+                    "budget_version_id": target_version_id,
+                    "level_id": source.level_id,
+                    "cycle_id": source.cycle_id,
+                    "min_class_size": source.min_class_size,
+                    "target_class_size": source.target_class_size,
+                    "max_class_size": source.max_class_size,
+                    "notes": source.notes,
+                },
+                user_id=user_id,
+            )
+
+        # 2. Clone Subject Hours Matrix
+        source_subject_hours = await self.session.execute(
+            select(SubjectHoursMatrix).where(
+                and_(
+                    SubjectHoursMatrix.budget_version_id == source_version_id,
+                    SubjectHoursMatrix.deleted_at.is_(None),
+                )
+            )
+        )
+        for source in source_subject_hours.scalars().all():
+            await self.subject_hours_service.create(
+                {
+                    "budget_version_id": target_version_id,
+                    "level_id": source.level_id,
+                    "subject_id": source.subject_id,
+                    "hours_per_week": source.hours_per_week,
+                    "is_split": source.is_split,
+                    "notes": source.notes,
+                },
+                user_id=user_id,
+            )
+
+        # 3. Clone Teacher Cost Parameters
+        source_teacher_costs = await self.session.execute(
+            select(TeacherCostParam).where(
+                and_(
+                    TeacherCostParam.budget_version_id == source_version_id,
+                    TeacherCostParam.deleted_at.is_(None),
+                )
+            )
+        )
+        for source in source_teacher_costs.scalars().all():
+            await self.teacher_cost_service.create(
+                {
+                    "budget_version_id": target_version_id,
+                    "category_id": source.category_id,
+                    "cycle_id": source.cycle_id,
+                    "prrd_contribution_eur": source.prrd_contribution_eur,
+                    "avg_salary_sar": source.avg_salary_sar,
+                    "social_charges_rate": source.social_charges_rate,
+                    "benefits_allowance_sar": source.benefits_allowance_sar,
+                    "hsa_hourly_rate_sar": source.hsa_hourly_rate_sar,
+                    "max_hsa_hours": source.max_hsa_hours,
+                    "notes": source.notes,
+                },
+                user_id=user_id,
+            )
+
+        # 4. Clone Fee Structure
+        source_fees = await self.session.execute(
+            select(FeeStructure).where(
+                and_(
+                    FeeStructure.budget_version_id == source_version_id,
+                    FeeStructure.deleted_at.is_(None),
+                )
+            )
+        )
+        for source in source_fees.scalars().all():
+            await self.fee_structure_service.create(
+                {
+                    "budget_version_id": target_version_id,
+                    "level_id": source.level_id,
+                    "nationality_type_id": source.nationality_type_id,
+                    "fee_category_id": source.fee_category_id,
+                    "amount_sar": source.amount_sar,
+                    "trimester": source.trimester,
+                    "notes": source.notes,
+                },
+                user_id=user_id,
+            )
 
     async def get_academic_cycles(self) -> list[AcademicCycle]:
         """

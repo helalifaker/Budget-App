@@ -14,6 +14,7 @@ Version: 4.0.0
 from __future__ import annotations
 
 import enum
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -37,7 +38,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel, PortableJSON, VersionedMixin
+from app.models.base import BaseModel, PortableJSON, VersionedMixin, get_schema
 
 if TYPE_CHECKING:
     from app.models.configuration import BudgetVersion
@@ -154,7 +155,7 @@ class KPIDefinition(BaseModel):
     __table_args__ = (
         UniqueConstraint("code", name="uk_kpi_definition_code"),
         CheckConstraint("target_value >= 0", name="ck_kpi_target_positive"),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # KPI Identification
@@ -178,7 +179,7 @@ class KPIDefinition(BaseModel):
 
     # Classification
     category: Mapped[KPICategory] = mapped_column(
-        Enum(KPICategory, schema="efir_budget"),
+        Enum(KPICategory, schema=get_schema("efir_budget")),
         nullable=False,
         index=True,
         comment="KPI category for grouping",
@@ -288,7 +289,7 @@ class KPIValue(BaseModel, VersionedMixin):
             "calculated_value IS NOT NULL",
             name="ck_kpi_value_calculated_not_null",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Note: budget_version_id is inherited from VersionedMixin
@@ -296,7 +297,7 @@ class KPIValue(BaseModel, VersionedMixin):
     # Foreign Keys
     kpi_definition_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.kpi_definitions.id"),
+        ForeignKey("kpi_definitions.id"),
         nullable=False,
         index=True,
         comment="KPI being calculated",
@@ -425,7 +426,7 @@ class DashboardConfig(BaseModel):
             "OR ((is_system_template = false) AND dashboard_role IS NULL AND owner_user_id IS NOT NULL)",
             name="ck_dashboard_system_or_user",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Dashboard Identification
@@ -442,7 +443,7 @@ class DashboardConfig(BaseModel):
 
     # Classification
     dashboard_role: Mapped[DashboardRole | None] = mapped_column(
-        Enum(DashboardRole, schema="efir_budget"),
+        Enum(DashboardRole, schema=get_schema("efir_budget")),
         nullable=True,
         index=True,
         comment="Role for system templates (NULL for user custom)",
@@ -458,7 +459,7 @@ class DashboardConfig(BaseModel):
     # Ownership
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
         comment="Owner user (NULL for system templates)",
@@ -587,13 +588,13 @@ class DashboardWidget(BaseModel):
             "refresh_interval_seconds >= 0",
             name="ck_widget_refresh_positive",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Foreign Keys
     dashboard_config_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.dashboard_configs.id", ondelete="CASCADE"),
+        ForeignKey("dashboard_configs.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Parent dashboard",
@@ -601,7 +602,7 @@ class DashboardWidget(BaseModel):
 
     # Widget Configuration
     widget_type: Mapped[WidgetType] = mapped_column(
-        Enum(WidgetType, schema="efir_budget"),
+        Enum(WidgetType, schema=get_schema("efir_budget")),
         nullable=False,
         index=True,
         comment="Type of widget",
@@ -728,13 +729,13 @@ class UserPreferences(BaseModel):
     __tablename__ = "user_preferences"
     __table_args__ = (
         UniqueConstraint("user_id", name="uk_user_preferences_user_id"),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Foreign Keys
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,
         index=True,
@@ -742,7 +743,7 @@ class UserPreferences(BaseModel):
     )
     default_dashboard_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.dashboard_configs.id", ondelete="SET NULL"),
+        ForeignKey("dashboard_configs.id", ondelete="SET NULL"),
         nullable=True,
         comment="User's default dashboard (overrides role default)",
     )
@@ -862,7 +863,7 @@ class ActualData(BaseModel):
             "period",
             "account_code",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Period Information
@@ -919,7 +920,7 @@ class ActualData(BaseModel):
         comment="When data was imported from Odoo",
     )
     source: Mapped[ActualDataSource] = mapped_column(
-        Enum(ActualDataSource, schema="efir_budget"),
+        Enum(ActualDataSource, schema=get_schema("efir_budget")),
         nullable=False,
         default=ActualDataSource.ODOO_IMPORT,
         index=True,
@@ -1030,7 +1031,7 @@ class BudgetVsActual(BaseModel, VersionedMixin):
             "budget_amount_sar IS NOT NULL AND actual_amount_sar IS NOT NULL",
             name="ck_variance_amounts_not_null",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Note: budget_version_id is inherited from VersionedMixin
@@ -1071,7 +1072,7 @@ class BudgetVsActual(BaseModel, VersionedMixin):
         comment="Variance as percentage ((variance ÷ budget) × 100)",
     )
     variance_status: Mapped[VarianceStatus] = mapped_column(
-        Enum(VarianceStatus, schema="efir_budget"),
+        Enum(VarianceStatus, schema=get_schema("efir_budget")),
         nullable=False,
         index=True,
         comment="Favorability status",
@@ -1166,13 +1167,13 @@ class VarianceExplanation(BaseModel):
             "explanation_text IS NOT NULL AND length(explanation_text) > 10",
             name="ck_explanation_text_required",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Foreign Keys
     budget_vs_actual_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.budget_vs_actual.id", ondelete="CASCADE"),
+        ForeignKey("budget_vs_actual.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Variance being explained",

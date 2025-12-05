@@ -17,6 +17,7 @@ Version: 5.0.0
 from __future__ import annotations
 
 import enum
+import os
 import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -35,7 +36,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel, PortableJSON
+from app.models.base import BaseModel, PortableJSON, get_schema
 
 if TYPE_CHECKING:
     pass
@@ -111,7 +112,7 @@ class StrategicPlan(BaseModel):
             "base_year >= 2000 AND base_year <= 2100",
             name="ck_strategic_plan_year_range",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Plan Identification
@@ -233,13 +234,13 @@ class StrategicPlanScenario(BaseModel):
             "strategic_plan_id",
             "scenario_type",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Foreign Keys
     strategic_plan_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.strategic_plans.id", ondelete="CASCADE"),
+        ForeignKey("strategic_plans.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Strategic plan this scenario belongs to",
@@ -247,7 +248,7 @@ class StrategicPlanScenario(BaseModel):
 
     # Scenario Identification
     scenario_type: Mapped[ScenarioType] = mapped_column(
-        Enum(ScenarioType, schema="efir_budget"),
+        Enum(ScenarioType, schema=get_schema("efir_budget")),
         nullable=False,
         index=True,
         comment="Scenario type (base_case, conservative, optimistic, new_campus)",
@@ -368,13 +369,13 @@ class StrategicPlanProjection(BaseModel):
             "strategic_plan_scenario_id",
             "year",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Foreign Keys
     strategic_plan_scenario_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.strategic_plan_scenarios.id", ondelete="CASCADE"),
+        ForeignKey("strategic_plan_scenarios.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Scenario this projection belongs to",
@@ -390,7 +391,7 @@ class StrategicPlanProjection(BaseModel):
 
     # Category
     category: Mapped[ProjectionCategory] = mapped_column(
-        Enum(ProjectionCategory, schema="efir_budget"),
+        Enum(ProjectionCategory, schema=get_schema("efir_budget")),
         nullable=False,
         index=True,
         comment="Projection category (revenue, personnel_costs, operating_costs, capex, depreciation)",
@@ -492,13 +493,13 @@ class StrategicInitiative(BaseModel):
             "ix_strategic_initiative_status",
             "status",
         ),
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Foreign Keys
     strategic_plan_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.strategic_plans.id", ondelete="CASCADE"),
+        ForeignKey("strategic_plans.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Strategic plan this initiative belongs to",
@@ -541,7 +542,7 @@ class StrategicInitiative(BaseModel):
 
     # Status Tracking
     status: Mapped[InitiativeStatus] = mapped_column(
-        Enum(InitiativeStatus, schema="efir_budget"),
+        Enum(InitiativeStatus, schema=get_schema("efir_budget")),
         nullable=False,
         default=InitiativeStatus.PLANNED,
         index=True,

@@ -10,7 +10,7 @@ Provides comprehensive health monitoring for:
 import os
 import time
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any
 
 import httpx
 from app.core.cache import REDIS_ENABLED
@@ -142,24 +142,12 @@ async def readiness(db: AsyncSession = Depends(get_db)) -> dict[str, Any]:
         checks["supabase_auth"] = {"status": "error", "error": str(e)}
         overall_status = "degraded"
 
-    # 3. Check Redis connectivity
-    try:
-        from app.core.cache import REDIS_ENABLED, get_redis_client
+    # 3. Check Redis cache status
+    from app.core.cache import get_cache_status
 
-        if REDIS_ENABLED:
-            redis_client = await get_redis_client()
-            start_time = time.perf_counter()
-            # Cast to Awaitable for async Redis client (ping returns Union[Awaitable[bool], bool])
-            await cast("Any", redis_client.ping())
-            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
-            checks["redis"] = {"status": "ok", "latency_ms": latency_ms}
-        else:
-            checks["redis"] = {
-                "status": "disabled",
-                "note": "Redis caching is disabled via REDIS_ENABLED=false",
-            }
-    except Exception as e:
-        checks["redis"] = {"status": "error", "error": str(e)}
+    cache_status = get_cache_status()
+    checks["cache"] = cache_status
+    if cache_status["status"] == "error":
         overall_status = "degraded"
 
     return {

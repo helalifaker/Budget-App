@@ -4,41 +4,36 @@ import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-mes
 
 export const classStructureKeys = {
   all: ['class-structure'] as const,
-  lists: () => [...classStructureKeys.all, 'list'] as const,
-  list: (versionId: string, filters: string) =>
-    [...classStructureKeys.lists(), versionId, { filters }] as const,
-  details: () => [...classStructureKeys.all, 'detail'] as const,
-  detail: (id: string) => [...classStructureKeys.details(), id] as const,
-  byVersion: (versionId: string) => [...classStructureKeys.all, 'by-version', versionId] as const,
+  list: (versionId: string) => [...classStructureKeys.all, 'list', versionId] as const,
 }
 
-export function useClassStructures(versionId: string, page = 1, pageSize = 100) {
+export function useClassStructures(versionId: string | undefined) {
   return useQuery({
-    queryKey: classStructureKeys.list(versionId, `page=${page}&pageSize=${pageSize}`),
-    queryFn: () => classStructureApi.getAll(versionId, { page, page_size: pageSize }),
+    queryKey: classStructureKeys.list(versionId ?? ''),
+    queryFn: () => classStructureApi.getAll(versionId!),
     enabled: !!versionId,
   })
 }
 
-export function useClassStructure(id: string) {
-  return useQuery({
-    queryKey: classStructureKeys.detail(id),
-    queryFn: () => classStructureApi.getById(id),
-    enabled: !!id,
-  })
-}
-
-export function useCreateClassStructure() {
+export function useCalculateClassStructure() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: classStructureApi.create,
-    onSuccess: (data) => {
+    mutationFn: ({
+      versionId,
+      data = {},
+    }: {
+      versionId: string
+      data?: {
+        method?: string
+        override_by_level?: Record<string, { number_of_classes?: number; avg_class_size?: number }>
+      }
+    }) => classStructureApi.calculate(versionId, data),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: classStructureKeys.byVersion(data.budget_version_id),
+        queryKey: classStructureKeys.list(variables.versionId),
       })
-      queryClient.invalidateQueries({ queryKey: classStructureKeys.lists() })
-      toastMessages.success.created(entityNames.classStructure)
+      toastMessages.success.calculated()
     },
     onError: (error) => {
       handleAPIErrorToast(error)
@@ -55,49 +50,21 @@ export function useUpdateClassStructure() {
       data,
     }: {
       id: string
-      data: { number_of_classes?: number; avg_class_size?: number }
+      data: {
+        total_students?: number
+        number_of_classes?: number
+        avg_class_size?: number
+        requires_atsem?: boolean
+        atsem_count?: number
+        calculation_method?: string
+        notes?: string | null
+      }
     }) => classStructureApi.update(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: classStructureKeys.detail(data.id),
+        queryKey: classStructureKeys.list(data.budget_version_id),
       })
-      queryClient.invalidateQueries({
-        queryKey: classStructureKeys.byVersion(data.budget_version_id),
-      })
-      queryClient.invalidateQueries({ queryKey: classStructureKeys.lists() })
       toastMessages.success.updated(entityNames.classStructure)
-    },
-    onError: (error) => {
-      handleAPIErrorToast(error)
-    },
-  })
-}
-
-export function useDeleteClassStructure() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: classStructureApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: classStructureKeys.lists() })
-      toastMessages.success.deleted(entityNames.classStructure)
-    },
-    onError: (error) => {
-      handleAPIErrorToast(error)
-    },
-  })
-}
-
-export function useCalculateClassStructure() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: classStructureApi.calculateFromEnrollment,
-    onSuccess: (_, versionId) => {
-      queryClient.invalidateQueries({
-        queryKey: classStructureKeys.byVersion(versionId),
-      })
-      toastMessages.success.calculated()
     },
     onError: (error) => {
       handleAPIErrorToast(error)

@@ -28,10 +28,16 @@ def mock_user():
     return user
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def client():
-    """Create test client."""
-    return TestClient(app)
+    """
+    Create test client with proper lifespan handling.
+
+    Uses context manager to trigger startup event (init_db) which creates
+    SQLite tables before tests run.
+    """
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 @pytest.fixture

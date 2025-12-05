@@ -195,6 +195,8 @@ pnpm preview
 | `pnpm format` | Check Prettier formatting |
 | `pnpm typecheck` | TypeScript type checking (`tsc --noEmit`) |
 | `pnpm test` | Run Vitest in watch mode |
+| `pnpm generate:types` | Generate TypeScript types from backend OpenAPI spec |
+| `pnpm generate:types:file` | Generate types from saved `openapi.json` file |
 
 ## Code Quality
 
@@ -261,6 +263,89 @@ npx playwright test --ui
 
 # Generate tests
 npx playwright codegen localhost:5173
+```
+
+## Schema Synchronization (Frontend-Backend Alignment)
+
+The frontend uses Zod schemas (`src/types/api.ts`) that must match the backend Pydantic schemas. To prevent drift, we provide automated tooling.
+
+### Quick Reference
+
+| Schema Change | Action Required |
+|--------------|-----------------|
+| Backend adds/removes fields | Run `pnpm generate:types`, update `api.ts` |
+| Backend changes enum values | Update Zod enum in `api.ts` |
+| Zod validation errors in console | Check schema alignment |
+| React key warnings | Check `id` field mapping |
+
+### OpenAPI Type Generation
+
+Generate TypeScript types from the backend's OpenAPI specification:
+
+```bash
+# Start the backend server first
+cd ../backend && uvicorn app.main:app --reload
+
+# Generate types (in another terminal)
+cd ../frontend
+pnpm generate:types  # From running server at localhost:8000
+# OR
+pnpm generate:types:file  # From saved openapi.json file
+```
+
+Generated types are saved to `src/types/generated-api.ts`. Compare with hand-written Zod schemas in `api.ts` to detect drift.
+
+### Schema Testing
+
+Schema validation tests in `tests/schemas/api-schemas.test.ts` catch drift early:
+
+```bash
+pnpm test -- tests/schemas/api-schemas.test.ts --run
+```
+
+These tests:
+- Validate all status enum values match backend (lowercase: `working`, `submitted`, etc.)
+- Verify bilingual field names (`name_fr`, `name_en` not `name`)
+- Check required fields exist (`is_secondary`, `requires_atsem`, etc.)
+- Include drift detection tests that fail on old schema formats
+
+### Helper Utilities
+
+The `src/utils/schema-sync.ts` module provides:
+
+```typescript
+import { getDisplayName, isValidBudgetVersionStatus, getStatusConfig } from '@/utils/schema-sync'
+
+// Bilingual entity display
+const levelName = getDisplayName(level, 'en')  // or 'fr'
+
+// Status validation
+if (isValidBudgetVersionStatus(status)) { /* ... */ }
+
+// Status display config
+const { label, variant, canEdit } = getStatusConfig('working')
+```
+
+### Key Schema Patterns
+
+**Bilingual Entities** (Level, Cycle, Subject, NationalityType):
+```typescript
+// Backend returns: { name_fr: "...", name_en: "..." }
+// Use: entity.name_en (or helper for i18n)
+```
+
+**Status Enum** (BudgetVersionStatus):
+```typescript
+// Backend returns lowercase: "working", "submitted", "approved", "forecast", "superseded"
+// Frontend must use lowercase comparisons
+if (version.status === 'working') { /* ... */ }
+```
+
+**Sort Order** (not display_order):
+```typescript
+// Backend uses: sort_order
+// NOT: display_order
+items.sort((a, b) => a.sort_order - b.sort_order)
 ```
 
 ## AG Grid Integration

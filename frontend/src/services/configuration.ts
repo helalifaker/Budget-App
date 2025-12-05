@@ -21,7 +21,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<Level[]>({
           method: 'GET',
-          url: '/configuration/levels',
+          url: '/academic-levels',
         }),
         'configuration: get levels'
       )
@@ -31,7 +31,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<Level>({
           method: 'GET',
-          url: `/configuration/levels/${id}`,
+          url: `/academic-levels/${id}`,
         }),
         'configuration: get level'
       )
@@ -41,7 +41,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<Level[]>({
           method: 'GET',
-          url: `/configuration/levels/cycle/${cycleId}`,
+          url: `/academic-levels?cycle_id=${cycleId}`,
         }),
         'configuration: get levels by cycle'
       )
@@ -53,7 +53,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<NationalityType[]>({
           method: 'GET',
-          url: '/configuration/nationality-types',
+          url: '/nationality-types',
         }),
         'configuration: get nationality types'
       )
@@ -63,7 +63,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<NationalityType>({
           method: 'GET',
-          url: `/configuration/nationality-types/${id}`,
+          url: `/nationality-types/${id}`,
         }),
         'configuration: get nationality type'
       )
@@ -75,7 +75,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<Cycle[]>({
           method: 'GET',
-          url: '/configuration/cycles',
+          url: '/academic-cycles',
         }),
         'configuration: get cycles'
       )
@@ -87,7 +87,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<ClassSizeParam[]>({
           method: 'GET',
-          url: `/configuration/class-size-params?budget_version_id=${budgetVersionId}`,
+          url: `/class-size-params?version_id=${budgetVersionId}`,
         }),
         'configuration: get class size params'
       )
@@ -97,7 +97,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<ClassSizeParam>({
           method: 'PUT',
-          url: `/configuration/class-size-params/${id}`,
+          url: `/class-size-params/${id}`,
           data,
         }),
         'configuration: update class size param'
@@ -110,7 +110,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<Subject[]>({
           method: 'GET',
-          url: '/configuration/subjects',
+          url: '/subjects',
         }),
         'configuration: get subjects'
       )
@@ -122,7 +122,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<SubjectHours[]>({
           method: 'GET',
-          url: `/configuration/subject-hours?version_id=${budgetVersionId}`,
+          url: `/subject-hours?version_id=${budgetVersionId}`,
         }),
         'configuration: get subject hours'
       )
@@ -139,7 +139,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<SubjectHours>({
           method: 'PUT',
-          url: '/configuration/subject-hours',
+          url: '/subject-hours',
           data,
         }),
         'configuration: update subject hours'
@@ -152,7 +152,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<TeacherCategory[]>({
           method: 'GET',
-          url: '/configuration/teacher-categories',
+          url: '/teacher-categories',
         }),
         'configuration: get teacher categories'
       )
@@ -164,7 +164,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<TeacherCostParam[]>({
           method: 'GET',
-          url: `/configuration/teacher-costs?version_id=${budgetVersionId}`,
+          url: `/teacher-costs?version_id=${budgetVersionId}`,
         }),
         'configuration: get teacher cost params'
       )
@@ -185,7 +185,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<TeacherCostParam>({
           method: 'PUT',
-          url: '/configuration/teacher-costs',
+          url: '/teacher-costs',
           data,
         }),
         'configuration: upsert teacher cost param'
@@ -198,7 +198,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<FeeCategory[]>({
           method: 'GET',
-          url: '/configuration/fee-categories',
+          url: '/fee-categories',
         }),
         'configuration: get fee categories'
       )
@@ -210,7 +210,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<FeeStructure[]>({
           method: 'GET',
-          url: `/configuration/fee-structure?version_id=${budgetVersionId}`,
+          url: `/fee-structure?version_id=${budgetVersionId}`,
         }),
         'configuration: get fee structure'
       )
@@ -228,7 +228,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<FeeStructure>({
           method: 'PUT',
-          url: '/configuration/fee-structure',
+          url: '/fee-structure',
           data,
         }),
         'configuration: upsert fee structure'
@@ -239,9 +239,7 @@ export const configurationApi = {
   // System Configuration (Module 1)
   systemConfig: {
     getAll: async (category?: string) => {
-      const url = category
-        ? `/configuration/system-config?category=${category}`
-        : '/configuration/system-config'
+      const url = category ? `/config/system?category=${category}` : '/config/system'
       return withServiceErrorHandling(
         apiRequest<SystemConfig[]>({
           method: 'GET',
@@ -255,7 +253,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<SystemConfig>({
           method: 'GET',
-          url: `/configuration/system-config/${key}`,
+          url: `/config/system/${key}`,
         }),
         'configuration: get system config by key'
       )
@@ -265,7 +263,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<SystemConfig>({
           method: 'PUT',
-          url: `/configuration/system-config/${key}`,
+          url: `/config/system/${key}`,
           data,
         }),
         'configuration: update system config'
@@ -279,7 +277,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<TimetableConstraint[]>({
           method: 'GET',
-          url: `/configuration/timetable-constraints?version_id=${budgetVersionId}`,
+          url: `/timetable-constraints?version_id=${budgetVersionId}`,
         }),
         'configuration: get timetable constraints'
       )
@@ -298,7 +296,7 @@ export const configurationApi = {
       return withServiceErrorHandling(
         apiRequest<TimetableConstraint>({
           method: 'PUT',
-          url: '/configuration/timetable-constraints',
+          url: '/timetable-constraints',
           data,
         }),
         'configuration: upsert timetable constraint'

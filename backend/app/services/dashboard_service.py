@@ -528,6 +528,7 @@ class DashboardService:
             raise NotFoundError("BudgetVersion", str(budget_version_id))
 
         alerts = []
+        now = datetime.utcnow().isoformat()
 
         # Get summary data for alert evaluation
         summary = await self.get_dashboard_summary(budget_version_id)
@@ -536,48 +537,36 @@ class DashboardService:
         capacity_pct = Decimal(str(summary.get("capacity_utilization_pct", 0)))
         if capacity_pct >= self.CAPACITY_CRITICAL_PCT:
             alerts.append({
-                "alert_type": "capacity_critical",
-                "severity": "critical",
-                "title": "Critical: Near Maximum Capacity",
-                "message": f"School capacity at {capacity_pct}%. Immediate action required.",
-                "metric_value": float(capacity_pct),
-                "threshold_value": float(self.CAPACITY_CRITICAL_PCT),
-                "created_at": datetime.utcnow().isoformat(),
+                "id": f"{budget_version_id}-capacity-critical",
+                "type": "ERROR",
+                "message": f"Critical: School capacity at {capacity_pct}%. Immediate action required.",
+                "timestamp": now,
             })
         elif capacity_pct >= self.CAPACITY_WARNING_PCT:
             alerts.append({
-                "alert_type": "capacity_warning",
-                "severity": "warning",
-                "title": "Warning: High Capacity Utilization",
-                "message": f"School capacity at {capacity_pct}%. Consider expansion planning.",
-                "metric_value": float(capacity_pct),
-                "threshold_value": float(self.CAPACITY_WARNING_PCT),
-                "created_at": datetime.utcnow().isoformat(),
+                "id": f"{budget_version_id}-capacity-warning",
+                "type": "WARNING",
+                "message": f"Warning: School capacity at {capacity_pct}%. Consider expansion planning.",
+                "timestamp": now,
             })
 
         # Operating margin alerts
         margin_pct = Decimal(str(summary.get("operating_margin_pct", 0)))
         if margin_pct < Decimal("5"):
             alerts.append({
-                "alert_type": "margin_low",
-                "severity": "warning",
-                "title": "Low Operating Margin",
-                "message": f"Operating margin at {margin_pct}%, below 5% target.",
-                "metric_value": float(margin_pct),
-                "threshold_value": 5.0,
-                "created_at": datetime.utcnow().isoformat(),
+                "id": f"{budget_version_id}-margin-low",
+                "type": "WARNING",
+                "message": f"Low Operating Margin: {margin_pct}%, below 5% target.",
+                "timestamp": now,
             })
 
         # Version status alerts
         if version.status == BudgetVersionStatus.WORKING:
             alerts.append({
-                "alert_type": "version_draft",
-                "severity": "info",
-                "title": "Budget Version in Draft",
+                "id": f"{budget_version_id}-version-draft",
+                "type": "INFO",
                 "message": f"Budget version '{version.name}' is still in working status.",
-                "metric_value": None,
-                "threshold_value": None,
-                "created_at": datetime.utcnow().isoformat(),
+                "timestamp": now,
             })
 
         return alerts
@@ -596,12 +585,11 @@ class DashboardService:
 
         Returns:
             List of activity dictionaries with:
-                - activity_type: Type of activity
-                - description: Activity description
-                - version_id: Related budget version
-                - version_name: Budget version name
-                - user_id: User who performed action
+                - id: Unique activity identifier
+                - action: Type of action (Created, Submitted, Approved)
+                - user: User who performed action
                 - timestamp: When activity occurred
+                - details: Activity description
         """
         activities = []
 
@@ -620,34 +608,31 @@ class DashboardService:
             # Version creation activity
             if version.created_at:
                 activities.append({
-                    "activity_type": "version_created",
-                    "description": f"Budget version '{version.name}' created",
-                    "version_id": str(version.id),
-                    "version_name": version.name,
-                    "user_id": str(version.created_by_id) if hasattr(version, "created_by_id") and version.created_by_id else None,
+                    "id": f"{version.id}-created",
+                    "action": "Created",
+                    "user": "System",
                     "timestamp": version.created_at.isoformat(),
+                    "details": f"Budget version '{version.name}' created",
                 })
 
             # Version submission activity
             if version.submitted_at:
                 activities.append({
-                    "activity_type": "version_submitted",
-                    "description": f"Budget version '{version.name}' submitted for approval",
-                    "version_id": str(version.id),
-                    "version_name": version.name,
-                    "user_id": str(version.submitted_by_id) if version.submitted_by_id else None,
+                    "id": f"{version.id}-submitted",
+                    "action": "Submitted",
+                    "user": "User",
                     "timestamp": version.submitted_at.isoformat(),
+                    "details": f"Budget version '{version.name}' submitted for approval",
                 })
 
             # Version approval activity
             if version.approved_at:
                 activities.append({
-                    "activity_type": "version_approved",
-                    "description": f"Budget version '{version.name}' approved",
-                    "version_id": str(version.id),
-                    "version_name": version.name,
-                    "user_id": str(version.approved_by_id) if version.approved_by_id else None,
+                    "id": f"{version.id}-approved",
+                    "action": "Approved",
+                    "user": "Approver",
                     "timestamp": version.approved_at.isoformat(),
+                    "details": f"Budget version '{version.name}' approved",
                 })
 
         # Sort by timestamp descending

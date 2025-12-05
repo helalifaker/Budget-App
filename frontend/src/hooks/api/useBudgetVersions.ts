@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { budgetVersionsApi } from '@/services/budget-versions'
 import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
+import { useAuth } from '@/contexts/AuthContext'
 
 export const budgetVersionKeys = {
   all: ['budget-versions'] as const,
@@ -10,10 +11,18 @@ export const budgetVersionKeys = {
   detail: (id: string) => [...budgetVersionKeys.details(), id] as const,
 }
 
+/**
+ * Fetch budget versions with authentication check.
+ * Query is disabled until session is available to prevent race conditions.
+ */
 export function useBudgetVersions(page = 1, pageSize = 50) {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: budgetVersionKeys.list(`page=${page}&pageSize=${pageSize}`),
     queryFn: () => budgetVersionsApi.getAll({ page, page_size: pageSize }),
+    // Only enable query when session is confirmed and not loading
+    enabled: !!session && !loading,
   })
 }
 

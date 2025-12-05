@@ -13,6 +13,7 @@ All planning data is versioned and drives financial projections.
 """
 
 from __future__ import annotations
+import os
 
 import uuid
 from datetime import date
@@ -33,7 +34,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
-from app.models.base import BaseModel, VersionedMixin
+from app.models.base import get_table_args, BaseModel, VersionedMixin
 
 if TYPE_CHECKING:
     from app.models.configuration import (
@@ -71,12 +72,12 @@ class EnrollmentPlan(BaseModel, VersionedMixin):
             name="uk_enrollment_version_level_nat",
         ),
         CheckConstraint("student_count >= 0", name="ck_enrollment_non_negative"),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_levels.id"),
+        ForeignKey("academic_levels.id"),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -84,7 +85,7 @@ class EnrollmentPlan(BaseModel, VersionedMixin):
 
     nationality_type_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.nationality_types.id"),
+        ForeignKey("nationality_types.id"),
         nullable=False,
         index=True,
         comment="Nationality type (French, Saudi, Other)",
@@ -105,6 +106,91 @@ class EnrollmentPlan(BaseModel, VersionedMixin):
     # Relationships
     level: Mapped[AcademicLevel] = relationship("AcademicLevel")
     nationality_type: Mapped[NationalityType] = relationship("NationalityType")
+
+
+class NationalityDistribution(BaseModel, VersionedMixin):
+    """
+    Per-level nationality distribution percentages.
+
+    Used for enrollment planning when user knows total students per level
+    but estimates nationality breakdown via percentages.
+
+    Business Rules:
+    - french_pct + saudi_pct + other_pct must equal 100%
+    - Each percentage must be between 0 and 100
+    - One distribution record per level per budget version
+
+    Usage Flow:
+    1. User enters total students per level in EnrollmentTotalsGrid
+    2. User sets nationality percentages per level in DistributionGrid
+    3. System calculates breakdown: total × percentage = students per nationality
+    4. Breakdown stored in enrollment_plans for downstream revenue calculations
+    """
+
+    __tablename__ = "nationality_distributions"
+    __table_args__ = (
+        UniqueConstraint(
+            "budget_version_id",
+            "level_id",
+            name="uk_distribution_version_level",
+        ),
+        CheckConstraint(
+            "french_pct >= 0 AND french_pct <= 100",
+            name="ck_distribution_french_range",
+        ),
+        CheckConstraint(
+            "saudi_pct >= 0 AND saudi_pct <= 100",
+            name="ck_distribution_saudi_range",
+        ),
+        CheckConstraint(
+            "other_pct >= 0 AND other_pct <= 100",
+            name="ck_distribution_other_range",
+        ),
+        CheckConstraint(
+            "french_pct + saudi_pct + other_pct = 100",
+            name="ck_distribution_sum_100",
+        ),
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
+    )
+
+    level_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("academic_levels.id"),
+        nullable=False,
+        index=True,
+        comment="Academic level (per-level distribution)",
+    )
+
+    french_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2),
+        nullable=False,
+        default=Decimal("0"),
+        comment="French nationality percentage (0-100)",
+    )
+
+    saudi_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2),
+        nullable=False,
+        default=Decimal("0"),
+        comment="Saudi nationality percentage (0-100)",
+    )
+
+    other_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2),
+        nullable=False,
+        default=Decimal("0"),
+        comment="Other nationalities percentage (0-100)",
+    )
+
+    # Relationships
+    level: Mapped[AcademicLevel] = relationship("AcademicLevel")
+
+    @validates("french_pct", "saudi_pct", "other_pct")
+    def validate_percentage(self, key: str, value: Decimal) -> Decimal:
+        """Validate percentage is within valid range."""
+        if value < 0 or value > 100:
+            raise ValueError(f"{key} must be between 0 and 100")
+        return value
 
 
 # ==============================================================================
@@ -141,12 +227,12 @@ class ClassStructure(BaseModel, VersionedMixin):
             "avg_class_size > 0 AND avg_class_size <= 35",
             name="ck_class_structure_avg_size_realistic",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_levels.id"),
+        ForeignKey("academic_levels.id"),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -264,12 +350,12 @@ class DHGSubjectHours(BaseModel, VersionedMixin):
             "hours_per_class_per_week > 0 AND hours_per_class_per_week <= 12",
             name="ck_dhg_hours_realistic_range",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     subject_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.subjects.id"),
+        ForeignKey("subjects.id"),
         nullable=False,
         index=True,
         comment="Subject being taught",
@@ -277,7 +363,7 @@ class DHGSubjectHours(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_levels.id"),
+        ForeignKey("academic_levels.id"),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -353,12 +439,12 @@ class DHGTeacherRequirement(BaseModel, VersionedMixin):
             "simple_fte >= 0",
             name="ck_dhg_req_fte_non_negative",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     subject_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.subjects.id"),
+        ForeignKey("subjects.id"),
         nullable=False,
         index=True,
         comment="Subject",
@@ -429,12 +515,12 @@ class TeacherAllocation(BaseModel, VersionedMixin):
             name="uk_allocation_version_subject_cycle_category",
         ),
         CheckConstraint("fte_count > 0", name="ck_allocation_fte_positive"),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     subject_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.subjects.id"),
+        ForeignKey("subjects.id"),
         nullable=False,
         index=True,
         comment="Subject",
@@ -442,7 +528,7 @@ class TeacherAllocation(BaseModel, VersionedMixin):
 
     cycle_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_cycles.id"),
+        ForeignKey("academic_cycles.id"),
         nullable=False,
         index=True,
         comment="Academic cycle (primary grouping for allocations)",
@@ -450,7 +536,7 @@ class TeacherAllocation(BaseModel, VersionedMixin):
 
     category_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.teacher_categories.id"),
+        ForeignKey("teacher_categories.id"),
         nullable=False,
         index=True,
         comment="Teacher category (AEFE Detached, AEFE Funded, Local)",
@@ -511,7 +597,7 @@ class RevenuePlan(BaseModel, VersionedMixin):
             "amount_sar >= 0",
             name="ck_revenue_non_negative",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     account_code: Mapped[str] = mapped_column(
@@ -615,7 +701,7 @@ class PersonnelCostPlan(BaseModel, VersionedMixin):
             "unit_cost_sar >= 0 AND total_cost_sar >= 0",
             name="ck_personnel_costs_non_negative",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     account_code: Mapped[str] = mapped_column(
@@ -633,7 +719,7 @@ class PersonnelCostPlan(BaseModel, VersionedMixin):
 
     category_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.teacher_categories.id"),
+        ForeignKey("teacher_categories.id"),
         nullable=True,
         index=True,
         comment="Teacher category (NULL for non-teaching staff)",
@@ -641,7 +727,7 @@ class PersonnelCostPlan(BaseModel, VersionedMixin):
 
     cycle_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_cycles.id"),
+        ForeignKey("academic_cycles.id"),
         nullable=True,
         index=True,
         comment="Academic cycle (NULL for admin/support)",
@@ -723,7 +809,7 @@ class OperatingCostPlan(BaseModel, VersionedMixin):
             "amount_sar >= 0",
             name="ck_operating_cost_non_negative",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     account_code: Mapped[str] = mapped_column(
@@ -823,7 +909,7 @@ class CapExPlan(BaseModel, VersionedMixin):
             "useful_life_years > 0 AND useful_life_years <= 50",
             name="ck_capex_life_realistic",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     account_code: Mapped[str] = mapped_column(

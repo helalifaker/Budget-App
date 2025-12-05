@@ -155,14 +155,18 @@ class DHGService:
         if not class_structures:
             raise BusinessRuleError(
                 "NO_CLASS_STRUCTURE",
-                "Cannot calculate DHG hours without class structure data",
+                "Cannot calculate DHG hours without class structure data. "
+                "Please calculate class structure first using the Class Structure page, "
+                "or ensure enrollment data exists for this budget version.",
             )
 
         subject_hours_matrix = await self._get_subject_hours_matrix(version_id)
         if not subject_hours_matrix:
             raise BusinessRuleError(
                 "NO_SUBJECT_HOURS_MATRIX",
-                "Cannot calculate DHG hours without subject hours matrix",
+                "Cannot calculate DHG hours without subject hours matrix. "
+                "Please configure subject hours in Configuration > Subject Hours "
+                "before calculating DHG hours.",
             )
 
         classes_by_level = {cs.level_id: cs.number_of_classes for cs in class_structures}
@@ -285,7 +289,9 @@ class DHGService:
         if not dhg_subject_hours:
             raise BusinessRuleError(
                 "NO_DHG_HOURS",
-                "Cannot calculate teacher requirements without DHG subject hours",
+                "Cannot calculate teacher requirements without DHG subject hours. "
+                "Please calculate DHG subject hours first using the DHG Workforce Planning page. "
+                "This requires class structure data to be calculated beforehand.",
             )
 
         hours_by_subject: dict[uuid.UUID, list[DHGSubjectHours]] = {}
@@ -617,7 +623,12 @@ class DHGService:
         if not requirements:
             raise BusinessRuleError(
                 "NO_TEACHER_REQUIREMENTS",
-                "Cannot perform TRMD analysis without teacher requirements",
+                "Cannot perform TRMD analysis without teacher requirements. "
+                "Please complete these steps first: "
+                "1) Calculate class structure from enrollment data, "
+                "2) Calculate DHG subject hours from class structure, "
+                "3) Calculate teacher requirements from DHG hours. "
+                "Use the 'Calculate' buttons in the DHG Workforce Planning page.",
             )
 
         allocations = await self.get_teacher_allocations(version_id)

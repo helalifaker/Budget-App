@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { strategicService } from '@/services/strategic'
 import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
+import { useAuth } from '@/contexts/AuthContext'
 
 export const strategicKeys = {
   all: ['strategic'] as const,
@@ -10,17 +11,24 @@ export const strategicKeys = {
     [...strategicKeys.all, 'projections', planId, scenarioId] as const,
 }
 
+/**
+ * Fetch strategic plans with authentication check.
+ * Query is disabled until session is available to prevent race conditions.
+ */
 export function useStrategicPlans() {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: strategicKeys.plans(),
     queryFn: () => strategicService.getPlans(),
+    enabled: !!session && !loading,
   })
 }
 
-export function useStrategicPlan(planId: string) {
+export function useStrategicPlan(planId: string | undefined) {
   return useQuery({
-    queryKey: strategicKeys.plan(planId),
-    queryFn: () => strategicService.getPlan(planId),
+    queryKey: strategicKeys.plan(planId ?? ''),
+    queryFn: () => strategicService.getPlan(planId!),
     enabled: !!planId,
   })
 }
@@ -65,10 +73,13 @@ export function useUpdateScenarioAssumptions() {
   })
 }
 
-export function useStrategicProjections(planId: string, scenarioId: string) {
+export function useStrategicProjections(
+  planId: string | undefined,
+  scenarioId: string | undefined
+) {
   return useQuery({
-    queryKey: strategicKeys.projections(planId, scenarioId),
-    queryFn: () => strategicService.getProjections(planId, scenarioId),
+    queryKey: strategicKeys.projections(planId ?? '', scenarioId ?? ''),
+    queryFn: () => strategicService.getProjections(planId!, scenarioId!),
     enabled: !!planId && !!scenarioId,
   })
 }

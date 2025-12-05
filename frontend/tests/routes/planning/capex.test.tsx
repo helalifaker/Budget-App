@@ -5,43 +5,54 @@ import { Route as CapExRoute } from '@/routes/planning/capex'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
-let mockCapExData: any = null
-let mockDepreciationSchedule: any = null
+let mockCapExData: Record<string, unknown>[] | null = null
+let mockDepreciationSchedule: Record<string, unknown>[] | null = null
+
+// Type definitions for mock props
+type MockProps = Record<string, unknown>
+interface CapExRow {
+  id: string
+  description: string
+  asset_type?: string
+  category?: string
+}
 
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: (path: string) => (config: any) => ({
+  createFileRoute: (path: string) => (config: MockProps) => ({
     ...config,
     path,
   }),
-  Link: ({ to, children, className }: any) => (
-    <a href={to} className={className}>
-      {children}
+  Link: ({ to, children, className }: MockProps) => (
+    <a href={to as string} className={className as string}>
+      {children as React.ReactNode}
     </a>
   ),
   useNavigate: () => mockNavigate,
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: any) => <div data-testid="main-layout">{children}</div>,
+  MainLayout: ({ children }: MockProps) => (
+    <div data-testid="main-layout">{children as React.ReactNode}</div>
+  ),
 }))
 
 vi.mock('@/components/layout/PageContainer', () => ({
-  PageContainer: ({ title, description, children }: any) => (
+  PageContainer: ({ title, description, children }: MockProps) => (
     <div data-testid="page-container">
-      <h1>{title}</h1>
-      {description && <p>{description}</p>}
-      {children}
+      <h1>{title as string}</h1>
+      {description && <p>{description as string}</p>}
+      {children as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/BudgetVersionSelector', () => ({
-  BudgetVersionSelector: ({ value, onChange }: any) => (
+  BudgetVersionSelector: ({ value, onChange }: MockProps) => (
     <div data-testid="budget-version-selector">
       <select
         data-testid="version-select"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        value={(value as string) || ''}
+        onChange={(e) => (onChange as (v: string) => void)(e.target.value)}
       >
         <option value="">Select version</option>
         <option value="v1">2025-2026</option>
@@ -52,50 +63,63 @@ vi.mock('@/components/BudgetVersionSelector', () => ({
 }))
 
 vi.mock('@/components/SummaryCard', () => ({
-  SummaryCard: ({ title, value, subtitle, icon }: any) => (
-    <div data-testid={`summary-card-${title.toLowerCase().replace(/\s+/g, '-').replace(/\./g, '').replace(/&/g, 'and')}`}>
-      <div data-testid="card-title">{title}</div>
-      <div data-testid="card-value">{value}</div>
-      {subtitle && <div data-testid="card-subtitle">{subtitle}</div>}
-      {icon}
+  SummaryCard: ({ title, value, subtitle, icon }: MockProps) => (
+    <div
+      data-testid={`summary-card-${(title as string).toLowerCase().replace(/\s+/g, '-').replace(/\./g, '').replace(/&/g, 'and')}`}
+    >
+      <div data-testid="card-title">{title as string}</div>
+      <div data-testid="card-value">{value as React.ReactNode}</div>
+      {subtitle && <div data-testid="card-subtitle">{subtitle as string}</div>}
+      {icon as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, className }: any) => (
-    <div data-testid="card" className={className}>
-      {children}
+  Card: ({ children, className }: MockProps) => (
+    <div data-testid="card" className={className as string}>
+      {children as React.ReactNode}
     </div>
   ),
-  CardHeader: ({ children }: any) => <div data-testid="card-header">{children}</div>,
-  CardTitle: ({ children }: any) => <div data-testid="card-title">{children}</div>,
-  CardContent: ({ children, className }: any) => (
-    <div data-testid="card-content" className={className}>
-      {children}
+  CardHeader: ({ children }: MockProps) => (
+    <div data-testid="card-header">{children as React.ReactNode}</div>
+  ),
+  CardTitle: ({ children }: MockProps) => (
+    <div data-testid="card-title">{children as React.ReactNode}</div>
+  ),
+  CardContent: ({ children, className }: MockProps) => (
+    <div data-testid="card-content" className={className as string}>
+      {children as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, variant }: any) => (
-    <span data-testid="badge" data-variant={variant}>
-      {children}
+  Badge: ({ children, variant }: MockProps) => (
+    <span data-testid="badge" data-variant={variant as string}>
+      {children as React.ReactNode}
     </span>
   ),
 }))
 
 vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ open, children }: any) => (open ? <div data-testid="dialog">{children}</div> : null),
-  DialogContent: ({ children }: any) => <div data-testid="dialog-content">{children}</div>,
-  DialogHeader: ({ children }: any) => <div data-testid="dialog-header">{children}</div>,
-  DialogTitle: ({ children }: any) => <div data-testid="dialog-title">{children}</div>,
+  Dialog: ({ open, children }: MockProps) =>
+    open ? <div data-testid="dialog">{children as React.ReactNode}</div> : null,
+  DialogContent: ({ children }: MockProps) => (
+    <div data-testid="dialog-content">{children as React.ReactNode}</div>
+  ),
+  DialogHeader: ({ children }: MockProps) => (
+    <div data-testid="dialog-header">{children as React.ReactNode}</div>
+  ),
+  DialogTitle: ({ children }: MockProps) => (
+    <div data-testid="dialog-title">{children as React.ReactNode}</div>
+  ),
 }))
 
 vi.mock('ag-grid-react', () => ({
-  AgGridReact: ({ rowData }: any) => (
+  AgGridReact: ({ rowData }: MockProps) => (
     <div data-testid="ag-grid">
-      {rowData?.map((row: any) => (
+      {(rowData as CapExRow[] | undefined)?.map((row) => (
         <div key={row.id} data-testid="capex-row">
           {row.description}: {row.asset_type}
         </div>
@@ -142,45 +166,48 @@ describe('CapEx Planning Route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockCapExData = {
-      items: [
-        {
-          id: '1',
-          description: 'Classroom Projectors',
-          asset_type: 'EQUIPMENT',
-          account_code: '21500',
-          purchase_date: '2025-01-15',
-          cost: 50000,
-          useful_life_years: 5,
-          depreciation_method: 'STRAIGHT_LINE',
-        },
-        {
-          id: '2',
-          description: 'Laptops for Teachers',
-          asset_type: 'IT',
-          account_code: '21800',
-          purchase_date: '2025-02-01',
-          cost: 80000,
-          useful_life_years: 3,
-          depreciation_method: 'STRAIGHT_LINE',
-        },
-        {
-          id: '3',
-          description: 'Office Furniture',
-          asset_type: 'FURNITURE',
-          account_code: '21200',
-          purchase_date: '2025-03-01',
-          cost: 30000,
-          useful_life_years: 10,
-          depreciation_method: 'STRAIGHT_LINE',
-        },
-      ],
-    }
+    // API returns arrays directly - matches CapExItem type from backend
+    mockCapExData = [
+      {
+        id: '1',
+        description: 'Classroom Projectors',
+        category: 'EQUIPMENT', // was asset_type
+        account_code: '21500',
+        acquisition_date: '2025-01-15', // was purchase_date
+        total_cost_sar: 50000, // was cost
+        useful_life_years: 5,
+        annual_depreciation_sar: 10000,
+        notes: null,
+      },
+      {
+        id: '2',
+        description: 'Laptops for Teachers',
+        category: 'IT',
+        account_code: '21800',
+        acquisition_date: '2025-02-01',
+        total_cost_sar: 80000,
+        useful_life_years: 3,
+        annual_depreciation_sar: 26667,
+        notes: null,
+      },
+      {
+        id: '3',
+        description: 'Office Furniture',
+        category: 'FURNITURE',
+        account_code: '21200',
+        acquisition_date: '2025-03-01',
+        total_cost_sar: 30000,
+        useful_life_years: 10,
+        annual_depreciation_sar: 3000,
+        notes: null,
+      },
+    ]
 
+    // Depreciation schedule - field renamed from depreciation to annual_depreciation
     mockDepreciationSchedule = [
-      { year: 1, depreciation: 10000, book_value: 40000 },
-      { year: 2, depreciation: 10000, book_value: 30000 },
-      { year: 3, depreciation: 10000, book_value: 20000 },
+      { year: 1, annual_depreciation: 10000, book_value: 40000 },
+      { year: 2, annual_depreciation: 10000, book_value: 30000 },
+      { year: 3, annual_depreciation: 10000, book_value: 20000 },
     ]
   })
 
@@ -423,9 +450,9 @@ describe('CapEx Planning Route', () => {
         expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
 
         // Verify asset categories appear
-        const assetCategories = screen.getAllByTestId('card-title').find((card) =>
-          card.textContent?.includes('Asset Categories')
-        )
+        const assetCategories = screen
+          .getAllByTestId('card-title')
+          .find((card) => card.textContent?.includes('Asset Categories'))
         expect(assetCategories).toBeInTheDocument()
 
         // Verify depreciation info appears
@@ -438,7 +465,7 @@ describe('CapEx Planning Route', () => {
     })
 
     it('handles empty CapEx data', async () => {
-      mockCapExData = { items: [] }
+      mockCapExData = []
       const user = userEvent.setup()
 
       render(<CapExPage />)

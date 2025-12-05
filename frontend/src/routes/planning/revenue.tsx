@@ -1,10 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { ColDef, themeQuartz } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { SummaryCard } from '@/components/SummaryCard'
 import { RevenueChart } from '@/components/charts/RevenueChart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { AccountCodeRenderer } from '@/components/grid/AccountCodeRenderer'
 import { CurrencyRenderer } from '@/components/grid/CurrencyRenderer'
 import { useRevenue, useCalculateRevenue } from '@/hooks/api/useRevenue'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { DollarSign, TrendingUp, Calculator, Download } from 'lucide-react'
 
 export const Route = createFileRoute('/planning/revenue')({
@@ -19,13 +18,13 @@ export const Route = createFileRoute('/planning/revenue')({
 })
 
 function RevenuePage() {
-  const [selectedVersion, setSelectedVersion] = useState<string>()
-  const { data: revenue, isLoading } = useRevenue(selectedVersion!)
+  const { selectedVersionId } = useBudgetVersion()
+  const { data: revenue, isLoading } = useRevenue(selectedVersionId!)
   const calculateRevenue = useCalculateRevenue()
 
   const handleCalculateRevenue = () => {
-    if (selectedVersion) {
-      calculateRevenue.mutate(selectedVersion)
+    if (selectedVersionId) {
+      calculateRevenue.mutate(selectedVersionId)
     }
   }
 
@@ -140,24 +139,22 @@ function RevenuePage() {
         description="Manage revenue projections by category and trimester"
       >
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <BudgetVersionSelector value={selectedVersion} onChange={setSelectedVersion} />
-            <div className="flex gap-2">
-              <Button
-                onClick={handleCalculateRevenue}
-                disabled={!selectedVersion || calculateRevenue.isPending}
-              >
-                <Calculator className="w-4 h-4 mr-2" />
-                Recalculate Revenue
-              </Button>
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              data-testid="calculate-revenue"
+              onClick={handleCalculateRevenue}
+              disabled={!selectedVersionId || calculateRevenue.isPending}
+            >
+              <Calculator className="w-4 h-4 mr-2" />
+              Recalculate Revenue
+            </Button>
+            <Button data-testid="export-button" variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
           </div>
 
-          {selectedVersion && (
+          {selectedVersionId && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <SummaryCard
@@ -260,7 +257,7 @@ function RevenuePage() {
             </>
           )}
 
-          {!selectedVersion && (
+          {!selectedVersionId && (
             <Card>
               <CardContent className="py-12">
                 <div className="text-center text-gray-500">

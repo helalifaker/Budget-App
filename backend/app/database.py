@@ -10,6 +10,7 @@ import time
 from collections.abc import AsyncGenerator
 from pathlib import Path
 
+import asyncpg
 from dotenv import load_dotenv
 from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
@@ -39,7 +40,6 @@ else:
 # Normalize URL scheme for SQLAlchemy 2.x compatibility
 # - Convert 'postgres://' to 'postgresql://'
 # - Ensure asyncpg driver is used
-# - Add statement_cache_size=0 for pgbouncer compatibility
 if _raw_database_url.startswith("postgres://"):
     DATABASE_URL = _raw_database_url.replace("postgres://", "postgresql+asyncpg://", 1)
 elif _raw_database_url.startswith("postgresql://") and "+asyncpg" not in _raw_database_url:
@@ -50,12 +50,49 @@ else:
 # For migrations, use DIRECT_URL to bypass connection pooler
 DIRECT_URL = os.getenv("DIRECT_URL", DATABASE_URL)
 
+
+# Custom async connection creator for asyncpg with Supabase pooler compatibility
+async def async_creator():
+    """
+    Custom async connection creator that disables prepared statements BEFORE
+    SQLAlchemy uses the connection.
+
+    This ensures that even SQLAlchemy's dialect initialization queries
+    (like 'select pg_catalog.version()') don't use prepared statements.
+
+    Required for compatibility with Supabase's pgBouncer/Supavisor poolers.
+    """
+    from urllib.parse import urlparse
+
+    parsed = urlparse(DATABASE_URL)
+
+    return await asyncpg.connect(
+        host=parsed.hostname,
+        port=parsed.port or 5432,
+        user=parsed.username,
+        password=parsed.password,
+        database=parsed.path.lstrip("/"),
+        statement_cache_size=0,  # Disable prepared statement cache (critical for pgBouncer)
+        server_settings={"jit": "off"},  # Disable JIT compilation
+    )
+
+
 # Create async engine
 # - echo=True for development (logs SQL)
-# - pool_pre_ping=True to handle stale connections
 # - NullPool for serverless/connection pooler environments (Supabase)
-# - statement_cache_size=0 for pgbouncer transaction mode compatibility
-# Note: connect_args passes parameters to the asyncpg.connect() function
+# - Prepared statement caching disabled via connect_args
+#
+# IMPORTANT: Supabase uses connection pooling (pgBouncer/Supavisor) which can cause
+# "DuplicatePreparedStatementError" when asyncpg reuses prepared statement names.
+#
+# Solution: Disable prepared statement caching by passing statement_cache_size=0 to asyncpg.
+# This parameter MUST be passed as an integer (not string) via connect_args.
+#
+# References:
+# - https://magicstack.github.io/asyncpg/current/faq.html
+# - https://github.com/sqlalchemy/sqlalchemy/discussions/10246
+# - https://github.com/orgs/supabase/discussions/36618
+# - https://www.postgresql.org/docs/current/libpq-connect.html
 if DATABASE_URL.startswith("sqlite"):
     engine = create_async_engine(
         DATABASE_URL,
@@ -63,15 +100,14 @@ if DATABASE_URL.startswith("sqlite"):
         future=True,
     )
 else:
+    # Use custom async_creator to ensure prepared statements are disabled
+    # BEFORE SQLAlchemy's dialect initialization queries
     engine = create_async_engine(
-        DATABASE_URL,
+        "postgresql+asyncpg://",  # Dummy URL, actual connection via async_creator
+        async_creator=async_creator,
         echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
-        pool_pre_ping=True,
         poolclass=NullPool,  # Recommended for Supabase connection pooler
-        connect_args={
-            "statement_cache_size": 0,  # Disable prepared statements for pgbouncer
-            "server_settings": {},  # Empty dict to ensure asyncpg accepts the parameter
-        },
+        pool_pre_ping=False,  # Disable connection health checks (handled by Supabase pooler)
     )
 
 # Create async session factory
@@ -165,14 +201,22 @@ async def init_db() -> None:
     """
     Initialize database schema.
 
-    Creates efir_budget schema and all tables.
+    Creates efir_budget schema (PostgreSQL only) and all tables.
     Should be run once during application setup or handled by Alembic migrations.
+
+    For SQLite: Only creates tables (schemas not supported).
+    For PostgreSQL: Creates efir_budget schema first, then tables.
     """
-    from app.models.base import Base
+    # CRITICAL: Import from app.models (not app.models.base) to ensure ALL model
+    # classes are imported and registered with Base.metadata before create_all().
+    # Without this, tables won't be created because they're not in the metadata.
+    from app.models import Base
 
     async with engine.begin() as conn:
-        # Create efir_budget schema if it doesn't exist
-        await conn.execute(text("CREATE SCHEMA IF NOT EXISTS efir_budget"))
+        # Create efir_budget schema if it doesn't exist (PostgreSQL only)
+        # SQLite doesn't support schemas, so skip this step
+        if not DATABASE_URL.startswith("sqlite"):
+            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS efir_budget"))
 
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)

@@ -1,9 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
 import { requireAuth } from '@/lib/auth-guard'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { SummaryCard } from '@/components/SummaryCard'
 import { EnrollmentChart } from '@/components/charts/EnrollmentChart'
 import { RevenueChart } from '@/components/charts/RevenueChart'
@@ -13,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useDashboardSummary, useRecentActivity, useSystemAlerts } from '@/hooks/api/useAnalysis'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import {
   Users,
   School,
@@ -32,7 +31,7 @@ export const Route = createFileRoute('/dashboard')({
 })
 
 function DashboardPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const { selectedVersionId } = useBudgetVersion()
 
   const { data: summary, isLoading: summaryLoading } = useDashboardSummary(selectedVersionId)
   const { data: activities } = useRecentActivity(10)
@@ -107,16 +106,8 @@ function DashboardPage() {
         breadcrumbs={[{ label: 'Home', href: '/' }, { label: 'Dashboard' }]}
       >
         <div className="space-y-6">
-          {/* Version Selector */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <BudgetVersionSelector
-                value={selectedVersionId}
-                onChange={setSelectedVersionId}
-                showCreateButton={true}
-              />
-            </div>
-            {import.meta.env.DEV && (
+          {import.meta.env.DEV && (
+            <div className="flex justify-end">
               <Button
                 onClick={() => {
                   throw new Error('Test Sentry error from dashboard')
@@ -126,8 +117,8 @@ function DashboardPage() {
               >
                 Test Sentry Error
               </Button>
-            )}
-          </div>
+            </div>
+          )}
 
           {selectedVersionId && (
             <>
@@ -139,19 +130,19 @@ function DashboardPage() {
                   <>
                     <SummaryCard
                       title="Total Students"
-                      value={summary.total_students.toLocaleString()}
+                      value={summary.total_students?.toLocaleString() || '0'}
                       icon={<Users className="w-5 h-5" />}
                       subtitle="Enrolled"
                     />
                     <SummaryCard
                       title="Total Classes"
-                      value={summary.total_classes.toLocaleString()}
+                      value={summary.total_classes?.toLocaleString() || '0'}
                       icon={<School className="w-5 h-5" />}
                       subtitle="Active"
                     />
                     <SummaryCard
                       title="Total Teachers"
-                      value={summary.total_teachers_fte.toLocaleString()}
+                      value={summary.total_teachers_fte?.toLocaleString() || '0'}
                       icon={<GraduationCap className="w-5 h-5" />}
                       subtitle="FTE"
                     />

@@ -14,18 +14,18 @@ export const consolidationKeys = {
     [...consolidationKeys.all, 'statement', versionId, type, format, period] as const,
 }
 
-export function useConsolidationStatus(versionId: string) {
+export function useConsolidationStatus(versionId: string | undefined) {
   return useQuery({
-    queryKey: consolidationKeys.status(versionId),
-    queryFn: () => consolidationService.getStatus(versionId),
+    queryKey: consolidationKeys.status(versionId ?? ''),
+    queryFn: () => consolidationService.getStatus(versionId!),
     enabled: !!versionId,
   })
 }
 
-export function useBudgetLineItems(versionId: string) {
+export function useBudgetLineItems(versionId: string | undefined) {
   return useQuery({
-    queryKey: consolidationKeys.lineItems(versionId),
-    queryFn: () => consolidationService.getLineItems(versionId),
+    queryKey: consolidationKeys.lineItems(versionId ?? ''),
+    queryFn: () => consolidationService.getLineItems(versionId!),
     enabled: !!versionId,
   })
 }
@@ -79,14 +79,14 @@ export function useApproveBudget() {
 }
 
 export function useFinancialStatement(
-  versionId: string,
+  versionId: string | undefined,
   type: FinancialStatement['statement_type'],
   format: FinancialStatement['format'],
   period: FinancialStatement['period']
 ) {
   return useQuery({
-    queryKey: consolidationKeys.statement(versionId, type, format, period),
-    queryFn: () => consolidationService.getStatement(versionId, type, format, period),
+    queryKey: consolidationKeys.statement(versionId ?? '', type, format, period),
+    queryFn: () => consolidationService.getStatement(versionId!, type, format, period),
     enabled: !!versionId,
   })
 }

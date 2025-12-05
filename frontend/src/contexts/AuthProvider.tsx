@@ -14,7 +14,11 @@ const E2E_SESSION_KEY = 'efir_e2e_mock_session'
 // Test users for E2E testing (matches tests/e2e/fixtures/test-data.ts)
 const TEST_USERS: Record<string, { id: string; email: string; role: string }> = {
   'admin@efir.local': { id: 'test-admin-id', email: 'admin@efir.local', role: 'Admin' },
-  'manager@efir.local': { id: 'test-manager-id', email: 'manager@efir.local', role: 'Finance Director' },
+  'manager@efir.local': {
+    id: 'test-manager-id',
+    email: 'manager@efir.local',
+    role: 'Finance Director',
+  },
   'user@efir.local': { id: 'test-user-id', email: 'user@efir.local', role: 'Viewer' },
   'hr@efir.local': { id: 'test-hr-id', email: 'hr@efir.local', role: 'HR' },
   'academic@efir.local': { id: 'test-academic-id', email: 'academic@efir.local', role: 'Academic' },
@@ -35,7 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (storedSession) {
         try {
           const mockSession = JSON.parse(storedSession) as Session
-          console.log('[AuthProvider] 🧪 Restored mock session from localStorage:', mockSession.user?.email)
+          console.log(
+            '[AuthProvider] 🧪 Restored mock session from localStorage:',
+            mockSession.user?.email
+          )
           setSession(mockSession)
           setUser(mockSession.user)
         } catch (e) {

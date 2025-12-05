@@ -100,6 +100,7 @@ All backend agents MUST follow:
 - **ORM**: SQLAlchemy 2.0.44 (async with `asyncpg`)
 - **Migrations**: Alembic 1.17.2
 - **Database**: PostgreSQL 17.x (via Supabase)
+- **Cache**: Redis 8.4+ (TTL-based caching with `cashews`, graceful degradation)
 - **Security**: Supabase Auth + Row Level Security (RLS)
 
 ## Project Structure
@@ -187,6 +188,61 @@ The `SUPABASE_JWT_SECRET` is required for the backend to verify Supabase JWT tok
 4. Add to `backend/.env.local` as: `SUPABASE_JWT_SECRET=your-secret-here`
 
 **See [SETUP_JWT_AUTH.md](./SETUP_JWT_AUTH.md) for detailed setup instructions and troubleshooting.**
+
+#### Redis Caching Configuration
+
+**Redis 8.4+ is required for caching functionality** (optional but recommended for production).
+
+The backend uses Redis for:
+- **TTL-based caching** of expensive calculations (DHG, enrollment projections, KPIs)
+- **Cascading cache invalidation** following the calculation dependency graph
+- **Rate limiting** for API endpoints (when enabled)
+
+**Installation (Development)**
+```bash
+# macOS (Homebrew)
+brew install redis
+brew services start redis
+
+# Verify Redis is running
+redis-cli ping
+# Expected output: PONG
+```
+
+**Configuration Variables** (see [.env.example](.env.example) for details):
+- `REDIS_ENABLED` - Enable/disable caching (`"true"` or `"false"`)
+- `REDIS_REQUIRED` - Fail startup if Redis unavailable (`"false"` for graceful degradation)
+- `REDIS_URL` - Connection string (default: `redis://localhost:6379/0`)
+- `REDIS_CONNECT_TIMEOUT` - Connection timeout in seconds (default: `5`)
+- `REDIS_SOCKET_TIMEOUT` - Operation timeout in seconds (default: `5`)
+- `REDIS_MAX_RETRIES` - Maximum retry attempts (default: `3`)
+
+**Graceful Degradation**
+```bash
+# Option 1: Disable Redis entirely (testing/development)
+REDIS_ENABLED="false" uvicorn app.main:app --reload
+
+# Option 2: Enable with graceful fallback (recommended for development)
+REDIS_ENABLED="true" REDIS_REQUIRED="false" uvicorn app.main:app --reload
+# Server starts even if Redis is unavailable - caching gracefully disabled
+
+# Option 3: Fail fast if Redis unavailable (production mode)
+REDIS_ENABLED="true" REDIS_REQUIRED="true" uvicorn app.main:app
+# Server fails to start with clear error message if Redis down
+```
+
+**Health Check**
+```bash
+curl http://localhost:8000/health/ready | jq '.checks.cache'
+# Returns cache initialization status and configuration
+```
+
+**Cache Architecture**
+- **Dependency tracking**: Enrollment → Class Structure → DHG → Personnel Costs
+- **Automatic invalidation**: Changing enrollment data clears all dependent caches
+- **TTL defaults**: Configuration (1 hour), Calculations (5 minutes), KPIs (1 minute)
+
+**See [app/core/cache.py](app/core/cache.py) for implementation details.**
 
 ## Running the Application
 

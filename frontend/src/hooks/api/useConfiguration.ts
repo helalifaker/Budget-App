@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { configurationApi } from '@/services/configuration'
 import { toastMessages } from '@/lib/toast-messages'
+import { useAuth } from '@/contexts/AuthContext'
 import type { SystemConfig } from '@/types/api'
 
 export const configurationKeys = {
@@ -34,11 +35,18 @@ export const configurationKeys = {
     [...configurationKeys.all, 'timetable-constraints', budgetVersionId] as const,
 }
 
+/**
+ * Fetch all levels with authentication check.
+ * Query is disabled until session is available to prevent race conditions.
+ */
 export function useLevels() {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: configurationKeys.levels(),
     queryFn: () => configurationApi.levels.getAll(),
     staleTime: 30 * 60 * 1000, // 30 minutes - configuration data changes rarely
+    enabled: !!session && !loading,
   })
 }
 
@@ -60,11 +68,17 @@ export function useLevelsByCycle(cycleId: string) {
   })
 }
 
+/**
+ * Fetch all nationality types with authentication check.
+ */
 export function useNationalityTypes() {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: configurationKeys.nationalityTypes(),
     queryFn: () => configurationApi.nationalityTypes.getAll(),
     staleTime: 30 * 60 * 1000,
+    enabled: !!session && !loading,
   })
 }
 
@@ -77,18 +91,24 @@ export function useNationalityType(id: string) {
   })
 }
 
+/**
+ * Fetch all cycles with authentication check.
+ */
 export function useCycles() {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: configurationKeys.cycles(),
     queryFn: () => configurationApi.cycles.getAll(),
     staleTime: 30 * 60 * 1000,
+    enabled: !!session && !loading,
   })
 }
 
-export function useClassSizeParams(budgetVersionId: string) {
+export function useClassSizeParams(budgetVersionId: string | undefined) {
   return useQuery({
-    queryKey: configurationKeys.classSizeParams(budgetVersionId),
-    queryFn: () => configurationApi.classSizeParams.getAll(budgetVersionId),
+    queryKey: configurationKeys.classSizeParams(budgetVersionId ?? ''),
+    queryFn: () => configurationApi.classSizeParams.getAll(budgetVersionId!),
     enabled: !!budgetVersionId,
     staleTime: 30 * 60 * 1000, // 30 minutes - configuration data changes rarely
   })
@@ -120,18 +140,24 @@ export function useUpdateClassSizeParam() {
   })
 }
 
+/**
+ * Fetch all subjects with authentication check.
+ */
 export function useSubjects() {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: configurationKeys.subjects(),
     queryFn: () => configurationApi.subjects.getAll(),
     staleTime: 30 * 60 * 1000, // 30 minutes - subjects rarely change
+    enabled: !!session && !loading,
   })
 }
 
-export function useSubjectHours(budgetVersionId: string) {
+export function useSubjectHours(budgetVersionId: string | undefined) {
   return useQuery({
-    queryKey: configurationKeys.subjectHours(budgetVersionId),
-    queryFn: () => configurationApi.subjectHours.getAll(budgetVersionId),
+    queryKey: configurationKeys.subjectHours(budgetVersionId ?? ''),
+    queryFn: () => configurationApi.subjectHours.getAll(budgetVersionId!),
     enabled: !!budgetVersionId,
     staleTime: 30 * 60 * 1000, // 30 minutes - configuration data changes rarely
   })
@@ -164,11 +190,17 @@ export function useUpdateSubjectHours() {
   })
 }
 
+/**
+ * Fetch all teacher categories with authentication check.
+ */
 export function useTeacherCategories() {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: configurationKeys.teacherCategories(),
     queryFn: () => configurationApi.teacherCategories.getAll(),
     staleTime: 30 * 60 * 1000, // 30 minutes - teacher categories rarely change
+    enabled: !!session && !loading,
   })
 }
 
@@ -209,11 +241,17 @@ export function useUpdateTeacherCost() {
   })
 }
 
+/**
+ * Fetch all fee categories with authentication check.
+ */
 export function useFeeCategories() {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: configurationKeys.feeCategories(),
     queryFn: () => configurationApi.feeCategories.getAll(),
     staleTime: 30 * 60 * 1000,
+    enabled: !!session && !loading,
   })
 }
 
@@ -255,11 +293,17 @@ export function useUpdateFeeStructure() {
 // System Configuration (Module 1)
 // ============================================================================
 
+/**
+ * Fetch system configurations with authentication check.
+ */
 export function useSystemConfigs(category?: string) {
+  const { session, loading } = useAuth()
+
   return useQuery({
     queryKey: configurationKeys.systemConfigs(category),
     queryFn: () => configurationApi.systemConfig.getAll(category),
     staleTime: 30 * 60 * 1000, // 30 minutes - configuration data changes rarely
+    enabled: !!session && !loading,
   })
 }
 

@@ -193,16 +193,17 @@ function BudgetVersionsPage() {
         flex: 1,
         cellRenderer: (params: { value: string }) => {
           const statusColors: Record<string, string> = {
-            WORKING: 'bg-sand-200 text-brown-800',
-            SUBMITTED: 'bg-info-100 text-info-700',
-            APPROVED: 'bg-success-100 text-success-700',
-            SUPERSEDED: 'bg-twilight-100 text-twilight-700',
+            working: 'bg-sand-200 text-brown-800',
+            submitted: 'bg-info-100 text-info-700',
+            approved: 'bg-success-100 text-success-700',
+            forecast: 'bg-info-100 text-info-700',
+            superseded: 'bg-twilight-100 text-twilight-700',
           }
           return (
             <span
               className={`px-2 py-1 rounded text-xs font-medium ${statusColors[params.value] || ''}`}
             >
-              {params.value}
+              {params.value.toUpperCase()}
             </span>
           )
         },
@@ -215,17 +216,19 @@ function BudgetVersionsPage() {
           return (
             <div className="flex gap-2 py-2">
               <Button
+                data-testid="edit-button"
                 size="sm"
                 variant="outline"
                 onClick={() => {
                   setSelectedVersion(version)
                   setEditDialogOpen(true)
                 }}
-                disabled={version.status !== 'WORKING'}
+                disabled={version.status !== 'working'}
               >
                 <Edit className="h-3 w-3" />
               </Button>
               <Button
+                data-testid="copy-button"
                 size="sm"
                 variant="outline"
                 onClick={() => {
@@ -235,8 +238,9 @@ function BudgetVersionsPage() {
               >
                 <Copy className="h-3 w-3" />
               </Button>
-              {version.status === 'WORKING' && (
+              {version.status === 'working' && (
                 <Button
+                  data-testid="submit-button"
                   size="sm"
                   variant="default"
                   onClick={() => handleSubmit(version.id)}
@@ -245,8 +249,9 @@ function BudgetVersionsPage() {
                   <Send className="h-3 w-3" />
                 </Button>
               )}
-              {version.status === 'SUBMITTED' && (
+              {version.status === 'submitted' && (
                 <Button
+                  data-testid="approve-button"
                   size="sm"
                   variant="default"
                   onClick={() => handleApprove(version.id)}
@@ -256,10 +261,11 @@ function BudgetVersionsPage() {
                 </Button>
               )}
               <Button
+                data-testid="delete-button"
                 size="sm"
                 variant="destructive"
                 onClick={() => handleDelete(version.id, version.name)}
-                disabled={version.status !== 'WORKING' || deleteMutation.isPending}
+                disabled={version.status !== 'working' || deleteMutation.isPending}
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -284,7 +290,7 @@ function BudgetVersionsPage() {
         title="Budget Versions"
         description="Manage budget scenarios and versions"
         actions={
-          <Button onClick={() => setCreateDialogOpen(true)}>
+          <Button data-testid="create-version-button" onClick={() => setCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Version
           </Button>
@@ -308,6 +314,7 @@ function BudgetVersionsPage() {
         description="Create a new budget version"
         onSubmit={createForm.handleSubmit(handleCreate)}
         isSubmitting={createMutation.isPending}
+        submitLabel="Create"
       >
         <div className="space-y-4">
           <div>
@@ -390,6 +397,7 @@ function BudgetVersionsPage() {
         description={`Clone "${selectedVersion?.name}"`}
         onSubmit={cloneForm.handleSubmit(handleClone)}
         isSubmitting={cloneMutation.isPending}
+        submitLabel="Clone"
       >
         <div className="space-y-4">
           <div>

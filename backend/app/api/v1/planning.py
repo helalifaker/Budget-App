@@ -27,13 +27,18 @@ from app.schemas.planning import (
     EnrollmentPlanUpdate,
     EnrollmentProjectionRequest,
     EnrollmentSummary,
+    EnrollmentTotalsBulkUpdate,
+    EnrollmentWithDistributionResponse,
     FTECalculationRequest,
+    NationalityDistributionBulkUpdate,
+    NationalityDistributionResponse,
     TeacherAllocationBulkUpdate,
     TeacherAllocationCreate,
     TeacherAllocationResponse,
     TeacherAllocationUpdate,
     TRMDGapAnalysisResponse,
 )
+from app.schemas.planning_progress import PlanningProgressResponse
 from app.services.class_structure_service import ClassStructureService
 from app.services.dhg_service import DHGService
 from app.services.enrollment_service import EnrollmentService
@@ -42,6 +47,7 @@ from app.services.exceptions import (
     NotFoundError,
     ValidationError,
 )
+from app.services.planning_progress_service import PlanningProgressService
 
 router = APIRouter(prefix="/api/v1/planning", tags=["planning"])
 
@@ -85,6 +91,21 @@ def get_dhg_service(db: AsyncSession = Depends(get_db)) -> DHGService:
         DHGService instance
     """
     return DHGService(db)
+
+
+def get_planning_progress_service(
+    db: AsyncSession = Depends(get_db),
+) -> PlanningProgressService:
+    """
+    Dependency to get planning progress service instance.
+
+    Args:
+        db: Database session
+
+    Returns:
+        PlanningProgressService instance
+    """
+    return PlanningProgressService(db)
 
 
 # ==============================================================================
@@ -153,7 +174,7 @@ async def create_enrollment(
             nationality_type_id=enrollment_data.nationality_type_id,
             student_count=enrollment_data.student_count,
             notes=enrollment_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return enrollment
     except ValidationError as e:
@@ -195,7 +216,7 @@ async def update_enrollment(
             enrollment_id=enrollment_id,
             student_count=enrollment_data.student_count,
             notes=enrollment_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return enrollment
     except NotFoundError as e:
@@ -233,7 +254,7 @@ async def delete_enrollment(
         No content
     """
     try:
-        await enrollment_service.delete_enrollment(enrollment_id, user_id=user.id)
+        await enrollment_service.delete_enrollment(enrollment_id, user_id=user.user_id)
         return None
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
@@ -313,6 +334,183 @@ async def project_enrollment(
         )
 
 
+@router.get(
+    "/enrollment/{version_id}/with-distribution",
+    response_model=EnrollmentWithDistributionResponse,
+    summary="Get enrollment with nationality distribution and breakdown",
+)
+async def get_enrollment_with_distribution(
+    version_id: uuid.UUID,
+    enrollment_service: EnrollmentService = Depends(get_enrollment_service),
+    user: UserDep = ...,
+):
+    """
+    Get comprehensive enrollment view with distributions and calculated breakdown.
+
+    Returns enrollment totals by level, nationality distribution percentages,
+    and calculated student counts by level × nationality for the enrollment grid UI.
+
+    Args:
+        version_id: Budget version UUID
+        enrollment_service: Enrollment service
+        user: Current authenticated user
+
+    Returns:
+        EnrollmentWithDistributionResponse with:
+        - totals: Enrollment totals by level
+        - distributions: Nationality percentages per level
+        - breakdown: Calculated student counts by level × nationality
+        - summary: Overall statistics
+    """
+    try:
+        data = await enrollment_service.get_enrollment_with_distribution(version_id)
+        return data
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.api_route(
+    "/enrollment/{version_id}/bulk",
+    methods=["POST", "PUT"],
+    response_model=list[EnrollmentPlanResponse],
+    summary="Bulk upsert enrollment totals by level",
+)
+async def bulk_upsert_enrollment_totals(
+    version_id: uuid.UUID,
+    bulk_data: EnrollmentTotalsBulkUpdate,
+    enrollment_service: EnrollmentService = Depends(get_enrollment_service),
+    user: UserDep = ...,
+):
+    """
+    Bulk create/update enrollment totals by level.
+
+    Accepts total student counts per level and distributes them according to
+    nationality distribution percentages. If no distribution is set for a level,
+    students are distributed equally across nationalities.
+
+    Args:
+        version_id: Budget version UUID
+        bulk_data: Bulk enrollment totals
+        enrollment_service: Enrollment service
+        user: Current authenticated user
+
+    Returns:
+        List of enrollment entries after distribution
+    """
+    try:
+        totals_dict = [
+            {"level_id": t.level_id, "total_students": t.total_students}
+            for t in bulk_data.totals
+        ]
+        enrollments = await enrollment_service.bulk_upsert_enrollment_totals(
+            version_id=version_id,
+            totals=totals_dict,
+            user_id=user.user_id,
+        )
+        return enrollments
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except BusinessRuleError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+# ==============================================================================
+# Nationality Distribution Endpoints
+# ==============================================================================
+
+
+@router.get(
+    "/distributions/{version_id}",
+    response_model=list[NationalityDistributionResponse],
+    summary="Get nationality distributions for a budget version",
+)
+async def get_distributions(
+    version_id: uuid.UUID,
+    enrollment_service: EnrollmentService = Depends(get_enrollment_service),
+    user: UserDep = ...,
+):
+    """
+    Get nationality distribution percentages for all levels in a budget version.
+
+    Returns the French, Saudi, and Other nationality percentages for each
+    academic level, used to calculate student breakdown from total counts.
+
+    Args:
+        version_id: Budget version UUID
+        enrollment_service: Enrollment service
+        user: Current authenticated user
+
+    Returns:
+        List of NationalityDistributionResponse
+    """
+    try:
+        distributions = await enrollment_service.get_distributions(version_id)
+        return distributions
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.api_route(
+    "/distributions/{version_id}",
+    methods=["POST", "PUT"],
+    response_model=list[NationalityDistributionResponse],
+    summary="Bulk upsert nationality distributions",
+)
+async def bulk_upsert_distributions(
+    version_id: uuid.UUID,
+    bulk_data: NationalityDistributionBulkUpdate,
+    enrollment_service: EnrollmentService = Depends(get_enrollment_service),
+    user: UserDep = ...,
+):
+    """
+    Bulk create/update nationality distributions for a budget version.
+
+    Validates that percentages sum to 100% for each level. Distributions are
+    used to calculate student breakdown when entering enrollment totals.
+
+    Args:
+        version_id: Budget version UUID
+        bulk_data: Distribution percentages
+        enrollment_service: Enrollment service
+        user: Current authenticated user
+
+    Returns:
+        List of upserted NationalityDistributionResponse
+    """
+    try:
+        distributions_dict = [
+            {
+                "level_id": d.level_id,
+                "french_pct": d.french_pct,
+                "saudi_pct": d.saudi_pct,
+                "other_pct": d.other_pct,
+            }
+            for d in bulk_data.distributions
+        ]
+        distributions = await enrollment_service.bulk_upsert_distributions(
+            version_id=version_id,
+            distributions=distributions_dict,
+            user_id=user.user_id,
+        )
+        return distributions
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
 # ==============================================================================
 # Class Structure Planning Endpoints
 # ==============================================================================
@@ -380,7 +578,7 @@ async def calculate_class_structure(
             version_id=version_id,
             method=calculation_request.method,
             override_by_level=calculation_request.override_by_level,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return class_structures
     except ValidationError as e:
@@ -429,7 +627,7 @@ async def update_class_structure(
             atsem_count=class_structure_data.atsem_count,
             calculation_method=class_structure_data.calculation_method,
             notes=class_structure_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return class_structure
     except NotFoundError as e:
@@ -502,7 +700,7 @@ async def calculate_dhg_subject_hours(
         subject_hours = await dhg_service.calculate_dhg_subject_hours(
             budget_version_id=version_id,
             recalculate_all=calculation_request.recalculate_all,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return subject_hours
     except BusinessRuleError as e:
@@ -575,7 +773,7 @@ async def calculate_teacher_requirements(
         requirements = await dhg_service.calculate_teacher_requirements(
             version_id=version_id,
             recalculate_all=calculation_request.recalculate_all,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return requirements
     except BusinessRuleError as e:
@@ -653,7 +851,7 @@ async def create_teacher_allocation(
             category_id=allocation_data.category_id,
             fte_count=allocation_data.fte_count,
             notes=allocation_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return allocation
     except ValidationError as e:
@@ -691,7 +889,7 @@ async def update_teacher_allocation(
             allocation_id=allocation_id,
             fte_count=allocation_data.fte_count,
             notes=allocation_data.notes,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return allocation
     except NotFoundError as e:
@@ -741,7 +939,7 @@ async def bulk_update_teacher_allocations(
         allocations = await dhg_service.bulk_update_allocations(
             version_id=version_id,
             allocations=allocations_dict,
-            user_id=user.id,
+            user_id=user.user_id,
         )
         return allocations
     except ValidationError as e:
@@ -773,7 +971,7 @@ async def delete_teacher_allocation(
         No content
     """
     try:
-        await dhg_service.delete_teacher_allocation(allocation_id, user_id=user.id)
+        await dhg_service.delete_teacher_allocation(allocation_id, user_id=user.user_id)
         return None
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
@@ -815,6 +1013,57 @@ async def get_trmd_gap_analysis(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
         )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+# ==============================================================================
+# Planning Progress & Validation Endpoint
+# ==============================================================================
+
+
+@router.get(
+    "/progress/{version_id}",
+    response_model=PlanningProgressResponse,
+    summary="Get planning progress and validation status",
+)
+async def get_planning_progress(
+    version_id: uuid.UUID,
+    progress_service: PlanningProgressService = Depends(get_planning_progress_service),
+    user: UserDep = ...,
+):
+    """
+    Get comprehensive planning progress with validation for all 6 planning steps.
+
+    This endpoint analyzes existing planning data to determine completion status,
+    identify blockers, and provide validation results for:
+    1. Enrollment Planning
+    2. Class Structure
+    3. DHG Workforce Planning
+    4. Revenue Planning
+    5. Cost Planning
+    6. CapEx Planning
+
+    Args:
+        version_id: Budget version UUID
+        progress_service: Planning progress service
+        user: Current authenticated user
+
+    Returns:
+        PlanningProgressResponse with:
+        - Overall progress percentage (0-100)
+        - Completion status for each of 6 steps
+        - Validation checks (passed/failed/warning/info)
+        - Blockers with resolution steps
+        - Key metrics for each step
+    """
+    try:
+        progress = await progress_service.get_planning_progress(version_id)
+        return progress
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)

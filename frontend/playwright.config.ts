@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test'
 
 /**
  * Playwright E2E Testing Configuration for EFIR Budget Planning Application
@@ -39,7 +39,7 @@ export default defineConfig({
     // Explicitly pass VITE_E2E_TEST_MODE to bypass Supabase auth in E2E tests
     command: 'VITE_E2E_TEST_MODE=true pnpm dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: false, // Always start fresh server with E2E env vars
+    reuseExistingServer: !process.env.CI, // Reuse if not in CI, start fresh in CI
     timeout: 60000, // 60 second timeout for server startup
   },
-});
+})

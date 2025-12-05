@@ -1,100 +1,145 @@
 import { apiRequest } from '@/lib/api-client'
-import { CostLineItem, PaginatedResponse } from '@/types/api'
 import { withServiceErrorHandling } from './utils'
 
+// Types matching backend schemas
+interface PersonnelCostPlan {
+  id: string
+  budget_version_id: string
+  account_code: string
+  description: string
+  fte_count: number
+  unit_cost_sar: number
+  total_cost_sar: number
+  category_id: string
+  cycle_id?: string | null
+  is_calculated: boolean
+  calculation_driver?: string | null
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface OperatingCostPlan {
+  id: string
+  budget_version_id: string
+  account_code: string
+  description: string
+  category: string
+  amount_sar: number
+  is_calculated: boolean
+  calculation_driver?: string | null
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface CostSummary {
+  total_personnel_cost: number
+  total_operating_cost: number
+  total_cost: number
+  personnel_by_category: Record<string, number>
+  operating_by_category: Record<string, number>
+}
+
 export const costsApi = {
-  getAll: async (versionId: string, category?: 'PERSONNEL' | 'OPERATING') => {
+  // Personnel Costs
+  getPersonnelCosts: async (versionId: string) => {
     return withServiceErrorHandling(
-      apiRequest<PaginatedResponse<CostLineItem>>({
+      apiRequest<PersonnelCostPlan[]>({
         method: 'GET',
-        url: `/planning/costs/${versionId}`,
-        params: { category },
+        url: `/planning/costs/personnel/${versionId}`,
       }),
-      'costs: get all'
+      'costs: get personnel costs'
     )
   },
 
-  getById: async (id: string) => {
+  calculatePersonnelCosts: async (versionId: string, eurToSarRate: number = 4.0) => {
     return withServiceErrorHandling(
-      apiRequest<CostLineItem>({
-        method: 'GET',
-        url: `/planning/costs/item/${id}`,
-      }),
-      'costs: get by id'
-    )
-  },
-
-  create: async (data: {
-    budget_version_id: string
-    account_code: string
-    description: string
-    category: 'PERSONNEL' | 'OPERATING'
-    cost_type: string
-    p1_amount: number
-    summer_amount: number
-    p2_amount: number
-    notes?: string
-  }) => {
-    return withServiceErrorHandling(
-      apiRequest<CostLineItem>({
+      apiRequest<PersonnelCostPlan[]>({
         method: 'POST',
-        url: '/planning/costs',
-        data,
+        url: `/planning/costs/personnel/${versionId}/calculate`,
+        data: { eur_to_sar_rate: eurToSarRate },
       }),
-      'costs: create'
+      'costs: calculate personnel costs'
     )
   },
 
-  update: async (
-    id: string,
+  createPersonnelCost: async (
+    versionId: string,
     data: {
-      p1_amount?: number
-      summer_amount?: number
-      p2_amount?: number
-      notes?: string
+      account_code: string
+      description: string
+      fte_count: number
+      unit_cost_sar: number
+      category_id: string
+      cycle_id?: string | null
+      is_calculated?: boolean
+      calculation_driver?: string | null
+      notes?: string | null
     }
   ) => {
     return withServiceErrorHandling(
-      apiRequest<CostLineItem>({
-        method: 'PUT',
-        url: `/planning/costs/${id}`,
+      apiRequest<PersonnelCostPlan>({
+        method: 'POST',
+        url: `/planning/costs/personnel/${versionId}`,
         data,
       }),
-      'costs: update'
+      'costs: create personnel cost'
     )
   },
 
-  delete: async (id: string) => {
+  // Operating Costs
+  getOperatingCosts: async (versionId: string) => {
     return withServiceErrorHandling(
-      apiRequest<void>({
-        method: 'DELETE',
-        url: `/planning/costs/${id}`,
+      apiRequest<OperatingCostPlan[]>({
+        method: 'GET',
+        url: `/planning/costs/operating/${versionId}`,
       }),
-      'costs: delete'
+      'costs: get operating costs'
     )
   },
 
-  calculatePersonnelCosts: async (versionId: string) => {
+  calculateOperatingCosts: async (versionId: string, driverRates: Record<string, number>) => {
     return withServiceErrorHandling(
-      apiRequest<{ success: boolean; message: string }>({
+      apiRequest<OperatingCostPlan[]>({
         method: 'POST',
-        url: `/planning/costs/${versionId}/calculate-personnel`,
+        url: `/planning/costs/operating/${versionId}/calculate`,
+        data: { driver_rates: driverRates },
       }),
-      'costs: calculate personnel'
+      'costs: calculate operating costs'
     )
   },
 
-  bulkUpdate: async (
+  createOperatingCost: async (
     versionId: string,
-    updates: Array<{ id: string; p1_amount?: number; summer_amount?: number; p2_amount?: number }>
+    data: {
+      account_code: string
+      description: string
+      category: string
+      amount_sar: number
+      is_calculated?: boolean
+      calculation_driver?: string | null
+      notes?: string | null
+    }
   ) => {
     return withServiceErrorHandling(
-      apiRequest<{ success: boolean; count: number }>({
+      apiRequest<OperatingCostPlan>({
         method: 'POST',
-        url: `/planning/costs/${versionId}/bulk-update`,
-        data: { updates },
+        url: `/planning/costs/operating/${versionId}`,
+        data,
       }),
-      'costs: bulk update'
+      'costs: create operating cost'
+    )
+  },
+
+  // Summary
+  getCostSummary: async (versionId: string) => {
+    return withServiceErrorHandling(
+      apiRequest<CostSummary>({
+        method: 'GET',
+        url: `/planning/costs/${versionId}/summary`,
+      }),
+      'costs: get summary'
     )
   },
 }

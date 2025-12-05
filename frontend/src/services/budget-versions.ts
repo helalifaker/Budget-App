@@ -64,7 +64,7 @@ export const budgetVersionsApi = {
   submit: async (id: string) => {
     return withServiceErrorHandling(
       apiRequest<BudgetVersion>({
-        method: 'POST',
+        method: 'PUT', // Changed from POST to match backend
         url: `/budget-versions/${id}/submit`,
       }),
       'budget-versions: submit'
@@ -74,7 +74,7 @@ export const budgetVersionsApi = {
   approve: async (id: string) => {
     return withServiceErrorHandling(
       apiRequest<BudgetVersion>({
-        method: 'POST',
+        method: 'PUT', // Changed from POST to match backend
         url: `/budget-versions/${id}/approve`,
       }),
       'budget-versions: approve'

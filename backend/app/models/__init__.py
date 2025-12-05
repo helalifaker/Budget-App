@@ -27,6 +27,7 @@ from app.models.analysis import (
     VarianceStatus,
     WidgetType,
 )
+from app.models.auth import User
 from app.models.base import (
     AuditMixin,
     Base,
@@ -67,6 +68,7 @@ from app.models.planning import (
     DHGSubjectHours,
     DHGTeacherRequirement,
     EnrollmentPlan,
+    NationalityDistribution,
     OperatingCostPlan,
     PersonnelCostPlan,
     RevenuePlan,
@@ -93,6 +95,8 @@ __all__ = [
     # Base classes
     "Base",
     "BaseModel",
+    # Auth models
+    "User",
     # Consolidation Layer (Modules 13-14)
     "BudgetConsolidation",
     "BudgetVersion",
@@ -121,6 +125,7 @@ __all__ = [
     "KPIDefinition",
     "KPIValue",
     "LineType",
+    "NationalityDistribution",
     "NationalityType",
     "OperatingCostPlan",
     "PersonnelCostPlan",

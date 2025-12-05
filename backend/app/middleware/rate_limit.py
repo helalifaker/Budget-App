@@ -306,7 +306,7 @@ def rate_limit(
                 client_id = get_client_identifier(request)
 
             # Check rate limit
-            middleware = RateLimitMiddleware(None)
+            middleware = RateLimitMiddleware(None)  # type: ignore
             is_allowed, _current_count, reset_time = await middleware._check_rate_limit(
                 client_id=client_id,
                 category="decorator",

@@ -1,36 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useMemo, useCallback } from 'react'
 import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { DataTableLazy } from '@/components/DataTableLazy'
-import { FormDialog } from '@/components/FormDialog'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Plus, Trash2, Calculator } from 'lucide-react'
+import { Calculator } from 'lucide-react'
 import {
   useClassStructures,
-  useCreateClassStructure,
   useUpdateClassStructure,
-  useDeleteClassStructure,
   useCalculateClassStructure,
 } from '@/hooks/api/useClassStructure'
 import { useLevels } from '@/hooks/api/useConfiguration'
-import { classStructureSchema, type ClassStructureFormData } from '@/schemas/planning'
 import { ClassStructure } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useState } from 'react'
 
 export const Route = createFileRoute('/planning/classes')({
   beforeLoad: requireAuth,
@@ -38,8 +24,7 @@ export const Route = createFileRoute('/planning/classes')({
 })
 
 function ClassStructurePage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const { selectedVersionId } = useBudgetVersion()
   const [rowData, setRowData] = useState<ClassStructure[]>([])
 
   const {
@@ -49,57 +34,15 @@ function ClassStructurePage() {
   } = useClassStructures(selectedVersionId)
   const { data: levelsData } = useLevels()
 
-  const createMutation = useCreateClassStructure()
   const updateMutation = useUpdateClassStructure()
-  const deleteMutation = useDeleteClassStructure()
   const calculateMutation = useCalculateClassStructure()
 
-  const createForm = useForm<ClassStructureFormData>({
-    resolver: zodResolver(classStructureSchema),
-    defaultValues: {
-      level_id: '',
-      number_of_classes: 1,
-      avg_class_size: 25,
-    },
-  })
-
   useEffect(() => {
-    if (classStructuresData?.items) {
-      setRowData(classStructuresData.items)
+    // API returns array directly
+    if (classStructuresData) {
+      setRowData(classStructuresData)
     }
   }, [classStructuresData])
-
-  const handleCreate = async (formData: ClassStructureFormData) => {
-    if (!selectedVersionId) {
-      toastMessages.warning.selectVersion()
-      return
-    }
-    try {
-      await createMutation.mutateAsync({
-        budget_version_id: selectedVersionId,
-        level_id: formData.level_id,
-        number_of_classes: formData.number_of_classes,
-        avg_class_size: formData.avg_class_size,
-      })
-      setCreateDialogOpen(false)
-      createForm.reset()
-    } catch {
-      // Error toast is handled by the mutation's onError
-    }
-  }
-
-  const handleDelete = useCallback(
-    async (id: string) => {
-      if (window.confirm('Êtes-vous sûr de vouloir supprimer cette structure de classe ?')) {
-        try {
-          await deleteMutation.mutateAsync(id)
-        } catch {
-          // Error toast is handled by the mutation's onError
-        }
-      }
-    },
-    [deleteMutation]
-  )
 
   const handleCalculateFromEnrollment = async () => {
     if (!selectedVersionId) {
@@ -107,7 +50,10 @@ function ClassStructurePage() {
       return
     }
     try {
-      await calculateMutation.mutateAsync(selectedVersionId)
+      await calculateMutation.mutateAsync({
+        versionId: selectedVersionId,
+        data: {},
+      })
     } catch {
       // Error toast is handled by the mutation's onError
     }
@@ -115,7 +61,7 @@ function ClassStructurePage() {
 
   const getLevelName = useCallback(
     (levelId: string) => {
-      return levelsData?.find((l) => l.id === levelId)?.name || levelId
+      return levelsData?.find((l) => l.id === levelId)?.name_en || levelId
     },
     [levelsData]
   )
@@ -158,27 +104,8 @@ function ClassStructurePage() {
           return data.number_of_classes * data.avg_class_size
         },
       },
-      {
-        headerName: 'Actions',
-        flex: 1,
-        cellRenderer: (params: { data: ClassStructure }) => {
-          const classStructure = params.data
-          return (
-            <div className="flex gap-2 py-2">
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => handleDelete(classStructure.id)}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-          )
-        },
-      },
     ],
-    [deleteMutation.isPending, getLevelName, handleDelete]
+    [getLevelName]
   )
 
   const onCellValueChanged = async (params: CellValueChangedEvent) => {
@@ -203,32 +130,19 @@ function ClassStructurePage() {
     <MainLayout>
       <PageContainer
         title="Class Structure"
-        description="Define class structure and average class sizes"
+        description="Define class structure and average class sizes. Use 'Calculate from Enrollment' to auto-generate based on enrollment data."
         actions={
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCalculateFromEnrollment}
-              disabled={!selectedVersionId || calculateMutation.isPending}
-            >
-              <Calculator className="h-4 w-4 mr-2" />
-              Calculate from Enrollment
-            </Button>
-            <Button onClick={() => setCreateDialogOpen(true)} disabled={!selectedVersionId}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Class Structure
-            </Button>
-          </div>
+          <Button
+            data-testid="calculate-button"
+            variant="outline"
+            onClick={handleCalculateFromEnrollment}
+            disabled={!selectedVersionId || calculateMutation.isPending}
+          >
+            <Calculator className="h-4 w-4 mr-2" />
+            Calculate from Enrollment
+          </Button>
         }
       >
-        <div className="mb-6">
-          <BudgetVersionSelector
-            value={selectedVersionId}
-            onChange={setSelectedVersionId}
-            className="max-w-md"
-          />
-        </div>
-
         {selectedVersionId ? (
           <DataTableLazy
             rowData={rowData}
@@ -245,68 +159,6 @@ function ClassStructurePage() {
           </div>
         )}
       </PageContainer>
-
-      {/* Create Dialog */}
-      <FormDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        title="Add Class Structure Entry"
-        description="Add a new class structure entry for this budget version"
-        onSubmit={createForm.handleSubmit(handleCreate)}
-        isSubmitting={createMutation.isPending}
-      >
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="level_id">Level</Label>
-            <Select
-              onValueChange={(value) => createForm.setValue('level_id', value)}
-              value={createForm.watch('level_id')}
-            >
-              <SelectTrigger id="level_id" className="mt-1">
-                <SelectValue placeholder="Select a level" />
-              </SelectTrigger>
-              <SelectContent>
-                {levelsData?.map((level) => (
-                  <SelectItem key={level.id} value={level.id}>
-                    {level.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {createForm.formState.errors.level_id && (
-              <p className="text-sm text-error-600 mt-1">
-                {createForm.formState.errors.level_id.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="number_of_classes">Number of Classes</Label>
-            <Input
-              id="number_of_classes"
-              type="number"
-              {...createForm.register('number_of_classes', { valueAsNumber: true })}
-            />
-            {createForm.formState.errors.number_of_classes && (
-              <p className="text-sm text-error-600 mt-1">
-                {createForm.formState.errors.number_of_classes.message}
-              </p>
-            )}
-          </div>
-          <div>
-            <Label htmlFor="avg_class_size">Average Class Size</Label>
-            <Input
-              id="avg_class_size"
-              type="number"
-              {...createForm.register('avg_class_size', { valueAsNumber: true })}
-            />
-            {createForm.formState.errors.avg_class_size && (
-              <p className="text-sm text-error-600 mt-1">
-                {createForm.formState.errors.avg_class_size.message}
-              </p>
-            )}
-          </div>
-        </div>
-      </FormDialog>
     </MainLayout>
   )
 }

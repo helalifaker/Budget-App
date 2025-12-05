@@ -4,7 +4,6 @@ import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import { requireAuth } from '@/lib/auth-guard'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { DataTableLazy } from '@/components/DataTableLazy'
 import { AlertCircle } from 'lucide-react'
 import {
@@ -16,6 +15,7 @@ import {
 } from '@/hooks/api/useConfiguration'
 import { FeeStructure } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 
 export const Route = createFileRoute('/configuration/fees')({
   beforeLoad: requireAuth,
@@ -23,10 +23,10 @@ export const Route = createFileRoute('/configuration/fees')({
 })
 
 function FeesPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState('')
+  const { selectedVersionId } = useBudgetVersion()
   const [rowData, setRowData] = useState<FeeStructure[]>([])
 
-  const { data: feeRows, isLoading, error } = useFeeStructure(selectedVersionId)
+  const { data: feeRows, isLoading, error } = useFeeStructure(selectedVersionId!)
   const { data: feeCategories } = useFeeCategories()
   const { data: nationalityTypes } = useNationalityTypes()
   const { data: levels } = useLevels()
@@ -47,12 +47,12 @@ function FeesPage() {
   )
 
   const getNationalityName = useCallback(
-    (id: string) => nationalityTypes?.find((n) => n.id === id)?.name || id,
+    (id: string) => nationalityTypes?.find((n) => n.id === id)?.name_en || id,
     [nationalityTypes]
   )
 
   const getLevelName = useCallback(
-    (id: string) => levels?.find((l) => l.id === id)?.name || id,
+    (id: string) => levels?.find((l) => l.id === id)?.name_en || id,
     [levels]
   )
 
@@ -165,8 +165,6 @@ function FeesPage() {
         description="Configure tuition and other fee amounts by level, nationality and category"
       >
         <div className="space-y-4">
-          <BudgetVersionSelector value={selectedVersionId} onChange={setSelectedVersionId} />
-
           {!selectedVersionId && (
             <div className="flex items-center gap-2 p-4 bg-sand-50 border border-sand-200 rounded-lg">
               <AlertCircle className="h-4 w-4 text-sand-600" />

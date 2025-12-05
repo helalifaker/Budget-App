@@ -6,6 +6,11 @@ import { dhgKeys } from './api/useDHG'
 import { analysisKeys } from './api/useAnalysis'
 import { budgetVersionKeys } from './api/useBudgetVersions'
 import { consolidationKeys } from './api/useConsolidation'
+import { analysisService } from '@/services/analysis'
+import { enrollmentApi } from '@/services/enrollment'
+import { dhgApi } from '@/services/dhg'
+import { consolidationService } from '@/services/consolidation'
+import { budgetVersionsApi } from '@/services/budget-versions'
 
 /**
  * Hook for prefetching route data on navigation hover
@@ -42,13 +47,16 @@ export function usePrefetchRoute() {
       if (to.includes('/planning/enrollment')) {
         queryClient.prefetchQuery({
           queryKey: enrollmentKeys.byVersion(budgetVersionId),
+          queryFn: () => enrollmentApi.getAll(budgetVersionId),
         })
       } else if (to.includes('/planning/dhg')) {
         queryClient.prefetchQuery({
           queryKey: dhgKeys.subjectHours(budgetVersionId),
+          queryFn: () => dhgApi.getSubjectHours(budgetVersionId),
         })
         queryClient.prefetchQuery({
-          queryKey: dhgKeys.teacherFTE(budgetVersionId),
+          queryKey: dhgKeys.teacherRequirements(budgetVersionId),
+          queryFn: () => dhgApi.getTeacherRequirements(budgetVersionId),
         })
       } else if (to.includes('/planning/classes')) {
         // Class structure would use class structure keys if available
@@ -65,10 +73,13 @@ export function usePrefetchRoute() {
       else if (to.includes('/consolidation/budget')) {
         queryClient.prefetchQuery({
           queryKey: consolidationKeys.summary(budgetVersionId),
+          queryFn: () => consolidationService.getStatus(budgetVersionId),
         })
       } else if (to.includes('/consolidation/statements')) {
         queryClient.prefetchQuery({
           queryKey: consolidationKeys.statements(budgetVersionId, 'PCG'),
+          queryFn: () =>
+            consolidationService.getStatement(budgetVersionId, 'INCOME', 'PCG', 'ANNUAL'),
         })
       }
 
@@ -76,10 +87,12 @@ export function usePrefetchRoute() {
       else if (to.includes('/analysis/kpis')) {
         queryClient.prefetchQuery({
           queryKey: analysisKeys.kpis(budgetVersionId),
+          queryFn: () => analysisService.getKPIs(budgetVersionId),
         })
       } else if (to.includes('/analysis/dashboards')) {
         queryClient.prefetchQuery({
           queryKey: analysisKeys.dashboard(budgetVersionId),
+          queryFn: () => analysisService.getDashboardSummary(budgetVersionId),
         })
       } else if (to.includes('/analysis/variance')) {
         // Variance analysis - would prefetch variance data
@@ -89,6 +102,7 @@ export function usePrefetchRoute() {
       else if (to.includes('/configuration/versions')) {
         queryClient.prefetchQuery({
           queryKey: budgetVersionKeys.lists(),
+          queryFn: () => budgetVersionsApi.getAll(),
         })
       }
 
@@ -96,9 +110,11 @@ export function usePrefetchRoute() {
       else if (to === '/dashboard' || to.includes('/dashboard')) {
         queryClient.prefetchQuery({
           queryKey: analysisKeys.dashboard(budgetVersionId),
+          queryFn: () => analysisService.getDashboardSummary(budgetVersionId),
         })
         queryClient.prefetchQuery({
           queryKey: analysisKeys.activity(),
+          queryFn: () => analysisService.getRecentActivity(10),
         })
       }
     },

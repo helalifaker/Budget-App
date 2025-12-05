@@ -2,7 +2,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,6 +28,7 @@ import {
   useImportActuals,
   useCreateForecastRevision,
 } from '@/hooks/api/useAnalysis'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { Upload, TrendingUp, AlertCircle } from 'lucide-react'
 import { toastMessages } from '@/lib/toast-messages'
 
@@ -37,7 +37,7 @@ export const Route = createFileRoute('/analysis/variance')({
 })
 
 function BudgetVsActualPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const { selectedVersionId } = useBudgetVersion()
   const [period, setPeriod] = useState<'T1' | 'T2' | 'T3' | 'ANNUAL'>('ANNUAL')
   const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -126,25 +126,17 @@ function BudgetVsActualPage() {
         <div className="space-y-6">
           {/* Controls */}
           <div className="flex items-center justify-between gap-4">
-            <div className="flex gap-3">
-              <BudgetVersionSelector
-                value={selectedVersionId}
-                onChange={setSelectedVersionId}
-                showCreateButton={false}
-              />
-
-              <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="T1">Trimester 1</SelectItem>
-                  <SelectItem value="T2">Trimester 2</SelectItem>
-                  <SelectItem value="T3">Trimester 3</SelectItem>
-                  <SelectItem value="ANNUAL">Annual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="T1">Trimester 1</SelectItem>
+                <SelectItem value="T2">Trimester 2</SelectItem>
+                <SelectItem value="T3">Trimester 3</SelectItem>
+                <SelectItem value="ANNUAL">Annual</SelectItem>
+              </SelectContent>
+            </Select>
 
             <div className="flex gap-2">
               <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>

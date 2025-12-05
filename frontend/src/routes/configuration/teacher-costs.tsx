@@ -4,7 +4,6 @@ import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import { requireAuth } from '@/lib/auth-guard'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { DataTableLazy } from '@/components/DataTableLazy'
 import { AlertCircle } from 'lucide-react'
 import {
@@ -15,6 +14,7 @@ import {
 } from '@/hooks/api/useConfiguration'
 import { TeacherCostParam } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 
 export const Route = createFileRoute('/configuration/teacher-costs')({
   beforeLoad: requireAuth,
@@ -22,10 +22,10 @@ export const Route = createFileRoute('/configuration/teacher-costs')({
 })
 
 function TeacherCostsPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState('')
+  const { selectedVersionId } = useBudgetVersion()
   const [rowData, setRowData] = useState<TeacherCostParam[]>([])
 
-  const { data: teacherCosts, isLoading, error } = useTeacherCosts(selectedVersionId)
+  const { data: teacherCosts, isLoading, error } = useTeacherCosts(selectedVersionId!)
   const { data: categories } = useTeacherCategories()
   const { data: cycles } = useCycles()
   const updateMutation = useUpdateTeacherCost()
@@ -44,7 +44,7 @@ function TeacherCostsPage() {
   const getCycleName = useCallback(
     (id: string | null) => {
       if (!id) return 'All cycles'
-      return cycles?.find((c) => c.id === id)?.name || id
+      return cycles?.find((c) => c.id === id)?.name_en || id
     },
     [cycles]
   )
@@ -191,8 +191,6 @@ function TeacherCostsPage() {
         description="Configure teacher salary, charges and overtime assumptions by category"
       >
         <div className="space-y-4">
-          <BudgetVersionSelector value={selectedVersionId} onChange={setSelectedVersionId} />
-
           {!selectedVersionId && (
             <div className="flex items-center gap-2 p-4 bg-sand-50 border border-sand-200 rounded-lg">
               <AlertCircle className="h-4 w-4 text-sand-600" />

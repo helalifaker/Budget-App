@@ -15,7 +15,6 @@ import pytest
 from app.main import app
 from httpx import ASGITransport, AsyncClient, TimeoutException
 
-
 # =============================================================================
 # Basic Health Checks
 # =============================================================================
@@ -194,7 +193,7 @@ async def test_readiness_supabase_401_auth_required() -> None:
 
 @pytest.mark.asyncio
 async def test_readiness_redis_check_success() -> None:
-    """Test Redis check when healthy."""
+    """Test Redis/cache check when healthy."""
     # Redis is disabled in tests, should return disabled status
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
@@ -202,9 +201,12 @@ async def test_readiness_redis_check_success() -> None:
         response = await ac.get("/health/ready")
 
     data = response.json()
-    assert "redis" in data["checks"]
+    # Updated to check for "cache" instead of "redis" (architectural refactoring)
+    assert "cache" in data["checks"]
     # In tests, REDIS_ENABLED=false
-    assert data["checks"]["redis"]["status"] == "disabled"
+    assert data["checks"]["cache"]["status"] == "disabled"
+    assert data["checks"]["cache"]["enabled"] is False
+    assert data["checks"]["cache"]["initialized"] is False
 
 
 @pytest.mark.asyncio

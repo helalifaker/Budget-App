@@ -1,14 +1,13 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { SummaryCard } from '@/components/SummaryCard'
 import { ActivityFeed } from '@/components/ActivityFeed'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useDashboardSummary, useRecentActivity, useSystemAlerts } from '@/hooks/api/useAnalysis'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import {
   Users,
   School,
@@ -25,11 +24,11 @@ export const Route = createFileRoute('/analysis/dashboards')({
 })
 
 function AnalysisDashboardPage() {
-  const [versionId, setVersionId] = useState('')
+  const { selectedVersionId } = useBudgetVersion()
 
-  const { data: summary, isLoading: summaryLoading } = useDashboardSummary(versionId)
+  const { data: summary, isLoading: summaryLoading } = useDashboardSummary(selectedVersionId)
   const { data: activity } = useRecentActivity(8)
-  const { data: alerts } = useSystemAlerts(versionId)
+  const { data: alerts } = useSystemAlerts(selectedVersionId)
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-SA', {
@@ -59,9 +58,7 @@ function AnalysisDashboardPage() {
         breadcrumbs={[{ label: 'Analysis', href: '/analysis/kpis' }, { label: 'Dashboards' }]}
       >
         <div className="space-y-6">
-          <BudgetVersionSelector value={versionId} onChange={setVersionId} />
-
-          {versionId && (
+          {selectedVersionId && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 {summaryLoading ? (
@@ -72,19 +69,19 @@ function AnalysisDashboardPage() {
                   <>
                     <SummaryCard
                       title="Étudiants"
-                      value={summary.total_students.toLocaleString()}
+                      value={summary.total_students?.toLocaleString() || '0'}
                       icon={<Users className="w-5 h-5" />}
                       subtitle="Effectifs consolidés"
                     />
                     <SummaryCard
                       title="Classes"
-                      value={summary.total_classes.toLocaleString()}
+                      value={summary.total_classes?.toLocaleString() || '0'}
                       icon={<School className="w-5 h-5" />}
                       subtitle="Ouvertes"
                     />
                     <SummaryCard
                       title="Enseignants"
-                      value={summary.total_teachers_fte.toLocaleString()}
+                      value={summary.total_teachers_fte?.toLocaleString() || '0'}
                       icon={<GraduationCap className="w-5 h-5" />}
                       subtitle="FTE"
                     />

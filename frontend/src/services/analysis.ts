@@ -10,7 +10,7 @@ export const analysisService = {
     return withServiceErrorHandling(
       apiRequest<KPI[]>({
         method: 'GET',
-        url: `/analysis/${versionId}/kpis`,
+        url: `/analysis/kpis/${versionId}`,
       }),
       'analysis: get KPIs'
     )
@@ -26,7 +26,7 @@ export const analysisService = {
     return withServiceErrorHandling(
       apiRequest<VarianceReport>({
         method: 'GET',
-        url: `/analysis/${versionId}/variance`,
+        url: `/analysis/actuals/${versionId}/variance`,
         params: { period },
       }),
       'analysis: get variance report'
@@ -48,7 +48,7 @@ export const analysisService = {
     return withServiceErrorHandling(
       apiRequest<{ success: boolean; imported_count: number }>({
         method: 'POST',
-        url: `/analysis/${versionId}/import-actuals`,
+        url: `/analysis/actuals/${versionId}/import`,
         data: formData,
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -65,7 +65,7 @@ export const analysisService = {
     return withServiceErrorHandling(
       apiRequest<{ new_version_id: string }>({
         method: 'POST',
-        url: `/analysis/${versionId}/create-forecast`,
+        url: `/analysis/actuals/${versionId}/forecast`,
       }),
       'analysis: create forecast revision'
     )
@@ -78,7 +78,7 @@ export const analysisService = {
     return withServiceErrorHandling(
       apiRequest<DashboardSummary>({
         method: 'GET',
-        url: `/analysis/${versionId}/dashboard`,
+        url: `/analysis/dashboard/${versionId}/summary`,
       }),
       'analysis: get dashboard summary'
     )
@@ -105,7 +105,7 @@ export const analysisService = {
     return withServiceErrorHandling(
       apiRequest<SystemAlert[]>({
         method: 'GET',
-        url: `/analysis/${versionId}/alerts`,
+        url: `/analysis/dashboard/${versionId}/alerts`,
       }),
       'analysis: get alerts'
     )

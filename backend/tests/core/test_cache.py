@@ -16,6 +16,7 @@ from app.core.cache import (
     CACHE_DEPENDENCY_GRAPH,
     ENTITY_TO_CACHE_PREFIX,
     CacheInvalidator,
+    warm_cache,
 )
 
 
@@ -355,9 +356,13 @@ class TestCachePatternMatching:
 
 
 @pytest.mark.asyncio
-async def test_warm_cache_skips_when_disabled(caplog):
+async def test_warm_cache_skips_when_disabled():
     """warm_cache should no-op when Redis is disabled (test env)."""
-    caplog.set_level("DEBUG")
-    await warm_cache("version-123", ["enrollment", "dhg_calculations"])
+    # Mock the logger since structlog doesn't integrate with caplog
+    with patch("app.core.cache.logger") as mock_logger:
+        await warm_cache("version-123", ["enrollment", "dhg_calculations"])
 
-    assert any("cache_warming_skipped" in rec.message for rec in caplog.records)
+        # Verify logger.debug was called with cache_warming_skipped
+        mock_logger.debug.assert_called_once()
+        call_args = mock_logger.debug.call_args
+        assert call_args[0][0] == "cache_warming_skipped"

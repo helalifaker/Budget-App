@@ -23,7 +23,7 @@ export const BudgetVersionSchema = z.object({
   name: z.string(),
   fiscal_year: z.number(),
   academic_year: z.string(),
-  status: z.enum(['WORKING', 'SUBMITTED', 'APPROVED', 'SUPERSEDED']),
+  status: z.enum(['working', 'submitted', 'approved', 'forecast', 'superseded']),
   submitted_at: z.string().nullable(),
   approved_at: z.string().nullable(),
   is_baseline: z.boolean(),
@@ -62,15 +62,75 @@ export const EnrollmentSchema = z.object({
 
 export type Enrollment = z.infer<typeof EnrollmentSchema>
 
+// Nationality Distribution (per-level percentage breakdown)
+export const NationalityDistributionSchema = z.object({
+  id: z.string().uuid(),
+  budget_version_id: z.string().uuid(),
+  level_id: z.string().uuid(),
+  french_pct: z.number().min(0).max(100),
+  saudi_pct: z.number().min(0).max(100),
+  other_pct: z.number().min(0).max(100),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export type NationalityDistribution = z.infer<typeof NationalityDistributionSchema>
+
+// Enrollment Total (input by level, without nationality breakdown)
+export const EnrollmentTotalSchema = z.object({
+  level_id: z.string().uuid(),
+  total_students: z.number().int().min(0),
+})
+
+export type EnrollmentTotal = z.infer<typeof EnrollmentTotalSchema>
+
+// Enrollment Breakdown (calculated from totals + distribution percentages)
+export const EnrollmentBreakdownSchema = z.object({
+  level_id: z.string().uuid(),
+  level_code: z.string(),
+  level_name: z.string(),
+  cycle_code: z.string(),
+  total_students: z.number().int(),
+  french_count: z.number().int(),
+  saudi_count: z.number().int(),
+  other_count: z.number().int(),
+  french_pct: z.number(),
+  saudi_pct: z.number(),
+  other_pct: z.number(),
+})
+
+export type EnrollmentBreakdown = z.infer<typeof EnrollmentBreakdownSchema>
+
+// Enrollment Summary
+export const EnrollmentSummarySchema = z.object({
+  total_students: z.number().int(),
+  by_level: z.record(z.string(), z.number()),
+  by_cycle: z.record(z.string(), z.number()),
+  by_nationality: z.record(z.string(), z.number()),
+  capacity_utilization: z.number(),
+})
+
+export type EnrollmentSummary = z.infer<typeof EnrollmentSummarySchema>
+
+// Complete Enrollment Response (with distribution and breakdown)
+export const EnrollmentWithDistributionSchema = z.object({
+  totals: z.array(EnrollmentTotalSchema),
+  distributions: z.array(NationalityDistributionSchema),
+  breakdown: z.array(EnrollmentBreakdownSchema),
+  summary: EnrollmentSummarySchema,
+})
+
+export type EnrollmentWithDistribution = z.infer<typeof EnrollmentWithDistributionSchema>
+
 // Level (Academic Level)
 export const LevelSchema = z.object({
   id: z.string().uuid(),
-  code: z.string(),
-  name: z.string(),
   cycle_id: z.string().uuid(),
-  display_order: z.number(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  code: z.string(),
+  name_fr: z.string(),
+  name_en: z.string(),
+  sort_order: z.number(),
+  is_secondary: z.boolean(),
 })
 
 export type Level = z.infer<typeof LevelSchema>
@@ -79,10 +139,10 @@ export type Level = z.infer<typeof LevelSchema>
 export const NationalityTypeSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
-  name: z.string(),
+  name_fr: z.string(),
+  name_en: z.string(),
   vat_applicable: z.boolean(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  sort_order: z.number(),
 })
 
 export type NationalityType = z.infer<typeof NationalityTypeSchema>
@@ -116,13 +176,14 @@ export const FeeStructureSchema = z.object({
 
 export type FeeStructure = z.infer<typeof FeeStructureSchema>
 
-// Cycle
+// Cycle (Academic Cycle)
 export const CycleSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
-  name: z.string(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  name_fr: z.string(),
+  name_en: z.string(),
+  sort_order: z.number(),
+  requires_atsem: z.boolean(),
 })
 
 export type Cycle = z.infer<typeof CycleSchema>
@@ -148,8 +209,12 @@ export const ClassStructureSchema = z.object({
   id: z.string().uuid(),
   budget_version_id: z.string().uuid(),
   level_id: z.string().uuid(),
+  total_students: z.number(),
   number_of_classes: z.number(),
   avg_class_size: z.number(),
+  requires_atsem: z.boolean(),
+  atsem_count: z.number(),
+  calculation_method: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
 })
@@ -293,11 +358,10 @@ export type CapExItem = z.infer<typeof CapExItemSchema>
 export const SubjectSchema = z.object({
   id: z.string().uuid(),
   code: z.string(),
-  name: z.string(),
+  name_fr: z.string(),
+  name_en: z.string(),
   category: z.string(),
-  display_order: z.number(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  is_active: z.boolean(),
 })
 
 export type Subject = z.infer<typeof SubjectSchema>
@@ -498,7 +562,7 @@ export const DashboardSummarySchema = z.object({
   net_result_sar: z.number(),
   operating_margin_pct: z.number(),
   total_students: z.number(),
-  total_classes: z.number(),
+  total_classes: z.number().optional(), // Backend doesn't return this yet
   total_teachers_fte: z.number(),
   student_teacher_ratio: z.number(),
   capacity_utilization_pct: z.number(),
@@ -508,7 +572,7 @@ export const DashboardSummarySchema = z.object({
 export type DashboardSummary = z.infer<typeof DashboardSummarySchema>
 
 export const ActivitySchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   action: z.string(),
   user: z.string(),
   timestamp: z.string(),
@@ -518,7 +582,7 @@ export const ActivitySchema = z.object({
 export type Activity = z.infer<typeof ActivitySchema>
 
 export const SystemAlertSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string(),
   type: z.enum(['INFO', 'WARNING', 'ERROR']),
   message: z.string(),
   timestamp: z.string(),

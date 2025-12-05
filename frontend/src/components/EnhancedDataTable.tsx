@@ -372,11 +372,7 @@ export function EnhancedDataTable<TData = unknown>({
       )}
 
       {/* AG Grid */}
-      <div
-        className={cn(
-          'relative rounded-card border border-sand-200 overflow-hidden'
-        )}
-      >
+      <div className={cn('relative rounded-card border border-sand-200 overflow-hidden')}>
         {(loading || isUpdating || isLocking) && (
           <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
             <div className="flex gap-2 items-center text-twilight-600">

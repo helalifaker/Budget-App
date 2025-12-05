@@ -61,7 +61,7 @@ export function FormDialog({
             <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
               {cancelLabel}
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" data-testid="dialog-submit-button" disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : submitLabel}
             </Button>
           </DialogFooter>

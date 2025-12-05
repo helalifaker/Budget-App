@@ -24,10 +24,11 @@ from app.models.configuration import BudgetVersionStatus
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def client():
-    """Create test client."""
-    return TestClient(app)
+    """Create test client with proper lifespan handling."""
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 @pytest.fixture

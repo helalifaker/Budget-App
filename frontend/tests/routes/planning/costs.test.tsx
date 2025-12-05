@@ -5,44 +5,53 @@ import { Route as CostsRoute } from '@/routes/planning/costs'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
-let mockPersonnelCostsData: any = null
-let mockOperatingCostsData: any = null
+let mockPersonnelCostsData: Record<string, unknown>[] | null = null
+let mockOperatingCostsData: Record<string, unknown>[] | null = null
 const mockCalculatePersonnelMutation = vi.fn()
 
+// Type definitions for mock props
+type MockProps = Record<string, unknown>
+interface CostRow {
+  account_code: string
+  description: string
+}
+
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: (path: string) => (config: any) => ({
+  createFileRoute: (path: string) => (config: MockProps) => ({
     ...config,
     path,
   }),
-  Link: ({ to, children, className }: any) => (
-    <a href={to} className={className}>
-      {children}
+  Link: ({ to, children, className }: MockProps) => (
+    <a href={to as string} className={className as string}>
+      {children as React.ReactNode}
     </a>
   ),
   useNavigate: () => mockNavigate,
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: any) => <div data-testid="main-layout">{children}</div>,
+  MainLayout: ({ children }: MockProps) => (
+    <div data-testid="main-layout">{children as React.ReactNode}</div>
+  ),
 }))
 
 vi.mock('@/components/layout/PageContainer', () => ({
-  PageContainer: ({ title, description, children }: any) => (
+  PageContainer: ({ title, description, children }: MockProps) => (
     <div data-testid="page-container">
-      <h1>{title}</h1>
-      {description && <p>{description}</p>}
-      {children}
+      <h1>{title as string}</h1>
+      {description && <p>{description as string}</p>}
+      {children as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/BudgetVersionSelector', () => ({
-  BudgetVersionSelector: ({ value, onChange }: any) => (
+  BudgetVersionSelector: ({ value, onChange }: MockProps) => (
     <div data-testid="budget-version-selector">
       <select
         data-testid="version-select"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        value={(value as string) || ''}
+        onChange={(e) => (onChange as (v: string) => void)(e.target.value)}
       >
         <option value="">Select version</option>
         <option value="v1">2025-2026</option>
@@ -53,63 +62,67 @@ vi.mock('@/components/BudgetVersionSelector', () => ({
 }))
 
 vi.mock('@/components/SummaryCard', () => ({
-  SummaryCard: ({ title, value, subtitle, icon }: any) => (
-    <div data-testid={`summary-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
-      <div data-testid="card-title">{title}</div>
-      <div data-testid="card-value">{value}</div>
-      {subtitle && <div data-testid="card-subtitle">{subtitle}</div>}
-      {icon}
+  SummaryCard: ({ title, value, subtitle, icon }: MockProps) => (
+    <div data-testid={`summary-card-${(title as string).toLowerCase().replace(/\s+/g, '-')}`}>
+      <div data-testid="card-title">{title as string}</div>
+      <div data-testid="card-value">{value as React.ReactNode}</div>
+      {subtitle && <div data-testid="card-subtitle">{subtitle as string}</div>}
+      {icon as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/charts/CostChart', () => ({
-  CostChart: ({ data, title }: any) => (
+  CostChart: ({ data, title }: MockProps) => (
     <div data-testid="cost-chart">
-      <div>{title}</div>
-      <div>Chart with {data?.length} periods</div>
+      <div>{title as string}</div>
+      <div>Chart with {(data as unknown[] | undefined)?.length} periods</div>
     </div>
   ),
 }))
 
 vi.mock('@/components/ui/tabs', () => ({
-  Tabs: ({ children, value, onValueChange }: any) => (
-    <div data-testid="tabs" data-value={value}>
-      {children}
+  Tabs: ({ children, value }: MockProps) => (
+    <div data-testid="tabs" data-value={value as string}>
+      {children as React.ReactNode}
     </div>
   ),
-  TabsList: ({ children }: any) => <div data-testid="tabs-list">{children}</div>,
-  TabsTrigger: ({ value, children }: any) => (
-    <button data-testid={`tab-trigger-${value}`}>{children}</button>
+  TabsList: ({ children }: MockProps) => (
+    <div data-testid="tabs-list">{children as React.ReactNode}</div>
   ),
-  TabsContent: ({ value, children }: any) => (
-    <div data-testid={`tab-content-${value}`}>{children}</div>
+  TabsTrigger: ({ value, children }: MockProps) => (
+    <button data-testid={`tab-trigger-${value as string}`}>{children as React.ReactNode}</button>
+  ),
+  TabsContent: ({ value, children }: MockProps) => (
+    <div data-testid={`tab-content-${value as string}`}>{children as React.ReactNode}</div>
   ),
 }))
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, className }: any) => (
-    <div data-testid="card" className={className}>
-      {children}
+  Card: ({ children, className }: MockProps) => (
+    <div data-testid="card" className={className as string}>
+      {children as React.ReactNode}
     </div>
   ),
-  CardHeader: ({ children, className }: any) => (
-    <div data-testid="card-header" className={className}>
-      {children}
+  CardHeader: ({ children, className }: MockProps) => (
+    <div data-testid="card-header" className={className as string}>
+      {children as React.ReactNode}
     </div>
   ),
-  CardTitle: ({ children }: any) => <div data-testid="card-title">{children}</div>,
-  CardContent: ({ children, className }: any) => (
-    <div data-testid="card-content" className={className}>
-      {children}
+  CardTitle: ({ children }: MockProps) => (
+    <div data-testid="card-title">{children as React.ReactNode}</div>
+  ),
+  CardContent: ({ children, className }: MockProps) => (
+    <div data-testid="card-content" className={className as string}>
+      {children as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('ag-grid-react', () => ({
-  AgGridReact: ({ rowData }: any) => (
+  AgGridReact: ({ rowData }: MockProps) => (
     <div data-testid="ag-grid">
-      {rowData?.map((row: any, index: number) => (
+      {(rowData as CostRow[] | undefined)?.map((row, index) => (
         <div key={row.account_code || index} data-testid="cost-row">
           {row.account_code}: {row.description}
         </div>
@@ -131,17 +144,25 @@ vi.mock('@/components/grid/CurrencyRenderer', () => ({
 }))
 
 vi.mock('@/hooks/api/useCosts', () => ({
-  useCosts: (versionId: string, type: string) => {
-    if (!versionId) return { data: null, isLoading: false }
-    return {
-      data: type === 'PERSONNEL' ? mockPersonnelCostsData : mockOperatingCostsData,
-      isLoading: false,
-    }
-  },
+  // Renamed from useCosts to separate usePersonnelCosts and useOperatingCosts
+  usePersonnelCosts: (versionId: string) => ({
+    data: versionId ? mockPersonnelCostsData : null,
+    isLoading: false,
+  }),
+  useOperatingCosts: (versionId: string) => ({
+    data: versionId ? mockOperatingCostsData : null,
+    isLoading: false,
+  }),
   useCalculatePersonnelCosts: () => ({
     mutate: mockCalculatePersonnelMutation,
     isPending: false,
   }),
+  costsKeys: {
+    all: ['costs'],
+    personnel: (versionId: string) => ['costs', 'personnel', versionId],
+    operating: (versionId: string) => ['costs', 'operating', versionId],
+    summary: (versionId: string) => ['costs', 'summary', versionId],
+  },
 }))
 
 vi.mock('lucide-react', () => ({
@@ -159,59 +180,71 @@ describe('Cost Planning Route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockPersonnelCostsData = {
-      items: [
-        {
-          account_code: '64110',
-          description: 'Teacher Salaries',
-          cost_type: 'Salaries',
-          p1_amount: 2000000,
-          summer_amount: 500000,
-          p2_amount: 1500000,
-          annual_amount: 4000000,
-          is_auto_calculated: true,
-          notes: '',
-        },
-        {
-          account_code: '64510',
-          description: 'Social Charges',
-          cost_type: 'Benefits',
-          p1_amount: 800000,
-          summer_amount: 200000,
-          p2_amount: 600000,
-          annual_amount: 1600000,
-          is_auto_calculated: true,
-          notes: '',
-        },
-      ],
-    }
+    // API returns arrays directly - matches PersonnelCostPlan type
+    mockPersonnelCostsData = [
+      {
+        id: '1',
+        budget_version_id: 'v1',
+        account_code: '64110',
+        description: 'Teacher Salaries',
+        fte_count: 20,
+        unit_cost_sar: 200000,
+        total_cost_sar: 4000000,
+        category_id: 'salaries',
+        cycle_id: null,
+        is_calculated: true,
+        calculation_driver: 'DHG',
+        notes: '',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+      {
+        id: '2',
+        budget_version_id: 'v1',
+        account_code: '64510',
+        description: 'Social Charges',
+        fte_count: 20,
+        unit_cost_sar: 80000,
+        total_cost_sar: 1600000,
+        category_id: 'benefits',
+        cycle_id: null,
+        is_calculated: true,
+        calculation_driver: 'DHG',
+        notes: '',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+    ]
 
-    mockOperatingCostsData = {
-      items: [
-        {
-          account_code: '60610',
-          description: 'Supplies & Materials',
-          cost_type: 'Supplies',
-          p1_amount: 300000,
-          summer_amount: 50000,
-          p2_amount: 250000,
-          annual_amount: 600000,
-          is_auto_calculated: false,
-          notes: '',
-        },
-        {
-          account_code: '61300',
-          description: 'Utilities',
-          cost_type: 'Utilities',
-          p1_amount: 200000,
-          summer_amount: 100000,
-          p2_amount: 200000,
-          annual_amount: 500000,
-          is_auto_calculated: false,
-          notes: '',
-        },
-      ],
-    }
+    // API returns arrays directly - matches OperatingCostPlan type
+    mockOperatingCostsData = [
+      {
+        id: '3',
+        budget_version_id: 'v1',
+        account_code: '60610',
+        description: 'Supplies & Materials',
+        category: 'supplies',
+        amount_sar: 600000,
+        is_calculated: false,
+        calculation_driver: null,
+        notes: '',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+      {
+        id: '4',
+        budget_version_id: 'v1',
+        account_code: '61300',
+        description: 'Utilities',
+        category: 'utilities',
+        amount_sar: 500000,
+        is_calculated: false,
+        calculation_driver: null,
+        notes: '',
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+    ]
   })
 
   describe('Page structure', () => {
@@ -495,8 +528,8 @@ describe('Cost Planning Route', () => {
     })
 
     it('handles empty cost data', async () => {
-      mockPersonnelCostsData = { items: [] }
-      mockOperatingCostsData = { items: [] }
+      mockPersonnelCostsData = []
+      mockOperatingCostsData = []
       const user = userEvent.setup()
 
       render(<CostsPage />)

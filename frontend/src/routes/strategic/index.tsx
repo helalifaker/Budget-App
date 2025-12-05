@@ -62,8 +62,8 @@ export const Route = createFileRoute('/strategic/')({
 function StrategicPlanningPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('')
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string>('')
+  const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>(undefined)
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | undefined>(undefined)
 
   const { data: plans, isLoading: plansLoading } = useStrategicPlans()
   const { data: selectedPlan } = useStrategicPlan(selectedPlanId)
@@ -186,7 +186,7 @@ function StrategicPlanningPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {budgetVersions?.items
-                          .filter((v) => v.status === 'APPROVED')
+                          .filter((v) => v.status === 'approved')
                           .map((v) => (
                             <SelectItem key={v.id} value={v.id}>
                               {v.name} - {v.fiscal_year}

@@ -1,8 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +12,7 @@ import {
   useSubmitForApproval,
   useApproveBudget,
 } from '@/hooks/api/useConsolidation'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { CheckCircle2, XCircle, FileCheck, Send, CheckSquare, DollarSign } from 'lucide-react'
 import { toastMessages } from '@/lib/toast-messages'
 import {
@@ -32,7 +31,7 @@ export const Route = createFileRoute('/consolidation/budget')({
 })
 
 function BudgetConsolidationPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const { selectedVersionId } = useBudgetVersion()
 
   const { data: status, isLoading: statusLoading } = useConsolidationStatus(selectedVersionId)
   const { data: lineItems, isLoading: lineItemsLoading } = useBudgetLineItems(selectedVersionId)
@@ -120,13 +119,6 @@ function BudgetConsolidationPage() {
         ]}
       >
         <div className="space-y-6">
-          {/* Version Selector */}
-          <BudgetVersionSelector
-            value={selectedVersionId}
-            onChange={setSelectedVersionId}
-            showCreateButton={false}
-          />
-
           {selectedVersionId && (
             <>
               {/* Consolidation Status */}
@@ -177,26 +169,32 @@ function BudgetConsolidationPage() {
 
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <SummaryCard
-                  title="Total Revenue"
-                  value={formatCurrency(status?.total_revenue || 0)}
-                  icon={<DollarSign className="w-5 h-5" />}
-                  valueClassName="text-green-600"
-                />
-                <SummaryCard
-                  title="Total Costs"
-                  value={formatCurrency(status?.total_costs || 0)}
-                  icon={<DollarSign className="w-5 h-5" />}
-                  valueClassName="text-red-600"
-                />
-                <SummaryCard
-                  title="Net Income"
-                  value={formatCurrency(status?.net_income || 0)}
-                  icon={<DollarSign className="w-5 h-5" />}
-                  valueClassName={
-                    (status?.net_income || 0) >= 0 ? 'text-green-600' : 'text-red-600'
-                  }
-                />
+                <div data-testid="total-revenue">
+                  <SummaryCard
+                    title="Total Revenue"
+                    value={formatCurrency(status?.total_revenue || 0)}
+                    icon={<DollarSign className="w-5 h-5" />}
+                    valueClassName="text-green-600"
+                  />
+                </div>
+                <div data-testid="total-expenses">
+                  <SummaryCard
+                    title="Total Costs"
+                    value={formatCurrency(status?.total_costs || 0)}
+                    icon={<DollarSign className="w-5 h-5" />}
+                    valueClassName="text-red-600"
+                  />
+                </div>
+                <div data-testid="net-result">
+                  <SummaryCard
+                    title="Net Income"
+                    value={formatCurrency(status?.net_income || 0)}
+                    icon={<DollarSign className="w-5 h-5" />}
+                    valueClassName={
+                      (status?.net_income || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                    }
+                  />
+                </div>
                 <SummaryCard
                   title="Operating Margin"
                   value={`${(status?.operating_margin || 0).toFixed(1)}%`}
@@ -284,6 +282,7 @@ function BudgetConsolidationPage() {
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <Button
+                  data-testid="consolidate-button"
                   onClick={handleConsolidate}
                   disabled={consolidateMutation.isPending}
                   className="flex items-center gap-2"
@@ -292,6 +291,7 @@ function BudgetConsolidationPage() {
                   {consolidateMutation.isPending ? 'Consolidating...' : 'Consolidate'}
                 </Button>
                 <Button
+                  data-testid="submit-button"
                   onClick={handleSubmit}
                   disabled={!status?.is_complete || submitMutation.isPending}
                   variant="secondary"
@@ -301,6 +301,7 @@ function BudgetConsolidationPage() {
                   {submitMutation.isPending ? 'Submitting...' : 'Submit for Approval'}
                 </Button>
                 <Button
+                  data-testid="approve-button"
                   onClick={handleApprove}
                   disabled={approveMutation.isPending}
                   variant="outline"

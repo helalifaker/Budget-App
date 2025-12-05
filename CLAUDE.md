@@ -4,30 +4,56 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Quick Reference Commands
 
+### Monorepo (from project root)
+```bash
+pnpm dev        # Run both frontend + backend concurrently
+pnpm build      # Build frontend
+pnpm lint       # Lint both frontend + backend
+pnpm typecheck  # Type check both frontend + backend
+pnpm test       # Test both frontend + backend
+```
+
 ### Frontend (from `frontend/`)
 ```bash
 pnpm install              # Install dependencies
 pnpm dev                  # Start dev server (http://localhost:5173)
 pnpm build                # Production build
+pnpm build:analyze        # Bundle size analysis
 pnpm test                 # Run Vitest (watch mode)
 pnpm test -- --run        # Run tests once (CI mode)
+pnpm test:ui              # Vitest UI (interactive test runner)
+pnpm test:e2e             # Playwright E2E tests
+pnpm test:e2e:ui          # Playwright UI (visual debugging)
+pnpm test:e2e:debug       # Playwright debugger
 pnpm lint:fix             # ESLint with auto-fix
 pnpm format               # Prettier formatting
 pnpm typecheck            # TypeScript check (tsc --noEmit)
-pnpm test:e2e             # Playwright E2E tests
 ```
 
 ### Backend (from `backend/`)
+
+**Prerequisites**: Python 3.11+ (3.14 recommended for latest features)
+
 ```bash
+# Setup
+python3 -m venv .venv                        # Create virtual environment
 source .venv/bin/activate                    # Activate venv (required first)
+pip install -e .[dev]                        # Install with dev dependencies (ruff, mypy, pytest)
+
+# Development
 uvicorn app.main:app --reload                # Start API (http://localhost:8000)
+alembic upgrade head                         # Apply migrations
+alembic revision --autogenerate -m "desc"    # Create migration
+
+# Testing
 .venv/bin/pytest tests/ -v --tb=short        # Run tests verbose
 .venv/bin/pytest tests/engine/ -v            # Test specific directory
 .venv/bin/pytest -k test_dhg                 # Tests matching pattern
+.venv/bin/pytest tests/ --cov=app --cov-report=term-missing -v  # With coverage
+
+# Code Quality
 .venv/bin/ruff check . --fix                 # Lint with auto-fix
 .venv/bin/mypy app                           # Type check
-alembic upgrade head                         # Apply migrations
-alembic revision --autogenerate -m "desc"    # Create migration
 ```
 
 ### Running Single Tests
@@ -39,6 +65,35 @@ pnpm test -- tests/components/ui/Button.test.tsx --run
 .venv/bin/pytest tests/engine/test_dhg.py -v
 .venv/bin/pytest tests/api/test_planning_api.py::test_specific_function -v
 ```
+
+---
+
+## Environment Setup
+
+### First-Time Setup
+
+1. **Copy environment templates** (both frontend and backend):
+   ```bash
+   cp .env.example .env.local
+   cp frontend/.env.example frontend/.env.local
+   cp backend/.env.example backend/.env.local
+   ```
+
+2. **Configure Supabase** in `.env.local` files:
+   - `VITE_SUPABASE_URL` - Your Supabase project URL
+   - `VITE_SUPABASE_ANON_KEY` - Anon key (safe for frontend)
+   - `DATABASE_URL` - PostgreSQL connection via pgBouncer (for app)
+   - `DIRECT_URL` - Direct PostgreSQL connection (for migrations)
+
+3. **Critical**: Use `DIRECT_URL` for Alembic migrations (bypasses connection pooler), `DATABASE_URL` for application runtime.
+
+### Pre-commit Hooks
+
+Pre-commit hooks (Husky + lint-staged) are already configured and will auto-run on commit:
+- ESLint + Prettier (frontend)
+- Ruff + mypy (backend)
+- TypeScript type checking
+- No additional setup required
 
 ---
 
@@ -249,3 +304,116 @@ def calculate_dhg(inputs: DHGInput) -> DHGOutput:
 | `docs/user-guides/USER_GUIDE.md` | End-user documentation |
 | `docs/DOCUMENTATION_GUIDE.md` | Documentation standards and governance |
 | `docs/AGENT_DOCUMENTATION_STANDARDS.md` | Agent documentation rules |
+
+---
+
+## Documentation System
+
+### Overview
+
+All 146 documentation files are organized in a clean, discoverable structure with clear governance standards.
+
+**Master Navigation**: See [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) for complete documentation navigation.
+
+### Directory Structure
+
+```
+/
+├── foundation/              # Core specifications (PRD, TSD, requirements)
+├── docs/
+│   ├── MODULES/             # 18 module specifications (SOURCE OF TRUTH for business rules)
+│   ├── user-guides/         # User documentation
+│   ├── developer-guides/    # Developer documentation (API, integration, E2E testing)
+│   ├── status/              # Living status docs (updated frequently)
+│   ├── testing/             # Test coverage strategy and E2E guides
+│   ├── agent-work/          # Recent agent reports (<30 days)
+│   ├── technical-decisions/ # Architecture Decision Records (ADRs)
+│   ├── roadmaps/            # Future planning documents
+│   ├── database/            # Database schema and setup
+│   ├── archive/             # Historical documents (phases, implementations, status)
+│   └── templates/           # Document templates for agents
+├── backend/docs/            # Backend-specific technical docs
+└── frontend/                # Frontend-specific docs (bundle analysis, etc.)
+```
+
+### Where to Find Documentation
+
+**For Business Rules & Formulas**:
+- [docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md](docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md) - DHG calculations ⭐
+- [docs/MODULES/MODULE_07_ENROLLMENT_PLANNING.md](docs/MODULES/MODULE_07_ENROLLMENT_PLANNING.md) - Enrollment rules
+- [docs/MODULES/MODULE_10_REVENUE_PLANNING.md](docs/MODULES/MODULE_10_REVENUE_PLANNING.md) - Revenue calculations
+- [foundation/EFIR_Workforce_Planning_Logic.md](foundation/EFIR_Workforce_Planning_Logic.md) - DHG methodology
+
+**For Development**:
+- [docs/developer-guides/DEVELOPER_GUIDE.md](docs/developer-guides/DEVELOPER_GUIDE.md) - Developer setup
+- [docs/developer-guides/API_DOCUMENTATION.md](docs/developer-guides/API_DOCUMENTATION.md) - API reference
+- [backend/README.md](backend/README.md) - Backend architecture
+- [frontend/README.md](frontend/README.md) - Frontend architecture
+
+**For Testing**:
+- [docs/testing/TEST_COVERAGE_STRATEGY.md](docs/testing/TEST_COVERAGE_STRATEGY.md) - Coverage goals & plan
+- [docs/developer-guides/E2E_TESTING_GUIDE.md](docs/developer-guides/E2E_TESTING_GUIDE.md) - E2E testing
+- [backend/docs/TESTING.md](backend/docs/TESTING.md) - Backend testing
+
+**For Current Status**:
+- [docs/status/CURRENT_STATUS.md](docs/status/CURRENT_STATUS.md) - Current work (living doc, updated hourly)
+- [docs/status/REMAINING_WORK.md](docs/status/REMAINING_WORK.md) - Outstanding tasks
+- [docs/status/PRODUCTION_READINESS.md](docs/status/PRODUCTION_READINESS.md) - Production checklist
+
+### Where Agents Create Documentation
+
+**CRITICAL**: All agents MUST follow [docs/AGENT_DOCUMENTATION_STANDARDS.md](docs/AGENT_DOCUMENTATION_STANDARDS.md).
+
+**Quick Reference**:
+
+| Agent | Document Type | Location | Naming |
+|-------|---------------|----------|--------|
+| `qa-validation-agent` | Coverage reports | `docs/agent-work/` | `YYYY-MM-DD_agent-{N}_coverage-{scope}.md` |
+| `efir-master-agent` | Coordination reports | `docs/agent-work/` | `YYYY-MM-DD_master-agent_{purpose}.md` |
+| `backend-*-agent` | Implementation reports | `docs/agent-work/` | `YYYY-MM-DD_{agent}_{implementation}.md` |
+| `system-architect-agent` | ADRs | `docs/technical-decisions/` | `{DECISION}_ADR.md` |
+| `documentation-training-agent` | User/Dev guides | `docs/user-guides/` or `docs/developer-guides/` | `{NAME}_GUIDE.md` |
+| `product-architect-agent` | Module specs | `docs/MODULES/` | `MODULE_{NN}_{NAME}.md` |
+
+**Living Documents** (update in place with timestamp headers):
+- `docs/status/CURRENT_STATUS.md`
+- `docs/status/REMAINING_WORK.md`
+- `docs/status/CODEBASE_REVIEW.md`
+- `docs/status/PRODUCTION_READINESS.md`
+
+### Document Naming Conventions
+
+| Type | Format | Example |
+|------|--------|---------|
+| Living docs | `{NAME}.md` | `CURRENT_STATUS.md` |
+| Agent reports | `YYYY-MM-DD_agent-{N}_{purpose}.md` | `2025-12-05_agent-13_coverage.md` |
+| Phase summaries | `YYYY-MM-DD_phase-{N}-{desc}.md` | `2025-12-05_phase-1-completion.md` |
+| Implementation | `YYYY-MM-DD_{name}.md` | `2025-12-03_database-schema-fix.md` |
+| Guides | `{NAME}_GUIDE.md` | `USER_GUIDE.md` |
+| Versioned | `{NAME}_v{major}_{minor}.md` | `EFIR_Budget_App_PRD_v1.2.md` |
+
+### Document Lifecycle
+
+**Living Documents** (no dates in filenames):
+- Updated frequently with timestamp headers
+- Never archived
+- Examples: `CURRENT_STATUS.md`, `REMAINING_WORK.md`
+
+**Snapshot Documents** (dated with YYYY-MM-DD prefix):
+- Created once, never modified
+- Archived after 30-90 days depending on type
+- Examples: Agent reports, phase summaries, implementation reports
+
+**Reference Documents** (versioned or unversioned):
+- Updated when business rules change
+- Versioned using semantic versioning (v1.2 → v1.3)
+- Examples: Module specs, PRD, TSD
+
+### Maintenance Schedule
+
+- **Daily**: Update living status docs in `docs/status/`
+- **Weekly**: Review agent reports, archive old work (>30 days)
+- **Monthly**: Archive completed work, update cross-references
+- **Quarterly**: Full documentation audit, consolidation review
+
+See [docs/DOCUMENTATION_GUIDE.md](docs/DOCUMENTATION_GUIDE.md) for complete governance and maintenance processes.

@@ -10,10 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as StrategicIndexRouteImport } from './routes/strategic/index'
 import { Route as PlanningRevenueRouteImport } from './routes/planning/revenue'
+import { Route as PlanningGuideRouteImport } from './routes/planning/guide'
 import { Route as PlanningEnrollmentRouteImport } from './routes/planning/enrollment'
 import { Route as PlanningDhgRouteImport } from './routes/planning/dhg'
 import { Route as PlanningCostsRouteImport } from './routes/planning/costs'
@@ -37,6 +39,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DemoRoute = DemoRouteImport.update({
+  id: '/demo',
+  path: '/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -55,6 +62,11 @@ const StrategicIndexRoute = StrategicIndexRouteImport.update({
 const PlanningRevenueRoute = PlanningRevenueRouteImport.update({
   id: '/planning/revenue',
   path: '/planning/revenue',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanningGuideRoute = PlanningGuideRouteImport.update({
+  id: '/planning/guide',
+  path: '/planning/guide',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanningEnrollmentRoute = PlanningEnrollmentRouteImport.update({
@@ -102,23 +114,21 @@ const ConfigurationTimetableRoute = ConfigurationTimetableRouteImport.update({
   path: '/configuration/timetable',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfigurationTeacherCostsRoute =
-  ConfigurationTeacherCostsRouteImport.update({
-    id: '/configuration/teacher-costs',
-    path: '/configuration/teacher-costs',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ConfigurationTeacherCostsRoute = ConfigurationTeacherCostsRouteImport.update({
+  id: '/configuration/teacher-costs',
+  path: '/configuration/teacher-costs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConfigurationSystemRoute = ConfigurationSystemRouteImport.update({
   id: '/configuration/system',
   path: '/configuration/system',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfigurationSubjectHoursRoute =
-  ConfigurationSubjectHoursRouteImport.update({
-    id: '/configuration/subject-hours',
-    path: '/configuration/subject-hours',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ConfigurationSubjectHoursRoute = ConfigurationSubjectHoursRouteImport.update({
+  id: '/configuration/subject-hours',
+  path: '/configuration/subject-hours',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConfigurationFeesRoute = ConfigurationFeesRouteImport.update({
   id: '/configuration/fees',
   path: '/configuration/fees',
@@ -148,6 +158,7 @@ const AnalysisDashboardsRoute = AnalysisDashboardsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRoute
   '/login': typeof LoginRoute
   '/analysis/dashboards': typeof AnalysisDashboardsRoute
   '/analysis/kpis': typeof AnalysisKpisRoute
@@ -166,12 +177,14 @@ export interface FileRoutesByFullPath {
   '/planning/costs': typeof PlanningCostsRoute
   '/planning/dhg': typeof PlanningDhgRoute
   '/planning/enrollment': typeof PlanningEnrollmentRoute
+  '/planning/guide': typeof PlanningGuideRoute
   '/planning/revenue': typeof PlanningRevenueRoute
   '/strategic': typeof StrategicIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRoute
   '/login': typeof LoginRoute
   '/analysis/dashboards': typeof AnalysisDashboardsRoute
   '/analysis/kpis': typeof AnalysisKpisRoute
@@ -190,6 +203,7 @@ export interface FileRoutesByTo {
   '/planning/costs': typeof PlanningCostsRoute
   '/planning/dhg': typeof PlanningDhgRoute
   '/planning/enrollment': typeof PlanningEnrollmentRoute
+  '/planning/guide': typeof PlanningGuideRoute
   '/planning/revenue': typeof PlanningRevenueRoute
   '/strategic': typeof StrategicIndexRoute
 }
@@ -197,6 +211,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
+  '/demo': typeof DemoRoute
   '/login': typeof LoginRoute
   '/analysis/dashboards': typeof AnalysisDashboardsRoute
   '/analysis/kpis': typeof AnalysisKpisRoute
@@ -215,6 +230,7 @@ export interface FileRoutesById {
   '/planning/costs': typeof PlanningCostsRoute
   '/planning/dhg': typeof PlanningDhgRoute
   '/planning/enrollment': typeof PlanningEnrollmentRoute
+  '/planning/guide': typeof PlanningGuideRoute
   '/planning/revenue': typeof PlanningRevenueRoute
   '/strategic/': typeof StrategicIndexRoute
 }
@@ -223,6 +239,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/dashboard'
+    | '/demo'
     | '/login'
     | '/analysis/dashboards'
     | '/analysis/kpis'
@@ -241,12 +258,14 @@ export interface FileRouteTypes {
     | '/planning/costs'
     | '/planning/dhg'
     | '/planning/enrollment'
+    | '/planning/guide'
     | '/planning/revenue'
     | '/strategic'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
+    | '/demo'
     | '/login'
     | '/analysis/dashboards'
     | '/analysis/kpis'
@@ -265,12 +284,14 @@ export interface FileRouteTypes {
     | '/planning/costs'
     | '/planning/dhg'
     | '/planning/enrollment'
+    | '/planning/guide'
     | '/planning/revenue'
     | '/strategic'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
+    | '/demo'
     | '/login'
     | '/analysis/dashboards'
     | '/analysis/kpis'
@@ -289,6 +310,7 @@ export interface FileRouteTypes {
     | '/planning/costs'
     | '/planning/dhg'
     | '/planning/enrollment'
+    | '/planning/guide'
     | '/planning/revenue'
     | '/strategic/'
   fileRoutesById: FileRoutesById
@@ -296,6 +318,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
+  DemoRoute: typeof DemoRoute
   LoginRoute: typeof LoginRoute
   AnalysisDashboardsRoute: typeof AnalysisDashboardsRoute
   AnalysisKpisRoute: typeof AnalysisKpisRoute
@@ -314,6 +337,7 @@ export interface RootRouteChildren {
   PlanningCostsRoute: typeof PlanningCostsRoute
   PlanningDhgRoute: typeof PlanningDhgRoute
   PlanningEnrollmentRoute: typeof PlanningEnrollmentRoute
+  PlanningGuideRoute: typeof PlanningGuideRoute
   PlanningRevenueRoute: typeof PlanningRevenueRoute
   StrategicIndexRoute: typeof StrategicIndexRoute
 }
@@ -325,6 +349,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/demo': {
+      id: '/demo'
+      path: '/demo'
+      fullPath: '/demo'
+      preLoaderRoute: typeof DemoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -353,6 +384,13 @@ declare module '@tanstack/react-router' {
       path: '/planning/revenue'
       fullPath: '/planning/revenue'
       preLoaderRoute: typeof PlanningRevenueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planning/guide': {
+      id: '/planning/guide'
+      path: '/planning/guide'
+      fullPath: '/planning/guide'
+      preLoaderRoute: typeof PlanningGuideRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planning/enrollment': {
@@ -480,6 +518,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
+  DemoRoute: DemoRoute,
   LoginRoute: LoginRoute,
   AnalysisDashboardsRoute: AnalysisDashboardsRoute,
   AnalysisKpisRoute: AnalysisKpisRoute,
@@ -498,6 +537,7 @@ const rootRouteChildren: RootRouteChildren = {
   PlanningCostsRoute: PlanningCostsRoute,
   PlanningDhgRoute: PlanningDhgRoute,
   PlanningEnrollmentRoute: PlanningEnrollmentRoute,
+  PlanningGuideRoute: PlanningGuideRoute,
   PlanningRevenueRoute: PlanningRevenueRoute,
   StrategicIndexRoute: StrategicIndexRoute,
 }

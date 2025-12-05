@@ -26,10 +26,12 @@ from app.schemas.consolidation import (
     BudgetConsolidationResponse,
     ConsolidationLineItemResponse,
     ConsolidationRequest,
+    ConsolidationStatusResponse,
     ConsolidationSummary,
     ConsolidationValidationResponse,
     FinancialPeriodTotals,
     IncomeStatementResponse,
+    ModulesCompleteStatus,
     SubmitForApprovalRequest,
     WorkflowActionResponse,
 )
@@ -100,7 +102,7 @@ def _normalize_line_item(item: Any) -> ConsolidationLineItemResponse:
     """
     account_name = getattr(item, "account_name", None)
     if not isinstance(account_name, str) or not account_name:
-        account_name = getattr(item, "description", "")
+        account_name = str(getattr(item, "description", "") or "")
 
     category = getattr(item, "consolidation_category", None)
     if not isinstance(category, ConsolidationCategory):
@@ -119,7 +121,7 @@ def _normalize_line_item(item: Any) -> ConsolidationLineItemResponse:
     return ConsolidationLineItemResponse(
         id=getattr(item, "id", uuid.uuid4()),
         account_code=getattr(item, "account_code", ""),
-        account_name=account_name,
+        account_name=str(account_name),
         consolidation_category=category,
         is_revenue=bool(getattr(item, "is_revenue", False)),
         amount_sar=Decimal(getattr(item, "amount_sar", 0)),
@@ -157,25 +159,109 @@ def _normalize_income_statement(
 
     total_amount = getter("total_amount_sar", getter("net_result", 0))
 
+    # Typesafe conversions for Pydantic model
+    statement_name = str(getter("statement_name", "Income Statement"))
+    
+    fy_raw = getter("fiscal_year", datetime.utcnow().year)
+    try:
+        fiscal_year = int(fy_raw) if fy_raw is not None else datetime.utcnow().year
+    except (ValueError, TypeError):
+        fiscal_year = datetime.utcnow().year
+    
+    created_at = getter("created_at", datetime.utcnow())
+    if not isinstance(created_at, datetime):
+        created_at = datetime.utcnow()
+        
+    updated_at = getter("updated_at", datetime.utcnow())
+    if not isinstance(updated_at, datetime):
+        updated_at = datetime.utcnow()
+
+    # UUID handling
+    def _to_uuid(val: Any, default: uuid.UUID) -> uuid.UUID:
+        if isinstance(val, uuid.UUID):
+            return val
+        try:
+            return uuid.UUID(str(val))
+        except (ValueError, TypeError):
+            return default
+
     return IncomeStatementResponse(
-        id=getter("id", uuid.uuid4()),
-        budget_version_id=getter("budget_version_id", version_id),
+        id=_to_uuid(getter("id", None), uuid.uuid4()),
+        budget_version_id=_to_uuid(getter("budget_version_id", None), version_id),
         statement_type=statement_type,
         statement_format=fmt,
-        statement_name=getter("statement_name", "Income Statement"),
-        fiscal_year=getter("fiscal_year", datetime.utcnow().year),
-        total_amount_sar=Decimal(total_amount),
+        statement_name=statement_name,
+        fiscal_year=fiscal_year,
+        total_amount_sar=Decimal(str(total_amount)),
         is_calculated=bool(getter("is_calculated", True)),
         notes=notes,
         lines=[],
-        created_at=getter("created_at", datetime.utcnow()),
-        updated_at=getter("updated_at", datetime.utcnow()),
+        created_at=created_at,
+        updated_at=updated_at,
     )
 
 
 # ==============================================================================
 # Budget Consolidation Endpoints
 # ==============================================================================
+
+
+@router.get("/{version_id}/status", response_model=ConsolidationStatusResponse)
+async def get_consolidation_status(
+    version_id: uuid.UUID,
+    consolidation_service: ConsolidationService = Depends(_resolve_consolidation_service),
+    user: UserDep = ...,
+):
+    """
+    Get consolidation status for a budget version.
+
+    Returns simplified status indicating which planning modules are complete.
+    Used by sidebar/UI components to show completion progress.
+
+    Args:
+        version_id: Budget version UUID
+        consolidation_service: Consolidation service
+        user: Current authenticated user
+
+    Returns:
+        Consolidation status with module completion flags
+
+    Raises:
+        404: Budget version not found
+    """
+    try:
+        # Verify budget version exists
+        budget_version = await consolidation_service.budget_version_service.get_by_id(
+            version_id
+        )
+
+        if not budget_version:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Budget version {version_id} not found",
+            )
+
+        # Get validation to determine module completion
+        validation = await consolidation_service.validate_completeness(version_id)
+
+        # Convert module_counts to completion booleans
+        module_counts = validation.get("module_counts", {})
+        modules_complete = ModulesCompleteStatus(
+            enrollment=module_counts.get("enrollment", 0) > 0,
+            classes=module_counts.get("classes", 0) > 0,
+            dhg=module_counts.get("dhg", 0) > 0,
+            revenue=module_counts.get("revenue", 0) > 0,
+            costs=module_counts.get("costs", 0) > 0,
+            capex=module_counts.get("capex", 0) > 0,
+        )
+
+        return ConsolidationStatusResponse(
+            budget_version_id=version_id,
+            is_complete=validation.get("is_complete", False),
+            modules_complete=modules_complete,
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.get("/{version_id}", response_model=BudgetConsolidationResponse)
@@ -301,7 +387,7 @@ async def consolidate_budget(
     """
     try:
         # Run consolidation
-        await consolidation_service.consolidate_budget(version_id, user_id=user.id)
+        await consolidation_service.consolidate_budget(version_id, user_id=user.user_id)
 
         # Invalidate consolidation and dependent caches
         await CacheInvalidator.invalidate(str(version_id), "budget_consolidation")
@@ -361,14 +447,14 @@ async def submit_for_approval(
 
         # Submit for approval
         updated = await consolidation_service.submit_for_approval(
-            version_id, user_id=user.id
+            version_id, user_id=user.user_id
         )
 
         return WorkflowActionResponse(
             budget_version_id=version_id,
             previous_status=previous_status,
             new_status=updated.status,
-            action_by=user.id,
+            action_by=user.user_id,
             action_at=updated.submitted_at if updated.submitted_at is not None else datetime.utcnow(),
             message=f"Budget '{updated.name}' successfully submitted for approval",
         )
@@ -562,7 +648,127 @@ async def get_consolidation_summary(
 # ==============================================================================
 
 
-@router.get("/statements/income/{version_id}", response_model=IncomeStatementResponse)
+@router.get("/{version_id}/statements/{statement_type}")
+async def get_financial_statement(
+    version_id: uuid.UUID,
+    statement_type: str,
+    format: str = Query(
+        default="PCG",
+        description="Statement format: 'PCG' for French PCG, 'IFRS' for IFRS",
+    ),
+    period: str = Query(
+        default="ANNUAL",
+        description="Period: 'ANNUAL', 'P1', 'P2', 'SUMMER'",
+    ),
+    statements_service: FinancialStatementsService = Depends(
+        _resolve_financial_statements_service
+    ),
+    user: UserDep = ...,
+):
+    """
+    Get financial statement for a budget version.
+
+    Unified endpoint that handles INCOME, BALANCE, and CASHFLOW statements.
+
+    Args:
+        version_id: Budget version UUID
+        statement_type: Statement type ('INCOME', 'BALANCE', 'CASHFLOW')
+        format: Statement format ('PCG' or 'IFRS')
+        period: Period filter
+        statements_service: Financial statements service
+        user: Current authenticated user
+
+    Returns:
+        Financial statement based on type
+
+    Raises:
+        404: Budget version not found
+        400: Invalid statement type or format
+    """
+    try:
+        statement_type_upper = statement_type.upper()
+
+        if statement_type_upper == "INCOME":
+            statement = await statements_service.get_income_statement(version_id, format)
+            normalized = _normalize_income_statement(
+                statement, version_id, StatementType.INCOME_STATEMENT
+            )
+            data = normalized.model_dump()
+            # Preserve legacy format string expected by tests/client
+            data["statement_format"] = (
+                "pcg" if str(format).lower().startswith("pcg") else "ifrs"
+            )
+            return data
+
+        elif statement_type_upper == "BALANCE":
+            balance_sheet = await statements_service.get_balance_sheet(version_id)
+
+            # Check if balanced
+            assets_total = getattr(
+                balance_sheet["assets"], "total_amount_sar", Decimal("0")
+            )
+            liabilities_total = getattr(
+                balance_sheet["liabilities"], "total_amount_sar", Decimal("0")
+            )
+            is_balanced = assets_total == liabilities_total
+
+            # Get budget version for fiscal year
+            budget_version = await statements_service.budget_version_service.get_by_id(
+                version_id
+            )
+
+            if not budget_version:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Budget version {version_id} not found",
+                )
+
+            assets_stmt = _normalize_income_statement(
+                balance_sheet.get("assets"),
+                version_id,
+                StatementType.BALANCE_SHEET_ASSETS,
+            )
+            liabilities_stmt = _normalize_income_statement(
+                balance_sheet.get("liabilities"),
+                version_id,
+                StatementType.BALANCE_SHEET_LIABILITIES,
+            )
+
+            return BalanceSheetResponse(
+                budget_version_id=version_id,
+                fiscal_year=budget_version.fiscal_year,
+                assets=assets_stmt,
+                liabilities=liabilities_stmt,
+                is_balanced=is_balanced,
+            )
+
+        elif statement_type_upper == "CASHFLOW":
+            # CASHFLOW not implemented yet
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Cash flow statement not yet implemented",
+            )
+
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid statement type: {statement_type}. Must be INCOME, BALANCE, or CASHFLOW",
+            )
+
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get financial statement: {e!s}",
+        )
+
+
+@router.get("/{version_id}/statements/income", response_model=IncomeStatementResponse)
 async def get_income_statement(
     version_id: uuid.UUID,
     format: str = Query(
@@ -611,7 +817,7 @@ async def get_income_statement(
         )
 
 
-@router.get("/statements/balance/{version_id}", response_model=BalanceSheetResponse)
+@router.get("/{version_id}/statements/balance", response_model=BalanceSheetResponse)
 async def get_balance_sheet(
     version_id: uuid.UUID,
     statements_service: FinancialStatementsService = Depends(
@@ -682,7 +888,7 @@ async def get_balance_sheet(
         )
 
 
-@router.get("/statements/{version_id}/periods", response_model=list[FinancialPeriodTotals])
+@router.get("/{version_id}/statements/periods", response_model=list[FinancialPeriodTotals])
 async def get_period_totals(
     version_id: uuid.UUID,
     statements_service: FinancialStatementsService = Depends(
@@ -738,7 +944,7 @@ async def get_period_totals(
 
 
 @router.get(
-    "/statements/{version_id}/periods/{period}", response_model=FinancialPeriodTotals
+    "/{version_id}/statements/periods/{period}", response_model=FinancialPeriodTotals
 )
 async def get_period_total(
     version_id: uuid.UUID,

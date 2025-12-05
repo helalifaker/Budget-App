@@ -5,46 +5,58 @@ import { Route as DHGRoute } from '@/routes/planning/dhg'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
-let mockSubjectHoursData: any = null
-let mockTeacherFTEData: any = null
-let mockTRMDGapsData: any = null
-let mockHSAPlanningData: any = null
+let mockSubjectHoursData: Record<string, unknown>[] | null = null
+let mockTeacherFTEData: Record<string, unknown>[] | null = null
+let mockTRMDGapsData: Record<string, unknown>[] | null = null
+let mockHSAPlanningData: Record<string, unknown>[] | null = null
 const mockCalculateMutation = vi.fn()
 
+// Type definitions for mock props
+type MockProps = Record<string, unknown>
+interface DHGRow {
+  id?: string
+  subject_name?: string
+  teacher_name?: string
+  hours_per_week?: number
+  hsa_hours?: number
+}
+
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: (path: string) => (config: any) => ({
+  createFileRoute: (path: string) => (config: MockProps) => ({
     ...config,
     path,
   }),
-  Link: ({ to, children, className }: any) => (
-    <a href={to} className={className}>
-      {children}
+  Link: ({ to, children, className }: MockProps) => (
+    <a href={to as string} className={className as string}>
+      {children as React.ReactNode}
     </a>
   ),
   useNavigate: () => mockNavigate,
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: any) => <div data-testid="main-layout">{children}</div>,
+  MainLayout: ({ children }: MockProps) => (
+    <div data-testid="main-layout">{children as React.ReactNode}</div>
+  ),
 }))
 
 vi.mock('@/components/layout/PageContainer', () => ({
-  PageContainer: ({ title, description, children }: any) => (
+  PageContainer: ({ title, description, children }: MockProps) => (
     <div data-testid="page-container">
-      <h1>{title}</h1>
-      {description && <p>{description}</p>}
-      {children}
+      <h1>{title as string}</h1>
+      {description && <p>{description as string}</p>}
+      {children as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/BudgetVersionSelector', () => ({
-  BudgetVersionSelector: ({ value, onChange }: any) => (
+  BudgetVersionSelector: ({ value, onChange }: MockProps) => (
     <div data-testid="budget-version-selector">
       <select
         data-testid="version-select"
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
+        value={(value as string) || ''}
+        onChange={(e) => (onChange as (v: string) => void)(e.target.value)}
       >
         <option value="">Select version</option>
         <option value="v1">2025-2026</option>
@@ -55,64 +67,68 @@ vi.mock('@/components/BudgetVersionSelector', () => ({
 }))
 
 vi.mock('@/components/SummaryCard', () => ({
-  SummaryCard: ({ title, value, subtitle, icon, valueClassName }: any) => (
-    <div data-testid={`summary-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
-      <div data-testid="card-title">{title}</div>
-      <div data-testid="card-value" className={valueClassName}>
-        {value}
+  SummaryCard: ({ title, value, subtitle, icon, valueClassName }: MockProps) => (
+    <div data-testid={`summary-card-${(title as string).toLowerCase().replace(/\s+/g, '-')}`}>
+      <div data-testid="card-title">{title as string}</div>
+      <div data-testid="card-value" className={valueClassName as string}>
+        {value as React.ReactNode}
       </div>
-      {subtitle && <div data-testid="card-subtitle">{subtitle}</div>}
-      {icon}
+      {subtitle && <div data-testid="card-subtitle">{subtitle as string}</div>}
+      {icon as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/ui/tabs', () => ({
-  Tabs: ({ children, value, onValueChange }: any) => (
-    <div data-testid="tabs" data-value={value}>
-      {children}
+  Tabs: ({ children, value }: MockProps) => (
+    <div data-testid="tabs" data-value={value as string}>
+      {children as React.ReactNode}
     </div>
   ),
-  TabsList: ({ children }: any) => <div data-testid="tabs-list">{children}</div>,
-  TabsTrigger: ({ value, children }: any) => (
-    <button data-testid={`tab-trigger-${value}`}>{children}</button>
+  TabsList: ({ children }: MockProps) => (
+    <div data-testid="tabs-list">{children as React.ReactNode}</div>
   ),
-  TabsContent: ({ value, children }: any) => (
-    <div data-testid={`tab-content-${value}`}>{children}</div>
+  TabsTrigger: ({ value, children }: MockProps) => (
+    <button data-testid={`tab-trigger-${value as string}`}>{children as React.ReactNode}</button>
+  ),
+  TabsContent: ({ value, children }: MockProps) => (
+    <div data-testid={`tab-content-${value as string}`}>{children as React.ReactNode}</div>
   ),
 }))
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, className }: any) => (
-    <div data-testid="card" className={className}>
-      {children}
+  Card: ({ children, className }: MockProps) => (
+    <div data-testid="card" className={className as string}>
+      {children as React.ReactNode}
     </div>
   ),
-  CardHeader: ({ children, className }: any) => (
-    <div data-testid="card-header" className={className}>
-      {children}
+  CardHeader: ({ children, className }: MockProps) => (
+    <div data-testid="card-header" className={className as string}>
+      {children as React.ReactNode}
     </div>
   ),
-  CardTitle: ({ children }: any) => <div data-testid="card-title">{children}</div>,
-  CardContent: ({ children, className }: any) => (
-    <div data-testid="card-content" className={className}>
-      {children}
+  CardTitle: ({ children }: MockProps) => (
+    <div data-testid="card-title">{children as React.ReactNode}</div>
+  ),
+  CardContent: ({ children, className }: MockProps) => (
+    <div data-testid="card-content" className={className as string}>
+      {children as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/ui/badge', () => ({
-  Badge: ({ children, variant }: any) => (
-    <span data-testid="badge" data-variant={variant}>
-      {children}
+  Badge: ({ children, variant }: MockProps) => (
+    <span data-testid="badge" data-variant={variant as string}>
+      {children as React.ReactNode}
     </span>
   ),
 }))
 
 vi.mock('ag-grid-react', () => ({
-  AgGridReact: ({ rowData }: any) => (
+  AgGridReact: ({ rowData }: MockProps) => (
     <div data-testid="ag-grid">
-      {rowData?.map((row: any, index: number) => (
+      {(rowData as DHGRow[] | undefined)?.map((row, index) => (
         <div key={row.id || index} data-testid="dhg-row">
           {row.subject_name || row.teacher_name}: {row.hours_per_week || row.hsa_hours}
         </div>
@@ -130,19 +146,23 @@ vi.mock('@/hooks/api/useDHG', () => ({
     data: versionId ? mockSubjectHoursData : null,
     isLoading: false,
   }),
-  useTeacherFTE: (versionId: string) => ({
+  // Renamed from useTeacherFTE to useTeacherRequirements
+  useTeacherRequirements: (versionId: string) => ({
     data: versionId ? mockTeacherFTEData : null,
     isLoading: false,
   }),
-  useTRMDGaps: (versionId: string) => ({
+  // Renamed from useTRMDGaps to useTRMDGapAnalysis
+  useTRMDGapAnalysis: (versionId: string) => ({
     data: versionId ? mockTRMDGapsData : null,
     isLoading: false,
   }),
+  // HSA Planning not currently implemented in backend
   useHSAPlanning: (versionId: string) => ({
     data: versionId ? mockHSAPlanningData : null,
     isLoading: false,
   }),
-  useCalculateFTE: () => ({
+  // Renamed from useCalculateFTE to useCalculateTeacherRequirements
+  useCalculateTeacherRequirements: () => ({
     mutate: mockCalculateMutation,
     isPending: false,
   }),
@@ -163,112 +183,125 @@ describe('DHG Workforce Planning Route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockSubjectHoursData = {
-      items: [
-        {
-          id: '1',
-          subject_name: 'Mathématiques',
-          level_name: '6ème',
-          hours_per_week: 4.5,
-          is_split: false,
-          number_of_classes: 6,
-        },
-        {
-          id: '2',
-          subject_name: 'Français',
-          level_name: '5ème',
-          hours_per_week: 5,
-          is_split: true,
-          number_of_classes: 5,
-        },
-        {
-          id: '3',
-          subject_name: 'Histoire-Géographie',
-          level_name: '4ème',
-          hours_per_week: 3,
-          is_split: false,
-          number_of_classes: 4,
-        },
-      ],
-    }
+    // API returns arrays directly (not { items: [...] })
+    mockSubjectHoursData = [
+      {
+        id: '1',
+        subject_name: 'Mathématiques',
+        level_name: '6ème',
+        hours_per_week: 4.5,
+        is_split: false,
+        number_of_classes: 6,
+      },
+      {
+        id: '2',
+        subject_name: 'Français',
+        level_name: '5ème',
+        hours_per_week: 5,
+        is_split: true,
+        number_of_classes: 5,
+      },
+      {
+        id: '3',
+        subject_name: 'Histoire-Géographie',
+        level_name: '4ème',
+        hours_per_week: 3,
+        is_split: false,
+        number_of_classes: 4,
+      },
+    ]
 
-    mockTeacherFTEData = {
-      items: [
-        {
-          id: '1',
-          cycle_name: 'Collège',
-          subject_name: 'Mathématiques',
-          total_hours: 96,
-          standard_fte: 5.33,
-          adjusted_fte: 6,
-          hsa_hours: 12,
-        },
-        {
-          id: '2',
-          cycle_name: 'Collège',
-          subject_name: 'Français',
-          total_hours: 84,
-          standard_fte: 4.67,
-          adjusted_fte: 5,
-          hsa_hours: 6,
-        },
-        {
-          id: '3',
-          cycle_name: 'Lycée',
-          subject_name: 'Sciences',
-          total_hours: 72,
-          standard_fte: 4.0,
-          adjusted_fte: 4,
-          hsa_hours: 0,
-        },
-      ],
-    }
+    // Teacher requirements - matches DHGTeacherRequirement type
+    mockTeacherFTEData = [
+      {
+        id: '1',
+        budget_version_id: 'v1',
+        subject_id: 'math',
+        cycle_id: 'college',
+        required_hours: 96,
+        standard_hours: 18,
+        fte_required: 5.33,
+        notes: null,
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+      {
+        id: '2',
+        budget_version_id: 'v1',
+        subject_id: 'french',
+        cycle_id: 'college',
+        required_hours: 84,
+        standard_hours: 18,
+        fte_required: 4.67,
+        notes: null,
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+      {
+        id: '3',
+        budget_version_id: 'v1',
+        subject_id: 'science',
+        cycle_id: 'lycee',
+        required_hours: 72,
+        standard_hours: 18,
+        fte_required: 4.0,
+        notes: null,
+        created_at: '2024-01-01',
+        updated_at: '2024-01-01',
+      },
+    ]
 
+    // TRMD Gap Analysis - matches TRMDGapAnalysis type
     mockTRMDGapsData = {
-      items: [
+      version_id: 'v1',
+      analysis_date: '2024-01-01',
+      gaps: [
         {
-          id: '1',
-          subject_name: 'Mathématiques',
-          hours_needed: 96,
-          aefe_positions: 4,
-          local_positions: 1,
-          deficit_hours: 6,
-          hsa_required: 6,
+          subject_id: 'math',
+          cycle_id: 'college',
+          required_fte: 5.33,
+          aefe_allocated: 4,
+          local_allocated: 1,
+          total_allocated: 5,
+          deficit: 0.33,
+          hsa_needed: 6,
         },
         {
-          id: '2',
-          subject_name: 'Français',
-          hours_needed: 84,
-          aefe_positions: 3,
-          local_positions: 2,
-          deficit_hours: -6,
-          hsa_required: 0,
+          subject_id: 'french',
+          cycle_id: 'college',
+          required_fte: 4.67,
+          aefe_allocated: 3,
+          local_allocated: 2,
+          total_allocated: 5,
+          deficit: -0.33,
+          hsa_needed: 0,
         },
       ],
+      total_deficit: 0,
+      total_hsa_needed: 6,
     }
 
-    mockHSAPlanningData = {
-      items: [
-        {
-          teacher_name: 'Jean Dupont',
-          subject_name: 'Mathématiques',
-          hsa_hours: 3,
-          notes: 'Experienced teacher',
-        },
-        {
-          teacher_name: 'Marie Martin',
-          subject_name: 'Français',
-          hsa_hours: 2,
-          notes: null,
-        },
-        {
-          teacher_name: 'Pierre Bernard',
-          subject_name: 'Sciences',
-          hsa_hours: 5,
-          notes: 'Exceeds maximum',
-        },
-      ],
-    }
+    // HSA Planning - not currently implemented in backend, using array format
+    mockHSAPlanningData = [
+      {
+        teacher_name: 'Jean Dupont',
+        subject_name: 'Mathématiques',
+        hsa_hours: 3,
+        notes: 'Experienced teacher',
+      },
+      {
+        teacher_name: 'Marie Martin',
+        subject_name: 'Français',
+        hsa_hours: 2,
+        notes: null,
+      },
+      {
+        teacher_name: 'Pierre Bernard',
+        subject_name: 'Sciences',
+        hsa_hours: 5,
+        notes: 'Exceeds maximum',
+      },
+    ]
   })
 
   describe('Page structure', () => {
@@ -566,7 +599,9 @@ describe('DHG Workforce Planning Route', () => {
     it('shows placeholder when no version selected', () => {
       render(<DHGPage />)
 
-      expect(screen.getByText('Select a budget version to view DHG workforce planning')).toBeInTheDocument()
+      expect(
+        screen.getByText('Select a budget version to view DHG workforce planning')
+      ).toBeInTheDocument()
     })
 
     it('hides placeholder when version selected', async () => {
@@ -613,10 +648,16 @@ describe('DHG Workforce Planning Route', () => {
     })
 
     it('handles empty DHG data', async () => {
-      mockSubjectHoursData = { items: [] }
-      mockTeacherFTEData = { items: [] }
-      mockTRMDGapsData = { items: [] }
-      mockHSAPlanningData = { items: [] }
+      mockSubjectHoursData = []
+      mockTeacherFTEData = []
+      mockTRMDGapsData = {
+        version_id: 'v1',
+        analysis_date: '2024-01-01',
+        gaps: [],
+        total_deficit: 0,
+        total_hsa_needed: 0,
+      }
+      mockHSAPlanningData = []
       const user = userEvent.setup()
 
       render(<DHGPage />)

@@ -4,7 +4,6 @@ import { AgGridReact } from 'ag-grid-react'
 import { ColDef, themeQuartz } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { SummaryCard } from '@/components/SummaryCard'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -12,11 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   useSubjectHours,
-  useTeacherFTE,
-  useTRMDGaps,
-  useHSAPlanning,
-  useCalculateFTE,
+  useTeacherRequirements,
+  useTRMDGapAnalysis,
+  useCalculateTeacherRequirements,
 } from '@/hooks/api/useDHG'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { Users, Clock, AlertTriangle, TrendingUp, Calculator, Save } from 'lucide-react'
 
 export const Route = createFileRoute('/planning/dhg')({
@@ -24,26 +23,33 @@ export const Route = createFileRoute('/planning/dhg')({
 })
 
 function DHGPage() {
-  const [selectedVersion, setSelectedVersion] = useState<string>()
+  const { selectedVersionId } = useBudgetVersion()
   const [activeTab, setActiveTab] = useState<'hours' | 'fte' | 'trmd' | 'hsa'>('hours')
 
-  const { data: subjectHours, isLoading: loadingHours } = useSubjectHours(selectedVersion!)
-  const { data: teacherFTE, isLoading: loadingFTE } = useTeacherFTE(selectedVersion!)
-  const { data: trmdGaps, isLoading: loadingTRMD } = useTRMDGaps(selectedVersion!)
-  const { data: hsaPlanning, isLoading: loadingHSA } = useHSAPlanning(selectedVersion!)
-  const calculateFTE = useCalculateFTE()
+  const { data: subjectHours, isLoading: loadingHours } = useSubjectHours(selectedVersionId!)
+  const { data: teacherFTE, isLoading: loadingFTE } = useTeacherRequirements(selectedVersionId!)
+  const { data: trmdGaps, isLoading: loadingTRMD } = useTRMDGapAnalysis(selectedVersionId!)
+  const calculateFTE = useCalculateTeacherRequirements()
+
+  // Check if TRMD data is null (prerequisites missing)
+  const trmdMissingPrerequisites = !loadingTRMD && !trmdGaps
 
   const handleCalculateFTE = () => {
-    if (selectedVersion) {
-      calculateFTE.mutate(selectedVersion)
+    if (selectedVersionId) {
+      calculateFTE.mutate({ versionId: selectedVersionId })
     }
   }
 
-  // Summary metrics
-  const totalFTE = teacherFTE?.items.reduce((sum, item) => sum + item.adjusted_fte, 0) || 0
-  const totalHSAHours = teacherFTE?.items.reduce((sum, item) => sum + item.hsa_hours, 0) || 0
-  const totalDeficit = trmdGaps?.items.reduce((sum, item) => sum + item.deficit_hours, 0) || 0
-  const hsaAssignments = hsaPlanning?.items.length || 0
+  // Summary metrics - API returns arrays directly
+  const fteItems = teacherFTE || []
+  const trmdGapItems = trmdGaps?.gaps || []
+  const totalFTE = fteItems.reduce(
+    (sum: number, item: { fte_required?: number }) => sum + (item.fte_required || 0),
+    0
+  )
+  const totalHSAHours = trmdGaps?.total_hsa_needed || 0
+  const totalDeficit = trmdGaps?.total_deficit || 0
+  const totalSubjects = trmdGapItems.length
 
   return (
     <MainLayout>
@@ -52,18 +58,18 @@ function DHGPage() {
         description="Teacher hours and FTE planning using DHG methodology"
       >
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <BudgetVersionSelector value={selectedVersion} onChange={setSelectedVersion} />
+          <div className="flex items-center justify-end">
             <Button
+              data-testid="calculate-button"
               onClick={handleCalculateFTE}
-              disabled={!selectedVersion || calculateFTE.isPending}
+              disabled={!selectedVersionId || calculateFTE.isPending}
             >
               <Calculator className="w-4 h-4 mr-2" />
               Recalculate FTE
             </Button>
           </div>
 
-          {selectedVersion && (
+          {selectedVersionId && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <SummaryCard
@@ -86,41 +92,76 @@ function DHGPage() {
                   valueClassName={totalDeficit > 0 ? 'text-red-600' : 'text-green-600'}
                 />
                 <SummaryCard
-                  title="HSA Assignments"
-                  value={hsaAssignments}
-                  subtitle="Teachers with overtime"
+                  title="Subjects Analyzed"
+                  value={totalSubjects}
+                  subtitle="In TRMD gap analysis"
                   icon={<TrendingUp className="w-5 h-5" />}
                 />
               </div>
 
               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
                 <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="hours">Subject Hours</TabsTrigger>
-                  <TabsTrigger value="fte">Teacher FTE</TabsTrigger>
-                  <TabsTrigger value="trmd">TRMD Gap Analysis</TabsTrigger>
-                  <TabsTrigger value="hsa">HSA Planning</TabsTrigger>
+                  <TabsTrigger data-testid="subject-hours-tab" value="hours">
+                    Subject Hours
+                  </TabsTrigger>
+                  <TabsTrigger data-testid="fte-tab" value="fte">
+                    Teacher FTE
+                  </TabsTrigger>
+                  <TabsTrigger data-testid="trmd-tab" value="trmd">
+                    TRMD Gap Analysis
+                  </TabsTrigger>
+                  <TabsTrigger data-testid="hsa-tab" value="hsa">
+                    HSA Planning
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="hours" className="mt-6">
-                  <SubjectHoursTab data={subjectHours?.items || []} isLoading={loadingHours} />
+                  <SubjectHoursTab data={subjectHours || []} isLoading={loadingHours} />
                 </TabsContent>
 
                 <TabsContent value="fte" className="mt-6">
-                  <TeacherFTETab data={teacherFTE?.items || []} isLoading={loadingFTE} />
+                  <TeacherFTETab data={fteItems} isLoading={loadingFTE} />
                 </TabsContent>
 
                 <TabsContent value="trmd" className="mt-6">
-                  <TRMDTab data={trmdGaps?.items || []} isLoading={loadingTRMD} />
+                  {trmdMissingPrerequisites ? (
+                    <Card>
+                      <CardContent className="py-12">
+                        <div className="text-center text-gray-500">
+                          <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
+                          <p className="text-lg font-medium mb-2">
+                            Teacher Requirements Not Calculated
+                          </p>
+                          <p className="text-sm">
+                            Please calculate teacher FTE requirements first before viewing TRMD gap
+                            analysis.
+                          </p>
+                          <Button
+                            onClick={handleCalculateFTE}
+                            className="mt-4"
+                            disabled={calculateFTE.isPending}
+                          >
+                            <Calculator className="w-4 h-4 mr-2" />
+                            {calculateFTE.isPending
+                              ? 'Calculating...'
+                              : 'Calculate Teacher Requirements'}
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <TRMDTab data={trmdGapItems} isLoading={loadingTRMD} />
+                  )}
                 </TabsContent>
 
                 <TabsContent value="hsa" className="mt-6">
-                  <HSATab data={hsaPlanning?.items || []} isLoading={loadingHSA} />
+                  <HSATab data={[]} isLoading={false} />
                 </TabsContent>
               </Tabs>
             </>
           )}
 
-          {!selectedVersion && (
+          {!selectedVersionId && (
             <Card>
               <CardContent className="py-12">
                 <div className="text-center text-gray-500">
@@ -214,56 +255,56 @@ function SubjectHoursTab({ data, isLoading }: { data: SubjectHoursItem[]; isLoad
   )
 }
 
+// Matches DHGTeacherRequirement from backend API
 interface TeacherFTEItem {
-  id?: string
-  created_at?: string
-  updated_at?: string
-  budget_version_id?: string
-  level_id?: string | null
-  cycle_id?: string
-  subject_id?: string
+  id: string
+  budget_version_id: string
+  subject_id: string
+  cycle_id: string
+  required_hours: number
+  standard_hours: number
+  fte_required: number
+  notes?: string | null
+  created_at: string
+  updated_at: string
+  // Display fields (may be added by frontend)
   cycle_name?: string
   subject_name?: string
-  total_hours: number
-  standard_fte: number
-  adjusted_fte: number
-  hsa_hours: number
 }
 
 function TeacherFTETab({ data, isLoading }: { data: TeacherFTEItem[]; isLoading: boolean }) {
   const columnDefs: ColDef[] = [
-    { headerName: 'Cycle', field: 'cycle_name', width: 150 },
-    { headerName: 'Subject', field: 'subject_name', width: 200 },
+    { headerName: 'Cycle', field: 'cycle_id', width: 150 },
+    { headerName: 'Subject', field: 'subject_id', width: 200 },
     {
-      headerName: 'Total Hours',
-      field: 'total_hours',
-      width: 130,
-      valueFormatter: (params) => params.value.toFixed(1),
+      headerName: 'Required Hours',
+      field: 'required_hours',
+      width: 140,
+      valueFormatter: (params) => params.value?.toFixed(1) ?? '0.0',
     },
     {
-      headerName: 'Standard FTE',
-      field: 'standard_fte',
+      headerName: 'Standard Hours',
+      field: 'standard_hours',
       width: 140,
-      valueFormatter: (params) => params.value.toFixed(2),
+      valueFormatter: (params) => params.value?.toFixed(1) ?? '0.0',
     },
     {
-      headerName: 'Adjusted FTE',
-      field: 'adjusted_fte',
+      headerName: 'FTE Required',
+      field: 'fte_required',
       width: 140,
-      valueFormatter: (params) => params.value.toFixed(2),
+      valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
       cellStyle: { fontWeight: 'bold' },
     },
     {
-      headerName: 'HSA Hours',
-      field: 'hsa_hours',
-      width: 130,
-      valueFormatter: (params) => params.value.toFixed(1),
-      cellStyle: (params) => (params.value > 0 ? { color: '#F59E0B' } : undefined),
+      headerName: 'Notes',
+      field: 'notes',
+      width: 200,
+      editable: true,
     },
   ]
 
-  const totalStandardFTE = data.reduce((sum, item) => sum + item.standard_fte, 0)
-  const totalAdjustedFTE = data.reduce((sum, item) => sum + item.adjusted_fte, 0)
+  const totalFTERequired = data.reduce((sum, item) => sum + (item.fte_required || 0), 0)
+  const totalRequiredHours = data.reduce((sum, item) => sum + (item.required_hours || 0), 0)
 
   return (
     <Card>
@@ -274,8 +315,8 @@ function TeacherFTETab({ data, isLoading }: { data: TeacherFTEItem[]; isLoading:
           18h/week.
         </p>
         <div className="flex gap-4 mt-2">
-          <Badge variant="info">Standard FTE: {totalStandardFTE.toFixed(2)}</Badge>
-          <Badge variant="success">Adjusted FTE: {totalAdjustedFTE.toFixed(2)}</Badge>
+          <Badge variant="info">Total Hours: {totalRequiredHours.toFixed(1)}</Badge>
+          <Badge variant="success">Total FTE: {totalFTERequired.toFixed(2)}</Badge>
         </div>
       </CardHeader>
       <CardContent>
@@ -297,63 +338,72 @@ function TeacherFTETab({ data, isLoading }: { data: TeacherFTEItem[]; isLoading:
   )
 }
 
+// Matches TRMDGapAnalysis.gaps from backend API
 interface TRMDItem {
-  id?: string
-  budget_version_id?: string
-  subject_id?: string
-  created_at?: string
-  updated_at?: string
+  subject_id: string
+  cycle_id: string
+  required_fte: number
+  aefe_allocated: number
+  local_allocated: number
+  total_allocated: number
+  deficit: number
+  hsa_needed: number
+  // Display fields (may be added by frontend)
   subject_name?: string
-  hours_needed: number
-  aefe_positions: number
-  local_positions: number
-  deficit_hours: number
-  hsa_required: number
 }
 
 function TRMDTab({ data, isLoading }: { data: TRMDItem[]; isLoading: boolean }) {
   const columnDefs: ColDef[] = [
-    { headerName: 'Subject', field: 'subject_name', pinned: 'left', width: 200 },
+    { headerName: 'Subject', field: 'subject_id', pinned: 'left', width: 150 },
+    { headerName: 'Cycle', field: 'cycle_id', width: 120 },
     {
-      headerName: 'Hours Needed',
-      field: 'hours_needed',
+      headerName: 'Required FTE',
+      field: 'required_fte',
       width: 140,
-      valueFormatter: (params) => params.value.toFixed(1),
+      valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
     },
     {
-      headerName: 'AEFE Positions',
-      field: 'aefe_positions',
+      headerName: 'AEFE Allocated',
+      field: 'aefe_allocated',
       width: 150,
       editable: true,
       cellDataType: 'number',
+      valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
     },
     {
-      headerName: 'Local Positions',
-      field: 'local_positions',
+      headerName: 'Local Allocated',
+      field: 'local_allocated',
       width: 150,
       editable: true,
       cellDataType: 'number',
+      valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
+    },
+    {
+      headerName: 'Total Allocated',
+      field: 'total_allocated',
+      width: 140,
+      valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
     },
     {
       headerName: 'Deficit/Surplus',
-      field: 'deficit_hours',
+      field: 'deficit',
       width: 150,
-      valueFormatter: (params) => params.value.toFixed(1),
+      valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
       cellStyle: (params) => ({
-        color: params.value > 0 ? '#EF4444' : '#10B981',
+        color: (params.value || 0) > 0 ? '#EF4444' : '#10B981',
         fontWeight: 'bold',
       }),
       cellRenderer: (params: { value: number }) => {
-        const value = params.value
+        const value = params.value || 0
         const icon = value > 0 ? '▼' : '▲'
-        return `${icon} ${Math.abs(value).toFixed(1)}h`
+        return `${icon} ${Math.abs(value).toFixed(2)} FTE`
       },
     },
     {
-      headerName: 'HSA Required',
-      field: 'hsa_required',
+      headerName: 'HSA Needed',
+      field: 'hsa_needed',
       width: 140,
-      valueFormatter: (params) => params.value.toFixed(1),
+      valueFormatter: (params) => params.value?.toFixed(1) ?? '0.0',
     },
   ]
 

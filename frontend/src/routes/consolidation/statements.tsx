@@ -2,7 +2,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -15,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { StatementSection } from '@/components/StatementSection'
 import { useFinancialStatement } from '@/hooks/api/useConsolidation'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { Download, Printer } from 'lucide-react'
 import type { FinancialStatement } from '@/types/api'
 
@@ -23,7 +23,7 @@ export const Route = createFileRoute('/consolidation/statements')({
 })
 
 function FinancialStatementsPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const { selectedVersionId } = useBudgetVersion()
   const [format, setFormat] = useState<FinancialStatement['format']>('PCG')
   const [period, setPeriod] = useState<FinancialStatement['period']>('ANNUAL')
   const [activeTab, setActiveTab] = useState<FinancialStatement['statement_type']>('INCOME')
@@ -56,47 +56,62 @@ function FinancialStatementsPage() {
         ]}
       >
         <div className="space-y-6">
-          {/* Version Selector */}
-          <BudgetVersionSelector
-            value={selectedVersionId}
-            onChange={setSelectedVersionId}
-            showCreateButton={false}
-          />
-
           {selectedVersionId && (
             <>
               {/* Controls */}
               <div className="flex items-center justify-between gap-4">
                 <div className="flex gap-3">
                   <Select value={format} onValueChange={(v) => setFormat(v as typeof format)}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger data-testid="format-selector" className="w-40">
                       <SelectValue placeholder="Format" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="PCG">PCG</SelectItem>
-                      <SelectItem value="IFRS">IFRS</SelectItem>
+                      <SelectItem data-testid="format-pcg" value="PCG">
+                        PCG
+                      </SelectItem>
+                      <SelectItem data-testid="format-ifrs" value="IFRS">
+                        IFRS
+                      </SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger data-testid="period-selector" className="w-40">
                       <SelectValue placeholder="Period" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ANNUAL">Annual</SelectItem>
-                      <SelectItem value="P1">Period 1</SelectItem>
-                      <SelectItem value="P2">Period 2</SelectItem>
-                      <SelectItem value="SUMMER">Summer</SelectItem>
+                      <SelectItem data-testid="period-annual" value="ANNUAL">
+                        Annual
+                      </SelectItem>
+                      <SelectItem data-testid="period-p1" value="P1">
+                        Period 1
+                      </SelectItem>
+                      <SelectItem data-testid="period-p2" value="P2">
+                        Period 2
+                      </SelectItem>
+                      <SelectItem data-testid="period-summer" value="SUMMER">
+                        Summer
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handlePrint}>
+                  <Button
+                    data-testid="print-button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrint}
+                  >
                     <Printer className="w-4 h-4 mr-2" />
                     Print
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleExport}>
+                  <Button
+                    data-testid="export-button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExport}
+                  >
                     <Download className="w-4 h-4 mr-2" />
                     Export PDF
                   </Button>
@@ -128,9 +143,15 @@ function FinancialStatementsPage() {
                     onValueChange={(v) => setActiveTab(v as typeof activeTab)}
                   >
                     <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="INCOME">Income Statement</TabsTrigger>
-                      <TabsTrigger value="BALANCE">Balance Sheet</TabsTrigger>
-                      <TabsTrigger value="CASHFLOW">Cash Flow</TabsTrigger>
+                      <TabsTrigger data-testid="income-tab" value="INCOME">
+                        Income Statement
+                      </TabsTrigger>
+                      <TabsTrigger data-testid="balance-tab" value="BALANCE">
+                        Balance Sheet
+                      </TabsTrigger>
+                      <TabsTrigger data-testid="cashflow-tab" value="CASHFLOW">
+                        Cash Flow
+                      </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="INCOME" className="mt-6">

@@ -4,6 +4,7 @@ Authentication middleware for JWT validation with Supabase.
 Validates Supabase JWT tokens and extracts user information.
 """
 
+import os
 from collections.abc import Callable
 
 from fastapi import Request, Response
@@ -34,6 +35,37 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     PUBLIC_PATH_PREFIXES = [
         "/health",  # All health endpoints (/health/live, /health/ready)
     ]
+
+    def _get_cors_headers(self, request: Request) -> dict[str, str]:
+        """
+        Generate CORS headers for authentication responses.
+
+        This ensures 401 responses include proper CORS headers so browsers
+        don't block them as CORS violations.
+        """
+        origin = request.headers.get("origin", "")
+
+        # Get allowed origins from environment
+        allowed_origins_str = os.getenv(
+            "ALLOWED_ORIGINS",
+            "http://localhost:5173,http://localhost:3000"
+        )
+        allowed_origins = [o.strip() for o in allowed_origins_str.split(",")]
+
+        # Add production and Vercel origins
+        production_domain = os.getenv("PRODUCTION_FRONTEND_URL")
+        if production_domain:
+            allowed_origins.append(production_domain)
+
+        # Check if origin is allowed
+        cors_origin = origin if origin in allowed_origins else allowed_origins[0]
+
+        return {
+            "Access-Control-Allow-Origin": cors_origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+            "Access-Control-Allow-Headers": "authorization, content-type",
+        }
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
@@ -74,6 +106,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Authorization header missing"},
+                headers=self._get_cors_headers(request),
             )
 
         # Validate Bearer token format
@@ -83,6 +116,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Invalid authorization header format. Expected: Bearer <token>"},
+                headers=self._get_cors_headers(request),
             )
 
         token = auth_header.split(" ", 1)[1]
@@ -102,6 +136,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Invalid or expired token"},
+                headers=self._get_cors_headers(request),
             )
 
         user_id = payload.get("sub")
@@ -111,6 +146,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "JWT token missing user ID"},
+                headers=self._get_cors_headers(request),
             )
 
         logger.info(

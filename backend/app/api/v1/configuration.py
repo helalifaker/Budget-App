@@ -12,15 +12,17 @@ Provides REST API for managing system configuration and budget parameters:
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import PaginatedResponse
 from app.database import get_db
 from app.dependencies.auth import ManagerDep, UserDep
 from app.models.configuration import BudgetVersionStatus
 from app.schemas.configuration import (
     AcademicCycleResponse,
     AcademicLevelResponse,
+    BudgetVersionClone,
     BudgetVersionCreate,
     BudgetVersionResponse,
     BudgetVersionUpdate,
@@ -179,30 +181,36 @@ async def upsert_system_config(
 # ==============================================================================
 
 
-@router.get("/budget-versions", response_model=list[BudgetVersionResponse])
+@router.get("/budget-versions", response_model=PaginatedResponse[BudgetVersionResponse])
 async def get_budget_versions(
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(50, ge=1, le=100, description="Number of items per page"),
     fiscal_year: int | None = Query(None, description="Filter by fiscal year"),
     status: BudgetVersionStatus | None = Query(None, description="Filter by status"),
     config_service: ConfigurationService = Depends(get_config_service),
     user: UserDep = ...,
 ):
     """
-    Get all budget versions.
+    Get paginated budget versions.
 
     Args:
+        page: Page number (1-indexed)
+        page_size: Number of items per page (max 100)
         fiscal_year: Optional fiscal year filter
         status: Optional status filter
         config_service: Configuration service
         user: Current authenticated user
 
     Returns:
-        List of budget versions
+        Paginated response with budget versions
     """
-    versions = await config_service.get_all_budget_versions(
+    result = await config_service.get_budget_versions_paginated(
+        page=page,
+        page_size=page_size,
         fiscal_year=fiscal_year,
         status=status,
     )
-    return versions
+    return result
 
 
 @router.get("/budget-versions/{version_id}", response_model=BudgetVersionResponse)
@@ -235,8 +243,8 @@ async def get_budget_version(
 @router.post("/budget-versions", response_model=BudgetVersionResponse, status_code=status.HTTP_201_CREATED)
 async def create_budget_version(
     version_data: BudgetVersionCreate,
+    request: Request,  # Get request to access state
     config_service: ConfigurationService = Depends(get_config_service),
-    user: UserDep = ...,
 ):
     """
     Create a new budget version.
@@ -253,19 +261,28 @@ async def create_budget_version(
         HTTPException: 409 if a working version already exists for the fiscal year
     """
     try:
+        # Get user_id from request state if available (set by AuthenticationMiddleware)
+        user_id_str = getattr(request.state, "user_id", None)
+        try:
+            user_id = uuid.UUID(str(user_id_str)) if user_id_str else None
+        except (ValueError, AttributeError):
+            user_id = None
+
         version = await config_service.create_budget_version(
             name=version_data.name,
             fiscal_year=version_data.fiscal_year,
             academic_year=version_data.academic_year,
             notes=version_data.notes,
             parent_version_id=version_data.parent_version_id,
-            user_id=user.user_id,
+            user_id=user_id,
         )
         return version
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create BudgetVersion: {str(e)}")
 
 
 @router.put("/budget-versions/{version_id}", response_model=BudgetVersionResponse)
@@ -386,6 +403,95 @@ async def supersede_budget_version(
         return version
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.delete("/budget-versions/{version_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_budget_version(
+    version_id: uuid.UUID,
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Delete (soft delete) a budget version.
+
+    Business Rule: Cannot delete approved budget versions. Approved versions must be
+    superseded instead to maintain audit trail.
+
+    Args:
+        version_id: Budget version UUID
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        204 No Content on success
+
+    Raises:
+        HTTPException: 404 if version not found
+        HTTPException: 422 if version is approved (cannot delete approved budgets)
+    """
+    try:
+        await config_service.delete_budget_version(version_id, user.user_id)
+        return None  # 204 No Content
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+
+
+@router.post(
+    "/budget-versions/{version_id}/clone",
+    response_model=BudgetVersionResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def clone_budget_version(
+    version_id: uuid.UUID,
+    clone_data: BudgetVersionClone,
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Clone a budget version to create a new baseline for the next fiscal year.
+
+    This is the recommended approach for creating next year's budget based on current
+    year's configuration. Optionally clones all configuration data (class sizes, subject
+    hours, teacher costs, fees).
+
+    The cloned version:
+    - Has status WORKING (not approved)
+    - Has parent_version_id pointing to source (establishes lineage)
+    - Optionally includes all configuration data from source
+    - Does NOT include planning data (enrollment, classes, DHG, etc.) - recalculated
+
+    Args:
+        version_id: Source budget version UUID to clone
+        clone_data: Clone parameters (name, fiscal_year, academic_year, clone_configuration)
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        Newly created budget version
+
+    Raises:
+        HTTPException: 404 if source version not found
+        HTTPException: 409 if working version exists for target fiscal year
+    """
+    try:
+        new_version = await config_service.clone_budget_version(
+            source_version_id=version_id,
+            name=clone_data.name,
+            fiscal_year=clone_data.fiscal_year,
+            academic_year=clone_data.academic_year,
+            clone_configuration=clone_data.clone_configuration,
+            user_id=user.user_id,
+        )
+        return new_version
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 # ==============================================================================

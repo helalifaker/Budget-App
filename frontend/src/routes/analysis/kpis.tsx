@@ -1,11 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { KPICard } from '@/components/KPICard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useKPIs } from '@/hooks/api/useAnalysis'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import {
   BarChartLazy,
   Bar,
@@ -22,7 +21,7 @@ export const Route = createFileRoute('/analysis/kpis')({
 })
 
 function KPIsPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const { selectedVersionId } = useBudgetVersion()
 
   const { data: kpis, isLoading } = useKPIs(selectedVersionId)
 
@@ -46,13 +45,6 @@ function KPIsPage() {
         ]}
       >
         <div className="space-y-6">
-          {/* Version Selector */}
-          <BudgetVersionSelector
-            value={selectedVersionId}
-            onChange={setSelectedVersionId}
-            showCreateButton={false}
-          />
-
           {selectedVersionId && (
             <>
               {/* KPI Grid */}
@@ -60,26 +52,33 @@ function KPIsPage() {
                 <div className="text-center py-12">Loading KPIs...</div>
               ) : kpis && kpis.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div
+                    data-testid="kpi-grid"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                  >
                     {kpis.map((kpi) => (
-                      <KPICard
+                      <div
                         key={kpi.id}
-                        title={kpi.title}
-                        value={kpi.value}
-                        unit={kpi.unit}
-                        benchmark={
-                          kpi.benchmark_min && kpi.benchmark_max
-                            ? { min: kpi.benchmark_min, max: kpi.benchmark_max }
-                            : undefined
-                        }
-                        trend={
-                          kpi.trend
-                            ? (kpi.trend.toLowerCase() as 'up' | 'down' | 'stable')
-                            : undefined
-                        }
-                        status={kpi.status.toLowerCase() as 'good' | 'warning' | 'alert'}
-                        previousValue={kpi.previous_value || undefined}
-                      />
+                        data-testid={`kpi-${kpi.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                      >
+                        <KPICard
+                          title={kpi.title}
+                          value={kpi.value}
+                          unit={kpi.unit}
+                          benchmark={
+                            kpi.benchmark_min && kpi.benchmark_max
+                              ? { min: kpi.benchmark_min, max: kpi.benchmark_max }
+                              : undefined
+                          }
+                          trend={
+                            kpi.trend
+                              ? (kpi.trend.toLowerCase() as 'up' | 'down' | 'stable')
+                              : undefined
+                          }
+                          status={kpi.status.toLowerCase() as 'good' | 'warning' | 'alert'}
+                          previousValue={kpi.previous_value || undefined}
+                        />
+                      </div>
                     ))}
                   </div>
 

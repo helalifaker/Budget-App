@@ -5,7 +5,6 @@ import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { DataTableLazy } from '@/components/DataTableLazy'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { AlertCircle } from 'lucide-react'
 import {
   useSubjectHours,
@@ -15,6 +14,7 @@ import {
 } from '@/hooks/api/useConfiguration'
 import { SubjectHours } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 
 export const Route = createFileRoute('/configuration/subject-hours')({
   beforeLoad: requireAuth,
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/configuration/subject-hours')({
 })
 
 function SubjectHoursPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const { selectedVersionId } = useBudgetVersion()
   const [rowData, setRowData] = useState<SubjectHours[]>([])
 
   const {
@@ -43,14 +43,14 @@ function SubjectHoursPage() {
 
   const getLevelName = useCallback(
     (levelId: string) => {
-      return levelsData?.find((l) => l.id === levelId)?.name || levelId
+      return levelsData?.find((l) => l.id === levelId)?.name_en || levelId
     },
     [levelsData]
   )
 
   const getSubjectName = useCallback(
     (subjectId: string) => {
-      return subjectsData?.find((s) => s.id === subjectId)?.name || subjectId
+      return subjectsData?.find((s) => s.id === subjectId)?.name_en || subjectId
     },
     [subjectsData]
   )
@@ -158,8 +158,6 @@ function SubjectHoursPage() {
         description="Configuration du nombre d'heures hebdomadaires par matière et par niveau"
       >
         <div className="space-y-4">
-          <BudgetVersionSelector value={selectedVersionId} onChange={setSelectedVersionId} />
-
           {!selectedVersionId && (
             <div className="flex items-center gap-2 p-4 bg-sand-50 border border-sand-200 rounded-lg">
               <AlertCircle className="h-4 w-4 text-sand-600" />

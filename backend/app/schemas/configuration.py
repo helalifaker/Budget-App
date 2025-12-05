@@ -5,7 +5,7 @@ Request and response models for configuration API operations.
 """
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -80,6 +80,18 @@ class BudgetVersionUpdate(BaseModel):
     notes: str | None = None
 
 
+class BudgetVersionClone(BaseModel):
+    """Schema for cloning budget version."""
+
+    name: str = Field(..., max_length=100, description="New version name")
+    fiscal_year: int = Field(..., ge=2020, le=2100, description="Target fiscal year")
+    academic_year: str = Field(..., max_length=20, description="Target academic year (e.g., '2025-2026')")
+    clone_configuration: bool = Field(
+        default=True,
+        description="Whether to clone configuration data (class sizes, subjects, costs, fees)",
+    )
+
+
 class BudgetVersionResponse(BudgetVersionBase):
     """Schema for budget version response."""
 
@@ -95,6 +107,61 @@ class BudgetVersionResponse(BudgetVersionBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode='before')
+    @classmethod
+    def convert_types_from_sqlite(cls, data: Any) -> Any:
+        """
+        Convert SQLite integer types to proper Python types.
+
+        Handles edge cases where SQLite returns:
+        - Timestamps as integers instead of datetime objects
+        - UUIDs as integers instead of UUID objects
+
+        This causes AttributeError when Pydantic tries to call .replace()
+        during serialization.
+
+        Args:
+            data: Raw data (dict or SQLAlchemy model)
+
+        Returns:
+            Data with properly typed fields
+        """
+        # Handle both dict and SQLAlchemy model instances
+        if hasattr(data, '__dict__'):
+            data_dict = {k: v for k, v in data.__dict__.items() if not k.startswith('_')}
+        elif isinstance(data, dict):
+            data_dict = data.copy()
+        else:
+            return data
+
+        # Convert datetime fields from integers to datetime objects
+        datetime_fields = ['created_at', 'updated_at', 'submitted_at', 'approved_at']
+        for field in datetime_fields:
+            value = data_dict.get(field)
+            if value is not None and isinstance(value, int):
+                try:
+                    data_dict[field] = datetime.fromtimestamp(value, tz=UTC)
+                except (ValueError, OSError):
+                    # If conversion fails, use current time for required fields
+                    if field in ('created_at', 'updated_at'):
+                        data_dict[field] = datetime.now(UTC)
+                    else:
+                        data_dict[field] = None
+
+        # Convert UUID fields from integers to UUID objects
+        uuid_fields = ['id', 'submitted_by_id', 'approved_by_id', 'parent_version_id']
+        for field in uuid_fields:
+            value = data_dict.get(field)
+            if value is not None and isinstance(value, int):
+                try:
+                    # Convert integer to UUID (zero-padded hex string)
+                    data_dict[field] = uuid.UUID(int=value)
+                except (ValueError, TypeError):
+                    # If conversion fails, keep as-is (will fail validation if required)
+                    pass
+
+        return data_dict
 
 
 # ==============================================================================

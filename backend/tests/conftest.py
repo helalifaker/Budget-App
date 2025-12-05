@@ -47,34 +47,58 @@ from app.models.planning import (
     DHGTeacherRequirement,
     EnrollmentPlan,
 )
-from sqlalchemy import UUID as SQLUUID
-from sqlalchemy import String, event, text
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import sessionmaker
+
+# Import User from app.models.auth (already imported via `from app.models import *`)
+# The User model in auth.py properly handles both SQLite and PostgreSQL schemas
+from app.models.auth import User  # noqa: F401  # Re-import explicitly for clarity
 
 # ==============================================================================
-# Test-only User Model for auth.users
+# CRITICAL: Strip schemas IMMEDIATELY after models are imported
 # ==============================================================================
-# Production code intentionally avoids defining a User model to keep auth
-# separate from business logic. For tests, we need a minimal model so
-# SQLAlchemy can resolve foreign keys to auth.users.id
+# This must run at module import time, BEFORE any ORM mappers are configured.
+# If we wait until a fixture, the mappers will already have cached the schema refs.
 
-
-class User(Base):
+def _strip_all_schemas_from_metadata():
     """
-    Minimal User model for test database only.
+    Strip PostgreSQL schemas from all tables and ForeignKeys at import time.
 
-    Simulates Supabase auth.users table structure for testing.
-    Production code uses direct queries to auth.users when needed.
+    This is necessary because SQLite doesn't support PostgreSQL-style schemas,
+    and SQLAlchemy ORM mappers cache FK references during import.
     """
+    # Step 1: Strip schema from all tables
+    for table in Base.metadata.tables.values():
+        table.schema = None
 
-    __tablename__ = "users"
-    __table_args__ = {"schema": "auth"}
+    # Step 2: Strip schema from all ForeignKey constraints
+    for table in Base.metadata.tables.values():
+        for constraint in table.constraints:
+            if hasattr(constraint, 'elements'):
+                for fk_element in constraint.elements:
+                    if hasattr(fk_element, '_colspec'):
+                        original_colspec = fk_element._colspec
+                        if '.' in original_colspec:
+                            parts = original_colspec.split('.')
+                            if len(parts) == 3:  # schema.table.column
+                                fk_element._colspec = f"{parts[1]}.{parts[2]}"
 
-    id: Mapped[UUID] = mapped_column(
-        SQLUUID(as_uuid=True), primary_key=True, default=uuid4
-    )
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Step 3: Strip schema from columns that have ForeignKey references
+    for table in Base.metadata.tables.values():
+        for column in table.columns:
+            for fk in column.foreign_keys:
+                if hasattr(fk, '_colspec'):
+                    original_colspec = fk._colspec
+                    if '.' in original_colspec:
+                        parts = original_colspec.split('.')
+                        if len(parts) == 3:  # schema.table.column
+                            fk._colspec = f"{parts[1]}.{parts[2]}"
+
+# Run immediately at import time for SQLite tests
+if os.environ.get("USE_SQLITE_FOR_TESTS", "").lower() == "true":
+    _strip_all_schemas_from_metadata()
+    print(f"✅ Stripped schemas from {len(Base.metadata.tables)} tables at import time")
 
 
 # ==============================================================================
@@ -155,41 +179,53 @@ async def engine(test_database_url: str):
         # For SQLite tests, temporarily remove schema from metadata to create tables
         # in the main database (SQLite doesn't support PostgreSQL-style schemas)
         if test_database_url.startswith("sqlite"):
-            # Step 1: Strip schema from all tables
+            # Use schema_translate_map via DDL to strip schemas during create_all
+            # First, strip schema from table metadata objects
             for table in Base.metadata.tables.values():
                 table.schema = None
 
-            # Step 2: Strip schema from all ForeignKey constraints
-            # This is critical because ForeignKey definitions like ForeignKey("efir_budget.table.column")
-            # cause SQLAlchemy to generate queries with schema prefixes
+            # Strip schema from all ForeignKey constraints
             for table in Base.metadata.tables.values():
                 for constraint in table.constraints:
                     if hasattr(constraint, 'elements'):
-                        # ForeignKeyConstraint has 'elements' attribute containing ForeignKey objects
                         for fk_element in constraint.elements:
                             if hasattr(fk_element, '_colspec'):
-                                # Strip schema from ForeignKey._colspec (e.g., "efir_budget.table.column" -> "table.column")
                                 original_colspec = fk_element._colspec
                                 if '.' in original_colspec:
                                     parts = original_colspec.split('.')
                                     if len(parts) == 3:  # schema.table.column
                                         fk_element._colspec = f"{parts[1]}.{parts[2]}"
 
-                            # Also strip schema from target_fullname if it exists
-                            if hasattr(fk_element, 'target_fullname'):
-                                target = fk_element.target_fullname
-                                if '.' in target:
-                                    parts = target.split('.')
-                                    if len(parts) == 3:  # schema.table.column
-                                        fk_element.target_fullname = f"{parts[1]}.{parts[2]}"
+                # Strip schema from column foreign_keys
+                for column in table.columns:
+                    for fk in column.foreign_keys:
+                        if hasattr(fk, '_colspec'):
+                            original_colspec = fk._colspec
+                            if '.' in original_colspec:
+                                parts = original_colspec.split('.')
+                                if len(parts) == 3:  # schema.table.column
+                                    fk._colspec = f"{parts[1]}.{parts[2]}"
 
-            # Debug: Print tables being created
-            print(f"\n🔍 Creating {len(Base.metadata.tables)} tables for SQLite tests")
-            for table_name in list(Base.metadata.tables.keys())[:5]:
+            # CRITICAL: Clear SQLAlchemy's metadata table cache and rebuild with schema-less keys
+            # The metadata._schemas dict tracks table keys - we need to rebuild this
+            from sqlalchemy import MetaData
+            new_metadata = MetaData()
+
+            # Copy tables to new metadata without schema in keys
+            for table in Base.metadata.tables.values():
+                # table.schema is already None from above
+                # Create table in new metadata - this registers with schema-less key
+                table.tometadata(new_metadata)
+
+            print(f"\n🔍 Creating {len(new_metadata.tables)} tables for SQLite tests (schemas stripped)")
+            for table_name in list(new_metadata.tables.keys())[:5]:
                 print(f"  - {table_name}")
 
-        # Create all tables
-        await conn.run_sync(Base.metadata.create_all)
+            # Create all tables using the new schema-less metadata
+            await conn.run_sync(new_metadata.create_all)
+        else:
+            # Create all tables with original metadata
+            await conn.run_sync(Base.metadata.create_all)
 
         # Debug: Verify tables were created
         if test_database_url.startswith("sqlite"):
@@ -1095,3 +1131,31 @@ async def system_configs(
     await db_session.flush()
 
     return configs
+
+
+# ==============================================================================
+# API Test Client Fixture
+# ==============================================================================
+
+
+@pytest.fixture(scope="module")
+def client():
+    """
+    Create test client that properly triggers FastAPI lifespan events.
+
+    CRITICAL: Uses context manager to ensure startup event (which calls init_db())
+    is executed, creating all SQLite tables before tests run.
+
+    This fixture is module-scoped for efficiency - the database is initialized
+    once per test module rather than once per test.
+
+    Usage in API tests:
+        def test_my_endpoint(client):
+            response = client.get("/api/v1/some-endpoint")
+    """
+    from app.main import app
+    from starlette.testclient import TestClient
+
+    # Use context manager to trigger startup/shutdown events
+    with TestClient(app) as test_client:
+        yield test_client

@@ -4,11 +4,13 @@ import { dhgApi } from '@/services/dhg'
 export const dhgKeys = {
   all: ['dhg'] as const,
   subjectHours: (versionId: string) => [...dhgKeys.all, 'subject-hours', versionId] as const,
-  teacherFTE: (versionId: string) => [...dhgKeys.all, 'teacher-fte', versionId] as const,
-  trmdGaps: (versionId: string) => [...dhgKeys.all, 'trmd-gaps', versionId] as const,
-  hsaPlanning: (versionId: string) => [...dhgKeys.all, 'hsa-planning', versionId] as const,
+  teacherRequirements: (versionId: string) =>
+    [...dhgKeys.all, 'teacher-requirements', versionId] as const,
+  allocations: (versionId: string) => [...dhgKeys.all, 'allocations', versionId] as const,
+  trmd: (versionId: string) => [...dhgKeys.all, 'trmd', versionId] as const,
 }
 
+// DHG Subject Hours
 export function useSubjectHours(versionId: string) {
   return useQuery({
     queryKey: dhgKeys.subjectHours(versionId),
@@ -17,124 +19,148 @@ export function useSubjectHours(versionId: string) {
   })
 }
 
-export function useUpdateSubjectHours() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string
-      data: { hours_per_week: number; is_split: boolean }
-    }) => dhgApi.updateSubjectHours(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: dhgKeys.all })
-    },
-  })
-}
-
-export function useBulkUpdateSubjectHours() {
+export function useCalculateSubjectHours() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({
       versionId,
-      updates,
+      recalculateAll = false,
     }: {
       versionId: string
-      updates: Array<{ id: string; hours_per_week: number; is_split: boolean }>
-    }) => dhgApi.bulkUpdateSubjectHours(versionId, updates),
+      recalculateAll?: boolean
+    }) => dhgApi.calculateSubjectHours(versionId, recalculateAll),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: dhgKeys.subjectHours(variables.versionId) })
-      queryClient.invalidateQueries({ queryKey: dhgKeys.teacherFTE(variables.versionId) })
+      queryClient.invalidateQueries({
+        queryKey: dhgKeys.teacherRequirements(variables.versionId),
+      })
     },
   })
 }
 
-export function useTeacherFTE(versionId: string) {
+// DHG Teacher Requirements
+export function useTeacherRequirements(versionId: string) {
   return useQuery({
-    queryKey: dhgKeys.teacherFTE(versionId),
-    queryFn: () => dhgApi.getTeacherFTE(versionId),
+    queryKey: dhgKeys.teacherRequirements(versionId),
+    queryFn: () => dhgApi.getTeacherRequirements(versionId),
     enabled: !!versionId,
   })
 }
 
-export function useCalculateFTE() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: dhgApi.calculateFTE,
-    onSuccess: (_, versionId) => {
-      queryClient.invalidateQueries({ queryKey: dhgKeys.teacherFTE(versionId) })
-      queryClient.invalidateQueries({ queryKey: dhgKeys.trmdGaps(versionId) })
-    },
-  })
-}
-
-export function useTRMDGaps(versionId: string) {
-  return useQuery({
-    queryKey: dhgKeys.trmdGaps(versionId),
-    queryFn: () => dhgApi.getTRMDGaps(versionId),
-    enabled: !!versionId,
-  })
-}
-
-export function useUpdateTRMDGap() {
+export function useCalculateTeacherRequirements() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({
-      id,
-      data,
+      versionId,
+      recalculateAll = false,
     }: {
-      id: string
-      data: { aefe_positions: number; local_positions: number }
-    }) => dhgApi.updateTRMDGap(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: dhgKeys.all })
+      versionId: string
+      recalculateAll?: boolean
+    }) => dhgApi.calculateTeacherRequirements(versionId, recalculateAll),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: dhgKeys.teacherRequirements(variables.versionId),
+      })
+      queryClient.invalidateQueries({ queryKey: dhgKeys.trmd(variables.versionId) })
     },
   })
 }
 
-export function useHSAPlanning(versionId: string) {
+// Teacher Allocations
+export function useTeacherAllocations(versionId: string) {
   return useQuery({
-    queryKey: dhgKeys.hsaPlanning(versionId),
-    queryFn: () => dhgApi.getHSAPlanning(versionId),
+    queryKey: dhgKeys.allocations(versionId),
+    queryFn: () => dhgApi.getAllocations(versionId),
     enabled: !!versionId,
   })
 }
 
-export function useCreateHSAPlanning() {
+export function useCreateAllocation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: dhgApi.createHSAPlanning,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: dhgKeys.hsaPlanning(data.budget_version_id) })
+    mutationFn: ({
+      versionId,
+      data,
+    }: {
+      versionId: string
+      data: {
+        subject_id: string
+        cycle_id: string
+        category_id: string
+        fte_count: number
+        notes?: string | null
+      }
+    }) => dhgApi.createAllocation(versionId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: dhgKeys.allocations(variables.versionId) })
+      queryClient.invalidateQueries({ queryKey: dhgKeys.trmd(variables.versionId) })
     },
   })
 }
 
-export function useUpdateHSAPlanning() {
+export function useUpdateAllocation() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { hsa_hours: number; notes?: string } }) =>
-      dhgApi.updateHSAPlanning(id, data),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: dhgKeys.hsaPlanning(data.budget_version_id) })
-    },
-  })
-}
-
-export function useDeleteHSAPlanning() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: dhgApi.deleteHSAPlanning,
+    mutationFn: ({
+      allocationId,
+      data,
+    }: {
+      allocationId: string
+      data: { fte_count: number; notes?: string | null }
+    }) => dhgApi.updateAllocation(allocationId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dhgKeys.all })
     },
+  })
+}
+
+export function useDeleteAllocation() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (allocationId: string) => dhgApi.deleteAllocation(allocationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dhgKeys.all })
+    },
+  })
+}
+
+export function useBulkUpdateAllocations() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      allocations,
+    }: {
+      versionId: string
+      allocations: Array<{
+        subject_id: string
+        cycle_id: string
+        category_id: string
+        fte_count: number
+        notes?: string | null
+      }>
+    }) => dhgApi.bulkUpdateAllocations(versionId, allocations),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: dhgKeys.allocations(variables.versionId) })
+      queryClient.invalidateQueries({ queryKey: dhgKeys.trmd(variables.versionId) })
+    },
+  })
+}
+
+// TRMD Gap Analysis
+// Note: This endpoint requires teacher requirements to be calculated first.
+// Returns null when prerequisites are missing (422 error) - this is expected behavior.
+export function useTRMDGapAnalysis(versionId: string) {
+  return useQuery({
+    queryKey: dhgKeys.trmd(versionId),
+    queryFn: () => dhgApi.getTRMDGapAnalysis(versionId),
+    enabled: !!versionId,
+    retry: false, // Don't retry 422 validation errors
   })
 }

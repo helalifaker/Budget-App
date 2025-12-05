@@ -20,6 +20,7 @@ const navigation = [
     name: 'Planning',
     icon: '📝',
     children: [
+      { name: 'Planning Guide', href: '/planning/guide' },
       { name: 'Enrollment', href: '/planning/enrollment' },
       { name: 'Class Structure', href: '/planning/classes' },
       { name: 'DHG Workforce', href: '/planning/dhg' },
@@ -58,7 +59,7 @@ export function Sidebar() {
 
   // Get the currently active budget version ID (first working or submitted version)
   const activeBudgetVersionId = budgetVersionsData?.items?.find(
-    (v) => v.status === 'WORKING' || v.status === 'SUBMITTED'
+    (v) => v.status === 'working' || v.status === 'submitted'
   )?.id
 
   return (

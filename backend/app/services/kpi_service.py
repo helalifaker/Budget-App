@@ -298,8 +298,11 @@ class KPIService:
             - Eager loads kpi_definition, budget_version, and audit fields
             - Leverages idx_kpi_values_version_def index
         """
+        # Use explicit join syntax to ensure proper SQL JOIN is generated
+        # (relationship-based .join() can fail with schema mismatches or lazy loading)
         query = (
             select(KPIValue)
+            .join(KPIDefinition, KPIValue.kpi_definition_id == KPIDefinition.id)
             .where(
                 and_(
                     KPIValue.budget_version_id == budget_version_id,
@@ -313,9 +316,7 @@ class KPIService:
         )
 
         if category:
-            query = query.join(KPIValue.kpi_definition).where(
-                KPIDefinition.category == category
-            )
+            query = query.where(KPIDefinition.category == category)
 
         query = query.order_by(KPIDefinition.category, KPIDefinition.code)
 

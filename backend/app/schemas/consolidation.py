@@ -94,6 +94,28 @@ class ConsolidationValidationResponse(BaseModel):
     )
 
 
+class ModulesCompleteStatus(BaseModel):
+    """Schema for individual module completion status."""
+
+    enrollment: bool = Field(default=False, description="Enrollment planning complete")
+    classes: bool = Field(default=False, description="Class structure complete")
+    dhg: bool = Field(default=False, description="DHG workforce planning complete")
+    revenue: bool = Field(default=False, description="Revenue planning complete")
+    costs: bool = Field(default=False, description="Cost planning complete")
+    capex: bool = Field(default=False, description="CapEx planning complete")
+
+
+class ConsolidationStatusResponse(BaseModel):
+    """Schema for consolidation status - simplified view for sidebar/UI."""
+
+    budget_version_id: uuid.UUID
+    is_complete: bool = Field(..., description="Whether all modules are complete")
+    modules_complete: ModulesCompleteStatus = Field(
+        default_factory=ModulesCompleteStatus,
+        description="Completion status for each module",
+    )
+
+
 class ConsolidationRequest(BaseModel):
     """Schema for consolidation request."""
 

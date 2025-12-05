@@ -64,12 +64,13 @@ export function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form data-testid="login-form" onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 name="email"
+                data-testid="email-input"
                 type="email"
                 placeholder="your.email@efir.fr"
                 value={email}
@@ -85,6 +86,7 @@ export function LoginPage() {
               <Input
                 id="password"
                 name="password"
+                data-testid="password-input"
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -94,7 +96,12 @@ export function LoginPage() {
                 autoComplete="current-password"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button
+              type="submit"
+              data-testid="submit-button"
+              className="w-full"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

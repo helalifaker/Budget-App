@@ -56,22 +56,20 @@ test.describe('Authentication', () => {
     await page.click('button[type="submit"]')
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
 
-    // Click logout button (look for sign out, logout, or user menu)
-    const logoutButton = page
-      .locator(
-        'button:has-text("Sign Out"), button:has-text("Logout"), [data-testid="logout-button"]'
-      )
-      .first()
-
-    // If logout is in a dropdown, click user menu first
-    const userMenu = page
-      .locator('[data-testid="user-menu"], button:has([data-testid="user-avatar"])')
-      .first()
-    if (await userMenu.isVisible()) {
-      await userMenu.click()
+    // Wait for any toast notifications to disappear (they block the logout button)
+    await page.waitForTimeout(1000)
+    // Dismiss any visible toasts by clicking outside or waiting
+    const toast = page.locator('[data-sonner-toast]')
+    if (await toast.isVisible({ timeout: 500 }).catch(() => false)) {
+      // Wait for toast to auto-dismiss
+      await toast.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
     }
 
-    await logoutButton.click()
+    // Click logout button (look for sign out, logout, or user menu)
+    const logoutButton = page.locator('[data-testid="logout-button"]').first()
+
+    // Use force click to bypass any remaining overlays
+    await logoutButton.click({ force: true })
 
     // Verify redirect to login page
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 })

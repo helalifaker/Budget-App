@@ -5,22 +5,31 @@ import { Route as EnrollmentRoute } from '@/routes/planning/enrollment'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
-let mockEnrollmentsData: any = null
-let mockLevelsData: any = null
-let mockNationalityTypesData: any = null
+let mockEnrollmentsData: Record<string, unknown>[] | null = null
+let mockLevelsData: Record<string, unknown>[] | null = null
+let mockNationalityTypesData: Record<string, unknown>[] | null = null
 const mockCreateMutation = vi.fn()
 const mockUpdateMutation = vi.fn()
 const mockDeleteMutation = vi.fn()
 const mockCalculateMutation = vi.fn()
 
+// Type definitions for mock props
+type MockProps = Record<string, unknown>
+interface EnrollmentRow {
+  id: string
+  level_id: string
+  nationality_type_id: string
+  student_count: number
+}
+
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: (path: string) => (config: any) => ({
+  createFileRoute: (path: string) => (config: MockProps) => ({
     ...config,
     path,
   }),
-  Link: ({ to, children, className }: any) => (
-    <a href={to} className={className}>
-      {children}
+  Link: ({ to, children, className }: MockProps) => (
+    <a href={to as string} className={className as string}>
+      {children as React.ReactNode}
     </a>
   ),
   useNavigate: () => mockNavigate,
@@ -31,27 +40,29 @@ vi.mock('@/lib/auth-guard', () => ({
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: any) => <div data-testid="main-layout">{children}</div>,
+  MainLayout: ({ children }: MockProps) => (
+    <div data-testid="main-layout">{children as React.ReactNode}</div>
+  ),
 }))
 
 vi.mock('@/components/layout/PageContainer', () => ({
-  PageContainer: ({ title, description, actions, children }: any) => (
+  PageContainer: ({ title, description, actions, children }: MockProps) => (
     <div data-testid="page-container">
-      <h1>{title}</h1>
-      {description && <p>{description}</p>}
-      {actions && <div data-testid="page-actions">{actions}</div>}
-      {children}
+      <h1>{title as string}</h1>
+      {description && <p>{description as string}</p>}
+      {actions && <div data-testid="page-actions">{actions as React.ReactNode}</div>}
+      {children as React.ReactNode}
     </div>
   ),
 }))
 
 vi.mock('@/components/BudgetVersionSelector', () => ({
-  BudgetVersionSelector: ({ value, onChange }: any) => (
+  BudgetVersionSelector: ({ value, onChange }: MockProps) => (
     <div data-testid="budget-version-selector">
       <select
         data-testid="version-select"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={value as string}
+        onChange={(e) => (onChange as (v: string) => void)(e.target.value)}
       >
         <option value="">Select version</option>
         <option value="v1">2025-2026</option>
@@ -62,7 +73,7 @@ vi.mock('@/components/BudgetVersionSelector', () => ({
 }))
 
 vi.mock('@/components/DataTableLazy', () => ({
-  DataTableLazy: ({ rowData, loading, error }: any) => {
+  DataTableLazy: ({ rowData, loading, error }: MockProps) => {
     if (loading) {
       return <div data-testid="data-table-loading">Loading...</div>
     }
@@ -71,7 +82,7 @@ vi.mock('@/components/DataTableLazy', () => ({
     }
     return (
       <div data-testid="data-table">
-        {rowData?.map((row: any) => (
+        {(rowData as EnrollmentRow[] | undefined)?.map((row) => (
           <div key={row.id} data-testid="enrollment-row">
             {row.level_id} - {row.nationality_type_id}: {row.student_count}
           </div>
@@ -82,22 +93,28 @@ vi.mock('@/components/DataTableLazy', () => ({
 }))
 
 vi.mock('@/components/FormDialog', () => ({
-  FormDialog: ({ open, title, children, onSubmit }: any) =>
+  FormDialog: ({ open, title, children, onSubmit }: MockProps) =>
     open ? (
       <div data-testid="form-dialog">
-        <h2>{title}</h2>
-        <form onSubmit={onSubmit} data-testid="enrollment-form">
-          {children}
+        <h2>{title as string}</h2>
+        <form onSubmit={onSubmit as React.FormEventHandler} data-testid="enrollment-form">
+          {children as React.ReactNode}
         </form>
       </div>
     ) : null,
 }))
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children }: any) => <div data-testid="card">{children}</div>,
-  CardHeader: ({ children }: any) => <div data-testid="card-header">{children}</div>,
-  CardTitle: ({ children }: any) => <div data-testid="card-title">{children}</div>,
-  CardContent: ({ children }: any) => <div data-testid="card-content">{children}</div>,
+  Card: ({ children }: MockProps) => <div data-testid="card">{children as React.ReactNode}</div>,
+  CardHeader: ({ children }: MockProps) => (
+    <div data-testid="card-header">{children as React.ReactNode}</div>
+  ),
+  CardTitle: ({ children }: MockProps) => (
+    <div data-testid="card-title">{children as React.ReactNode}</div>
+  ),
+  CardContent: ({ children }: MockProps) => (
+    <div data-testid="card-content">{children as React.ReactNode}</div>
+  ),
 }))
 
 vi.mock('@/hooks/api/useEnrollment', () => ({
@@ -118,7 +135,8 @@ vi.mock('@/hooks/api/useEnrollment', () => ({
     mutateAsync: mockDeleteMutation,
     isPending: false,
   }),
-  useCalculateProjections: () => ({
+  // Renamed from useCalculateProjections to useProjectEnrollment
+  useProjectEnrollment: () => ({
     mutateAsync: mockCalculateMutation,
     isPending: false,
   }),
@@ -151,31 +169,30 @@ describe('Enrollment Planning Route', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    mockEnrollmentsData = {
-      items: [
-        {
-          id: '1',
-          level_id: 'cp',
-          nationality_type_id: 'french',
-          student_count: 45,
-          budget_version_id: 'v1',
-        },
-        {
-          id: '2',
-          level_id: 'ce1',
-          nationality_type_id: 'saudi',
-          student_count: 38,
-          budget_version_id: 'v1',
-        },
-        {
-          id: '3',
-          level_id: 'ce2',
-          nationality_type_id: 'other',
-          student_count: 22,
-          budget_version_id: 'v1',
-        },
-      ],
-    }
+    // API returns arrays directly (not { items: [...] })
+    mockEnrollmentsData = [
+      {
+        id: '1',
+        level_id: 'cp',
+        nationality_type_id: 'french',
+        student_count: 45,
+        budget_version_id: 'v1',
+      },
+      {
+        id: '2',
+        level_id: 'ce1',
+        nationality_type_id: 'saudi',
+        student_count: 38,
+        budget_version_id: 'v1',
+      },
+      {
+        id: '3',
+        level_id: 'ce2',
+        nationality_type_id: 'other',
+        student_count: 22,
+        budget_version_id: 'v1',
+      },
+    ]
 
     mockLevelsData = [
       { id: 'cp', name: 'CP', cycle: 'Elementary' },
@@ -201,7 +218,9 @@ describe('Enrollment Planning Route', () => {
       render(<EnrollmentPage />)
 
       expect(screen.getByText('Enrollment Planning')).toBeInTheDocument()
-      expect(screen.getByText('Plan student enrollment by level and nationality')).toBeInTheDocument()
+      expect(
+        screen.getByText('Plan student enrollment by level and nationality')
+      ).toBeInTheDocument()
     })
 
     it('renders page actions', () => {
@@ -327,7 +346,9 @@ describe('Enrollment Planning Route', () => {
     it('shows placeholder when no version selected', () => {
       render(<EnrollmentPage />)
 
-      expect(screen.getByText('Please select a budget version to view enrollment data')).toBeInTheDocument()
+      expect(
+        screen.getByText('Please select a budget version to view enrollment data')
+      ).toBeInTheDocument()
     })
 
     it('displays data table when version selected', async () => {
@@ -412,7 +433,7 @@ describe('Enrollment Planning Route', () => {
     })
 
     it('handles empty enrollment data', async () => {
-      mockEnrollmentsData = { items: [] }
+      mockEnrollmentsData = []
       const user = userEvent.setup()
 
       render(<EnrollmentPage />)

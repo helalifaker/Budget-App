@@ -4,7 +4,6 @@ import { AgGridReact } from 'ag-grid-react'
 import { ColDef, ICellRendererParams, themeQuartz } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { SummaryCard } from '@/components/SummaryCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { CurrencyRenderer } from '@/components/grid/CurrencyRenderer'
 import { AccountCodeRenderer } from '@/components/grid/AccountCodeRenderer'
 import { useCapEx, useDepreciationSchedule } from '@/hooks/api/useCapEx'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { Building2, Laptop, Wrench, TrendingDown, Plus, Download, Eye } from 'lucide-react'
 
 export const Route = createFileRoute('/planning/capex')({
@@ -20,27 +20,45 @@ export const Route = createFileRoute('/planning/capex')({
 })
 
 function CapExPage() {
-  const [selectedVersion, setSelectedVersion] = useState<string>()
+  const { selectedVersionId } = useBudgetVersion()
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [showDepreciation, setShowDepreciation] = useState(false)
 
-  const { data: capexData, isLoading } = useCapEx(selectedVersion!)
+  const { data: capexData, isLoading } = useCapEx(selectedVersionId!)
   const { data: depreciationSchedule } = useDepreciationSchedule(selectedItemId!)
 
-  const capexItems = capexData?.items || []
+  // API returns array directly
+  const capexItems = capexData || []
+
+  // Define typed interface for capex items to fix type errors
+  interface CapExItem {
+    id: string
+    description: string
+    category: string
+    account_code: string
+    acquisition_date: string
+    total_cost_sar: number
+    useful_life_years: number
+    annual_depreciation_sar: number
+    notes?: string | null
+  }
 
   // Calculate summary metrics
-  const totalCapEx = capexItems.reduce((sum, item) => sum + item.cost, 0)
+  const totalCapEx = capexItems.reduce(
+    (sum: number, item: CapExItem) => sum + item.total_cost_sar,
+    0
+  )
   const equipmentCost = capexItems
-    .filter((item) => item.asset_type === 'EQUIPMENT')
-    .reduce((sum, item) => sum + item.cost, 0)
+    .filter((item: CapExItem) => item.category === 'EQUIPMENT')
+    .reduce((sum: number, item: CapExItem) => sum + item.total_cost_sar, 0)
   const itCost = capexItems
-    .filter((item) => item.asset_type === 'IT')
-    .reduce((sum, item) => sum + item.cost, 0)
+    .filter((item: CapExItem) => item.category === 'IT')
+    .reduce((sum: number, item: CapExItem) => sum + item.total_cost_sar, 0)
 
   const avgUsefulLife =
     capexItems.length > 0
-      ? capexItems.reduce((sum, item) => sum + item.useful_life_years, 0) / capexItems.length
+      ? capexItems.reduce((sum: number, item: CapExItem) => sum + item.useful_life_years, 0) /
+        capexItems.length
       : 0
 
   const formatCurrency = (amount: number) => {
@@ -93,7 +111,7 @@ function CapExPage() {
     },
     {
       headerName: 'Asset Type',
-      field: 'asset_type',
+      field: 'category',
       width: 180,
       cellRenderer: (params: { value: string }) => <AssetTypeBadge value={params.value} />,
     },
@@ -104,15 +122,15 @@ function CapExPage() {
       cellRenderer: AccountCodeRenderer,
     },
     {
-      headerName: 'Purchase Date',
-      field: 'purchase_date',
+      headerName: 'Acquisition Date',
+      field: 'acquisition_date',
       width: 150,
       valueFormatter: (params) => new Date(params.value).toLocaleDateString(),
       editable: true,
     },
     {
       headerName: 'Cost',
-      field: 'cost',
+      field: 'total_cost_sar',
       width: 150,
       cellRenderer: CurrencyRenderer,
       editable: true,
@@ -126,19 +144,9 @@ function CapExPage() {
       cellDataType: 'number',
     },
     {
-      headerName: 'Depreciation Method',
-      field: 'depreciation_method',
-      width: 180,
-      valueFormatter: (params) => params.value.replace(/_/g, ' '),
-    },
-    {
       headerName: 'Annual Depreciation',
+      field: 'annual_depreciation_sar',
       width: 180,
-      valueGetter: (params) => {
-        const cost = params.data.cost
-        const life = params.data.useful_life_years
-        return params.data.depreciation_method === 'STRAIGHT_LINE' ? cost / life : cost * 0.2
-      },
       cellRenderer: CurrencyRenderer,
     },
     {
@@ -156,21 +164,18 @@ function CapExPage() {
         description="Manage capital expenditure items and depreciation schedules"
       >
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <BudgetVersionSelector value={selectedVersion} onChange={setSelectedVersion} />
-            <div className="flex gap-2">
-              <Button disabled={!selectedVersion}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add CapEx Item
-              </Button>
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button data-testid="add-capex-button" disabled={!selectedVersionId}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add CapEx Item
+            </Button>
+            <Button data-testid="export-button" variant="outline">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
           </div>
 
-          {selectedVersion && (
+          {selectedVersionId && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <SummaryCard
@@ -262,10 +267,12 @@ function CapExPage() {
                             label: 'Software',
                           },
                         ].map(({ type, icon, label }) => {
-                          const count = capexItems.filter((item) => item.asset_type === type).length
+                          const count = capexItems.filter(
+                            (item: CapExItem) => item.category === type
+                          ).length
                           const cost = capexItems
-                            .filter((item) => item.asset_type === type)
-                            .reduce((sum, item) => sum + item.cost, 0)
+                            .filter((item: CapExItem) => item.category === type)
+                            .reduce((sum: number, item: CapExItem) => sum + item.total_cost_sar, 0)
                           return (
                             <div
                               key={type}
@@ -324,7 +331,7 @@ function CapExPage() {
             </>
           )}
 
-          {!selectedVersion && (
+          {!selectedVersionId && (
             <Card>
               <CardContent className="py-12">
                 <div className="text-center text-gray-500">
@@ -352,7 +359,7 @@ function CapExPage() {
                   {depreciationSchedule.map((item, index) => (
                     <div key={index} className="grid grid-cols-3 gap-4 text-sm py-1">
                       <div>Year {item.year}</div>
-                      <div className="text-right">{formatCurrency(item.depreciation)}</div>
+                      <div className="text-right">{formatCurrency(item.annual_depreciation)}</div>
                       <div className="text-right font-medium">
                         {formatCurrency(item.book_value)}
                       </div>

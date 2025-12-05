@@ -5,7 +5,6 @@ import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { DataTableLazy } from '@/components/DataTableLazy'
-import { BudgetVersionSelector } from '@/components/BudgetVersionSelector'
 import { AlertCircle } from 'lucide-react'
 import {
   useClassSizeParams,
@@ -15,6 +14,7 @@ import {
 } from '@/hooks/api/useConfiguration'
 import { ClassSizeParam } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 
 export const Route = createFileRoute('/configuration/class-sizes')({
   beforeLoad: requireAuth,
@@ -22,7 +22,7 @@ export const Route = createFileRoute('/configuration/class-sizes')({
 })
 
 function ClassSizesPage() {
-  const [selectedVersionId, setSelectedVersionId] = useState<string>('')
+  const { selectedVersionId } = useBudgetVersion()
   const [rowData, setRowData] = useState<ClassSizeParam[]>([])
 
   const {
@@ -44,7 +44,7 @@ function ClassSizesPage() {
   const getLevelName = useCallback(
     (levelId: string | null) => {
       if (!levelId) return 'Cycle default'
-      return levelsData?.find((l) => l.id === levelId)?.name || levelId
+      return levelsData?.find((l) => l.id === levelId)?.name_en || levelId
     },
     [levelsData]
   )
@@ -52,7 +52,7 @@ function ClassSizesPage() {
   const getCycleName = useCallback(
     (cycleId: string | null) => {
       if (!cycleId) return 'Level-specific'
-      return cyclesData?.find((c) => c.id === cycleId)?.name || cycleId
+      return cyclesData?.find((c) => c.id === cycleId)?.name_en || cycleId
     },
     [cyclesData]
   )
@@ -190,8 +190,6 @@ function ClassSizesPage() {
         description="Configure minimum, target, and maximum class sizes for each academic level"
       >
         <div className="space-y-4">
-          <BudgetVersionSelector value={selectedVersionId} onChange={setSelectedVersionId} />
-
           {!selectedVersionId && (
             <div className="flex items-center gap-2 p-4 bg-sand-50 border border-sand-200 rounded-lg">
               <AlertCircle className="h-4 w-4 text-sand-600" />

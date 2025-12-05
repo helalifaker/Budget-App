@@ -7,6 +7,7 @@ All models include audit trails and follow consistent patterns.
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime
 from typing import Any
@@ -19,6 +20,70 @@ from sqlalchemy.types import TypeDecorator
 
 # Base class for all models
 Base = declarative_base()
+
+
+# ==============================================================================
+# Test Environment Detection and Schema Configuration
+# ==============================================================================
+
+def is_test_environment() -> bool:
+    """Check if running in test environment (SQLite)."""
+    return os.environ.get("PYTEST_RUNNING", "").lower() == "true"
+
+
+def get_schema(schema_name: str) -> str | None:
+    """
+    Get schema name based on environment.
+
+    Returns None for SQLite tests (no schema support),
+    Returns actual schema name for PostgreSQL production.
+    """
+    if is_test_environment():
+        return None
+    return schema_name
+
+
+def get_fk_target(schema: str, table: str, column: str) -> str:
+    """
+    Get ForeignKey target string based on environment.
+
+    Returns "table.column" for SQLite tests,
+    Returns "schema.table.column" for PostgreSQL production.
+    """
+    if is_test_environment():
+        return f"{table}.{column}"
+    return f"{schema}.{table}.{column}"
+
+
+def get_table_args(*args, schema: str = "efir_budget", comment: str | None = None) -> tuple:
+    """
+    Get table args tuple with conditional schema based on environment.
+
+    Use this in models that override __table_args__ to ensure SQLite test compatibility.
+
+    Args:
+        *args: Any SQLAlchemy constraints (UniqueConstraint, Index, etc.)
+        schema: Schema name for PostgreSQL production (default: "efir_budget")
+        comment: Table comment/docstring
+
+    Returns:
+        Tuple of constraints + dict with schema (or without for tests)
+
+    Example:
+        __table_args__ = get_table_args(
+            UniqueConstraint("level_id", "fiscal_year", name="uq_enrollment_level_year"),
+            comment=__doc__
+        )
+    """
+    table_dict: dict = {}
+    if not is_test_environment():
+        table_dict["schema"] = schema
+    if comment:
+        table_dict["comment"] = comment
+
+    if args:
+        return (*args, table_dict)
+    return (table_dict,)
 
 
 # ==============================================================================
@@ -48,6 +113,64 @@ class PortableJSON(TypeDecorator):
 JSONBPortable = PortableJSON
 
 
+# ==============================================================================
+# Portable UUID Type (UUID for PostgreSQL, String for SQLite)
+# ==============================================================================
+
+
+class PortableUUID(TypeDecorator):
+    """
+    UUID type that works with both PostgreSQL and SQLite.
+
+    PostgreSQL has native UUID support.
+    SQLite stores UUIDs as strings (36-character hex format with hyphens).
+
+    This allows the same model definitions to work in both production
+    (PostgreSQL with native UUID) and tests/development (SQLite with strings).
+    """
+
+    impl = UUID
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql":
+            from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+            return dialect.type_descriptor(PG_UUID(as_uuid=True))
+        else:
+            # For SQLite and other databases, store as string
+            from sqlalchemy import String
+            return dialect.type_descriptor(String(36))
+
+    def process_bind_param(self, value, dialect):
+        """Convert Python UUID to database format."""
+        if value is None:
+            return None
+        if dialect.name == "postgresql":
+            # PostgreSQL handles UUID natively
+            return value
+        else:
+            # SQLite: convert UUID to string
+            if isinstance(value, uuid.UUID):
+                return str(value)
+            return str(uuid.UUID(str(value)))  # Ensure proper UUID format
+
+    def process_result_value(self, value, dialect):
+        """Convert database value to Python UUID."""
+        if value is None:
+            return None
+        if isinstance(value, uuid.UUID):
+            return value
+        # Convert string or integer to UUID
+        try:
+            if isinstance(value, int):
+                # SQLite sometimes stores as integer
+                return uuid.UUID(int=value)
+            return uuid.UUID(str(value))
+        except (ValueError, TypeError):
+            # If conversion fails, return None or raise
+            return None
+
+
 class AuditMixin:
     """
     Audit trail fields for all tables.
@@ -74,19 +197,25 @@ class AuditMixin:
         comment="When the record was last updated",
     )
 
-    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="SET NULL"),
-        nullable=True,
-        comment="User who created the record (NULL if system-generated or user deleted)",
-    )
+    @declared_attr
+    def created_by_id(cls) -> Mapped[uuid.UUID | None]:
+        """Foreign key to user who created the record."""
+        return mapped_column(
+            PortableUUID,
+            ForeignKey(get_fk_target("auth", "users", "id"), ondelete="SET NULL"),
+            nullable=True,
+            comment="User who created the record (NULL if system-generated or user deleted)",
+        )
 
-    updated_by_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="SET NULL"),
-        nullable=True,
-        comment="User who last updated the record (NULL if system-updated or user deleted)",
-    )
+    @declared_attr
+    def updated_by_id(cls) -> Mapped[uuid.UUID | None]:
+        """Foreign key to user who last updated the record."""
+        return mapped_column(
+            PortableUUID,
+            ForeignKey(get_fk_target("auth", "users", "id"), ondelete="SET NULL"),
+            nullable=True,
+            comment="User who last updated the record (NULL if system-updated or user deleted)",
+        )
 
     # No relationships to User model - query auth.users directly when needed
     # This avoids circular dependencies and keeps auth separate from business logic
@@ -132,8 +261,8 @@ class VersionedMixin:
     def budget_version_id(cls):
         """Foreign key to budget version."""
         return Column(
-            UUID(as_uuid=True),
-            ForeignKey("efir_budget.budget_versions.id", ondelete="CASCADE"),
+            PortableUUID,
+            ForeignKey(get_fk_target("efir_budget", "budget_versions", "id"), ondelete="CASCADE"),
             nullable=False,
             index=True,
             comment="Budget version this record belongs to",
@@ -167,7 +296,7 @@ class BaseModel(Base, AuditMixin, SoftDeleteMixin):
     __abstract__ = True
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        PortableUUID,
         primary_key=True,
         default=uuid.uuid4,
         comment="Primary key (UUID)",
@@ -175,8 +304,11 @@ class BaseModel(Base, AuditMixin, SoftDeleteMixin):
 
     @declared_attr.directive
     def __table_args__(cls):
-        """Set all tables to efir_budget schema."""
-        return {"schema": "efir_budget", "comment": cls.__doc__}
+        """Set all tables to efir_budget schema (None for SQLite tests)."""
+        schema = get_schema("efir_budget")
+        if schema:
+            return {"schema": schema, "comment": cls.__doc__}
+        return {"comment": cls.__doc__}
 
     def __repr__(self) -> str:
         """String representation of model."""
@@ -238,8 +370,11 @@ class ReferenceDataModel(Base, TimestampMixin):
 
     @declared_attr.directive
     def __table_args__(cls):
-        """Set all tables to efir_budget schema."""
-        return {"schema": "efir_budget", "comment": cls.__doc__}
+        """Set all tables to efir_budget schema (None for SQLite tests)."""
+        schema = get_schema("efir_budget")
+        if schema:
+            return {"schema": schema, "comment": cls.__doc__}
+        return {"comment": cls.__doc__}
 
     def __repr__(self) -> str:
         """String representation of model."""

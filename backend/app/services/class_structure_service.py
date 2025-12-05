@@ -70,6 +70,7 @@ class ClassStructureService:
         try:
             query = (
                 select(ClassStructure)
+                .join(ClassStructure.level)  # Explicit join needed for ORDER BY
                 .where(
                     and_(
                         ClassStructure.budget_version_id == version_id,

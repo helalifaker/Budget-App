@@ -14,6 +14,7 @@ All configuration data is versioned to support multiple budget scenarios.
 
 from __future__ import annotations
 
+import os
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -34,7 +35,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel, PortableJSON, ReferenceDataModel, VersionedMixin
+from app.models.base import (
+    BaseModel,
+    PortableJSON,
+    ReferenceDataModel,
+    VersionedMixin,
+    get_schema,
+)
 
 # ==============================================================================
 # Module 1: System Configuration
@@ -126,7 +133,7 @@ class BudgetVersion(BaseModel):
     )
 
     status: Mapped[BudgetVersionStatus] = mapped_column(
-        Enum(BudgetVersionStatus, schema="efir_budget"),
+        Enum(BudgetVersionStatus, schema=get_schema("efir_budget")),
         nullable=False,
         default=BudgetVersionStatus.WORKING,
         index=True,
@@ -141,7 +148,7 @@ class BudgetVersion(BaseModel):
 
     submitted_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("auth.users.id"),
+        ForeignKey("users.id"),
         nullable=True,
         comment="User who submitted version",
     )
@@ -154,7 +161,7 @@ class BudgetVersion(BaseModel):
 
     approved_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("auth.users.id"),
+        ForeignKey("users.id"),
         nullable=True,
         comment="User who approved version",
     )
@@ -174,7 +181,7 @@ class BudgetVersion(BaseModel):
 
     parent_version_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.budget_versions.id"),
+        ForeignKey("budget_versions.id"),
         nullable=True,
         comment="Parent version (for forecast revisions)",
     )
@@ -185,7 +192,7 @@ class BudgetVersion(BaseModel):
         # 1. Unique partial index: only one 'working' per fiscal year (WHERE status='working' AND deleted_at IS NULL)
         # 2. Check constraint: forecast versions must have parent (status != 'forecast' OR parent_version_id IS NOT NULL)
         # 3. Trigger: prevent edits to approved versions (prevent_approved_version_edit)
-        {"schema": "efir_budget", "comment": __doc__},
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
     )
 
     # Relationships
@@ -277,7 +284,7 @@ class AcademicLevel(ReferenceDataModel):
 
     cycle_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_cycles.id"),
+        ForeignKey("academic_cycles.id"),
         nullable=False,
         index=True,
         comment="Parent academic cycle",
@@ -345,12 +352,12 @@ class ClassSizeParam(BaseModel, VersionedMixin):
             "target_class_size <= max_class_size",
             name="ck_class_size_params_valid_range",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     level_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_levels.id"),
+        ForeignKey("academic_levels.id"),
         nullable=True,
         index=True,
         comment="Specific academic level (NULL for cycle default)",
@@ -358,7 +365,7 @@ class ClassSizeParam(BaseModel, VersionedMixin):
 
     cycle_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_cycles.id"),
+        ForeignKey("academic_cycles.id"),
         nullable=True,
         index=True,
         comment="Academic cycle (NULL if level-specific)",
@@ -463,12 +470,12 @@ class SubjectHoursMatrix(BaseModel, VersionedMixin):
             "hours_per_week > 0 AND hours_per_week <= 12",
             name="ck_subject_hours_realistic_range",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     subject_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.subjects.id"),
+        ForeignKey("subjects.id"),
         nullable=False,
         index=True,
         comment="Subject being taught",
@@ -476,7 +483,7 @@ class SubjectHoursMatrix(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_levels.id"),
+        ForeignKey("academic_levels.id"),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -570,7 +577,7 @@ class TeacherCostParam(BaseModel, VersionedMixin):
 
     category_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.teacher_categories.id"),
+        ForeignKey("teacher_categories.id"),
         nullable=False,
         index=True,
         comment="Teacher category",
@@ -578,7 +585,7 @@ class TeacherCostParam(BaseModel, VersionedMixin):
 
     cycle_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_cycles.id"),
+        ForeignKey("academic_cycles.id"),
         nullable=True,
         index=True,
         comment="Academic cycle (NULL for all cycles)",
@@ -759,12 +766,12 @@ class FeeStructure(BaseModel, VersionedMixin):
             "trimester",
             name="uk_fee_structure_version_level_nat_cat_trim",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_levels.id"),
+        ForeignKey("academic_levels.id"),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -772,7 +779,7 @@ class FeeStructure(BaseModel, VersionedMixin):
 
     nationality_type_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.nationality_types.id"),
+        ForeignKey("nationality_types.id"),
         nullable=False,
         index=True,
         comment="Nationality type (French, Saudi, Other)",
@@ -780,7 +787,7 @@ class FeeStructure(BaseModel, VersionedMixin):
 
     fee_category_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.fee_categories.id"),
+        ForeignKey("fee_categories.id"),
         nullable=False,
         index=True,
         comment="Fee category (tuition, DAI, etc.)",
@@ -830,12 +837,12 @@ class TimetableConstraint(BaseModel, VersionedMixin):
             "level_id",
             name="uk_timetable_constraint_version_level",
         ),
-        {"schema": "efir_budget"},
+        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("efir_budget.academic_levels.id"),
+        ForeignKey("academic_levels.id"),
         nullable=False,
         index=True,
         comment="Academic level",

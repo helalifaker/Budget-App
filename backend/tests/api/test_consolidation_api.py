@@ -23,9 +23,14 @@ from app.models.configuration import BudgetVersion, BudgetVersionStatus
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def client():
-    """Create test client with auth override."""
+    """
+    Create test client with proper lifespan handling and auth override.
+
+    Uses context manager to trigger startup event (init_db) and sets up
+    auth dependency overrides for testing protected endpoints.
+    """
     # Override auth dependencies to bypass authentication
     from app.dependencies.auth import get_current_user, require_manager
 
@@ -46,7 +51,9 @@ def client():
     app.dependency_overrides[get_current_user] = mock_get_current_user
     app.dependency_overrides[require_manager] = mock_require_manager
 
-    yield TestClient(app)
+    # Use context manager to trigger startup/shutdown events
+    with TestClient(app) as test_client:
+        yield test_client
 
     # Clean up
     app.dependency_overrides.clear()
