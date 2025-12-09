@@ -50,8 +50,9 @@ def upgrade() -> None:
         "new_campus",
         name="scenariotype",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    scenario_type.create(op.get_bind())
+    scenario_type.create(op.get_bind(), checkfirst=True)
 
     # Module 18: InitiativeStatus enum
     initiative_status = postgresql.ENUM(
@@ -62,8 +63,9 @@ def upgrade() -> None:
         "cancelled",
         name="initiativestatus",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    initiative_status.create(op.get_bind())
+    initiative_status.create(op.get_bind(), checkfirst=True)
 
     # Module 18: ProjectionCategory enum
     projection_category = postgresql.ENUM(
@@ -74,8 +76,9 @@ def upgrade() -> None:
         "depreciation",
         name="projectioncategory",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    projection_category.create(op.get_bind())
+    projection_category.create(op.get_bind(), checkfirst=True)
 
     # ========================================================================
     # Module 18: Strategic Planning - strategic_plans (Parent Table)
@@ -201,14 +204,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "scenario_type",
-            postgresql.ENUM(
-                "base_case",
-                "conservative",
-                "optimistic",
-                "new_campus",
-                name="scenariotype",
-                schema="efir_budget",
-            ),
+            scenario_type,  # Use already-created enum variable
             nullable=False,
             comment="Scenario type (base_case, conservative, optimistic, new_campus)",
         ),
@@ -363,15 +359,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "category",
-            postgresql.ENUM(
-                "revenue",
-                "personnel_costs",
-                "operating_costs",
-                "capex",
-                "depreciation",
-                name="projectioncategory",
-                schema="efir_budget",
-            ),
+            projection_category,  # Use already-created enum variable
             nullable=False,
             comment="Projection category",
         ),
@@ -520,15 +508,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "status",
-            postgresql.ENUM(
-                "planned",
-                "approved",
-                "in_progress",
-                "completed",
-                "cancelled",
-                name="initiativestatus",
-                schema="efir_budget",
-            ),
+            initiative_status,  # Use already-created enum variable
             nullable=False,
             server_default="planned",
             comment="Initiative status",

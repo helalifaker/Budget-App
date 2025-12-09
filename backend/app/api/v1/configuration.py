@@ -22,6 +22,8 @@ from app.models.configuration import BudgetVersionStatus
 from app.schemas.configuration import (
     AcademicCycleResponse,
     AcademicLevelResponse,
+    ApplyTemplateRequest,
+    ApplyTemplateResponse,
     BudgetVersionClone,
     BudgetVersionCreate,
     BudgetVersionResponse,
@@ -32,7 +34,11 @@ from app.schemas.configuration import (
     FeeStructureCreate,
     FeeStructureResponse,
     NationalityTypeResponse,
+    SubjectCreateRequest,
+    SubjectHoursBatchRequest,
+    SubjectHoursBatchResponse,
     SubjectHoursCreate,
+    SubjectHoursMatrixResponse,
     SubjectHoursResponse,
     SubjectResponse,
     SystemConfigCreate,
@@ -40,6 +46,7 @@ from app.schemas.configuration import (
     TeacherCategoryResponse,
     TeacherCostParamCreate,
     TeacherCostParamResponse,
+    TemplateInfo,
     TimetableConstraintCreate,
     TimetableConstraintResponse,
 )
@@ -282,7 +289,7 @@ async def create_budget_version(
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create BudgetVersion: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create BudgetVersion: {e!s}")
 
 
 @router.put("/budget-versions/{version_id}", response_model=BudgetVersionResponse)
@@ -601,6 +608,33 @@ async def upsert_class_size_param(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
+@router.delete("/class-size-params/{param_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_class_size_param(
+    param_id: uuid.UUID,
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Delete a class size parameter (soft delete).
+
+    Args:
+        param_id: Class size parameter UUID
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        204 No Content on success
+
+    Raises:
+        HTTPException: 404 if parameter not found
+    """
+    try:
+        await config_service.class_size_param_service.soft_delete(param_id, user.user_id)
+        return None
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
 # ==============================================================================
 # Subject Hours Matrix Endpoints
 # ==============================================================================
@@ -677,6 +711,185 @@ async def upsert_subject_hours(
             user_id=user.user_id,
         )
         return hours
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/subject-hours/matrix", response_model=SubjectHoursMatrixResponse)
+async def get_subject_hours_matrix_by_cycle(
+    version_id: uuid.UUID = Query(..., description="Budget version ID"),
+    cycle_code: str = Query(..., description="Cycle code (e.g., 'COLL', 'LYC')"),
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Get subject hours matrix organized by cycle.
+
+    Returns a matrix view with all subjects as rows and levels as columns,
+    including hours per week and split class settings. Non-applicable subjects
+    for the cycle are marked with is_applicable=False.
+
+    Args:
+        version_id: Budget version UUID
+        cycle_code: Cycle code to filter (e.g., 'COLL' for Collège, 'LYC' for Lycée)
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        SubjectHoursMatrixResponse with levels and subjects organized for display
+
+    Raises:
+        HTTPException: 404 if budget version or cycle not found
+    """
+    try:
+        matrix = await config_service.get_subject_hours_matrix_by_cycle(
+            version_id=version_id,
+            cycle_code=cycle_code,
+        )
+        return matrix
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/subject-hours/batch", response_model=SubjectHoursBatchResponse)
+async def batch_save_subject_hours(
+    batch_data: SubjectHoursBatchRequest,
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Batch create/update/delete subject hours entries.
+
+    Efficiently saves multiple subject hours in a single transaction.
+    - Entries with hours_per_week=None will be deleted
+    - Existing entries will be updated
+    - New entries will be created
+
+    Max 200 entries per request to prevent timeout.
+
+    Args:
+        batch_data: Batch request with budget_version_id and entries list
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        SubjectHoursBatchResponse with created/updated/deleted counts and any errors
+
+    Raises:
+        HTTPException: 400 if validation fails
+        HTTPException: 404 if budget version not found
+    """
+    try:
+        result = await config_service.batch_upsert_subject_hours(
+            version_id=batch_data.budget_version_id,
+            entries=batch_data.entries,
+            user_id=user.user_id,
+        )
+        return result
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/subject-hours/templates", response_model=list[TemplateInfo])
+async def get_curriculum_templates(
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Get list of available curriculum templates.
+
+    Returns pre-built AEFE standard curriculum templates that can be applied
+    to quickly populate subject hours configuration.
+
+    Args:
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        List of TemplateInfo with code, name, description, and applicable cycles
+    """
+    templates = config_service.get_available_templates()
+    return templates
+
+
+@router.post("/subject-hours/apply-template", response_model=ApplyTemplateResponse)
+async def apply_curriculum_template(
+    request: ApplyTemplateRequest,
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Apply a predefined curriculum template to populate subject hours.
+
+    Templates contain standard AEFE weekly hours for each subject-level combination.
+    Use this to quickly set up subject hours based on French national curriculum.
+
+    Args:
+        request: ApplyTemplateRequest with template_code and overwrite_existing flag
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        ApplyTemplateResponse with created/updated counts
+
+    Raises:
+        HTTPException: 400 if template not found or validation fails
+        HTTPException: 404 if budget version not found
+    """
+    try:
+        result = await config_service.apply_curriculum_template(
+            version_id=request.budget_version_id,
+            template_code=request.template_code,
+            cycle_codes=request.cycle_codes,
+            overwrite_existing=request.overwrite_existing,
+            user_id=user.user_id,
+        )
+        return result
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.post("/subjects", response_model=SubjectResponse, status_code=status.HTTP_201_CREATED)
+async def create_subject(
+    subject_data: SubjectCreateRequest,
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Create a new custom subject.
+
+    Allows adding subjects not in the standard AEFE curriculum (e.g., local
+    language courses, electives specific to the school).
+
+    Args:
+        subject_data: Subject data with code, names, category, and applicable cycles
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        Created Subject
+
+    Raises:
+        HTTPException: 400 if validation fails (e.g., duplicate code)
+        HTTPException: 409 if subject code already exists
+    """
+    try:
+        # Note: applicable_cycles from schema is for frontend validation only
+        # The Subject model doesn't store this field (can be added in future migration)
+        subject = await config_service.create_subject(
+            code=subject_data.code,
+            name_fr=subject_data.name_fr,
+            name_en=subject_data.name_en,
+            category=subject_data.category,
+            user_id=user.user_id,
+        )
+        return subject
+    except ConflictError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 

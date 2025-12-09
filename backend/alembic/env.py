@@ -99,10 +99,23 @@ def do_run_migrations(connection: Connection) -> None:
 
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode with async support."""
+    import uuid as uuid_module
+
+    def unique_stmt_name() -> str:
+        """Generate unique statement name to avoid conflicts with pgBouncer."""
+        return f"stmt_{uuid_module.uuid4().hex[:8]}"
+
+    # For Supabase pgBouncer/Supavisor compatibility
+    # Must use unique prepared statement names and disable caching
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args={
+            "statement_cache_size": 0,
+            "prepared_statement_name_func": unique_stmt_name,
+            "server_settings": {"jit": "off"},
+        },
     )
 
     async with connectable.connect() as connection:

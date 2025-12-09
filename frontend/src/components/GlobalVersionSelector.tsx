@@ -86,13 +86,13 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
       <div
         className={cn(
           'flex items-center gap-2 px-3 py-2 rounded-lg',
-          'bg-sand-100 border border-sand-200',
+          'bg-subtle border border-border-light',
           'animate-pulse',
           className
         )}
       >
-        <FileCheck className="w-4 h-4 text-twilight-400" />
-        <span className="text-sm text-twilight-500">Loading...</span>
+        <FileCheck className="w-4 h-4 text-text-secondary" />
+        <span className="text-sm text-text-secondary">Loading...</span>
       </div>
     )
   }
@@ -103,12 +103,12 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
       <div
         className={cn(
           'flex items-center gap-2 px-3 py-2 rounded-lg',
-          'bg-sand-50 border border-sand-200',
+          'bg-subtle border border-border-light',
           className
         )}
       >
-        <FileCheck className="w-4 h-4 text-twilight-400" />
-        <span className="text-sm text-twilight-500">No budget versions</span>
+        <FileCheck className="w-4 h-4 text-text-secondary" />
+        <span className="text-sm text-text-secondary">No budget versions</span>
       </div>
     )
   }
@@ -125,11 +125,11 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
           'w-auto min-w-[280px] max-w-[360px]',
           'h-10 px-3',
           // Luxury styling
-          'bg-white border-sand-200',
-          'hover:border-gold-400 hover:bg-sand-50',
+          'bg-white border-border-light',
+          'hover:border-gold-400 hover:bg-subtle',
           'focus:ring-2 focus:ring-gold-400/30 focus:border-gold-500',
           // Typography
-          'text-sm font-medium text-brown-800',
+          'text-sm font-medium text-text-primary',
           // Transition
           'transition-all duration-200',
           className
@@ -141,21 +141,21 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
             {selectedVersion && (
               <div className="flex items-center gap-2 truncate">
                 <span className="truncate">{selectedVersion.name}</span>
-                <span className="text-xs text-twilight-500 shrink-0">
+                <span className="text-xs text-text-secondary shrink-0">
                   FY{selectedVersion.fiscal_year}
                 </span>
                 {getStatusBadge(selectedVersion.status)}
               </div>
             )}
           </SelectValue>
-          <ChevronDown className="w-4 h-4 text-twilight-400 shrink-0 ml-auto" />
+          <ChevronDown className="w-4 h-4 text-text-secondary shrink-0 ml-auto" />
         </div>
       </SelectTrigger>
 
       <SelectContent
         className={cn(
           // Luxury dropdown styling
-          'bg-white border border-sand-200',
+          'bg-white border border-border-light',
           'shadow-luxe-lg rounded-xl',
           'overflow-hidden'
         )}
@@ -163,7 +163,7 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
         {/* Working Versions */}
         {groupedVersions.working.length > 0 && (
           <SelectGroup>
-            <SelectLabel className="text-xs font-semibold text-twilight-500 uppercase tracking-wide px-3 py-2 bg-sand-50">
+            <SelectLabel className="text-xs font-semibold text-text-secondary uppercase tracking-wide px-3 py-2 bg-subtle">
               Working Drafts
             </SelectLabel>
             {groupedVersions.working.map((version) => (
@@ -175,7 +175,7 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
         {/* Submitted Versions */}
         {groupedVersions.submitted.length > 0 && (
           <SelectGroup>
-            <SelectLabel className="text-xs font-semibold text-twilight-500 uppercase tracking-wide px-3 py-2 bg-sand-50 border-t border-sand-100">
+            <SelectLabel className="text-xs font-semibold text-text-secondary uppercase tracking-wide px-3 py-2 bg-subtle border-t border-border-light">
               Under Review
             </SelectLabel>
             {groupedVersions.submitted.map((version) => (
@@ -187,7 +187,7 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
         {/* Approved Versions */}
         {groupedVersions.approved.length > 0 && (
           <SelectGroup>
-            <SelectLabel className="text-xs font-semibold text-twilight-500 uppercase tracking-wide px-3 py-2 bg-sand-50 border-t border-sand-100">
+            <SelectLabel className="text-xs font-semibold text-text-secondary uppercase tracking-wide px-3 py-2 bg-subtle border-t border-border-light">
               Approved
             </SelectLabel>
             {groupedVersions.approved.map((version) => (
@@ -199,7 +199,7 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
         {/* Other Versions (forecast, superseded) */}
         {groupedVersions.other.length > 0 && (
           <SelectGroup>
-            <SelectLabel className="text-xs font-semibold text-twilight-500 uppercase tracking-wide px-3 py-2 bg-sand-50 border-t border-sand-100">
+            <SelectLabel className="text-xs font-semibold text-text-secondary uppercase tracking-wide px-3 py-2 bg-subtle border-t border-border-light">
               Other
             </SelectLabel>
             {groupedVersions.other.map((version) => (
@@ -222,18 +222,18 @@ function VersionItem({ version }: { version: BudgetVersion }) {
       className={cn(
         'px-3 py-2.5',
         'cursor-pointer',
-        'hover:bg-sand-50',
-        'focus:bg-gold-50 focus:text-brown-900',
+        'hover:bg-subtle',
+        'focus:bg-gold-50 focus:text-text-primary',
         'transition-colors duration-150'
       )}
     >
       <div className="flex items-center justify-between gap-4 min-w-[260px]">
         <div className="flex items-center gap-2">
-          <Calendar className="w-3.5 h-3.5 text-twilight-400" />
-          <span className="font-medium text-brown-800">{version.name}</span>
+          <Calendar className="w-3.5 h-3.5 text-text-secondary" />
+          <span className="font-medium text-text-primary">{version.name}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-twilight-500">FY{version.fiscal_year}</span>
+          <span className="text-xs text-text-secondary">FY{version.fiscal_year}</span>
           {getStatusBadge(version.status)}
         </div>
       </div>

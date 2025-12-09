@@ -23,6 +23,7 @@ RATE_LIMITS = {
     # Strict limits for expensive operations
     "calculations": {"requests": 30, "window": 60},
     "consolidation": {"requests": 20, "window": 60},
+    "consolidation_status": {"requests": 120, "window": 60},  # Status checks are lightweight
     "export": {"requests": 10, "window": 60},
     # Relaxed limits for read operations
     "read": {"requests": 200, "window": 60},
@@ -38,13 +39,15 @@ ROLE_MULTIPLIERS = {
 }
 
 # Paths that map to rate limit categories
+# Note: Order matters - more specific paths should come first
 PATH_CATEGORIES = {
     "/api/v1/calculations/": "calculations",
-    "/api/v1/consolidation/": "consolidation",
     "/api/v1/analysis/export": "export",
     "/api/v1/planning/": "default",
     "/api/v1/configuration/": "read",
     "/health": "read",
+    # Consolidation - status endpoints are lightweight, others are expensive
+    "/api/v1/consolidation/": "consolidation",  # Default for consolidation
 }
 
 # Environment flag to enable/disable rate limiting
@@ -88,6 +91,14 @@ def get_rate_limit_category(path: str) -> str:
     Returns:
         Rate limit category name
     """
+    # Special case: status endpoints are lightweight read operations
+    # Pattern: /api/v1/{module}/{id}/status or /api/v1/{module}/{id}/summary
+    if path.endswith("/status") or path.endswith("/summary"):
+        if "/consolidation/" in path:
+            return "consolidation_status"
+        # Other summary/status endpoints get relaxed limits too
+        return "read"
+
     for prefix, category in PATH_CATEGORIES.items():
         if path.startswith(prefix):
             return category
@@ -149,6 +160,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if request.url.path in ["/health", "/health/ready", "/health/live"]:
             return await call_next(request)
 
+        # Skip rate limiting for OPTIONS preflight requests
+        # CORS preflight should never be rate limited as they're browser-generated
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Get rate limit parameters
         client_id = get_client_identifier(request)
         category = get_rate_limit_category(request.url.path)
@@ -177,6 +193,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 max_requests=max_requests,
                 path=request.url.path,
             )
+            # Get origin for CORS headers - must include these so browser can read error
+            origin = request.headers.get("origin", "*")
+            allowed_origins_str = os.getenv(
+                "ALLOWED_ORIGINS",
+                "http://localhost:5173,http://localhost:3000"
+            )
+            allowed_origins = [o.strip() for o in allowed_origins_str.split(",")]
+            cors_origin = origin if origin in allowed_origins else allowed_origins[0]
+
             return JSONResponse(
                 status_code=429,
                 content={
@@ -190,6 +215,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     "X-RateLimit-Limit": str(max_requests),
                     "X-RateLimit-Remaining": "0",
                     "X-RateLimit-Reset": str(int(time.time()) + reset_time),
+                    # CORS headers so browser can read the error response
+                    "Access-Control-Allow-Origin": cors_origin,
+                    "Access-Control-Allow-Credentials": "true",
+                    "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+                    "Access-Control-Allow-Headers": "authorization, content-type",
                 },
             )
 

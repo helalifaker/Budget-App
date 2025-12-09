@@ -68,14 +68,14 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
   if (isLoading) {
     return (
       <div className="flex justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-twilight-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-text-secondary" />
       </div>
     )
   }
 
   if (sessionGroups.length === 0) {
     return (
-      <div className="text-center p-8 text-twilight-600">
+      <div className="text-center p-8 text-text-secondary">
         <p>Aucune modification enregistrée</p>
       </div>
     )
@@ -84,8 +84,8 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-twilight-900">Historique des modifications</h3>
-        <Badge variant="outline" className="text-twilight-700">
+        <h3 className="text-lg font-semibold text-text-primary">Historique des modifications</h3>
+        <Badge variant="outline" className="text-text-secondary">
           {sessionGroups.length} session{sessionGroups.length > 1 ? 's' : ''}
         </Badge>
       </div>
@@ -125,7 +125,7 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
             }
 
             return (
-              <Card key={sessionId} className="p-4 bg-white border-sand-200">
+              <Card key={sessionId} className="p-4 bg-white border-border-light">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     {/* Session header */}
@@ -133,10 +133,10 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
                       <Badge variant={getBadgeVariant(firstChange.change_type)}>
                         {getChangeTypeLabel(firstChange.change_type)}
                       </Badge>
-                      <span className="text-sm text-twilight-600">
+                      <span className="text-sm text-text-secondary">
                         {changeCount} cellule{changeCount > 1 ? 's' : ''}
                       </span>
-                      <span className="text-xs text-twilight-500">
+                      <span className="text-xs text-text-tertiary">
                         {formatDistanceToNow(new Date(firstChange.changed_at), {
                           addSuffix: true,
                           locale: fr,
@@ -148,7 +148,7 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
                     <div className="space-y-1">
                       {sessionChanges.slice(0, 3).map((change) => (
                         <div key={change.id} className="flex items-center gap-2 text-sm">
-                          <span className="font-medium text-twilight-800 min-w-[120px]">
+                          <span className="font-medium text-text-secondary min-w-[120px]">
                             {change.field_name}
                           </span>
                           {change.old_value !== undefined && change.new_value !== undefined ? (
@@ -156,7 +156,7 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
                               <Badge variant="outline" className="font-mono text-xs">
                                 {change.old_value.toLocaleString('fr-FR')}
                               </Badge>
-                              <ArrowRight className="h-3 w-3 text-twilight-400" />
+                              <ArrowRight className="h-3 w-3 text-text-muted" />
                               <Badge
                                 variant="default"
                                 className="font-mono text-xs bg-gold-100 text-gold-800 border-gold-300"
@@ -182,7 +182,7 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
                         </div>
                       ))}
                       {changeCount > 3 && (
-                        <p className="text-xs text-twilight-500 italic">
+                        <p className="text-xs text-text-tertiary italic">
                           ... et {changeCount - 3} autre{changeCount - 3 > 1 ? 's' : ''}
                         </p>
                       )}
@@ -195,7 +195,7 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
                       variant="ghost"
                       size="sm"
                       onClick={() => void undo()}
-                      className="gap-1 text-twilight-700 hover:text-twilight-900 hover:bg-sand-100"
+                      className="gap-1 text-text-secondary hover:text-text-primary hover:bg-subtle"
                     >
                       <Undo2 className="h-4 w-4" />
                       Annuler

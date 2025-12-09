@@ -7,7 +7,7 @@ Request and response models for configuration API operations.
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -546,3 +546,147 @@ class TimetableConstraintResponse(TimetableConstraintBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ==============================================================================
+# Subject Hours Matrix - Batch Operations & Templates
+# ==============================================================================
+
+
+class SubjectHoursEntry(BaseModel):
+    """Single entry for batch subject hours operations."""
+
+    subject_id: uuid.UUID
+    level_id: uuid.UUID
+    hours_per_week: Decimal | None = Field(
+        None,
+        ge=0,
+        le=12,
+        decimal_places=2,
+        description="Hours per week (None = delete entry)",
+    )
+    is_split: bool = False
+    notes: str | None = None
+
+
+class SubjectHoursBatchRequest(BaseModel):
+    """Request schema for batch subject hours save."""
+
+    budget_version_id: uuid.UUID
+    entries: list[SubjectHoursEntry] = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="Subject hours entries (max 200 per request)",
+    )
+
+
+class SubjectHoursBatchResponse(BaseModel):
+    """Response schema for batch subject hours save."""
+
+    created_count: int
+    updated_count: int
+    deleted_count: int
+    errors: list[str] = Field(default_factory=list)
+
+
+class LevelInfo(BaseModel):
+    """Level information for matrix response."""
+
+    id: uuid.UUID
+    code: str
+    name_en: str
+    name_fr: str
+    sort_order: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SubjectLevelHours(BaseModel):
+    """Hours configuration for a specific subject-level combination."""
+
+    hours_per_week: Decimal | None
+    is_split: bool
+    notes: str | None
+
+
+class SubjectWithHours(BaseModel):
+    """Subject with hours data for matrix response."""
+
+    id: uuid.UUID
+    code: str
+    name_en: str
+    name_fr: str
+    category: str
+    is_applicable: bool = True
+    hours: dict[str, SubjectLevelHours] = Field(
+        default_factory=dict,
+        description="Hours keyed by level_id",
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SubjectHoursMatrixResponse(BaseModel):
+    """Response schema for subject hours matrix."""
+
+    cycle_id: uuid.UUID
+    cycle_code: str
+    cycle_name: str
+    levels: list[LevelInfo]
+    subjects: list[SubjectWithHours]
+
+
+class TemplateInfo(BaseModel):
+    """Information about an available curriculum template."""
+
+    code: str
+    name: str
+    description: str
+    cycle_codes: list[str]
+
+
+class ApplyTemplateRequest(BaseModel):
+    """Request schema for applying curriculum template."""
+
+    budget_version_id: uuid.UUID
+    template_code: str = Field(..., description="Template code (e.g., AEFE_STANDARD_COLL)")
+    cycle_codes: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Cycles to apply template to (e.g., ['COLL', 'LYC'])",
+    )
+    overwrite_existing: bool = Field(
+        default=False,
+        description="Whether to overwrite existing values",
+    )
+
+
+class ApplyTemplateResponse(BaseModel):
+    """Response schema for applying curriculum template."""
+
+    applied_count: int
+    skipped_count: int
+    template_name: str
+
+
+class SubjectCreateRequest(BaseModel):
+    """Request schema for creating a custom subject."""
+
+    code: str = Field(
+        ...,
+        min_length=2,
+        max_length=6,
+        pattern=r"^[A-Z0-9]+$",
+        description="Subject code (2-6 uppercase alphanumeric)",
+    )
+    name_fr: str = Field(..., max_length=100, description="French name")
+    name_en: str = Field(..., max_length=100, description="English name")
+    category: Literal["core", "elective", "specialty", "local"] = Field(
+        ..., description="Subject category"
+    )
+    applicable_cycles: list[str] = Field(
+        ...,
+        min_length=1,
+        description="Applicable cycle codes (e.g., ['COLL', 'LYC'])",
+    )

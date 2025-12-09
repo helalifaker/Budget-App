@@ -13,16 +13,32 @@ export const budgetVersionKeys = {
 
 /**
  * Fetch budget versions with authentication check.
- * Query is disabled until session is available to prevent race conditions.
+ * Query is enabled when session exists - we don't wait for loading to complete
+ * because if session exists, the user is authenticated.
  */
 export function useBudgetVersions(page = 1, pageSize = 50) {
-  const { session, loading } = useAuth()
+  const { session } = useAuth()
 
   return useQuery({
     queryKey: budgetVersionKeys.list(`page=${page}&pageSize=${pageSize}`),
-    queryFn: () => budgetVersionsApi.getAll({ page, page_size: pageSize }),
-    // Only enable query when session is confirmed and not loading
-    enabled: !!session && !loading,
+    queryFn: async () => {
+      console.log('[useBudgetVersions] Fetching budget versions...')
+      try {
+        const result = await budgetVersionsApi.getAll({ page, page_size: pageSize })
+        console.log('[useBudgetVersions] Success:', result)
+        return result
+      } catch (error) {
+        console.error('[useBudgetVersions] Error:', error)
+        throw error
+      }
+    },
+    // Enable query when session exists - session presence means user is authenticated
+    enabled: !!session,
+    // Prevent excessive refetching - budget versions don't change frequently
+    staleTime: 30_000, // 30 seconds
+    refetchOnWindowFocus: false, // Don't refetch on tab focus
+    // Disable retries to see actual errors immediately
+    retry: false,
   })
 }
 

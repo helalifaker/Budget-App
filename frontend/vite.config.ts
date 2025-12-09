@@ -189,11 +189,11 @@ export default defineConfig({
       '@tanstack/react-router',
       'react-error-boundary',
       'sonner',
+      'framer-motion', // Pre-bundle to avoid HMR issues
     ],
     exclude: [
       'ag-grid-community', // Lazy load
       'ag-grid-react',
-      'framer-motion',
       // Note: recharts is NOT excluded - let Vite handle it and its dependencies (es-toolkit)
     ],
     // Force proper ES module resolution

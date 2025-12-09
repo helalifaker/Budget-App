@@ -42,8 +42,8 @@ export function ChangeLogDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle className="text-twilight-900">Journal des modifications</DialogTitle>
-          <DialogDescription className="text-twilight-600">
+          <DialogTitle className="text-text-primary">Journal des modifications</DialogTitle>
+          <DialogDescription className="text-text-secondary">
             Historique complet des modifications avec possibilité d&apos;annulation
           </DialogDescription>
         </DialogHeader>

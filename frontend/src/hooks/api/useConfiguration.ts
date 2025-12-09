@@ -17,6 +17,9 @@ export const configurationKeys = {
   subjects: () => [...configurationKeys.all, 'subjects'] as const,
   subjectHours: (budgetVersionId: string) =>
     [...configurationKeys.all, 'subject-hours', budgetVersionId] as const,
+  subjectHoursMatrix: (budgetVersionId: string, cycleCode: string) =>
+    [...configurationKeys.all, 'subject-hours-matrix', budgetVersionId, cycleCode] as const,
+  curriculumTemplates: () => [...configurationKeys.all, 'curriculum-templates'] as const,
   teacherCategories: () => [...configurationKeys.all, 'teacher-categories'] as const,
   teacherCosts: (budgetVersionId?: string) =>
     budgetVersionId
@@ -114,25 +117,67 @@ export function useClassSizeParams(budgetVersionId: string | undefined) {
   })
 }
 
+export function useCreateClassSizeParam() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: {
+      budget_version_id: string
+      level_id: string | null
+      cycle_id: string | null
+      min_class_size: number
+      target_class_size: number
+      max_class_size: number
+      notes?: string | null
+    }) => configurationApi.classSizeParams.create(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.classSizeParams(variables.budget_version_id),
+      })
+      toastMessages.success.created('Paramètre de taille de classe')
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
 export function useUpdateClassSizeParam() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string
-      data: Partial<import('@/types/api').ClassSizeParam>
-    }) => configurationApi.classSizeParams.update(id, data),
-    onSuccess: () => {
-      // Invalidate the class size params query for the affected budget version
+    mutationFn: (data: {
+      budget_version_id: string
+      level_id: string | null
+      cycle_id: string | null
+      min_class_size: number
+      target_class_size: number
+      max_class_size: number
+      notes?: string | null
+    }) => configurationApi.classSizeParams.update(data),
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.all,
-        predicate: (query) =>
-          query.queryKey[0] === 'configuration' && query.queryKey[1] === 'class-size-params',
+        queryKey: configurationKeys.classSizeParams(variables.budget_version_id),
       })
       toastMessages.success.updated('Paramètre de taille de classe')
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
+export function useDeleteClassSizeParam() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; budgetVersionId: string }) =>
+      configurationApi.classSizeParams.delete(id),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.classSizeParams(variables.budgetVersionId),
+      })
+      toastMessages.success.deleted('Paramètre de taille de classe')
     },
     onError: (error: Error) => {
       toastMessages.error.custom(error.message)
@@ -163,6 +208,30 @@ export function useSubjectHours(budgetVersionId: string | undefined) {
   })
 }
 
+export function useCreateSubjectHours() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: {
+      budget_version_id: string
+      subject_id: string
+      level_id: string
+      hours_per_week: number
+      is_split: boolean
+      notes?: string | null
+    }) => configurationApi.subjectHours.create(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.subjectHours(variables.budget_version_id),
+      })
+      toastMessages.success.created('Heures par matière')
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
 export function useUpdateSubjectHours() {
   const queryClient = useQueryClient()
 
@@ -183,6 +252,113 @@ export function useUpdateSubjectHours() {
           query.queryKey[0] === 'configuration' && query.queryKey[1] === 'subject-hours',
       })
       toastMessages.success.updated('Heures par matière')
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
+// ==============================================================================
+// Subject Hours Matrix Hooks (Cycle-Based Matrix View)
+// ==============================================================================
+
+/**
+ * Fetch subject hours matrix by cycle for a budget version.
+ * Returns all subjects with hours organized by level columns.
+ */
+export function useSubjectHoursMatrix(budgetVersionId: string | null, cycleCode: string | null) {
+  const { session, loading } = useAuth()
+
+  return useQuery({
+    queryKey: configurationKeys.subjectHoursMatrix(budgetVersionId ?? '', cycleCode ?? ''),
+    queryFn: () => configurationApi.subjectHours.getMatrix(budgetVersionId!, cycleCode!),
+    enabled: !!budgetVersionId && !!cycleCode && !!session && !loading,
+    staleTime: 5 * 60 * 1000, // 5 minutes - matrix may be edited frequently
+  })
+}
+
+/**
+ * Batch save subject hours entries (up to 200 at a time).
+ * Handles creates, updates, and deletes in a single transaction.
+ */
+export function useBatchSaveSubjectHours() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: configurationApi.subjectHours.batchSave,
+    onSuccess: (_data, variables) => {
+      // Invalidate all subject hours queries for this version
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.all,
+        predicate: (query) =>
+          query.queryKey[0] === 'configuration' &&
+          (query.queryKey[1] === 'subject-hours' || query.queryKey[1] === 'subject-hours-matrix') &&
+          query.queryKey[2] === variables.budget_version_id,
+      })
+      toastMessages.success.updated('Heures par matière')
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
+/**
+ * Fetch available curriculum templates.
+ * Templates are static server-side data.
+ */
+export function useCurriculumTemplates() {
+  const { session, loading } = useAuth()
+
+  return useQuery({
+    queryKey: configurationKeys.curriculumTemplates(),
+    queryFn: () => configurationApi.subjectHours.getTemplates(),
+    enabled: !!session && !loading,
+    staleTime: 60 * 60 * 1000, // 1 hour - templates are static
+  })
+}
+
+/**
+ * Apply a curriculum template to populate subject hours.
+ */
+export function useApplyTemplate() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: configurationApi.subjectHours.applyTemplate,
+    onSuccess: (data, variables) => {
+      // Invalidate all subject hours queries for this version
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.all,
+        predicate: (query) =>
+          query.queryKey[0] === 'configuration' &&
+          (query.queryKey[1] === 'subject-hours' || query.queryKey[1] === 'subject-hours-matrix') &&
+          query.queryKey[2] === variables.budget_version_id,
+      })
+      toastMessages.success.custom(
+        `Applied template "${data.template_name}": ${data.applied_count} entries created, ${data.skipped_count} skipped`
+      )
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
+/**
+ * Create a new custom subject.
+ */
+export function useCreateSubject() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: configurationApi.subjects.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.subjects(),
+      })
+      toastMessages.success.created('Matière')
     },
     onError: (error: Error) => {
       toastMessages.error.custom(error.message)

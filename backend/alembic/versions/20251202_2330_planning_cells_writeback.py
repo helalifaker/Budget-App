@@ -65,6 +65,7 @@ def upgrade() -> None:
     # - is_locked prevents edits during calculations or approval workflow
     # - Support for both numeric and text values (most cells are numeric)
 
+    # Create planning_cells table
     op.execute(
         """
         CREATE TABLE efir_budget.planning_cells (
@@ -97,27 +98,45 @@ def upgrade() -> None:
             CONSTRAINT uq_planning_cell UNIQUE(
                 budget_version_id, module_code, entity_id, field_name, period_code
             )
-        );
+        )
+    """
+    )
 
-        -- Add table comment
+    # Add table and column comments separately (asyncpg limitation)
+    op.execute(
+        """
         COMMENT ON TABLE efir_budget.planning_cells IS
-            'Cell-level storage for all planning modules. Enables Excel-like instant save, '
-            'multi-user collaboration with conflict detection, and optimistic locking.';
-
+            'Cell-level storage for all planning modules. Enables Excel-like instant save, multi-user collaboration with conflict detection, and optimistic locking.'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.planning_cells.module_code IS
-            'Planning module identifier: enrollment, dhg, revenue, costs, capex, etc.';
-
+            'Planning module identifier: enrollment, dhg, revenue, costs, capex, etc.'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.planning_cells.entity_id IS
-            'FK to source entity (enrollment_plans.id, revenue_plans.id, etc.). NULL for aggregated cells.';
-
+            'FK to source entity (enrollment_plans.id, revenue_plans.id, etc.). NULL for aggregated cells.'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.planning_cells.period_code IS
-            'Period identifier (2025-01, P1, T1) or NULL for non-periodic fields.';
-
+            'Period identifier (2025-01, P1, T1) or NULL for non-periodic fields.'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.planning_cells.value_type IS
-            'Source of value: input (user entry), calculated (formula), imported (external system).';
-
+            'Source of value: input (user entry), calculated (formula), imported (external system).'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.planning_cells.version IS
-            'Optimistic locking version. Increment on update. Detect conflicts if client version != DB version.';
+            'Optimistic locking version. Increment on update. Detect conflicts if client version != DB version.'
     """
     )
 
@@ -136,6 +155,7 @@ def upgrade() -> None:
     # - change_type distinguishes manual edits from system operations
     # - Stores old_value and new_value for bi-directional traversal
 
+    # Create cell_changes table
     op.execute(
         """
         CREATE TABLE efir_budget.cell_changes (
@@ -162,22 +182,33 @@ def upgrade() -> None:
             -- Audit trail
             changed_by UUID REFERENCES auth.users(id),
             changed_at TIMESTAMPTZ DEFAULT NOW()
-        );
+        )
+    """
+    )
 
-        -- Add table comment
+    # Add comments for cell_changes table
+    op.execute(
+        """
         COMMENT ON TABLE efir_budget.cell_changes IS
-            'Complete audit trail of all cell changes. Enables unlimited undo/redo, '
-            'audit compliance, and change impact analysis.';
-
+            'Complete audit trail of all cell changes. Enables unlimited undo/redo, audit compliance, and change impact analysis.'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.cell_changes.change_type IS
-            'Type of change: manual (user edit), spread (auto-fill), import (external data), '
-            'undo/redo (user action), calculation (formula update).';
-
+            'Type of change: manual (user edit), spread (auto-fill), import (external data), undo/redo (user action), calculation (formula update).'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.cell_changes.session_id IS
-            'Groups related changes (e.g., bulk paste, spread operation) for atomic undo/redo.';
-
+            'Groups related changes (e.g., bulk paste, spread operation) for atomic undo/redo.'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.cell_changes.sequence_number IS
-            'Order of changes within session. Used to replay changes in correct sequence.';
+            'Order of changes within session. Used to replay changes in correct sequence.'
     """
     )
 
@@ -195,6 +226,7 @@ def upgrade() -> None:
     # - Threaded comments possible via self-referencing FK (future enhancement)
     # - Real-time enabled for instant comment visibility
 
+    # Create cell_comments table
     op.execute(
         """
         CREATE TABLE efir_budget.cell_comments (
@@ -212,15 +244,21 @@ def upgrade() -> None:
             created_by UUID REFERENCES auth.users(id),
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
+        )
+    """
+    )
 
-        -- Add table comment
+    # Add comments for cell_comments table
+    op.execute(
+        """
         COMMENT ON TABLE efir_budget.cell_comments IS
-            'Cell-level comments and annotations. Enables collaboration, assumptions documentation, '
-            'and review feedback tracking.';
-
+            'Cell-level comments and annotations. Enables collaboration, assumptions documentation, and review feedback tracking.'
+    """
+    )
+    op.execute(
+        """
         COMMENT ON COLUMN efir_budget.cell_comments.is_resolved IS
-            'Tracks discussion status. False = open discussion, True = resolved/acknowledged.';
+            'Tracks discussion status. False = open discussion, True = resolved/acknowledged.'
     """
     )
 
@@ -240,7 +278,6 @@ def upgrade() -> None:
         """
         CREATE INDEX idx_cells_version
         ON efir_budget.planning_cells(budget_version_id)
-        WHERE deleted_at IS NULL;
     """
     )
 
@@ -249,7 +286,6 @@ def upgrade() -> None:
         """
         CREATE INDEX idx_cells_module
         ON efir_budget.planning_cells(module_code, entity_id)
-        WHERE deleted_at IS NULL;
     """
     )
 
@@ -363,117 +399,77 @@ def upgrade() -> None:
     # ========================================================================
     # Row Level Security (RLS) Policies
     # ========================================================================
-    # Multi-tenant isolation: Users can only access cells for their organization's budgets
-    # Same pattern as existing tables (organization-based isolation via budget_versions)
+    # Security Note: Current implementation uses simple authentication check.
+    # Future enhancement: Add multi-tenant isolation via organization_id
+    # when multi-tenancy is implemented (requires adding organization_id to
+    # budget_versions table and creating user_profiles table).
 
     # Enable RLS on all three tables
     op.execute("ALTER TABLE efir_budget.planning_cells ENABLE ROW LEVEL SECURITY;")
     op.execute("ALTER TABLE efir_budget.cell_changes ENABLE ROW LEVEL SECURITY;")
     op.execute("ALTER TABLE efir_budget.cell_comments ENABLE ROW LEVEL SECURITY;")
 
-    # Policy 1: planning_cells organization isolation
+    # Policy 1: planning_cells - authenticated users can access all non-deleted budget versions
     op.execute(
         """
-        CREATE POLICY planning_cells_org_isolation
+        CREATE POLICY planning_cells_authenticated_access
         ON efir_budget.planning_cells
         FOR ALL
         USING (
-            budget_version_id IN (
+            auth.uid() IS NOT NULL
+            AND budget_version_id IN (
                 SELECT id
                 FROM efir_budget.budget_versions
-                WHERE organization_id = (
-                    SELECT organization_id
-                    FROM efir_budget.user_profiles
-                    WHERE user_id = auth.uid()
-                )
-                AND deleted_at IS NULL
+                WHERE deleted_at IS NULL
             )
         )
         WITH CHECK (
-            budget_version_id IN (
+            auth.uid() IS NOT NULL
+            AND budget_version_id IN (
                 SELECT id
                 FROM efir_budget.budget_versions
-                WHERE organization_id = (
-                    SELECT organization_id
-                    FROM efir_budget.user_profiles
-                    WHERE user_id = auth.uid()
-                )
-                AND deleted_at IS NULL
+                WHERE deleted_at IS NULL
             )
         );
     """
     )
 
-    # Policy 2: cell_changes organization isolation
+    # Policy 2: cell_changes - authenticated users can access all non-deleted budget versions
     op.execute(
         """
-        CREATE POLICY cell_changes_org_isolation
+        CREATE POLICY cell_changes_authenticated_access
         ON efir_budget.cell_changes
         FOR ALL
         USING (
-            budget_version_id IN (
+            auth.uid() IS NOT NULL
+            AND budget_version_id IN (
                 SELECT id
                 FROM efir_budget.budget_versions
-                WHERE organization_id = (
-                    SELECT organization_id
-                    FROM efir_budget.user_profiles
-                    WHERE user_id = auth.uid()
-                )
-                AND deleted_at IS NULL
+                WHERE deleted_at IS NULL
             )
         )
         WITH CHECK (
-            budget_version_id IN (
+            auth.uid() IS NOT NULL
+            AND budget_version_id IN (
                 SELECT id
                 FROM efir_budget.budget_versions
-                WHERE organization_id = (
-                    SELECT organization_id
-                    FROM efir_budget.user_profiles
-                    WHERE user_id = auth.uid()
-                )
-                AND deleted_at IS NULL
+                WHERE deleted_at IS NULL
             )
         );
     """
     )
 
-    # Policy 3: cell_comments organization isolation (via planning_cells FK)
+    # Policy 3: cell_comments - authenticated users can access comments on accessible cells
     op.execute(
         """
-        CREATE POLICY cell_comments_org_isolation
+        CREATE POLICY cell_comments_authenticated_access
         ON efir_budget.cell_comments
         FOR ALL
         USING (
-            cell_id IN (
-                SELECT id
-                FROM efir_budget.planning_cells
-                WHERE budget_version_id IN (
-                    SELECT id
-                    FROM efir_budget.budget_versions
-                    WHERE organization_id = (
-                        SELECT organization_id
-                        FROM efir_budget.user_profiles
-                        WHERE user_id = auth.uid()
-                    )
-                    AND deleted_at IS NULL
-                )
-            )
+            auth.uid() IS NOT NULL
         )
         WITH CHECK (
-            cell_id IN (
-                SELECT id
-                FROM efir_budget.planning_cells
-                WHERE budget_version_id IN (
-                    SELECT id
-                    FROM efir_budget.budget_versions
-                    WHERE organization_id = (
-                        SELECT organization_id
-                        FROM efir_budget.user_profiles
-                        WHERE user_id = auth.uid()
-                    )
-                    AND deleted_at IS NULL
-                )
-            )
+            auth.uid() IS NOT NULL
         );
     """
     )
@@ -515,9 +511,9 @@ def downgrade() -> None:
     )
 
     # Drop RLS policies (reverse order of upgrade)
-    op.execute("DROP POLICY IF EXISTS cell_comments_org_isolation ON efir_budget.cell_comments;")
-    op.execute("DROP POLICY IF EXISTS cell_changes_org_isolation ON efir_budget.cell_changes;")
-    op.execute("DROP POLICY IF EXISTS planning_cells_org_isolation ON efir_budget.planning_cells;")
+    op.execute("DROP POLICY IF EXISTS cell_comments_authenticated_access ON efir_budget.cell_comments;")
+    op.execute("DROP POLICY IF EXISTS cell_changes_authenticated_access ON efir_budget.cell_changes;")
+    op.execute("DROP POLICY IF EXISTS planning_cells_authenticated_access ON efir_budget.planning_cells;")
 
     # Drop indexes (reverse order of upgrade)
     # cell_comments indexes

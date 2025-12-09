@@ -34,6 +34,7 @@ import { useUserPresence } from '@/hooks/useUserPresence'
 import type { RealtimeChange } from '@/types/writeback'
 import { CellCommentDialog } from './CellCommentDialog'
 import { CellHistoryDialog } from './CellHistoryDialog'
+import { useCustomClipboard } from '@/hooks/useCustomClipboard'
 
 export interface EnhancedDataTableProps<TData = unknown> extends Omit<
   AgGridReactProps<TData>,
@@ -138,6 +139,61 @@ export function EnhancedDataTable<TData = unknown>({
       })
     }, 3000)
   }, [])
+
+  /*
+   * Custom Clipboard Handler (Paste)
+   */
+  const onPasteCells = useCallback(
+    async (
+      updates: Array<{ rowId: string; field: string; newValue: string; originalData: unknown }>
+    ) => {
+      if (!enableWriteback) return
+
+      // Mark all as saving
+      updates.forEach((u) => setSavingCells((prev) => new Set(prev).add(u.rowId)))
+
+      try {
+        const promises = updates.map(async (update) => {
+          const { rowId, field, newValue, originalData } = update
+          const cellData = originalData as CellData
+          const version = cellData?.version || 1
+
+          // 1. Update Grid UI immediately (Optimistic)
+          const rowNode = gridRef.current?.api.getRowNode(rowId)
+          if (rowNode) {
+            rowNode.setDataValue(field, newValue)
+          }
+
+          // 2. Persist to Backend
+          await updateCell({
+            cellId: rowId,
+            value: parseFloat(newValue),
+            version,
+          })
+        })
+
+        await Promise.all(promises)
+      } catch (error) {
+        console.error('Paste failed', error)
+        // Ideally revert changes here if possible
+      } finally {
+        updates.forEach((u) =>
+          setSavingCells((prev) => {
+            const next = new Set(prev)
+            next.delete(u.rowId)
+            return next
+          })
+        )
+      }
+    },
+    [enableWriteback, updateCell]
+  )
+
+  // Custom Clipboard Hook
+  const { handlePaste } = useCustomClipboard({
+    gridApi: gridRef.current?.api || null,
+    onPasteCells,
+  })
 
   /**
    * Cell value changed handler - triggers auto-save
@@ -347,10 +403,10 @@ export function EnhancedDataTable<TData = unknown>({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white rounded-card border border-sand-200">
+      <div className="flex items-center justify-center h-64 bg-white rounded-card border border-border-light">
         <div className="text-center">
           <p className="text-error-600 font-medium">Error loading data</p>
-          <p className="text-sm text-twilight-600 mt-1">{error.message}</p>
+          <p className="text-sm text-text-secondary mt-1">{error.message}</p>
         </div>
       </div>
     )
@@ -361,7 +417,7 @@ export function EnhancedDataTable<TData = unknown>({
       {/* Active users indicator */}
       {activeUsers.length > 0 && (
         <div className="flex gap-2 items-center">
-          <span className="text-sm text-twilight-600">Utilisateurs actifs:</span>
+          <span className="text-sm text-text-secondary">Utilisateurs actifs:</span>
           {activeUsers.map((user) => (
             <Badge key={user.user_id} variant="secondary" className="gap-1">
               <div className="w-2 h-2 bg-success-500 rounded-full animate-pulse" />
@@ -372,10 +428,13 @@ export function EnhancedDataTable<TData = unknown>({
       )}
 
       {/* AG Grid */}
-      <div className={cn('relative rounded-card border border-sand-200 overflow-hidden')}>
+      <div
+        className={cn('relative rounded-card border border-border-light overflow-hidden')}
+        onPaste={handlePaste}
+      >
         {(loading || isUpdating || isLocking) && (
           <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
-            <div className="flex gap-2 items-center text-twilight-600">
+            <div className="flex gap-2 items-center text-text-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span>
                 {loading
@@ -402,6 +461,19 @@ export function EnhancedDataTable<TData = unknown>({
           pagination={props.pagination !== undefined ? props.pagination : true}
           paginationPageSize={props.paginationPageSize || 50}
           theme={themeQuartz}
+          // Community "Excel-like" Features
+          undoRedoCellEditing={true}
+          undoRedoCellEditingLimit={20}
+          enableCellTextSelection={true}
+          // enableCellChangeFlash={true} // Not available in all versions or redundant
+          rowSelection={{ mode: 'multiRow' }}
+          ensureDomOrder={true}
+          // Custom Copy/Paste Support
+          getRowId={(params) => (params.data as unknown as CellData).id} // Ensure we can find rows by ID
+          onGridReady={(params) => {
+            if (props.onGridReady) props.onGridReady(params)
+            // We could store api in local ref if needed, but gridRef handles it
+          }}
         />
       </div>
 

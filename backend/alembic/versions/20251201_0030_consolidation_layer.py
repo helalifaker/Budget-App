@@ -66,8 +66,9 @@ def upgrade() -> None:
         "capex_software",
         name="consolidationcategory",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    consolidation_category.create(op.get_bind())
+    consolidation_category.create(op.get_bind(), checkfirst=True)
 
     # StatementType enum
     statement_type = postgresql.ENUM(
@@ -77,8 +78,9 @@ def upgrade() -> None:
         "cash_flow",
         name="statementtype",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    statement_type.create(op.get_bind())
+    statement_type.create(op.get_bind(), checkfirst=True)
 
     # StatementFormat enum
     statement_format = postgresql.ENUM(
@@ -86,8 +88,9 @@ def upgrade() -> None:
         "ifrs",
         name="statementformat",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    statement_format.create(op.get_bind())
+    statement_format.create(op.get_bind(), checkfirst=True)
 
     # LineType enum
     line_type = postgresql.ENUM(
@@ -98,8 +101,9 @@ def upgrade() -> None:
         "total",
         name="linetype",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    line_type.create(op.get_bind())
+    line_type.create(op.get_bind(), checkfirst=True)
 
     # ========================================================================
     # Module 13: Budget Consolidation
@@ -137,27 +141,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "consolidation_category",
-            postgresql.ENUM(
-                "revenue_tuition",
-                "revenue_fees",
-                "revenue_other",
-                "personnel_teaching",
-                "personnel_admin",
-                "personnel_support",
-                "personnel_social",
-                "operating_supplies",
-                "operating_utilities",
-                "operating_maintenance",
-                "operating_insurance",
-                "operating_other",
-                "capex_equipment",
-                "capex_it",
-                "capex_furniture",
-                "capex_building",
-                "capex_software",
-                name="consolidationcategory",
-                schema="efir_budget",
-            ),
+            consolidation_category,  # Use already-created enum variable
             nullable=False,
             comment="Grouping category for reporting",
         ),
@@ -303,25 +287,13 @@ def upgrade() -> None:
         # Statement Configuration
         sa.Column(
             "statement_type",
-            postgresql.ENUM(
-                "income_statement",
-                "balance_sheet_assets",
-                "balance_sheet_liabilities",
-                "cash_flow",
-                name="statementtype",
-                schema="efir_budget",
-            ),
+            statement_type,  # Use already-created enum variable
             nullable=False,
             comment="Type of financial statement",
         ),
         sa.Column(
             "statement_format",
-            postgresql.ENUM(
-                "french_pcg",
-                "ifrs",
-                name="statementformat",
-                schema="efir_budget",
-            ),
+            statement_format,  # Use already-created enum variable
             nullable=False,
             comment="Accounting standard format",
         ),
@@ -462,15 +434,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "line_type",
-            postgresql.ENUM(
-                "section_header",
-                "account_group",
-                "account_line",
-                "subtotal",
-                "total",
-                name="linetype",
-                schema="efir_budget",
-            ),
+            line_type,  # Use already-created enum variable
             nullable=False,
             comment="Type of line (header, account, subtotal, total)",
         ),

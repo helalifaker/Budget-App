@@ -19,13 +19,17 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sqlalchemy import text
 
 from app.api.v1 import (
+    admin_router,
     analysis_router,
     calculations_router,
     configuration_router,
     consolidation_router,
     costs_router,
     export_router,
+    historical_router,
     planning_router,
+    strategic_router,
+    workforce_router,
     writeback_router,
 )
 from app.core.cache import initialize_cache, validate_redis_config
@@ -134,14 +138,18 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(health.router)
+    app.include_router(admin_router)
     app.include_router(calculations_router)
     app.include_router(configuration_router)
     app.include_router(planning_router)
     app.include_router(costs_router)
     app.include_router(analysis_router)
     app.include_router(consolidation_router)
+    app.include_router(strategic_router)
+    app.include_router(workforce_router)
     app.include_router(writeback_router)
     app.include_router(export_router)
+    app.include_router(historical_router)
 
     return app
 

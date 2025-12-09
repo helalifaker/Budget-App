@@ -100,14 +100,26 @@ if DATABASE_URL.startswith("sqlite"):
         future=True,
     )
 else:
-    # Use custom async_creator to ensure prepared statements are disabled
-    # BEFORE SQLAlchemy's dialect initialization queries
+    # For Supabase pgBouncer/Supavisor compatibility:
+    # Use prepared_statement_name_func=lambda: "" to force inline queries
+    # This completely bypasses prepared statement naming conflicts
+    # Reference: https://github.com/MagicStack/asyncpg/issues/839
+    import uuid as uuid_module
+
+    def unique_stmt_name() -> str:
+        """Generate unique statement name to avoid conflicts with pgBouncer."""
+        return f"stmt_{uuid_module.uuid4().hex[:8]}"
+
     engine = create_async_engine(
-        "postgresql+asyncpg://",  # Dummy URL, actual connection via async_creator
-        async_creator=async_creator,
+        DATABASE_URL,
         echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
-        poolclass=NullPool,  # Recommended for Supabase connection pooler
-        pool_pre_ping=False,  # Disable connection health checks (handled by Supabase pooler)
+        poolclass=NullPool,
+        pool_pre_ping=False,
+        connect_args={
+            "statement_cache_size": 0,
+            "prepared_statement_name_func": unique_stmt_name,
+            "server_settings": {"jit": "off"},
+        },
     )
 
 # Create async session factory

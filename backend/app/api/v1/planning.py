@@ -30,6 +30,8 @@ from app.schemas.planning import (
     EnrollmentTotalsBulkUpdate,
     EnrollmentWithDistributionResponse,
     FTECalculationRequest,
+    ImpactCalculationRequest,
+    ImpactCalculationResponse,
     NationalityDistributionBulkUpdate,
     NationalityDistributionResponse,
     TeacherAllocationBulkUpdate,
@@ -38,7 +40,12 @@ from app.schemas.planning import (
     TeacherAllocationUpdate,
     TRMDGapAnalysisResponse,
 )
-from app.schemas.planning_progress import PlanningProgressResponse
+from app.schemas.planning_progress import (
+    CascadeRequest,
+    CascadeResponse,
+    PlanningProgressResponse,
+)
+from app.services.cascade_service import CascadeService
 from app.services.class_structure_service import ClassStructureService
 from app.services.dhg_service import DHGService
 from app.services.enrollment_service import EnrollmentService
@@ -46,6 +53,10 @@ from app.services.exceptions import (
     BusinessRuleError,
     NotFoundError,
     ValidationError,
+)
+from app.services.impact_calculator_service import (
+    ImpactCalculatorService,
+    ProposedChange,
 )
 from app.services.planning_progress_service import PlanningProgressService
 
@@ -1064,6 +1075,214 @@ async def get_planning_progress(
         return progress
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+# ==============================================================================
+# Cascade Recalculation Endpoints
+# ==============================================================================
+
+
+def get_cascade_service(db: AsyncSession = Depends(get_db)) -> CascadeService:
+    """
+    Dependency to get cascade service instance.
+
+    Args:
+        db: Database session
+
+    Returns:
+        CascadeService instance
+    """
+    return CascadeService(db)
+
+
+@router.post(
+    "/{version_id}/cascade",
+    response_model=CascadeResponse,
+    summary="Cascade recalculation through dependent planning steps",
+)
+async def cascade_recalculate(
+    version_id: uuid.UUID,
+    request: CascadeRequest,
+    cascade_service: CascadeService = Depends(get_cascade_service),
+    user: UserDep = ...,
+):
+    """
+    Trigger cascading recalculation of dependent planning steps.
+
+    When a planning step changes (e.g., enrollment), this endpoint can
+    automatically recalculate all dependent downstream steps in the
+    correct order:
+    - Enrollment → Class Structure → DHG → Costs
+    - Enrollment → Revenue
+    - DHG → Costs
+
+    Args:
+        version_id: Budget version UUID
+        request: Cascade request specifying from_step_id or step_ids
+        cascade_service: Cascade service
+        user: Current authenticated user
+
+    Returns:
+        CascadeResponse with recalculated and failed steps
+
+    Example:
+        POST /api/v1/planning/{version_id}/cascade
+        {"from_step_id": "enrollment"}
+
+        Response:
+        {
+            "recalculated_steps": ["class_structure", "dhg", "revenue", "costs"],
+            "failed_steps": [],
+            "message": "Successfully recalculated 4 step(s)"
+        }
+    """
+    try:
+        if request.from_step_id:
+            result = await cascade_service.recalculate_from_step(
+                version_id, request.from_step_id
+            )
+        elif request.step_ids:
+            result = await cascade_service.recalculate_steps(version_id, request.step_ids)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either from_step_id or step_ids must be provided",
+            )
+
+        return CascadeResponse(**result.to_dict())
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+# ==============================================================================
+# Impact Calculation Endpoint
+# ==============================================================================
+
+
+def get_impact_calculator_service(
+    db: AsyncSession = Depends(get_db),
+) -> ImpactCalculatorService:
+    """
+    Dependency to get impact calculator service instance.
+
+    Args:
+        db: Database session
+
+    Returns:
+        ImpactCalculatorService instance
+    """
+    return ImpactCalculatorService(db)
+
+
+@router.post(
+    "/{version_id}/impact",
+    response_model=ImpactCalculationResponse,
+)
+async def calculate_impact(
+    version_id: uuid.UUID,
+    request: ImpactCalculationRequest,
+    impact_service: ImpactCalculatorService = Depends(get_impact_calculator_service),
+    user: UserDep = ...,
+):
+    """
+    Calculate the real-time impact of a proposed budget change.
+
+    This endpoint allows users to preview the cascading effects of a change
+    before actually saving it. It calculates:
+    - FTE impact (change in teacher Full-Time Equivalents)
+    - Cost impact (change in total costs)
+    - Revenue impact (change in total revenue)
+    - Margin impact (change in operating margin %)
+
+    The calculation is a preview only - no database changes are made.
+
+    Args:
+        version_id: Budget version UUID
+        request: Proposed change details
+        impact_service: Impact calculator service
+        user: Current authenticated user
+
+    Returns:
+        ImpactCalculationResponse with all calculated metrics
+
+    Example:
+        POST /api/v1/planning/{version_id}/impact
+        {
+            "step_id": "enrollment",
+            "dimension_type": "level",
+            "dimension_id": "uuid-of-level",
+            "field_name": "student_count",
+            "new_value": 130
+        }
+
+        Response:
+        {
+            "fte_change": 0.67,
+            "fte_current": 95.0,
+            "fte_proposed": 95.67,
+            "cost_impact_sar": 167500,
+            "cost_current_sar": 23750000,
+            "cost_proposed_sar": 23917500,
+            "revenue_impact_sar": 450000,
+            "revenue_current_sar": 56025000,
+            "revenue_proposed_sar": 56475000,
+            "margin_impact_pct": 0.12,
+            "margin_current_pct": 57.6,
+            "margin_proposed_pct": 57.72,
+            "affected_steps": ["class_structure", "dhg", "costs", "revenue"]
+        }
+    """
+    try:
+        # Convert request to service model
+        proposed_change = ProposedChange(
+            step_id=request.step_id,
+            dimension_type=request.dimension_type,
+            dimension_id=request.dimension_id,
+            dimension_code=request.dimension_code,
+            field_name=request.field_name,
+            new_value=request.new_value,
+        )
+
+        # Calculate impact
+        impact_metrics = await impact_service.calculate_impact(
+            version_id=version_id,
+            proposed_change=proposed_change,
+        )
+
+        # Return response
+        return ImpactCalculationResponse(
+            fte_change=impact_metrics.fte_change,
+            fte_current=impact_metrics.fte_current,
+            fte_proposed=impact_metrics.fte_proposed,
+            cost_impact_sar=impact_metrics.cost_impact_sar,
+            cost_current_sar=impact_metrics.cost_current_sar,
+            cost_proposed_sar=impact_metrics.cost_proposed_sar,
+            revenue_impact_sar=impact_metrics.revenue_impact_sar,
+            revenue_current_sar=impact_metrics.revenue_current_sar,
+            revenue_proposed_sar=impact_metrics.revenue_proposed_sar,
+            margin_impact_pct=impact_metrics.margin_impact_pct,
+            margin_current_pct=impact_metrics.margin_current_pct,
+            margin_proposed_pct=impact_metrics.margin_proposed_pct,
+            affected_steps=impact_metrics.affected_steps,
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)

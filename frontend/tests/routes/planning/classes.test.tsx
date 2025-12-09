@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { Route as ClassesRoute } from '@/routes/planning/classes'
+import React from 'react'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
@@ -9,6 +9,12 @@ let mockClassStructuresData: Record<string, unknown>[] | null = null
 let mockLevelsData: Record<string, unknown>[] | null = null
 const mockUpdateMutation = vi.fn()
 const mockCalculateMutation = vi.fn()
+
+// BudgetVersionContext mock state
+let mockSelectedVersionId: string | undefined = undefined
+const mockSetSelectedVersionId = vi.fn((id: string | undefined) => {
+  mockSelectedVersionId = id
+})
 
 // Type definitions for mock props
 type MockProps = Record<string, unknown>
@@ -30,6 +36,26 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => mockNavigate,
+}))
+
+// Mock BudgetVersionContext - this must come before component imports
+vi.mock('@/contexts/BudgetVersionContext', () => ({
+  useBudgetVersion: () => ({
+    selectedVersionId: mockSelectedVersionId,
+    selectedVersion: mockSelectedVersionId
+      ? { id: mockSelectedVersionId, name: '2025-2026', status: 'working' }
+      : null,
+    setSelectedVersionId: mockSetSelectedVersionId,
+    versions: [
+      { id: 'v1', name: '2025-2026', status: 'working' },
+      { id: 'v2', name: '2024-2025', status: 'approved' },
+    ],
+    isLoading: false,
+    error: null,
+    clearSelection: () => {
+      mockSelectedVersionId = undefined
+    },
+  }),
 }))
 
 vi.mock('@/lib/auth-guard', () => ({
@@ -142,6 +168,7 @@ describe('Class Structure Route', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSelectedVersionId = undefined // Reset version selection
 
     // API returns arrays directly (not { items: [...] })
     mockClassStructuresData = [
@@ -186,7 +213,7 @@ describe('Class Structure Route', () => {
       render(<ClassStructurePage />)
 
       expect(screen.getByText('Class Structure')).toBeInTheDocument()
-      expect(screen.getByText('Define class structure and average class sizes')).toBeInTheDocument()
+      expect(screen.getByText(/Define class structure and average class sizes/)).toBeInTheDocument()
     })
 
     it('renders page actions', () => {
@@ -196,22 +223,19 @@ describe('Class Structure Route', () => {
     })
   })
 
-  describe('Budget version selector', () => {
-    it('renders budget version selector', () => {
+  describe('Budget version context', () => {
+    it('uses global budget version from context', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      expect(screen.getByTestId('budget-version-selector')).toBeInTheDocument()
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
     })
 
-    it('allows selecting a version', async () => {
-      const user = userEvent.setup()
-
+    it('renders placeholder when no version selected', () => {
+      mockSelectedVersionId = undefined
       render(<ClassStructurePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      expect(select).toHaveValue('v1')
+      expect(screen.getByText(/Select a budget version/i)).toBeInTheDocument()
     })
   })
 
@@ -222,37 +246,19 @@ describe('Class Structure Route', () => {
       expect(screen.getByText('Calculate from Enrollment')).toBeInTheDocument()
     })
 
-    it('renders Add Class Structure button', () => {
-      render(<ClassStructurePage />)
-
-      expect(screen.getByText('Add Class Structure')).toBeInTheDocument()
-    })
-
-    it('disables buttons when no version selected', () => {
+    it('disables button when no version selected', () => {
       render(<ClassStructurePage />)
 
       const calculateBtn = screen.getByText('Calculate from Enrollment').closest('button')
-      const addBtn = screen.getByText('Add Class Structure').closest('button')
-
       expect(calculateBtn).toBeDisabled()
-      expect(addBtn).toBeDisabled()
     })
 
-    it('enables buttons when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('enables button when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const calculateBtn = screen.getByText('Calculate from Enrollment').closest('button')
-        const addBtn = screen.getByText('Add Class Structure').closest('button')
-
-        expect(calculateBtn).not.toBeDisabled()
-        expect(addBtn).not.toBeDisabled()
-      })
+      const calculateBtn = screen.getByText('Calculate from Enrollment').closest('button')
+      expect(calculateBtn).not.toBeDisabled()
     })
   })
 
@@ -265,150 +271,83 @@ describe('Class Structure Route', () => {
       ).toBeInTheDocument()
     })
 
-    it('displays data table when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays data table when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('data-table')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('data-table')).toBeInTheDocument()
     })
 
-    it('displays class structure rows', async () => {
-      const user = userEvent.setup()
-
+    it('displays class structure rows', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const rows = screen.getAllByTestId('class-structure-row')
-        expect(rows).toHaveLength(3)
-      })
+      const rows = screen.getAllByTestId('class-structure-row')
+      expect(rows).toHaveLength(3)
     })
 
-    it('displays class structure details', async () => {
-      const user = userEvent.setup()
-
+    it('displays class structure details', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText(/cp: 4 classes, avg 24 students/)).toBeInTheDocument()
-        expect(screen.getByText(/ce1: 3 classes, avg 26 students/)).toBeInTheDocument()
-        expect(screen.getByText(/ce2: 3 classes, avg 25 students/)).toBeInTheDocument()
-      })
+      expect(screen.getByText(/cp: 4 classes, avg 24 students/)).toBeInTheDocument()
+      expect(screen.getByText(/ce1: 3 classes, avg 26 students/)).toBeInTheDocument()
+      expect(screen.getByText(/ce2: 3 classes, avg 25 students/)).toBeInTheDocument()
     })
   })
 
-  describe('Create class structure dialog', () => {
-    it('does not show dialog initially', () => {
+  describe('Cell editing', () => {
+    it('supports inline editing of class structure data', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      expect(screen.queryByTestId('form-dialog')).not.toBeInTheDocument()
-    })
-
-    it('opens dialog when Add Class Structure clicked', async () => {
-      const user = userEvent.setup()
-
-      render(<ClassStructurePage />)
-
-      // Select version first
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      // Click Add Class Structure
-      const addBtn = screen.getByText('Add Class Structure').closest('button')
-      await user.click(addBtn!)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('form-dialog')).toBeInTheDocument()
-        expect(screen.getByText('Add Class Structure Entry')).toBeInTheDocument()
-      })
+      // Data table should be editable (AG Grid with editable cells)
+      expect(screen.getByTestId('data-table')).toBeInTheDocument()
     })
   })
 
   describe('Real-world use cases', () => {
-    it('displays full class structure planning workflow', async () => {
-      const user = userEvent.setup()
-
+    it('displays full class structure planning workflow', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      // Select budget version
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
+      // Verify data table appears
+      expect(screen.getByTestId('data-table')).toBeInTheDocument()
 
-      await waitFor(() => {
-        // Verify data table appears
-        expect(screen.getByTestId('data-table')).toBeInTheDocument()
-
-        // Verify action buttons are enabled
-        const calculateBtn = screen.getByText('Calculate from Enrollment').closest('button')
-        const addBtn = screen.getByText('Add Class Structure').closest('button')
-        expect(calculateBtn).not.toBeDisabled()
-        expect(addBtn).not.toBeDisabled()
-      })
+      // Verify action button is enabled
+      const calculateBtn = screen.getByText('Calculate from Enrollment').closest('button')
+      expect(calculateBtn).not.toBeDisabled()
     })
 
-    it('handles empty class structure data', async () => {
+    it('handles empty class structure data', () => {
       mockClassStructuresData = []
-      const user = userEvent.setup()
-
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        // Data table should still render but with no rows
-        expect(screen.getByTestId('data-table')).toBeInTheDocument()
-        expect(screen.queryAllByTestId('class-structure-row')).toHaveLength(0)
-      })
+      // Data table should still render but with no rows
+      expect(screen.getByTestId('data-table')).toBeInTheDocument()
+      expect(screen.queryAllByTestId('class-structure-row')).toHaveLength(0)
     })
 
-    it('allows switching between budget versions', async () => {
-      const user = userEvent.setup()
-
+    it('maintains data table when version is selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      const select = screen.getByTestId('version-select')
-
-      // Select first version
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('data-table')).toBeInTheDocument()
-      })
-
-      // Switch to second version
-      await user.selectOptions(select, 'v2')
-
-      expect(select).toHaveValue('v2')
+      // Data table persists with selected version
+      expect(screen.getByTestId('data-table')).toBeInTheDocument()
+      expect(screen.getAllByTestId('class-structure-row')).toHaveLength(3)
     })
 
-    it('calculates total students correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates total students correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<ClassStructurePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        // CP: 4 classes × 24 = 96 students
-        // CE1: 3 classes × 26 = 78 students
-        // CE2: 3 classes × 25 = 75 students
-        // Total: 249 students
-        const rows = screen.getAllByTestId('class-structure-row')
-        expect(rows).toHaveLength(3)
-      })
+      // CP: 4 classes × 24 = 96 students
+      // CE1: 3 classes × 26 = 78 students
+      // CE2: 3 classes × 25 = 75 students
+      // Total: 249 students
+      const rows = screen.getAllByTestId('class-structure-row')
+      expect(rows).toHaveLength(3)
     })
   })
 

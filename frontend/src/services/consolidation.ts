@@ -1,6 +1,35 @@
 import { apiRequest } from '@/lib/api-client'
 import type { ConsolidationStatus, BudgetLineItem, FinancialStatement } from '@/types/api'
 
+/**
+ * Consolidation validation response from the backend
+ */
+export interface ConsolidationValidation {
+  is_complete: boolean
+  missing_modules: string[]
+  warnings: string[]
+  module_counts: Record<string, number>
+}
+
+/**
+ * Consolidation summary response from the backend
+ */
+export interface ConsolidationSummary {
+  budget_version_id: string
+  budget_version_name: string
+  fiscal_year: number
+  status: string
+  total_revenue: number
+  total_expenses: number
+  total_capex: number
+  operating_result: number
+  net_result: number
+  revenue_count: number
+  expense_count: number
+  capex_count: number
+  last_consolidated_at: string
+}
+
 export const consolidationService = {
   /**
    * Get consolidation status for a budget version
@@ -65,6 +94,26 @@ export const consolidationService = {
       method: 'GET',
       url: `/consolidation/${versionId}/statements/${type}`,
       params: { format, period },
+    })
+  },
+
+  /**
+   * Get validation results for budget completeness
+   */
+  getValidation: async (versionId: string): Promise<ConsolidationValidation> => {
+    return apiRequest<ConsolidationValidation>({
+      method: 'GET',
+      url: `/consolidation/${versionId}/validation`,
+    })
+  },
+
+  /**
+   * Get consolidation summary (totals and counts)
+   */
+  getSummary: async (versionId: string): Promise<ConsolidationSummary> => {
+    return apiRequest<ConsolidationSummary>({
+      method: 'GET',
+      url: `/consolidation/${versionId}/summary`,
     })
   },
 }

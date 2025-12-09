@@ -598,3 +598,124 @@ export const APIErrorSchema = z.object({
 })
 
 export type APIError = z.infer<typeof APIErrorSchema>
+
+// ==============================================================================
+// Subject Hours Matrix Types (Cycle-Based Matrix View)
+// ==============================================================================
+
+// Level info for matrix columns
+export const LevelInfoSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name_en: z.string(),
+  name_fr: z.string(),
+  sort_order: z.number(),
+})
+
+export type LevelInfo = z.infer<typeof LevelInfoSchema>
+
+// Hours configuration for a subject-level cell
+export const SubjectLevelHoursSchema = z.object({
+  hours_per_week: z.number().nullable(),
+  is_split: z.boolean(),
+  notes: z.string().nullable(),
+})
+
+export type SubjectLevelHours = z.infer<typeof SubjectLevelHoursSchema>
+
+// Subject row in matrix with hours per level
+export const SubjectWithHoursSchema = z.object({
+  id: z.string().uuid(),
+  code: z.string(),
+  name_en: z.string(),
+  name_fr: z.string(),
+  category: z.string(),
+  is_applicable: z.boolean(),
+  hours: z.record(z.string(), SubjectLevelHoursSchema), // level_id -> hours
+})
+
+export type SubjectWithHours = z.infer<typeof SubjectWithHoursSchema>
+
+// Full matrix response from backend
+export const SubjectHoursMatrixResponseSchema = z.object({
+  cycle_id: z.string().uuid(),
+  cycle_code: z.string(),
+  cycle_name: z.string(),
+  levels: z.array(LevelInfoSchema),
+  subjects: z.array(SubjectWithHoursSchema),
+})
+
+export type SubjectHoursMatrixResponse = z.infer<typeof SubjectHoursMatrixResponseSchema>
+
+// Entry for batch save
+export const SubjectHoursEntrySchema = z.object({
+  subject_id: z.string().uuid(),
+  level_id: z.string().uuid(),
+  hours_per_week: z.number().min(0).max(12).nullable(),
+  is_split: z.boolean(),
+  notes: z.string().nullable().optional(),
+})
+
+export type SubjectHoursEntry = z.infer<typeof SubjectHoursEntrySchema>
+
+// Batch request for saving multiple entries
+export const SubjectHoursBatchRequestSchema = z.object({
+  budget_version_id: z.string().uuid(),
+  entries: z.array(SubjectHoursEntrySchema).min(1).max(200),
+})
+
+export type SubjectHoursBatchRequest = z.infer<typeof SubjectHoursBatchRequestSchema>
+
+// Batch response
+export const SubjectHoursBatchResponseSchema = z.object({
+  created_count: z.number(),
+  updated_count: z.number(),
+  deleted_count: z.number(),
+  errors: z.array(z.string()),
+})
+
+export type SubjectHoursBatchResponse = z.infer<typeof SubjectHoursBatchResponseSchema>
+
+// Curriculum template info
+export const TemplateInfoSchema = z.object({
+  code: z.string(),
+  name: z.string(),
+  description: z.string(),
+  cycle_codes: z.array(z.string()),
+})
+
+export type TemplateInfo = z.infer<typeof TemplateInfoSchema>
+
+// Apply template request
+export const ApplyTemplateRequestSchema = z.object({
+  budget_version_id: z.string().uuid(),
+  template_code: z.string(),
+  cycle_codes: z.array(z.string()).min(1),
+  overwrite_existing: z.boolean(),
+})
+
+export type ApplyTemplateRequest = z.infer<typeof ApplyTemplateRequestSchema>
+
+// Apply template response
+export const ApplyTemplateResponseSchema = z.object({
+  applied_count: z.number(),
+  skipped_count: z.number(),
+  template_name: z.string(),
+})
+
+export type ApplyTemplateResponse = z.infer<typeof ApplyTemplateResponseSchema>
+
+// Create subject request
+export const SubjectCreateRequestSchema = z.object({
+  code: z
+    .string()
+    .min(2)
+    .max(6)
+    .regex(/^[A-Z0-9]+$/),
+  name_fr: z.string().min(1).max(100),
+  name_en: z.string().min(1).max(100),
+  category: z.enum(['core', 'elective', 'specialty', 'local']),
+  applicable_cycles: z.array(z.string()).min(1),
+})
+
+export type SubjectCreateRequest = z.infer<typeof SubjectCreateRequestSchema>

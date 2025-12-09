@@ -36,14 +36,18 @@ def client():
 
     def mock_get_current_user():
         user = MagicMock()
-        user.id = uuid.uuid4()
+        user_uuid = uuid.uuid4()
+        user.id = user_uuid
+        user.user_id = user_uuid  # Required for WorkflowActionResponse.action_by
         user.email = "test@efir.local"
         user.role = "admin"
         return user
 
     def mock_require_manager():
         manager = MagicMock()
-        manager.id = uuid.uuid4()
+        manager_uuid = uuid.uuid4()
+        manager.id = manager_uuid
+        manager.user_id = manager_uuid  # Required for WorkflowActionResponse.action_by
         manager.email = "manager@efir.local"
         manager.role = "finance_director"
         return manager
@@ -348,6 +352,7 @@ class TestApproveBudget:
 
         mock_manager = MagicMock()
         mock_manager.id = uuid.uuid4()
+        mock_manager.user_id = mock_manager.id
         mock_manager.role = "finance_director"
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
@@ -492,7 +497,7 @@ class TestFinancialStatements:
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
                 response = client.get(
-                    f"/api/v1/consolidation/statements/income/{version_id}?format=pcg"
+                    f"/api/v1/consolidation/{version_id}/statements/income?format=pcg"
                 )
 
                 assert response.status_code == 200
@@ -527,7 +532,7 @@ class TestFinancialStatements:
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
                 response = client.get(
-                    f"/api/v1/consolidation/statements/income/{version_id}?format=ifrs"
+                    f"/api/v1/consolidation/{version_id}/statements/income?format=ifrs"
                 )
 
                 assert response.status_code == 200
@@ -589,7 +594,7 @@ class TestFinancialStatements:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/balance/{version_id}")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/balance")
 
                 assert response.status_code == 200
                 data = response.json()
@@ -621,7 +626,7 @@ class TestPeriodTotals:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/{version_id}/periods")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/periods")
 
                 assert response.status_code == 200
                 data = response.json()
@@ -647,7 +652,7 @@ class TestPeriodTotals:
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
                 response = client.get(
-                    f"/api/v1/consolidation/statements/{version_id}/periods/{period}"
+                    f"/api/v1/consolidation/{version_id}/statements/periods/{period}"
                 )
 
                 assert response.status_code == 200
@@ -670,7 +675,7 @@ class TestPeriodTotals:
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
                 response = client.get(
-                    f"/api/v1/consolidation/statements/{version_id}/periods/{period}"
+                    f"/api/v1/consolidation/{version_id}/statements/periods/{period}"
                 )
 
                 assert response.status_code == 400
@@ -923,7 +928,7 @@ class TestConsolidationAdditionalCoverage:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/income/{version_id}")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/income")
 
                 assert response.status_code == 500
                 assert "Failed to get income statement" in response.json()["detail"]
@@ -938,7 +943,7 @@ class TestConsolidationAdditionalCoverage:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/balance/{version_id}")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/balance")
 
                 assert response.status_code == 500
                 assert "Failed to get balance sheet" in response.json()["detail"]
@@ -953,7 +958,7 @@ class TestConsolidationAdditionalCoverage:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/{version_id}/periods")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/periods")
 
                 assert response.status_code == 500
                 assert "Failed to get period totals" in response.json()["detail"]
@@ -969,7 +974,7 @@ class TestConsolidationAdditionalCoverage:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/{version_id}/periods/{period}")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/periods/{period}")
 
                 assert response.status_code == 500
                 assert "Failed to get period total" in response.json()["detail"]  # Singular, not plural
@@ -1152,7 +1157,7 @@ class TestConsolidationAdditionalCoverage:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/balance/{version_id}")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/balance")
 
                 assert response.status_code == 200
                 data = response.json()
@@ -1176,7 +1181,7 @@ class TestConsolidationAdditionalCoverage:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/{version_id}/periods")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/periods")
 
                 assert response.status_code == 200
                 data = response.json()
@@ -1224,13 +1229,13 @@ class TestConsolidationAdditionalCoverage:
 
     def test_invalid_uuid_format_income_statement(self, client, mock_user):
         """Test income statement with invalid UUID format."""
-        response = client.get("/api/v1/consolidation/statements/income/not-a-uuid")
+        response = client.get("/api/v1/consolidation/not-a-uuid/statements/income")
 
         assert response.status_code == 422
 
     def test_invalid_uuid_format_balance_sheet(self, client, mock_user):
         """Test balance sheet with invalid UUID format."""
-        response = client.get("/api/v1/consolidation/statements/balance/not-a-uuid")
+        response = client.get("/api/v1/consolidation/not-a-uuid/statements/balance")
 
         assert response.status_code == 422
 
@@ -1259,7 +1264,7 @@ class TestConsolidationAdditionalCoverage:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/consolidation/statements/income/{version_id}?format=ifrs")
+                response = client.get(f"/api/v1/consolidation/{version_id}/statements/income?format=ifrs")
 
                 assert response.status_code == 200
                 data = response.json()

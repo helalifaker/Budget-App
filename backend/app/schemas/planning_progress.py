@@ -133,6 +133,42 @@ class StepMetadata(BaseModel):
     )
 
 
+# ==============================================================================
+# Cascade Schemas
+# ==============================================================================
+
+
+class CascadeRequest(BaseModel):
+    """
+    Request to cascade recalculations through dependent planning steps.
+
+    Either from_step_id OR step_ids should be provided:
+    - from_step_id: Recalculate all steps downstream from this step
+    - step_ids: Recalculate only these specific steps
+    """
+
+    from_step_id: str | None = Field(
+        None,
+        description="Step ID to cascade from (will recalculate all downstream steps)",
+    )
+    step_ids: list[str] | None = Field(
+        None,
+        description="Specific step IDs to recalculate (alternative to from_step_id)",
+    )
+
+
+class CascadeResponse(BaseModel):
+    """Response from cascade recalculation operation."""
+
+    recalculated_steps: list[str] = Field(
+        default_factory=list, description="Steps that were successfully recalculated"
+    )
+    failed_steps: list[str] = Field(
+        default_factory=list, description="Steps that failed recalculation"
+    )
+    message: str = Field(..., description="Summary message of the operation")
+
+
 # Static step metadata
 STEP_METADATA: dict[str, StepMetadata] = {
     "enrollment": StepMetadata(

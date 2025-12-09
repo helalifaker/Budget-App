@@ -30,12 +30,15 @@ def upgrade() -> None:
     op.execute('CREATE SCHEMA IF NOT EXISTS efir_budget')
 
     # Create BudgetVersionStatus enum
+    # Note: create_type=False prevents auto-creation when used in Column,
+    # so we explicitly call .create() below
     budget_version_status = postgresql.ENUM(
         'working', 'submitted', 'approved', 'forecast', 'superseded',
         name='budgetversionstatus',
-        schema='efir_budget'
+        schema='efir_budget',
+        create_type=False  # Prevent auto-creation when used in Column
     )
-    budget_version_status.create(op.get_bind())
+    budget_version_status.create(op.get_bind(), checkfirst=True)  # checkfirst to avoid duplicate error
 
     # =========================================================================
     # Module 1: System Configuration
@@ -79,8 +82,7 @@ def upgrade() -> None:
                   comment='Fiscal year (e.g., 2026 for 2025-2026)'),
         sa.Column('academic_year', sa.String(20), nullable=False,
                   comment="Academic year (e.g., '2025-2026')"),
-        sa.Column('status', sa.Enum('working', 'submitted', 'approved', 'forecast', 'superseded',
-                                    name='budgetversionstatus', schema='efir_budget'),
+        sa.Column('status', budget_version_status,  # Use the already-created enum object
                   nullable=False, server_default='working', index=True,
                   comment='Version status'),
         sa.Column('submitted_at', sa.DateTime(timezone=True), nullable=True,

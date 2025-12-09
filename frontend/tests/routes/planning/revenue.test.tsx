@@ -1,19 +1,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { Route as RevenueRoute } from '@/routes/planning/revenue'
+import React from 'react'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
-let mockRevenueData: any = null
+let mockRevenueData: unknown = null
 const mockCalculateMutation = vi.fn()
 
+// BudgetVersionContext mock state
+let mockSelectedVersionId: string | undefined = undefined
+const mockSetSelectedVersionId = vi.fn((id: string | undefined) => {
+  mockSelectedVersionId = id
+})
+
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: (path: string) => (config: any) => ({
-    ...config,
+  createFileRoute: (path: string) => (config: unknown) => ({
+    ...(config as object),
     path,
   }),
-  Link: ({ to, children, className }: any) => (
+  Link: ({
+    to,
+    children,
+    className,
+  }: {
+    to: string
+    children: React.ReactNode
+    className?: string
+  }) => (
     <a href={to} className={className}>
       {children}
     </a>
@@ -21,12 +35,42 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }))
 
+// Mock BudgetVersionContext - this must come before component imports
+vi.mock('@/contexts/BudgetVersionContext', () => ({
+  useBudgetVersion: () => ({
+    selectedVersionId: mockSelectedVersionId,
+    selectedVersion: mockSelectedVersionId
+      ? { id: mockSelectedVersionId, name: '2025-2026', status: 'working' }
+      : null,
+    setSelectedVersionId: mockSetSelectedVersionId,
+    versions: [
+      { id: 'v1', name: '2025-2026', status: 'working' },
+      { id: 'v2', name: '2024-2025', status: 'approved' },
+    ],
+    isLoading: false,
+    error: null,
+    clearSelection: () => {
+      mockSelectedVersionId = undefined
+    },
+  }),
+}))
+
 vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: any) => <div data-testid="main-layout">{children}</div>,
+  MainLayout: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="main-layout">{children}</div>
+  ),
 }))
 
 vi.mock('@/components/layout/PageContainer', () => ({
-  PageContainer: ({ title, description, children }: any) => (
+  PageContainer: ({
+    title,
+    description,
+    children,
+  }: {
+    title: string
+    description?: string
+    children: React.ReactNode
+  }) => (
     <div data-testid="page-container">
       <h1>{title}</h1>
       {description && <p>{description}</p>}
@@ -36,7 +80,13 @@ vi.mock('@/components/layout/PageContainer', () => ({
 }))
 
 vi.mock('@/components/BudgetVersionSelector', () => ({
-  BudgetVersionSelector: ({ value, onChange }: any) => (
+  BudgetVersionSelector: ({
+    value,
+    onChange,
+  }: {
+    value?: string
+    onChange: (value: string) => void
+  }) => (
     <div data-testid="budget-version-selector">
       <select
         data-testid="version-select"
@@ -52,7 +102,17 @@ vi.mock('@/components/BudgetVersionSelector', () => ({
 }))
 
 vi.mock('@/components/SummaryCard', () => ({
-  SummaryCard: ({ title, value, subtitle, icon }: any) => (
+  SummaryCard: ({
+    title,
+    value,
+    subtitle,
+    icon,
+  }: {
+    title: string
+    value: React.ReactNode
+    subtitle?: string
+    icon?: React.ReactNode
+  }) => (
     <div data-testid={`summary-card-${title.toLowerCase().replace(/\s+/g, '-')}`}>
       <div data-testid="card-title">{title}</div>
       <div data-testid="card-value">{value}</div>
@@ -63,7 +123,7 @@ vi.mock('@/components/SummaryCard', () => ({
 }))
 
 vi.mock('@/components/charts/RevenueChart', () => ({
-  RevenueChart: ({ data, title }: any) => (
+  RevenueChart: ({ data, title }: { data?: unknown[]; title?: string }) => (
     <div data-testid="revenue-chart">
       <div>{title}</div>
       <div>Chart with {data?.length} categories</div>
@@ -72,14 +132,18 @@ vi.mock('@/components/charts/RevenueChart', () => ({
 }))
 
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children, className }: any) => (
+  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div data-testid="card" className={className}>
       {children}
     </div>
   ),
-  CardHeader: ({ children }: any) => <div data-testid="card-header">{children}</div>,
-  CardTitle: ({ children }: any) => <div data-testid="card-title">{children}</div>,
-  CardContent: ({ children, className }: any) => (
+  CardHeader: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="card-header">{children}</div>
+  ),
+  CardTitle: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="card-title">{children}</div>
+  ),
+  CardContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div data-testid="card-content" className={className}>
       {children}
     </div>
@@ -87,9 +151,13 @@ vi.mock('@/components/ui/card', () => ({
 }))
 
 vi.mock('ag-grid-react', () => ({
-  AgGridReact: ({ rowData }: any) => (
+  AgGridReact: ({
+    rowData,
+  }: {
+    rowData?: Array<{ id: string; account_code: string; description: string }>
+  }) => (
     <div data-testid="ag-grid">
-      {rowData?.map((row: any) => (
+      {rowData?.map((row) => (
         <div key={row.id} data-testid="revenue-row">
           {row.account_code}: {row.description}
         </div>
@@ -133,6 +201,7 @@ describe('Revenue Planning Route', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSelectedVersionId = undefined // Reset version selection
 
     mockRevenueData = {
       items: [
@@ -187,26 +256,28 @@ describe('Revenue Planning Route', () => {
       render(<RevenuePage />)
 
       expect(screen.getByText('Revenue Planning')).toBeInTheDocument()
-      expect(screen.getByText('Manage revenue projections by category and trimester')).toBeInTheDocument()
+      expect(
+        screen.getByText('Manage revenue projections by category and trimester')
+      ).toBeInTheDocument()
     })
   })
 
-  describe('Budget version selector', () => {
-    it('renders budget version selector', () => {
+  describe('Budget version context', () => {
+    it('uses global budget version from context', () => {
+      // Set version via context mock
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      expect(screen.getByTestId('budget-version-selector')).toBeInTheDocument()
+      // Page should render with data when version is selected
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
     })
 
-    it('allows selecting a version', async () => {
-      const user = userEvent.setup()
-
+    it('renders placeholder when no version selected', () => {
+      mockSelectedVersionId = undefined
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      expect(select).toHaveValue('v1')
+      // Should show placeholder text
+      expect(screen.getByText(/Select a budget version/i)).toBeInTheDocument()
     })
   })
 
@@ -230,18 +301,13 @@ describe('Revenue Planning Route', () => {
       expect(calculateBtn).toBeDisabled()
     })
 
-    it('enables Recalculate button when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('enables Recalculate button when version selected', () => {
+      // Set version via context mock
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const calculateBtn = screen.getByText('Recalculate Revenue').closest('button')
-        expect(calculateBtn).not.toBeDisabled()
-      })
+      const calculateBtn = screen.getByText('Recalculate Revenue').closest('button')
+      expect(calculateBtn).not.toBeDisabled()
     })
   })
 
@@ -252,215 +318,153 @@ describe('Revenue Planning Route', () => {
       expect(screen.queryByTestId('summary-card-total-revenue')).not.toBeInTheDocument()
     })
 
-    it('displays summary cards when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays summary cards when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('summary-card-total-revenue')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-tuition-revenue')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-enrollment-fees')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-other-revenue')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('summary-card-total-revenue')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-tuition-revenue')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-enrollment-fees')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-other-revenue')).toBeInTheDocument()
     })
 
-    it('calculates total revenue correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates total revenue correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const totalCard = screen.getByTestId('summary-card-total-revenue')
-        // Tuition (3,000,000) + Fees (1,000,000) + Other (500,000) = 4,500,000
-        expect(totalCard).toHaveTextContent('SAR')
-      })
+      const totalCard = screen.getByTestId('summary-card-total-revenue')
+      // Tuition (3,000,000) + Fees (1,000,000) + Other (500,000) = 4,500,000
+      expect(totalCard).toHaveTextContent('SAR')
     })
 
-    it('calculates tuition revenue correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates tuition revenue correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const tuitionCard = screen.getByTestId('summary-card-tuition-revenue')
-        // 3,000,000 SAR from account 70110
-        expect(tuitionCard).toHaveTextContent('SAR')
-      })
+      const tuitionCard = screen.getByTestId('summary-card-tuition-revenue')
+      // 3,000,000 SAR from account 70110
+      expect(tuitionCard).toHaveTextContent('SAR')
     })
   })
 
   describe('Revenue chart', () => {
     it('does not show chart when no version selected', () => {
+      mockSelectedVersionId = undefined
       render(<RevenuePage />)
 
       expect(screen.queryByTestId('revenue-chart')).not.toBeInTheDocument()
     })
 
-    it('displays revenue chart when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays revenue chart when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('revenue-chart')).toBeInTheDocument()
-        expect(screen.getByText('Revenue Breakdown')).toBeInTheDocument()
-        expect(screen.getByText('Chart with 3 categories')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('revenue-chart')).toBeInTheDocument()
+      expect(screen.getByText('Revenue Breakdown')).toBeInTheDocument()
+      expect(screen.getByText('Chart with 3 categories')).toBeInTheDocument()
     })
   })
 
   describe('Revenue notes', () => {
-    it('displays revenue notes section when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays revenue notes section when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText('Revenue Notes')).toBeInTheDocument()
-        expect(screen.getByText('Tuition (70110-70130)')).toBeInTheDocument()
-        expect(screen.getByText('Enrollment Fees (70200-70299)')).toBeInTheDocument()
-        expect(screen.getByText('Other Revenue (75xxx-77xxx)')).toBeInTheDocument()
-        expect(screen.getByText('Trimester Split')).toBeInTheDocument()
-      })
+      expect(screen.getByText('Revenue Notes')).toBeInTheDocument()
+      expect(screen.getByText('Tuition (70110-70130)')).toBeInTheDocument()
+      expect(screen.getByText('Enrollment Fees (70200-70299)')).toBeInTheDocument()
+      expect(screen.getByText('Other Revenue (75xxx-77xxx)')).toBeInTheDocument()
+      expect(screen.getByText('Trimester Split')).toBeInTheDocument()
     })
   })
 
   describe('AG Grid', () => {
-    it('displays AG Grid with revenue data', async () => {
-      const user = userEvent.setup()
-
+    it('displays AG Grid with revenue data', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
-        const rows = screen.getAllByTestId('revenue-row')
-        expect(rows).toHaveLength(3)
-      })
+      expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
+      const rows = screen.getAllByTestId('revenue-row')
+      expect(rows).toHaveLength(3)
     })
 
-    it('displays revenue row details', async () => {
-      const user = userEvent.setup()
-
+    it('displays revenue row details', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText(/70110: Tuition - French Nationality/)).toBeInTheDocument()
-        expect(screen.getByText(/70200: Enrollment Fees/)).toBeInTheDocument()
-        expect(screen.getByText(/75100: Transportation Services/)).toBeInTheDocument()
-      })
+      expect(screen.getByText(/70110: Tuition - French Nationality/)).toBeInTheDocument()
+      expect(screen.getByText(/70200: Enrollment Fees/)).toBeInTheDocument()
+      expect(screen.getByText(/75100: Transportation Services/)).toBeInTheDocument()
     })
   })
 
   describe('Placeholder state', () => {
     it('shows placeholder when no version selected', () => {
+      mockSelectedVersionId = undefined
       render(<RevenuePage />)
 
-      expect(screen.getByText('Select a budget version to view revenue planning')).toBeInTheDocument()
+      expect(
+        screen.getByText('Select a budget version to view revenue planning')
+      ).toBeInTheDocument()
     })
 
-    it('hides placeholder when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('hides placeholder when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText('Select a budget version to view revenue planning')
-        ).not.toBeInTheDocument()
-      })
+      expect(
+        screen.queryByText('Select a budget version to view revenue planning')
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('Real-world use cases', () => {
-    it('displays full revenue planning workflow', async () => {
-      const user = userEvent.setup()
-
+    it('displays full revenue planning workflow', () => {
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      // Select budget version
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
+      // Verify summary cards appear
+      expect(screen.getByTestId('summary-card-total-revenue')).toBeInTheDocument()
 
-      await waitFor(() => {
-        // Verify summary cards appear
-        expect(screen.getByTestId('summary-card-total-revenue')).toBeInTheDocument()
+      // Verify chart appears
+      expect(screen.getByTestId('revenue-chart')).toBeInTheDocument()
 
-        // Verify chart appears
-        expect(screen.getByTestId('revenue-chart')).toBeInTheDocument()
+      // Verify AG Grid appears
+      expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
 
-        // Verify AG Grid appears
-        expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
+      // Verify notes appear
+      expect(screen.getByText('Revenue Notes')).toBeInTheDocument()
 
-        // Verify notes appear
-        expect(screen.getByText('Revenue Notes')).toBeInTheDocument()
-
-        // Verify action button is enabled
-        const calculateBtn = screen.getByText('Recalculate Revenue').closest('button')
-        expect(calculateBtn).not.toBeDisabled()
-      })
+      // Verify action button is enabled
+      const calculateBtn = screen.getByText('Recalculate Revenue').closest('button')
+      expect(calculateBtn).not.toBeDisabled()
     })
 
-    it('handles empty revenue data', async () => {
+    it('handles empty revenue data', () => {
       mockRevenueData = { items: [] }
-      const user = userEvent.setup()
-
+      mockSelectedVersionId = 'v1'
       render(<RevenuePage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        // Summary cards should show 0 values
-        expect(screen.getByTestId('summary-card-total-revenue')).toBeInTheDocument()
-        // AG Grid should still render but with no rows
-        expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
-        expect(screen.queryAllByTestId('revenue-row')).toHaveLength(0)
-      })
+      // Summary cards should show 0 values
+      expect(screen.getByTestId('summary-card-total-revenue')).toBeInTheDocument()
+      // AG Grid should still render but with no rows
+      expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
+      expect(screen.queryAllByTestId('revenue-row')).toHaveLength(0)
     })
 
-    it('allows switching between budget versions', async () => {
-      const user = userEvent.setup()
+    it('context provides version switching capability', () => {
+      // Test that context provides version switching
+      mockSelectedVersionId = 'v1'
+      const { rerender } = render(<RevenuePage />)
 
-      render(<RevenuePage />)
+      expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
 
-      const select = screen.getByTestId('version-select')
+      // Simulate version change via context
+      mockSelectedVersionId = 'v2'
+      rerender(<RevenuePage />)
 
-      // Select first version
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
-      })
-
-      // Switch to second version
-      await user.selectOptions(select, 'v2')
-
-      expect(select).toHaveValue('v2')
+      // Page should still render (context provides new version)
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
     })
   })
 

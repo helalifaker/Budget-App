@@ -1,852 +1,1051 @@
 /**
- * EFIR Budget Planning Application - Sahara Luxe Theme
- * Enhanced premium light theme with gold accents and warm shadows
- * Global styles and Tailwind CSS imports
+ * EFIR Budget Planning Application - Executive Design System
+ * Premium board-ready design system with viewport-optimized layouts
+ *
+ * Design Principles:
+ * 1. VIEWPORT FIT     - Everything important visible without scrolling
+ * 2. DESKTOP FIRST    - Optimize for 1280px+, then adapt down
+ * 3. DATA DENSITY     - Maximum information, minimum chrome
+ * 4. VISUAL HIERARCHY - Clear zones with shadows and depth
+ * 5. LUXURY POLISH    - Animations, shadows, premium feel
+ *
+ * Accent Color Philosophy:
+ * - Gold (#A68B5B)       - Finance module, primary accent, calls-to-action
+ * - Sage (#7D9082)       - Enrollment module, success states
+ * - Terracotta (#C4785D) - Warnings, attention, deficits
+ * - Slate (#64748B)      - Analysis module, neutral accent
+ * - Wine (#8B5C6B)       - Workforce module, secondary accent
  */
 
 @import 'tailwindcss';
+@config '../tailwind.config.ts';
 
-/**
- * Sahara Luxe Theme Configuration
- * Premium light theme: warm cream backgrounds, gold accents, elegant typography
- * Inspired by luxury fintech and hotel booking interfaces
- */
-@theme {
-  /* Sahara Twilight Color Palette */
-  --color-sand-50: #fbf8f3;
-  --color-sand-100: #f4ede2;
-  --color-sand-200: #e8dcc8;
-  --color-sand-300: #dcc9ad;
-  --color-sand-400: #cfb691;
-  --color-sand-500: #c2a375;
-  --color-sand-600: #b5905a;
-  --color-sand-700: #8f7248;
-  --color-sand-800: #66482d;
-  --color-sand-900: #4a3520;
+/* ============================================================================
+   CSS CUSTOM PROPERTIES
+   ============================================================================ */
 
-  --color-gold-50: #fff9e6;
-  --color-gold-100: #fff3cc;
-  --color-gold-200: #ffe799;
-  --color-gold-300: #ffda66;
-  --color-gold-400: #ffce33;
-  --color-gold-500: #edad3e; /* Primary gold - vibrant desert orange for CTAs */
-  --color-gold-600: #d89b35;
-  --color-gold-700: #c3892c;
-  --color-gold-800: #ae7723;
-  --color-gold-900: #99651a;
+:root {
+  /* -------------------------------------------------------------------------
+     COLORS - Background
+     ------------------------------------------------------------------------- */
+  --color-canvas: #FAF9F7;
+  --color-paper: #FFFFFF;
+  --color-subtle: #F5F4F1;
+  --color-warm: #FBF9F6;
+  --color-muted: #F0EFEC;
 
-  --color-brown-50: #f9f5f2;
-  --color-brown-100: #f2ebe5;
-  --color-brown-200: #e5d6cb;
-  --color-brown-300: #d8c1b1;
-  --color-brown-400: #cbac97;
-  --color-brown-500: #be977d;
-  --color-brown-600: #a67f63;
-  --color-brown-700: #876749;
-  --color-brown-800: #5c4130;
-  --color-brown-900: #3d2b20;
+  /* -------------------------------------------------------------------------
+     COLORS - Border
+     ------------------------------------------------------------------------- */
+  --color-border-light: #E8E6E1;
+  --color-border-medium: #D4D1C9;
+  --color-border-strong: #C5C2B8;
 
-  --color-twilight-50: #f5f7f9;
-  --color-twilight-100: #e8ecf0;
-  --color-twilight-200: #d1d9e1;
-  --color-twilight-300: #b9c6d2;
-  --color-twilight-400: #a2b3c3;
-  --color-twilight-500: #8ba0b4;
-  --color-twilight-600: #748da5;
-  --color-twilight-700: #61707f; /* Professional grey-blue for body text */
-  --color-twilight-800: #4e5a67;
-  --color-twilight-900: #3b444f;
+  /* -------------------------------------------------------------------------
+     COLORS - Text
+     ------------------------------------------------------------------------- */
+  --color-text-primary: #1A1917;
+  --color-text-secondary: #5C5A54;
+  --color-text-tertiary: #8A877E;
+  --color-text-muted: #B5B2A9;
+  --color-text-disabled: #D4D1C9;
 
-  /* Semantic colors */
-  --color-success-50: #f4f7f4;
-  --color-success-100: #e9f0e9;
-  --color-success-200: #d3e1d3;
-  --color-success-300: #bdd2bd;
-  --color-success-400: #a7c3a7;
-  --color-success-500: #8b9d83; /* Green sage */
-  --color-success-600: #7a8a73;
-  --color-success-700: #697763;
-  --color-success-800: #586453;
-  --color-success-900: #475143;
+  /* -------------------------------------------------------------------------
+     COLORS - Accent Gold (Finance module, primary actions)
+     ------------------------------------------------------------------------- */
+  --color-gold: #A68B5B;
+  --color-gold-hover: #8F7750;
+  --color-gold-light: #F5EFE3;   /* Opaque gold-100 */
+  --color-gold-lighter: #FBF8F3; /* Opaque gold-50 */
 
-  --color-warning-50: #fff5f0;
-  --color-warning-100: #feeae1;
-  --color-warning-200: #fdd5c3;
-  --color-warning-300: #fcc0a5;
-  --color-warning-400: #fbab87;
-  --color-warning-500: #c75b39; /* Terracotta */
-  --color-warning-600: #b35232;
-  --color-warning-700: #9f492b;
-  --color-warning-800: #8b4024;
-  --color-warning-900: #77371d;
+  /* -------------------------------------------------------------------------
+     COLORS - Accent Sage (Enrollment module, success)
+     ------------------------------------------------------------------------- */
+  --color-sage: #7D9082;
+  --color-sage-hover: #6B7D70;
+  --color-sage-light: #E5EBE7;   /* Opaque sage-100 */
+  --color-sage-lighter: #F2F5F3; /* Opaque sage-50 */
 
-  --color-error-50: #f9f4f7;
-  --color-error-100: #f3e9ef;
-  --color-error-200: #e7d3df;
-  --color-error-300: #dbbdcf;
-  --color-error-400: #cfa7bf;
-  --color-error-500: #8b4c6f; /* Deep mauve */
-  --color-error-600: #7a4262;
-  --color-error-700: #693855;
-  --color-error-800: #582e48;
-  --color-error-900: #47243b;
+  /* -------------------------------------------------------------------------
+     COLORS - Accent Terracotta (Warnings, deficits)
+     ------------------------------------------------------------------------- */
+  --color-terracotta: #C4785D;
+  --color-terracotta-hover: #B06A50;
+  --color-terracotta-light: #FAE9E3;   /* Opaque terracotta-100 */
+  --color-terracotta-lighter: #FDF6F3; /* Opaque terracotta-50 */
 
-  --color-info-50: #f5f8fb;
-  --color-info-100: #ebf1f7;
-  --color-info-200: #d7e3ef;
-  --color-info-300: #c3d5e7;
-  --color-info-400: #afc7df;
-  --color-info-500: #a9c6e6; /* Pale sky */
-  --color-info-600: #98b2d0;
-  --color-info-700: #879eba;
-  --color-info-800: #768aa4;
-  --color-info-900: #65768e;
+  /* -------------------------------------------------------------------------
+     COLORS - Accent Slate (Analysis module)
+     ------------------------------------------------------------------------- */
+  --color-slate: #64748B;
+  --color-slate-hover: #576478;
+  --color-slate-light: #F1F5F9;  /* Opaque slate-100 */
+  --color-slate-lighter: #F8FAFC; /* Opaque slate-50 */
 
-  /* ═══════════════════════════════════════════════════════════════
-   * SAHARA LUXE - Premium Accent Colors
-   * ═══════════════════════════════════════════════════════════════ */
+  /* -------------------------------------------------------------------------
+     COLORS - Accent Wine (Workforce module)
+     ------------------------------------------------------------------------- */
+  --color-wine: #8B5C6B;
+  --color-wine-hover: #7A505D;
+  --color-wine-light: #F5E8EC;   /* Opaque wine-100 */
+  --color-wine-lighter: #FBF5F7; /* Opaque wine-50 */
 
-  /* Premium Gold - Rich luxury accent */
-  --color-luxe-gold: #d4af37;
-  --color-luxe-gold-light: #e4c55a;
-  --color-luxe-gold-dark: #b8982f;
-  --color-luxe-gold-muted: rgba(212, 175, 55, 0.15);
-  --color-luxe-gold-glow: rgba(212, 175, 55, 0.25);
+  /* -------------------------------------------------------------------------
+     COLORS - Status
+     ------------------------------------------------------------------------- */
+  --color-status-success: #7D9082;
+  --color-status-success-bg: #E5EBE7;  /* Opaque sage-100 */
+  --color-status-warning: #B45309;
+  --color-status-warning-bg: #FEF3C7;  /* Opaque amber-100 */
+  --color-status-error: #C4785D;
+  --color-status-error-bg: #FAE9E3;    /* Opaque terracotta-100 */
+  --color-status-info: #64748B;
+  --color-status-info-bg: #F1F5F9;     /* Opaque slate-100 */
 
-  /* Cream backgrounds for luxury feel */
-  --color-luxe-cream: #fdfbf7;
-  --color-luxe-cream-dark: #f9f5ef;
+  /* -------------------------------------------------------------------------
+     TYPOGRAPHY
+     ------------------------------------------------------------------------- */
+  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-body: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
 
-  /* Premium borders */
-  --color-luxe-border: rgba(212, 175, 55, 0.3);
-  --color-luxe-border-subtle: rgba(0, 0, 0, 0.04);
+  /* Font sizes - Standard web scale (base: 16px) */
+  --text-xs: 0.75rem;       /* 12px */
+  --text-sm: 0.875rem;      /* 14px */
+  --text-base: 1rem;        /* 16px */
+  --text-md: 0.9375rem;     /* 15px */
+  --text-lg: 1.125rem;      /* 18px */
+  --text-xl: 1.25rem;       /* 20px */
+  --text-2xl: 1.5rem;       /* 24px */
+  --text-3xl: 1.875rem;     /* 30px */
+  --text-4xl: 2.25rem;      /* 36px */
+  --text-5xl: 3rem;         /* 48px */
+  --text-6xl: 3.75rem;      /* 60px */
 
-  /* Custom box shadows */
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-card-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-kpi: 0 4px 6px -1px rgba(237, 173, 62, 0.1), 0 2px 4px -2px rgba(237, 173, 62, 0.1);
-  --shadow-kpi-hover: 0 10px 20px -3px rgba(237, 173, 62, 0.2),
-    0 4px 8px -4px rgba(237, 173, 62, 0.2);
+  /* -------------------------------------------------------------------------
+     SPACING
+     ------------------------------------------------------------------------- */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
 
-  /* ═══════════════════════════════════════════════════════════════
-   * SAHARA LUXE - Premium Shadows (warm brown tint)
-   * ═══════════════════════════════════════════════════════════════ */
-  --shadow-luxe-sm: 0 1px 2px rgba(74, 53, 32, 0.06),
-    0 1px 3px rgba(74, 53, 32, 0.04);
-  --shadow-luxe-md: 0 4px 6px rgba(74, 53, 32, 0.07),
-    0 2px 4px rgba(74, 53, 32, 0.04);
-  --shadow-luxe-lg: 0 10px 25px rgba(74, 53, 32, 0.1),
-    0 4px 10px rgba(74, 53, 32, 0.05);
-  --shadow-luxe-xl: 0 20px 40px rgba(74, 53, 32, 0.12),
-    0 8px 16px rgba(74, 53, 32, 0.06);
+  /* -------------------------------------------------------------------------
+     BORDER RADIUS
+     ------------------------------------------------------------------------- */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+  --radius-3xl: 14px;
+  --radius-full: 9999px;
 
-  /* Gold glow shadows for interactive elements */
-  --shadow-gold-glow: 0 0 20px rgba(212, 175, 55, 0.2);
-  --shadow-gold-glow-lg: 0 0 40px rgba(212, 175, 55, 0.25),
-    0 0 60px rgba(212, 175, 55, 0.1);
+  /* -------------------------------------------------------------------------
+     SHADOWS (Warm undertone)
+     ------------------------------------------------------------------------- */
+  --shadow-xs: 0 1px 2px rgba(26, 25, 23, 0.04);
+  --shadow-sm: 0 2px 8px rgba(26, 25, 23, 0.06);
+  --shadow-md: 0 4px 16px rgba(26, 25, 23, 0.08);
+  --shadow-lg: 0 8px 32px rgba(26, 25, 23, 0.10);
+  --shadow-xl: 0 12px 48px rgba(26, 25, 23, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(166, 139, 91, 0.20);
+  --shadow-gold-glow: 0 0 0 3px rgba(166, 139, 91, 0.15);
+  --shadow-sage-glow: 0 0 0 3px rgba(125, 144, 130, 0.15);
+  --shadow-terracotta-glow: 0 0 0 3px rgba(196, 120, 93, 0.15);
 
-  /* Elevated card with gold accent */
-  --shadow-luxe-card: 0 2px 8px rgba(74, 53, 32, 0.08),
-    0 1px 3px rgba(74, 53, 32, 0.04);
-  --shadow-luxe-card-hover: 0 12px 28px rgba(74, 53, 32, 0.12),
-    0 4px 12px rgba(212, 175, 55, 0.08);
+  /* -------------------------------------------------------------------------
+     TRANSITIONS
+     ------------------------------------------------------------------------- */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
 
-  /* Border radius */
-  --radius-card: 0.75rem;
-  --radius-button: 0.5rem;
+  /* -------------------------------------------------------------------------
+     LAYOUT
+     ------------------------------------------------------------------------- */
+  --header-height: 56px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 72px;
+  --context-bar-height: 44px;
+  --page-header-height: 64px;
+  --footer-height: 40px;
 
-  /* Spacing */
-  --spacing-18: 4.5rem;
-  --spacing-22: 5.5rem;
+  /* Executive Cockpit Layout measurements */
+  --cockpit-header-height: 48px;
+  --cockpit-dock-height: 72px;
+  --cockpit-total-chrome: calc(var(--cockpit-header-height) + var(--cockpit-dock-height));
 
-  /* Font families */
-  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-family-serif: 'DM Serif Display', Georgia, serif;
-  --font-family-display: 'Playfair Display', 'DM Serif Display', Georgia, serif;
-  --font-family-mono: 'Space Mono', 'DM Mono', 'Fira Code', monospace;
+  /* Viewport-aware content height */
+  --viewport-content-height: calc(100vh - var(--header-height));
+  --viewport-main-height: calc(100vh - var(--header-height) - var(--page-header-height));
+  --viewport-grid-height: calc(100vh - var(--header-height) - var(--page-header-height) - 120px);
 
-  /* Font sizes */
-  --font-size-display-1: 4.5rem;
-  --font-size-display-2: 3.75rem;
-  --font-size-heading-1: 3rem;
-  --font-size-heading-2: 2.25rem;
-  --font-size-heading-3: 1.875rem;
-  --font-size-heading-4: 1.5rem;
-  --font-size-heading-5: 1.25rem;
-  --font-size-heading-6: 1.125rem;
+  /* Cockpit-specific viewport heights */
+  --cockpit-content-height: calc(100vh - var(--cockpit-total-chrome));
+  --cockpit-main-height: calc(100vh - var(--cockpit-total-chrome) - var(--page-header-height));
+  --cockpit-grid-height: calc(100vh - var(--cockpit-total-chrome) - var(--page-header-height) - 80px);
 
-  /* Animations */
-  --animate-fade-in: fadeIn 0.3s ease-in-out;
-  --animate-slide-in: slideIn 0.3s ease-out;
-  --animate-scale-in: scaleIn 0.2s ease-out;
+  /* Compact spacing for data density */
+  --space-compact-1: 0.25rem;
+  --space-compact-2: 0.375rem;
+  --space-compact-3: 0.5rem;
+  --space-compact-4: 0.75rem;
+  --space-compact-5: 1rem;
+  --space-compact-6: 1.25rem;
 
-  @keyframes fadeIn {
-    0% {
-      opacity: 0;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
+  /* -------------------------------------------------------------------------
+     SHADCN/UI CSS VARIABLES
+     ------------------------------------------------------------------------- */
+  --background: 45 20% 98%;
+  --foreground: 40 6% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 40 6% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 40 6% 10%;
+  --primary: 37 29% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 12% 95%;
+  --secondary-foreground: 40 6% 10%;
+  --muted: 40 12% 95%;
+  --muted-foreground: 40 5% 45%;
+  --accent: 40 12% 95%;
+  --accent-foreground: 40 6% 10%;
+  --destructive: 20 52% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 40 12% 90%;
+  --input: 40 12% 90%;
+  --ring: 37 29% 50%;
+  --radius: 0.5rem;
+  color-scheme: light;
 
-  @keyframes slideIn {
-    0% {
-      transform: translateY(-10px);
-      opacity: 0;
-    }
-    100% {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
+  /* -------------------------------------------------------------------------
+     EFIR COMPONENT ALIASES
+     Components use --efir-* naming convention
+     ------------------------------------------------------------------------- */
+  /* Background aliases */
+  --efir-bg-canvas: var(--color-canvas);
+  --efir-bg-paper: var(--color-paper);
+  --efir-bg-subtle: var(--color-subtle);
+  --efir-bg-warm: var(--color-warm);
+  --efir-bg-muted: var(--color-muted);
 
-  @keyframes scaleIn {
-    0% {
-      transform: scale(0.95);
-      opacity: 0;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
+  /* Border aliases */
+  --efir-border-light: var(--color-border-light);
+  --efir-border-medium: var(--color-border-medium);
+  --efir-border-strong: var(--color-border-strong);
 
-  /* ═══════════════════════════════════════════════════════════════
-   * SAHARA LUXE - Premium Animations
-   * ═══════════════════════════════════════════════════════════════ */
+  /* Text aliases */
+  --efir-text-primary: var(--color-text-primary);
+  --efir-text-secondary: var(--color-text-secondary);
+  --efir-text-tertiary: var(--color-text-tertiary);
+  --efir-text-muted: var(--color-text-muted);
+  --efir-text-disabled: var(--color-text-disabled);
 
-  /* Elegant hover lift */
-  @keyframes hoverLift {
-    0% {
-      transform: translateY(0);
-      box-shadow: var(--shadow-luxe-card);
-    }
-    100% {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-luxe-card-hover);
-    }
-  }
+  /* Accent color aliases - Gold (Finance) */
+  --efir-accent-gold: var(--color-gold);
+  --efir-accent-gold-hover: var(--color-gold-hover);
+  --efir-accent-gold-light: var(--color-gold-light);
+  --efir-accent-gold-lighter: var(--color-gold-lighter);
 
-  /* Gold shimmer effect */
-  @keyframes goldShimmer {
-    0% {
-      background-position: -200% center;
-    }
-    100% {
-      background-position: 200% center;
-    }
-  }
+  /* Accent color aliases - Sage (Enrollment) */
+  --efir-accent-sage: var(--color-sage);
+  --efir-accent-sage-hover: var(--color-sage-hover);
+  --efir-accent-sage-light: var(--color-sage-light);
+  --efir-accent-sage-lighter: var(--color-sage-lighter);
 
-  /* Subtle pulse for active states */
-  @keyframes luxePulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.85;
-    }
-  }
+  /* Accent color aliases - Terracotta (Warnings) */
+  --efir-accent-terracotta: var(--color-terracotta);
+  --efir-accent-terracotta-hover: var(--color-terracotta-hover);
+  --efir-accent-terracotta-light: var(--color-terracotta-light);
+  --efir-accent-terracotta-lighter: var(--color-terracotta-lighter);
 
-  /* Count up number animation helper */
-  @keyframes countUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
+  /* Accent color aliases - Slate (Analysis) */
+  --efir-accent-slate: var(--color-slate);
+  --efir-accent-slate-hover: var(--color-slate-hover);
+  --efir-accent-slate-light: var(--color-slate-light);
+  --efir-accent-slate-lighter: var(--color-slate-lighter);
 
-  /* Smooth expand/collapse */
-  @keyframes expandIn {
-    0% {
-      opacity: 0;
-      max-height: 0;
-      transform: scaleY(0.95);
-    }
-    100% {
-      opacity: 1;
-      max-height: 500px;
-      transform: scaleY(1);
-    }
-  }
+  /* Accent color aliases - Wine (Workforce) */
+  --efir-accent-wine: var(--color-wine);
+  --efir-accent-wine-hover: var(--color-wine-hover);
+  --efir-accent-wine-light: var(--color-wine-light);
+  --efir-accent-wine-lighter: var(--color-wine-lighter);
 
-  /* Gold border glow pulse */
-  @keyframes goldGlowPulse {
-    0%,
-    100% {
-      box-shadow: 0 0 0 2px var(--color-luxe-gold-muted);
-    }
-    50% {
-      box-shadow: 0 0 0 4px var(--color-luxe-gold-glow);
-    }
-  }
-
-  /* Slide in from right (for sidebar stats) */
-  @keyframes slideInRight {
-    0% {
-      opacity: 0;
-      transform: translateX(10px);
-    }
-    100% {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  /* Tab underline slide */
-  @keyframes tabUnderline {
-    0% {
-      width: 0;
-      left: 50%;
-    }
-    100% {
-      width: 100%;
-      left: 0;
-    }
-  }
+  /* Shadow depth levels */
+  --shadow-depth-1: var(--shadow-xs);
+  --shadow-depth-2: var(--shadow-sm);
+  --shadow-depth-3: var(--shadow-md);
+  --shadow-depth-4: var(--shadow-lg);
+  --shadow-depth-5: var(--shadow-xl);
 }
 
+/* Dark mode variables */
+.dark {
+  --background: 40 6% 10%;
+  --foreground: 45 20% 98%;
+  --card: 40 6% 12%;
+  --card-foreground: 45 20% 98%;
+  --popover: 40 6% 12%;
+  --popover-foreground: 45 20% 98%;
+  --primary: 37 40% 55%;
+  --primary-foreground: 40 6% 10%;
+  --secondary: 40 6% 18%;
+  --secondary-foreground: 45 20% 98%;
+  --muted: 40 6% 18%;
+  --muted-foreground: 40 10% 60%;
+  --accent: 40 6% 18%;
+  --accent-foreground: 45 20% 98%;
+  --destructive: 20 52% 50%;
+  --destructive-foreground: 45 20% 98%;
+  --border: 40 6% 20%;
+  --input: 40 6% 20%;
+  --ring: 37 40% 55%;
+  color-scheme: dark;
+}
+
+/* ============================================================================
+   BASE STYLES
+   ============================================================================ */
+
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-    color-scheme: light;
-  }
-
-  /* Dark mode - Sahara Night theme */
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 8%;
-    --card-foreground: 210 40% 98%;
-    --primary: 40 90% 64%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 50.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 40 90% 64%;
-    color-scheme: dark;
-  }
-
-  /* System preference dark mode */
-  @media (prefers-color-scheme: dark) {
-    :root:not(.light) {
-      --background: 222.2 84% 4.9%;
-      --foreground: 210 40% 98%;
-      --card: 222.2 84% 8%;
-      --card-foreground: 210 40% 98%;
-      --primary: 40 90% 64%;
-      --primary-foreground: 222.2 84% 4.9%;
-      --secondary: 217.2 32.6% 17.5%;
-      --secondary-foreground: 210 40% 98%;
-      --muted: 217.2 32.6% 17.5%;
-      --muted-foreground: 215 20.2% 65.1%;
-      --accent: 217.2 32.6% 17.5%;
-      --accent-foreground: 210 40% 98%;
-      --destructive: 0 62.8% 50.6%;
-      --destructive-foreground: 210 40% 98%;
-      --border: 217.2 32.6% 17.5%;
-      --input: 217.2 32.6% 17.5%;
-      --ring: 40 90% 64%;
-      color-scheme: dark;
-    }
-  }
-
-  /* Custom base styles */
   *,
   *::before,
   *::after {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
 
   html {
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
 
   body {
-    @apply bg-sand-50 text-twilight-700;
-    font-family:
-      'Inter',
-      system-ui,
-      -apple-system,
-      sans-serif;
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    background-color: var(--color-canvas);
   }
 
-  /* Heading styles */
+  /* Heading styles - use display font */
   h1,
   h2,
   h3 {
-    @apply font-serif text-brown-800;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  h1 {
+    font-size: var(--text-5xl);
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+  }
+
+  h2 {
+    font-size: var(--text-4xl);
+    line-height: 1.1;
+    letter-spacing: -0.3px;
+  }
+
+  h3 {
+    font-size: var(--text-3xl);
+    line-height: 1.2;
+  }
+
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  /* -------------------------------------------------------------------------
+     ACCESSIBILITY - Focus Indicators
+     ------------------------------------------------------------------------- */
+
+  a:focus,
+  button:focus,
+  input:focus,
+  select:focus,
+  textarea:focus,
+  [tabindex]:focus,
+  [role="button"]:focus {
+    outline: 2px solid var(--color-gold) !important;
+    outline-offset: 2px !important;
+  }
+
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--color-gold) !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Hide outline when using mouse (but keep for keyboard) */
+  a:focus:not(:focus-visible),
+  button:focus:not(:focus-visible),
+  [tabindex]:focus:not(:focus-visible) {
+    outline: 2px solid transparent !important;
   }
 }
 
+/* ============================================================================
+   COMPONENT STYLES
+   ============================================================================ */
+
 @layer components {
-  /* KPI Card styles - Board-ready design */
+  /* -------------------------------------------------------------------------
+     KPI Card Styles
+     ------------------------------------------------------------------------- */
   .kpi-card {
-    @apply bg-white rounded-card shadow-kpi hover:shadow-kpi-hover transition-shadow duration-200;
-    @apply border border-sand-200 p-6;
+    background: var(--color-paper);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border-light);
+    padding: 1.5rem;
+    transition: all var(--transition-normal);
+  }
+
+  .kpi-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border-medium);
   }
 
   .kpi-card-header {
-    @apply flex items-center justify-between mb-4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
   }
 
   .kpi-card-title {
-    @apply text-sm font-medium text-twilight-600 uppercase tracking-wide;
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-tertiary);
   }
 
   .kpi-card-value {
-    @apply text-3xl font-bold text-brown-800;
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: 600;
+    color: var(--color-text-primary);
   }
 
   .kpi-card-trend {
-    @apply flex items-center gap-1 text-sm font-medium;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
   }
 
   .kpi-card-trend.positive {
-    @apply text-success-600;
+    color: var(--color-sage);
   }
 
   .kpi-card-trend.negative {
-    @apply text-error-600;
+    color: var(--color-terracotta);
   }
 
   .kpi-card-trend.neutral {
-    @apply text-twilight-600;
+    color: var(--color-text-tertiary);
   }
 
-  /* Button styles */
+  /* -------------------------------------------------------------------------
+     Button Styles
+     ------------------------------------------------------------------------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-button font-medium transition-all duration-200;
-    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    line-height: 1;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    border: 1px solid transparent;
+  }
+
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
   }
 
   .btn-primary {
-    @apply bg-gold-500 text-white hover:bg-gold-600 focus:ring-gold-500;
+    background: var(--color-gold);
+    color: white;
+    border-color: var(--color-gold);
+  }
+
+  .btn-primary:hover {
+    background: var(--color-gold-hover);
+    border-color: var(--color-gold-hover);
   }
 
   .btn-secondary {
-    @apply bg-sand-200 text-brown-800 hover:bg-sand-300 focus:ring-sand-400;
+    background: var(--color-paper);
+    color: var(--color-text-secondary);
+    border-color: var(--color-border-light);
   }
 
-  .btn-outline {
-    @apply border border-brown-400 text-brown-700 hover:bg-brown-50 focus:ring-brown-500;
+  .btn-secondary:hover {
+    background: var(--color-subtle);
+    border-color: var(--color-border-medium);
   }
 
-  /* Form input styles */
-  .input {
-    @apply block w-full px-3 py-2 border border-sand-300 rounded-button;
-    @apply text-twilight-700 placeholder-twilight-400;
-    @apply focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-gold-500;
-    @apply transition-colors duration-200;
+  .btn-ghost {
+    background: transparent;
+    color: var(--color-text-secondary);
   }
 
-  .input-error {
-    @apply border-error-500 focus:ring-error-500 focus:border-error-500;
+  .btn-ghost:hover {
+    background: var(--color-subtle);
+    color: var(--color-text-primary);
   }
 
-  /* Card styles */
+  /* -------------------------------------------------------------------------
+     Card Styles
+     ------------------------------------------------------------------------- */
   .card {
-    @apply bg-white rounded-card shadow-card p-6;
+    background: var(--color-paper);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-xl);
+    transition: all var(--transition-normal);
+  }
+
+  .card:hover {
+    border-color: var(--color-border-medium);
+    box-shadow: var(--shadow-sm);
   }
 
   .card-header {
-    @apply border-b border-sand-200 pb-4 mb-4;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border-light);
   }
 
   .card-title {
-    @apply text-2xl font-serif text-brown-800;
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .card-content {
+    padding: 1.5rem;
+  }
+
+  /* Card accent borders */
+  .card-accent-gold { border-left: 3px solid var(--color-gold); }
+  .card-accent-sage { border-left: 3px solid var(--color-sage); }
+  .card-accent-terracotta { border-left: 3px solid var(--color-terracotta); }
+  .card-accent-slate { border-left: 3px solid var(--color-slate); }
+  .card-accent-wine { border-left: 3px solid var(--color-wine); }
+
+  /* -------------------------------------------------------------------------
+     Form Input Styles
+     ------------------------------------------------------------------------- */
+  .input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-paper);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    transition: all var(--transition-normal);
+  }
+
+  .input:focus-within {
+    border-color: var(--color-gold);
+    box-shadow: var(--shadow-focus);
+  }
+
+  .input::placeholder {
+    color: var(--color-text-muted);
+  }
+
+  .input-error {
+    border-color: var(--color-terracotta) !important;
+  }
+
+  .input-error:focus-within {
+    box-shadow: var(--shadow-terracotta-glow);
+  }
+
+  /* -------------------------------------------------------------------------
+     Badge Styles
+     ------------------------------------------------------------------------- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.5rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+  }
+
+  .badge-success {
+    background: var(--color-sage-light);
+    color: var(--color-sage);
+  }
+
+  .badge-warning {
+    background: var(--color-status-warning-bg);
+    color: var(--color-status-warning);
+  }
+
+  .badge-error {
+    background: var(--color-terracotta-light);
+    color: var(--color-terracotta);
+  }
+
+  .badge-info {
+    background: var(--color-slate-light);
+    color: var(--color-slate);
+  }
+
+  .badge-neutral {
+    background: var(--color-subtle);
+    color: var(--color-text-muted);
+  }
+
+  /* -------------------------------------------------------------------------
+     Progress Bar Styles
+     ------------------------------------------------------------------------- */
+  .progress-bar {
+    height: 4px;
+    background: var(--color-subtle);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: var(--radius-sm);
+    transition: width var(--transition-slow);
+  }
+
+  .progress-gold { background: var(--color-gold); }
+  .progress-sage { background: var(--color-sage); }
+  .progress-terracotta { background: var(--color-terracotta); }
+
+  /* -------------------------------------------------------------------------
+     Viewport-Fit Page Layouts
+     ------------------------------------------------------------------------- */
+  .page-viewport-fit {
+    display: flex;
+    flex-direction: column;
+    height: var(--viewport-content-height);
+    overflow: hidden;
+  }
+
+  .page-with-header {
+    display: flex;
+    flex-direction: column;
+    height: var(--viewport-content-height);
+  }
+
+  .page-header-fixed {
+    flex-shrink: 0;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+  }
+
+  .page-content-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 1.5rem;
+  }
+
+  /* Dashboard grid layout */
+  .dashboard-viewport {
+    display: grid;
+    gap: 1rem;
+    height: var(--viewport-main-height);
+    grid-template-rows: auto 1fr;
+  }
+
+  .dashboard-kpi-row {
+    flex-shrink: 0;
+  }
+
+  .dashboard-main-content {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* -------------------------------------------------------------------------
+     Data Grid Viewport
+     ------------------------------------------------------------------------- */
+  .grid-viewport-fit {
+    height: var(--viewport-grid-height);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    border: 1px solid var(--color-border-light);
+    box-shadow: var(--shadow-sm);
   }
 }
 
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+
 @layer utilities {
-  /* Animation utilities */
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-in-out;
-  }
-
-  .animate-slide-in {
-    animation: slideIn 0.3s ease-out;
-  }
-
-  .animate-scale-in {
-    animation: scaleIn 0.2s ease-out;
-  }
-
-  /* Text shadow for headers */
-  .text-shadow-sm {
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  }
-
-  /* Gradient backgrounds */
-  .bg-gradient-sand {
-    background: linear-gradient(135deg, #fbf8f3 0%, #f4ede2 100%);
-  }
-
-  .bg-gradient-gold {
-    background: linear-gradient(135deg, #ffda66 0%, #edad3e 100%);
-  }
-
-  /* ═══════════════════════════════════════════════════════════════
-   * SAHARA LUXE - Premium Utility Classes
-   * ═══════════════════════════════════════════════════════════════ */
-
-  /* Typography - Display font for luxury headings */
+  /* -------------------------------------------------------------------------
+     Typography Utilities
+     ------------------------------------------------------------------------- */
   .font-display {
-    font-family: var(--font-family-display);
+    font-family: var(--font-display);
+  }
+
+  .font-body {
+    font-family: var(--font-body);
+  }
+
+  .font-mono {
+    font-family: var(--font-mono);
   }
 
   .font-mono-numbers {
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 
-  /* Luxury background gradients */
-  .bg-luxe-cream {
-    background: linear-gradient(180deg, #fdfbf7 0%, #f9f5ef 100%);
-  }
-
-  .bg-luxe-gold-gradient {
-    background: linear-gradient(135deg, #e4c55a 0%, #d4af37 50%, #b8982f 100%);
-  }
-
-  .bg-luxe-shimmer {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(212, 175, 55, 0.08) 50%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: goldShimmer 3s ease-in-out infinite;
-  }
-
-  /* Premium shadows */
-  .shadow-luxe-sm {
-    box-shadow: var(--shadow-luxe-sm);
-  }
-
-  .shadow-luxe-md {
-    box-shadow: var(--shadow-luxe-md);
-  }
-
-  .shadow-luxe-lg {
-    box-shadow: var(--shadow-luxe-lg);
-  }
-
-  .shadow-luxe-xl {
-    box-shadow: var(--shadow-luxe-xl);
-  }
-
-  .shadow-gold-glow {
-    box-shadow: var(--shadow-gold-glow);
-  }
-
-  .shadow-luxe-card {
-    box-shadow: var(--shadow-luxe-card);
-  }
-
-  /* Hover effects */
-  .hover-lift {
-    transition:
-      transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-      box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .hover-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-luxe-card-hover);
-  }
-
-  .hover-gold-glow {
-    transition: box-shadow 0.3s ease;
-  }
-
-  .hover-gold-glow:hover {
-    box-shadow: var(--shadow-gold-glow);
-  }
-
-  /* Gold border utilities */
-  .border-luxe-gold {
-    border-color: var(--color-luxe-border);
-  }
-
-  .ring-luxe-gold {
-    --tw-ring-color: var(--color-luxe-gold);
-  }
-
-  .focus-gold:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--color-luxe-gold-muted), var(--shadow-gold-glow);
-  }
-
-  /* Luxury card styles */
-  .luxe-card {
-    @apply bg-white rounded-xl;
-    @apply border border-sand-100;
-    @apply transition-all duration-300 ease-out;
-    box-shadow: var(--shadow-luxe-card);
-  }
-
-  .luxe-card:hover {
-    box-shadow: var(--shadow-luxe-card-hover);
-    transform: translateY(-2px);
-  }
-
-  .luxe-card-elevated {
-    @apply bg-white rounded-xl;
-    @apply border border-sand-100;
-    box-shadow: var(--shadow-luxe-lg);
-  }
-
-  /* Gold accent utilities */
-  .text-luxe-gold {
-    color: var(--color-luxe-gold);
-  }
-
-  .bg-luxe-gold {
-    background-color: var(--color-luxe-gold);
-  }
-
-  .bg-luxe-gold-muted {
-    background-color: var(--color-luxe-gold-muted);
-  }
-
-  /* Premium animations */
-  .animate-hover-lift {
-    animation: hoverLift 0.3s ease forwards;
-  }
-
-  .animate-luxe-pulse {
-    animation: luxePulse 2s ease-in-out infinite;
-  }
-
-  .animate-count-up {
-    animation: countUp 0.5s ease-out forwards;
-  }
-
-  .animate-expand-in {
-    animation: expandIn 0.3s ease-out forwards;
-  }
-
-  .animate-slide-in-right {
-    animation: slideInRight 0.4s ease-out forwards;
-  }
-
-  .animate-gold-glow-pulse {
-    animation: goldGlowPulse 2s ease-in-out infinite;
-  }
-
-  /* Stagger animation delays for lists */
-  .stagger-1 {
-    animation-delay: 0.05s;
-  }
-  .stagger-2 {
-    animation-delay: 0.1s;
-  }
-  .stagger-3 {
-    animation-delay: 0.15s;
-  }
-  .stagger-4 {
-    animation-delay: 0.2s;
-  }
-  .stagger-5 {
-    animation-delay: 0.25s;
-  }
-
-  /* Premium transition easings */
-  .ease-luxe {
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .ease-luxe-bounce {
-    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
-  }
-
-  /* Tab underline animation */
-  .tab-underline {
-    position: relative;
-  }
-
-  .tab-underline::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    width: 0;
-    height: 2px;
-    background: var(--color-luxe-gold);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .tab-underline:hover::after,
-  .tab-underline.active::after {
-    width: 100%;
-    left: 0;
-  }
-
-  /* Sidebar item hover effect */
-  .sidebar-item-luxe {
-    @apply relative pl-4 transition-all duration-200;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    border-left: 3px solid transparent;
-  }
-
-  .sidebar-item-luxe:hover {
-    @apply bg-sand-50 pl-5;
-    border-left-color: var(--color-luxe-gold-muted);
-  }
-
-  .sidebar-item-luxe.active {
-    @apply bg-sand-100 font-medium;
-    border-left-color: var(--color-luxe-gold);
-  }
-
-  /* Number display for metrics */
   .metric-number {
-    @apply text-brown-900 tracking-tight;
-    font-family: var(--font-family-mono);
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
     font-feature-settings: 'tnum' on, 'lnum' on;
+    color: var(--color-text-primary);
+    letter-spacing: -0.3px;
+  }
+
+  /* Display text utilities */
+  .text-display-xl {
+    font-family: var(--font-display);
+    font-size: var(--text-5xl);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+    color: var(--color-text-primary);
+  }
+
+  .text-display-lg {
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.3px;
+    color: var(--color-text-primary);
+  }
+
+  .text-display-md {
+    font-family: var(--font-display);
+    font-size: var(--text-3xl);
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-text-primary);
+  }
+
+  .text-display-sm {
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-text-primary);
+  }
+
+  /* KPI/Metric text utilities */
+  .text-kpi-xl {
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+
+  .text-kpi-lg {
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .text-kpi-md {
+    font-family: var(--font-display);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Label utilities */
+  .text-label {
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-text-tertiary);
+  }
+
+  .text-label-uppercase {
+    font-family: var(--font-body);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-tertiary);
+  }
+
+  /* Body text utilities */
+  .text-body {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+  }
+
+  .text-body-sm {
+    font-family: var(--font-body);
+    font-size: var(--text-sm);
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--color-text-tertiary);
+  }
+
+  /* -------------------------------------------------------------------------
+     Color Utilities
+     ------------------------------------------------------------------------- */
+  /* Text colors */
+  .text-primary { color: var(--color-text-primary); }
+  .text-secondary { color: var(--color-text-secondary); }
+  .text-tertiary { color: var(--color-text-tertiary); }
+  .text-muted { color: var(--color-text-muted); }
+  .text-gold { color: var(--color-gold); }
+  .text-sage { color: var(--color-sage); }
+  .text-terracotta { color: var(--color-terracotta); }
+  .text-slate { color: var(--color-slate); }
+  .text-wine { color: var(--color-wine); }
+  .text-success { color: var(--color-status-success); }
+  .text-warning { color: var(--color-status-warning); }
+  .text-error { color: var(--color-status-error); }
+
+  /* Background colors */
+  .bg-canvas { background-color: var(--color-canvas); }
+  .bg-paper { background-color: var(--color-paper); }
+  .bg-subtle { background-color: var(--color-subtle); }
+  .bg-warm { background-color: var(--color-warm); }
+  .bg-gold-light { background-color: var(--color-gold-light); }
+  .bg-sage-light { background-color: var(--color-sage-light); }
+  .bg-terracotta-light { background-color: var(--color-terracotta-light); }
+  .bg-slate-light { background-color: var(--color-slate-light); }
+  .bg-wine-light { background-color: var(--color-wine-light); }
+
+  /* Border colors */
+  .border-light { border-color: var(--color-border-light); }
+  .border-medium { border-color: var(--color-border-medium); }
+  .border-strong { border-color: var(--color-border-strong); }
+
+  /* -------------------------------------------------------------------------
+     Shadow Utilities
+     ------------------------------------------------------------------------- */
+  .shadow-xs { box-shadow: var(--shadow-xs); }
+  .shadow-sm { box-shadow: var(--shadow-sm); }
+  .shadow-md { box-shadow: var(--shadow-md); }
+  .shadow-lg { box-shadow: var(--shadow-lg); }
+  .shadow-xl { box-shadow: var(--shadow-xl); }
+  .shadow-focus { box-shadow: var(--shadow-focus); }
+  .shadow-gold-glow { box-shadow: var(--shadow-gold-glow); }
+  .shadow-sage-glow { box-shadow: var(--shadow-sage-glow); }
+  .shadow-terracotta-glow { box-shadow: var(--shadow-terracotta-glow); }
+
+  /* -------------------------------------------------------------------------
+     Animation Utilities
+     ------------------------------------------------------------------------- */
+  .transition-all { transition: all var(--transition-normal); }
+  .transition-fast { transition: all var(--transition-fast); }
+  .transition-slow { transition: all var(--transition-slow); }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .hover-glow:hover {
+    box-shadow: var(--shadow-focus);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 200ms ease-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 200ms ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 200ms ease-out;
+  }
+
+  /* Animation keyframes */
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    0% { transform: translateY(-10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  @keyframes scaleIn {
+    0% { transform: scale(0.95); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
   }
 }
 
-/* AG Grid Theme Customization (Sahara Twilight) */
+/* ============================================================================
+   AG GRID THEME CUSTOMIZATION
+   ============================================================================ */
+
 .ag-theme-quartz {
-  --ag-header-background-color: #f4ede2;
+  --ag-header-background-color: var(--color-subtle);
   --ag-odd-row-background-color: #ffffff;
-  --ag-row-hover-color: #fbf8f3;
-  --ag-selected-row-background-color: #fff9e6;
-  --ag-border-color: #e8dcc8;
-  --ag-header-foreground-color: #66482d;
-  --ag-data-color: #61707f;
-  --ag-font-family: 'Inter', system-ui, sans-serif;
+  --ag-row-hover-color: var(--color-warm);
+  --ag-selected-row-background-color: var(--color-gold-lighter);
+  --ag-border-color: var(--color-border-light);
+  --ag-header-foreground-color: var(--color-text-primary);
+  --ag-data-color: var(--color-text-secondary);
+  --ag-font-family: var(--font-body);
 }
 
-/* AG Grid Cell States (Writeback Integration) */
-
-/* Locked cells - cannot be edited */
+/* AG Grid Cell States */
 .ag-theme-quartz .cell-locked {
   background-color: #fee !important;
   cursor: not-allowed !important;
   opacity: 0.8;
 }
 
-.ag-theme-quartz .cell-locked:hover {
-  background-color: #fdd !important;
-}
-
-/* Saving cells - write in progress */
 .ag-theme-quartz .cell-saving {
   background-color: #ffe !important;
   opacity: 0.7;
   transition: opacity 0.3s ease;
 }
 
-/* Conflict cells - version mismatch detected */
 .ag-theme-quartz .cell-conflict {
   background-color: #fcc !important;
   border: 2px solid #f88 !important;
-  animation: pulse-red 1s ease-in-out 3;
 }
 
-@keyframes pulse-red {
-  0%,
-  100% {
-    background-color: #fcc;
-  }
-  50% {
-    background-color: #f88;
-  }
-}
-
-/* Cell flash animation (external changes) */
-.ag-theme-quartz .ag-cell-flash {
-  background-color: #ffa !important;
-  transition: background-color 1s ease-out;
-}
-
-/* Cell focus with custom gold ring */
 .ag-theme-quartz .ag-cell-focus {
-  border: 2px solid var(--color-gold-500) !important;
+  border: 2px solid var(--color-gold) !important;
   outline: none;
 }
 
-/* Cell inline editing state */
 .ag-theme-quartz .ag-cell-inline-editing {
   background-color: #fff !important;
-  border: 2px solid var(--color-gold-500) !important;
-  box-shadow: 0 2px 8px rgba(237, 173, 62, 0.2);
+  border: 2px solid var(--color-gold) !important;
+  box-shadow: var(--shadow-focus);
 }
 
-/* Context menu styling */
-.ag-theme-quartz .ag-menu {
-  border: 1px solid var(--color-sand-300);
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+/* Excel-like mode */
+.ag-theme-quartz.excel-mode {
+  --ag-row-border-color: #e5e5e5;
+  --ag-cell-horizontal-border: solid #e5e5e5;
 }
 
-.ag-theme-quartz .ag-menu-option-active {
-  background-color: var(--color-sand-100);
+.ag-theme-quartz.excel-mode .ag-header {
+  background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
+  border-bottom: 2px solid #d0d0d0;
 }
 
-/* Cell with comments indicator */
-.ag-theme-quartz .cell-has-comments::after {
-  content: '💬';
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 10px;
-  opacity: 0.6;
+.ag-theme-quartz.excel-mode .ag-row:hover {
+  background-color: #e8f0fe !important;
 }
 
-/* Cell with history indicator */
-.ag-theme-quartz .cell-has-history::after {
-  content: '📋';
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  font-size: 10px;
-  opacity: 0.6;
+.ag-theme-quartz.excel-mode .ag-row-selected {
+  background-color: #cce5ff !important;
 }
 
-/* Recharts customization */
+/* ============================================================================
+   RECHARTS CUSTOMIZATION
+   ============================================================================ */
+
 .recharts-wrapper {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 .recharts-text {
-  fill: #61707f;
+  fill: var(--color-text-secondary);
 }
 
 .recharts-legend-item-text {
-  color: #61707f;
+  color: var(--color-text-secondary);
+}
+
+/* ============================================================================
+   SCROLLBAR STYLES
+   ============================================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-subtle);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-medium);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-strong);
+}
+
+/* ============================================================================
+   SELECTION STYLES
+   ============================================================================ */
+
+::selection {
+  background: var(--color-gold-light);
+  color: var(--color-text-primary);
+}
+
+/* ============================================================================
+   FOCUS VISIBLE GLOBAL OVERRIDE
+   ============================================================================ */
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
 }

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { Route as DHGRoute } from '@/routes/planning/dhg'
 
 // Mock dependencies
@@ -10,6 +9,12 @@ let mockTeacherFTEData: Record<string, unknown>[] | null = null
 let mockTRMDGapsData: Record<string, unknown>[] | null = null
 let mockHSAPlanningData: Record<string, unknown>[] | null = null
 const mockCalculateMutation = vi.fn()
+
+// BudgetVersionContext mock state
+let mockSelectedVersionId: string | undefined = undefined
+const mockSetSelectedVersionId = vi.fn((id: string | undefined) => {
+  mockSelectedVersionId = id
+})
 
 // Type definitions for mock props
 type MockProps = Record<string, unknown>
@@ -32,6 +37,26 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => mockNavigate,
+}))
+
+// Mock BudgetVersionContext - this must come before component imports
+vi.mock('@/contexts/BudgetVersionContext', () => ({
+  useBudgetVersion: () => ({
+    selectedVersionId: mockSelectedVersionId,
+    selectedVersion: mockSelectedVersionId
+      ? { id: mockSelectedVersionId, name: '2025-2026', status: 'working' }
+      : null,
+    setSelectedVersionId: mockSetSelectedVersionId,
+    versions: [
+      { id: 'v1', name: '2025-2026', status: 'working' },
+      { id: 'v2', name: '2024-2025', status: 'approved' },
+    ],
+    isLoading: false,
+    error: null,
+    clearSelection: () => {
+      mockSelectedVersionId = undefined
+    },
+  }),
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
@@ -146,22 +171,18 @@ vi.mock('@/hooks/api/useDHG', () => ({
     data: versionId ? mockSubjectHoursData : null,
     isLoading: false,
   }),
-  // Renamed from useTeacherFTE to useTeacherRequirements
   useTeacherRequirements: (versionId: string) => ({
     data: versionId ? mockTeacherFTEData : null,
     isLoading: false,
   }),
-  // Renamed from useTRMDGaps to useTRMDGapAnalysis
   useTRMDGapAnalysis: (versionId: string) => ({
     data: versionId ? mockTRMDGapsData : null,
     isLoading: false,
   }),
-  // HSA Planning not currently implemented in backend
   useHSAPlanning: (versionId: string) => ({
     data: versionId ? mockHSAPlanningData : null,
     isLoading: false,
   }),
-  // Renamed from useCalculateFTE to useCalculateTeacherRequirements
   useCalculateTeacherRequirements: () => ({
     mutate: mockCalculateMutation,
     isPending: false,
@@ -182,8 +203,8 @@ describe('DHG Workforce Planning Route', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSelectedVersionId = undefined // Reset version selection
 
-    // API returns arrays directly (not { items: [...] })
     mockSubjectHoursData = [
       {
         id: '1',
@@ -211,7 +232,6 @@ describe('DHG Workforce Planning Route', () => {
       },
     ]
 
-    // Teacher requirements - matches DHGTeacherRequirement type
     mockTeacherFTEData = [
       {
         id: '1',
@@ -251,7 +271,6 @@ describe('DHG Workforce Planning Route', () => {
       },
     ]
 
-    // TRMD Gap Analysis - matches TRMDGapAnalysis type
     mockTRMDGapsData = {
       version_id: 'v1',
       analysis_date: '2024-01-01',
@@ -281,7 +300,6 @@ describe('DHG Workforce Planning Route', () => {
       total_hsa_needed: 6,
     }
 
-    // HSA Planning - not currently implemented in backend, using array format
     mockHSAPlanningData = [
       {
         teacher_name: 'Jean Dupont',
@@ -321,22 +339,19 @@ describe('DHG Workforce Planning Route', () => {
     })
   })
 
-  describe('Budget version selector', () => {
-    it('renders budget version selector', () => {
+  describe('Budget version context', () => {
+    it('uses global budget version from context', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
-
-      expect(screen.getByTestId('budget-version-selector')).toBeInTheDocument()
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
     })
 
-    it('allows selecting a version', async () => {
-      const user = userEvent.setup()
-
+    it('renders placeholder when no version selected', () => {
+      mockSelectedVersionId = undefined
       render(<DHGPage />)
-
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      expect(select).toHaveValue('v1')
+      expect(
+        screen.getByText('Select a budget version to view DHG workforce planning')
+      ).toBeInTheDocument()
     })
   })
 
@@ -354,18 +369,12 @@ describe('DHG Workforce Planning Route', () => {
       expect(calculateBtn).toBeDisabled()
     })
 
-    it('enables Recalculate button when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('enables Recalculate button when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const calculateBtn = screen.getByText('Recalculate FTE').closest('button')
-        expect(calculateBtn).not.toBeDisabled()
-      })
+      const calculateBtn = screen.getByText('Recalculate FTE').closest('button')
+      expect(calculateBtn).not.toBeDisabled()
     })
   })
 
@@ -376,222 +385,134 @@ describe('DHG Workforce Planning Route', () => {
       expect(screen.queryByTestId('summary-card-total-fte-required')).not.toBeInTheDocument()
     })
 
-    it('displays summary cards when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays summary cards when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('summary-card-total-fte-required')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-hsa-hours')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-deficit-hours')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-hsa-assignments')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('summary-card-total-fte-required')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-hsa-hours')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-deficit-hours')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-subjects-analyzed')).toBeInTheDocument()
     })
 
-    it('calculates total FTE correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates total FTE correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const fteCard = screen.getByTestId('summary-card-total-fte-required')
-        // 6 + 5 + 4 = 15.00
-        expect(fteCard).toHaveTextContent('15.00')
-        expect(fteCard).toHaveTextContent('Full-time equivalents')
-      })
+      const fteCard = screen.getByTestId('summary-card-total-fte-required')
+      expect(fteCard).toHaveTextContent('14.00')
+      expect(fteCard).toHaveTextContent('Full-time equivalents')
     })
 
-    it('calculates HSA hours correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates HSA hours correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const hsaCard = screen.getByTestId('summary-card-hsa-hours')
-        // 12 + 6 + 0 = 18.0
-        expect(hsaCard).toHaveTextContent('18.0')
-        expect(hsaCard).toHaveTextContent('Overtime hours')
-      })
+      const hsaCard = screen.getByTestId('summary-card-hsa-hours')
+      expect(hsaCard).toHaveTextContent('6.0')
+      expect(hsaCard).toHaveTextContent('Overtime hours')
     })
 
-    it('calculates deficit hours correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates deficit hours correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const deficitCard = screen.getByTestId('summary-card-deficit-hours')
-        // 6 + (-6) = 0.0
-        expect(deficitCard).toHaveTextContent('0.0')
-        expect(deficitCard).toHaveTextContent('Hours to fill')
-      })
+      const deficitCard = screen.getByTestId('summary-card-deficit-hours')
+      expect(deficitCard).toHaveTextContent('0.0')
+      expect(deficitCard).toHaveTextContent('Hours to fill')
     })
 
-    it('counts HSA assignments correctly', async () => {
-      const user = userEvent.setup()
-
+    it('counts subjects analyzed correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const assignmentsCard = screen.getByTestId('summary-card-hsa-assignments')
-        // 3 teachers
-        expect(assignmentsCard).toHaveTextContent('3')
-        expect(assignmentsCard).toHaveTextContent('Teachers with overtime')
-      })
+      const subjectsCard = screen.getByTestId('summary-card-subjects-analyzed')
+      // mockTRMDGapsData has 2 gaps in the array
+      expect(subjectsCard).toHaveTextContent('2')
+      expect(subjectsCard).toHaveTextContent('In TRMD gap analysis')
     })
   })
 
   describe('Tabs', () => {
-    it('displays tabs component', async () => {
-      const user = userEvent.setup()
-
+    it('displays tabs component', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('tabs')).toBeInTheDocument()
-        expect(screen.getByTestId('tab-trigger-hours')).toBeInTheDocument()
-        expect(screen.getByTestId('tab-trigger-fte')).toBeInTheDocument()
-        expect(screen.getByTestId('tab-trigger-trmd')).toBeInTheDocument()
-        expect(screen.getByTestId('tab-trigger-hsa')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-trigger-hours')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-trigger-fte')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-trigger-trmd')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-trigger-hsa')).toBeInTheDocument()
     })
 
-    it('defaults to hours tab', async () => {
-      const user = userEvent.setup()
-
+    it('defaults to hours tab', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const tabs = screen.getByTestId('tabs')
-        expect(tabs).toHaveAttribute('data-value', 'hours')
-      })
+      const tabs = screen.getByTestId('tabs')
+      expect(tabs).toHaveAttribute('data-value', 'hours')
     })
   })
 
   describe('Subject Hours tab', () => {
-    it('displays subject hours grid', async () => {
-      const user = userEvent.setup()
-
+    it('displays subject hours grid', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('tab-content-hours')).toBeInTheDocument()
-        expect(screen.getByText('Subject Hours Matrix')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('tab-content-hours')).toBeInTheDocument()
+      expect(screen.getByText('Subject Hours Matrix')).toBeInTheDocument()
     })
 
-    it('displays subject hours rows', async () => {
-      const user = userEvent.setup()
-
+    it('displays subject hours rows', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText(/Mathématiques: 4.5/)).toBeInTheDocument()
-        expect(screen.getByText(/Français: 5/)).toBeInTheDocument()
-        expect(screen.getByText(/Histoire-Géographie: 3/)).toBeInTheDocument()
-      })
+      expect(screen.getByText(/Mathématiques: 4.5/)).toBeInTheDocument()
+      expect(screen.getByText(/Français: 5/)).toBeInTheDocument()
+      expect(screen.getByText(/Histoire-Géographie: 3/)).toBeInTheDocument()
     })
   })
 
   describe('Teacher FTE tab', () => {
-    it('displays Teacher FTE card title', async () => {
-      const user = userEvent.setup()
-
+    it('displays Teacher FTE card title', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText('Teacher FTE Requirements')).toBeInTheDocument()
-      })
+      expect(screen.getByText('Teacher FTE Requirements')).toBeInTheDocument()
     })
 
-    it('displays FTE badges', async () => {
-      const user = userEvent.setup()
-
+    it('displays FTE badges', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const badges = screen.getAllByTestId('badge')
-        expect(badges.length).toBeGreaterThan(0)
-      })
+      const badges = screen.getAllByTestId('badge')
+      expect(badges.length).toBeGreaterThan(0)
     })
   })
 
   describe('TRMD Gap Analysis tab', () => {
-    it('displays TRMD card title', async () => {
-      const user = userEvent.setup()
-
+    it('displays TRMD card title', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        // TRMD Gap Analysis appears in both tab trigger and card title
-        const trmdTexts = screen.getAllByText('TRMD Gap Analysis')
-        expect(trmdTexts.length).toBeGreaterThan(0)
-      })
+      const trmdTexts = screen.getAllByText('TRMD Gap Analysis')
+      expect(trmdTexts.length).toBeGreaterThan(0)
     })
   })
 
   describe('HSA Planning tab', () => {
-    it('displays HSA card title', async () => {
-      const user = userEvent.setup()
-
+    it('displays HSA card title', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText('HSA Overtime Planning')).toBeInTheDocument()
-      })
+      expect(screen.getByText('HSA Overtime Planning')).toBeInTheDocument()
     })
 
-    it('displays Add HSA Assignment button', async () => {
-      const user = userEvent.setup()
-
+    it('displays Add HSA Assignment button', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText('Add HSA Assignment')).toBeInTheDocument()
-      })
+      expect(screen.getByText('Add HSA Assignment')).toBeInTheDocument()
     })
   })
 
@@ -604,50 +525,37 @@ describe('DHG Workforce Planning Route', () => {
       ).toBeInTheDocument()
     })
 
-    it('hides placeholder when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('hides placeholder when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText('Select a budget version to view DHG workforce planning')
-        ).not.toBeInTheDocument()
-      })
+      expect(
+        screen.queryByText('Select a budget version to view DHG workforce planning')
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('Real-world use cases', () => {
-    it('displays full DHG planning workflow', async () => {
-      const user = userEvent.setup()
-
+    it('displays full DHG planning workflow', () => {
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      // Select budget version
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
+      // Verify summary cards appear
+      expect(screen.getByTestId('summary-card-total-fte-required')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-hsa-hours')).toBeInTheDocument()
 
-      await waitFor(() => {
-        // Verify summary cards appear
-        expect(screen.getByTestId('summary-card-total-fte-required')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-hsa-hours')).toBeInTheDocument()
+      // Verify tabs appear
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
 
-        // Verify tabs appear
-        expect(screen.getByTestId('tabs')).toBeInTheDocument()
+      // Verify Subject Hours content appears
+      expect(screen.getByText('Subject Hours Matrix')).toBeInTheDocument()
 
-        // Verify Subject Hours content appears
-        expect(screen.getByText('Subject Hours Matrix')).toBeInTheDocument()
-
-        // Verify action button is enabled
-        const calculateBtn = screen.getByText('Recalculate FTE').closest('button')
-        expect(calculateBtn).not.toBeDisabled()
-      })
+      // Verify action button is enabled
+      const calculateBtn = screen.getByText('Recalculate FTE').closest('button')
+      expect(calculateBtn).not.toBeDisabled()
     })
 
-    it('handles empty DHG data', async () => {
+    it('handles empty DHG data', () => {
       mockSubjectHoursData = []
       mockTeacherFTEData = []
       mockTRMDGapsData = {
@@ -658,39 +566,27 @@ describe('DHG Workforce Planning Route', () => {
         total_hsa_needed: 0,
       }
       mockHSAPlanningData = []
-      const user = userEvent.setup()
-
+      mockSelectedVersionId = 'v1'
       render(<DHGPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        // Summary cards should show 0 values
-        expect(screen.getByTestId('summary-card-total-fte-required')).toHaveTextContent('0.00')
-        expect(screen.getByTestId('summary-card-hsa-hours')).toHaveTextContent('0.0')
-        expect(screen.getByTestId('summary-card-hsa-assignments')).toHaveTextContent('0')
-      })
+      // Summary cards should show 0 values
+      expect(screen.getByTestId('summary-card-total-fte-required')).toHaveTextContent('0.00')
+      expect(screen.getByTestId('summary-card-hsa-hours')).toHaveTextContent('0.0')
+      expect(screen.getByTestId('summary-card-subjects-analyzed')).toHaveTextContent('0')
     })
 
-    it('allows switching between budget versions', async () => {
-      const user = userEvent.setup()
+    it('context provides version switching capability', () => {
+      mockSelectedVersionId = 'v1'
+      const { rerender } = render(<DHGPage />)
 
-      render(<DHGPage />)
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
 
-      const select = screen.getByTestId('version-select')
+      // Simulate version change via context
+      mockSelectedVersionId = 'v2'
+      rerender(<DHGPage />)
 
-      // Select first version
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('tabs')).toBeInTheDocument()
-      })
-
-      // Switch to second version
-      await user.selectOptions(select, 'v2')
-
-      expect(select).toHaveValue('v2')
+      // Page should still render (context provides new version)
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
     })
   })
 

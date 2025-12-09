@@ -36,7 +36,7 @@ export function ProgressOverview({ progress }: ProgressOverviewProps) {
 
   // Determine overall status color
   const getProgressColor = (percentage: number, hasErrors: boolean, hasBlockers: boolean) => {
-    if (hasBlockers) return 'text-twilight-600'
+    if (hasBlockers) return 'text-text-secondary'
     if (hasErrors) return 'text-error-600'
     if (percentage === 100) return 'text-success-600'
     if (percentage >= 67) return 'text-success-500'
@@ -64,10 +64,10 @@ export function ProgressOverview({ progress }: ProgressOverviewProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-2xl font-serif text-brown-800">
+            <CardTitle className="text-2xl font-serif text-text-primary">
               Overall Planning Progress
             </CardTitle>
-            <p className="text-sm text-twilight-600 mt-1">
+            <p className="text-sm text-text-secondary mt-1">
               Track your progress across all 6 planning steps
             </p>
           </div>
@@ -75,7 +75,7 @@ export function ProgressOverview({ progress }: ProgressOverviewProps) {
             <div className={`text-5xl font-bold ${progressColor}`}>
               {Math.round(progress.overall_progress)}%
             </div>
-            <p className="text-sm text-twilight-600 mt-1">
+            <p className="text-sm text-text-secondary mt-1">
               {progress.completed_steps} of {progress.total_steps} completed
             </p>
           </div>
@@ -85,7 +85,7 @@ export function ProgressOverview({ progress }: ProgressOverviewProps) {
       <CardContent>
         {/* Progress Bar */}
         <div className="mb-6">
-          <div className="w-full bg-sand-200 rounded-full h-4 overflow-hidden">
+          <div className="w-full bg-subtle rounded-full h-4 overflow-hidden">
             <div
               className={`h-4 rounded-full transition-all duration-500 ease-out ${getProgressBarColor()}`}
               style={{ width: `${progress.overall_progress}%` }}

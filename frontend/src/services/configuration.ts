@@ -12,6 +12,12 @@ import {
   FeeStructure,
   SystemConfig,
   TimetableConstraint,
+  SubjectHoursMatrixResponse,
+  SubjectHoursBatchRequest,
+  SubjectHoursBatchResponse,
+  TemplateInfo,
+  ApplyTemplateResponse,
+  SubjectCreateRequest,
 } from '@/types/api'
 import { withServiceErrorHandling } from './utils'
 
@@ -93,26 +99,51 @@ export const configurationApi = {
       )
     },
 
-    update: async (id: string, data: Partial<ClassSizeParam>) => {
+    create: async (data: {
+      budget_version_id: string
+      level_id: string | null
+      cycle_id: string | null
+      min_class_size: number
+      target_class_size: number
+      max_class_size: number
+      notes?: string | null
+    }) => {
       return withServiceErrorHandling(
         apiRequest<ClassSizeParam>({
           method: 'PUT',
-          url: `/class-size-params/${id}`,
+          url: '/class-size-params',
+          data,
+        }),
+        'configuration: create class size param'
+      )
+    },
+
+    update: async (data: {
+      budget_version_id: string
+      level_id: string | null
+      cycle_id: string | null
+      min_class_size: number
+      target_class_size: number
+      max_class_size: number
+      notes?: string | null
+    }) => {
+      return withServiceErrorHandling(
+        apiRequest<ClassSizeParam>({
+          method: 'PUT',
+          url: '/class-size-params',
           data,
         }),
         'configuration: update class size param'
       )
     },
-  },
 
-  subjects: {
-    getAll: async () => {
+    delete: async (id: string) => {
       return withServiceErrorHandling(
-        apiRequest<Subject[]>({
-          method: 'GET',
-          url: '/subjects',
+        apiRequest<void>({
+          method: 'DELETE',
+          url: `/class-size-params/${id}`,
         }),
-        'configuration: get subjects'
+        'configuration: delete class size param'
       )
     },
   },
@@ -125,6 +156,24 @@ export const configurationApi = {
           url: `/subject-hours?version_id=${budgetVersionId}`,
         }),
         'configuration: get subject hours'
+      )
+    },
+
+    create: async (data: {
+      budget_version_id: string
+      subject_id: string
+      level_id: string
+      hours_per_week: number
+      is_split: boolean
+      notes?: string | null
+    }) => {
+      return withServiceErrorHandling(
+        apiRequest<SubjectHours>({
+          method: 'PUT',
+          url: '/subject-hours',
+          data,
+        }),
+        'configuration: create subject hours'
       )
     },
 
@@ -143,6 +192,81 @@ export const configurationApi = {
           data,
         }),
         'configuration: update subject hours'
+      )
+    },
+
+    // Matrix view by cycle (new endpoint)
+    getMatrix: async (budgetVersionId: string, cycleCode: string) => {
+      return withServiceErrorHandling(
+        apiRequest<SubjectHoursMatrixResponse>({
+          method: 'GET',
+          url: `/subject-hours/matrix?version_id=${budgetVersionId}&cycle_code=${cycleCode}`,
+        }),
+        'configuration: get subject hours matrix'
+      )
+    },
+
+    // Batch save (up to 200 entries)
+    batchSave: async (data: SubjectHoursBatchRequest) => {
+      return withServiceErrorHandling(
+        apiRequest<SubjectHoursBatchResponse>({
+          method: 'POST',
+          url: '/subject-hours/batch',
+          data,
+        }),
+        'configuration: batch save subject hours'
+      )
+    },
+
+    // Get available curriculum templates
+    getTemplates: async () => {
+      return withServiceErrorHandling(
+        apiRequest<TemplateInfo[]>({
+          method: 'GET',
+          url: '/subject-hours/templates',
+        }),
+        'configuration: get curriculum templates'
+      )
+    },
+
+    // Apply curriculum template
+    applyTemplate: async (data: {
+      budget_version_id: string
+      template_code: string
+      cycle_codes: string[]
+      overwrite_existing: boolean
+    }) => {
+      return withServiceErrorHandling(
+        apiRequest<ApplyTemplateResponse>({
+          method: 'POST',
+          url: '/subject-hours/apply-template',
+          data,
+        }),
+        'configuration: apply curriculum template'
+      )
+    },
+  },
+
+  subjects: {
+    getAll: async () => {
+      return withServiceErrorHandling(
+        apiRequest<Subject[]>({
+          method: 'GET',
+          url: '/subjects',
+        }),
+        'configuration: get subjects'
+      )
+    },
+
+    // Create custom subject
+    create: async (data: SubjectCreateRequest) => {
+      return withServiceErrorHandling(
+        apiRequest<Subject>({
+          method: 'POST',
+          url: '/subjects',
+          data,
+        }),
+        'configuration: create subject'
       )
     },
   },

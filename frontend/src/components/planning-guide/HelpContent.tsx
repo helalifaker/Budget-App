@@ -12,14 +12,14 @@ export function HelpContent({ stepId }: HelpContentProps) {
       <div className="space-y-6">
         {/* What is this step? */}
         <section>
-          <h4 className="text-base font-semibold text-brown-800 mb-2">What is this step?</h4>
-          <p className="text-twilight-700">{helpContent.overview}</p>
+          <h4 className="text-base font-semibold text-text-primary mb-2">What is this step?</h4>
+          <p className="text-text-secondary">{helpContent.overview}</p>
         </section>
 
         {/* Prerequisites */}
         <section>
-          <h4 className="text-base font-semibold text-brown-800 mb-2">Prerequisites</h4>
-          <ul className="list-none space-y-1 text-twilight-700">
+          <h4 className="text-base font-semibold text-text-primary mb-2">Prerequisites</h4>
+          <ul className="list-none space-y-1 text-text-secondary">
             {helpContent.prerequisites.map((prereq, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="text-success-600 mt-0.5">✓</span>
@@ -31,8 +31,8 @@ export function HelpContent({ stepId }: HelpContentProps) {
 
         {/* Instructions */}
         <section>
-          <h4 className="text-base font-semibold text-brown-800 mb-2">Instructions</h4>
-          <ol className="list-decimal list-inside space-y-2 text-twilight-700">
+          <h4 className="text-base font-semibold text-text-primary mb-2">Instructions</h4>
+          <ol className="list-decimal list-inside space-y-2 text-text-secondary">
             {helpContent.instructions.map((instruction, index) => (
               <li key={index}>{instruction}</li>
             ))}
@@ -41,8 +41,8 @@ export function HelpContent({ stepId }: HelpContentProps) {
 
         {/* Business Rules */}
         <section>
-          <h4 className="text-base font-semibold text-brown-800 mb-2">Business Rules</h4>
-          <ul className="list-none space-y-2 text-twilight-700">
+          <h4 className="text-base font-semibold text-text-primary mb-2">Business Rules</h4>
+          <ul className="list-none space-y-2 text-text-secondary">
             {helpContent.businessRules.map((rule, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="text-gold-600 mt-0.5">{rule.icon}</span>
@@ -56,9 +56,9 @@ export function HelpContent({ stepId }: HelpContentProps) {
 
         {/* Expected Outcomes */}
         <section>
-          <h4 className="text-base font-semibold text-brown-800 mb-2">Expected Outcomes</h4>
-          <p className="text-twilight-700 mb-2">Once this step is complete:</p>
-          <ul className="list-none space-y-1 text-twilight-700">
+          <h4 className="text-base font-semibold text-text-primary mb-2">Expected Outcomes</h4>
+          <p className="text-text-secondary mb-2">Once this step is complete:</p>
+          <ul className="list-none space-y-1 text-text-secondary">
             {helpContent.outcomes.map((outcome, index) => (
               <li key={index} className="flex items-start gap-2">
                 <span className="text-success-600 mt-0.5">✓</span>
@@ -71,14 +71,14 @@ export function HelpContent({ stepId }: HelpContentProps) {
         {/* Troubleshooting */}
         {helpContent.troubleshooting.length > 0 && (
           <section>
-            <h4 className="text-base font-semibold text-brown-800 mb-2">Troubleshooting</h4>
+            <h4 className="text-base font-semibold text-text-primary mb-2">Troubleshooting</h4>
             <div className="space-y-3">
               {helpContent.troubleshooting.map((item, index) => (
-                <details key={index} className="bg-sand-50 rounded-lg p-3">
-                  <summary className="cursor-pointer text-sm font-medium text-twilight-800 hover:text-brown-800">
+                <details key={index} className="bg-subtle rounded-lg p-3">
+                  <summary className="cursor-pointer text-sm font-medium text-text-secondary hover:text-text-primary">
                     ❓ {item.question}
                   </summary>
-                  <p className="mt-2 text-sm text-twilight-700">{item.answer}</p>
+                  <p className="mt-2 text-sm text-text-secondary">{item.answer}</p>
                 </details>
               ))}
             </div>

@@ -9,15 +9,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <!-- Sahara Luxe Typography -->
-    <!-- Inter: Body text (400, 500, 600) -->
-    <!-- DM Serif Display: Section headers -->
-    <!-- Playfair Display: Display headings (700) -->
-    <!-- Space Mono: Numbers/metrics (400, 500) -->
+    <!--
+      EFIR Executive Design System Typography
+      - Cormorant Garamond: Display headings, KPI values (serif)
+      - Lato: Body text, labels, navigation (sans-serif)
+      - JetBrains Mono: Numbers, codes, data cells (monospace)
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Lato:wght@300;400;500;600;700&display=swap"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Lato:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
+    </noscript>
 
     <!-- Preload critical chunks for faster initial load -->
     <link rel="modulepreload" href="/src/main.tsx" />
@@ -29,8 +38,11 @@
     <!-- <link rel="dns-prefetch" href="https://YOUR_SUPABASE_URL.supabase.co" /> -->
 
     <!-- Performance optimizations -->
-    <meta name="theme-color" content="#D4AF37" />
+    <meta name="theme-color" content="#A68B5B" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+    <!-- Description for SEO -->
+    <meta name="description" content="EFIR Budget Planning Application - Executive financial planning and reporting system for educational institutions" />
   </head>
   <body>
     <div id="root"></div>

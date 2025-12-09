@@ -537,36 +537,48 @@ class DashboardService:
         capacity_pct = Decimal(str(summary.get("capacity_utilization_pct", 0)))
         if capacity_pct >= self.CAPACITY_CRITICAL_PCT:
             alerts.append({
-                "id": f"{budget_version_id}-capacity-critical",
-                "type": "ERROR",
-                "message": f"Critical: School capacity at {capacity_pct}%. Immediate action required.",
-                "timestamp": now,
+                "alert_type": "capacity_critical",
+                "severity": "critical",
+                "title": "Critical: Near Maximum Capacity",
+                "message": f"School capacity at {capacity_pct}%. Immediate action required.",
+                "metric_value": float(capacity_pct),
+                "threshold_value": float(self.CAPACITY_CRITICAL_PCT),
+                "created_at": now,
             })
         elif capacity_pct >= self.CAPACITY_WARNING_PCT:
             alerts.append({
-                "id": f"{budget_version_id}-capacity-warning",
-                "type": "WARNING",
-                "message": f"Warning: School capacity at {capacity_pct}%. Consider expansion planning.",
-                "timestamp": now,
+                "alert_type": "capacity_warning",
+                "severity": "warning",
+                "title": "High Capacity Utilization",
+                "message": f"School capacity at {capacity_pct}%. Consider expansion planning.",
+                "metric_value": float(capacity_pct),
+                "threshold_value": float(self.CAPACITY_WARNING_PCT),
+                "created_at": now,
             })
 
         # Operating margin alerts
         margin_pct = Decimal(str(summary.get("operating_margin_pct", 0)))
         if margin_pct < Decimal("5"):
             alerts.append({
-                "id": f"{budget_version_id}-margin-low",
-                "type": "WARNING",
-                "message": f"Low Operating Margin: {margin_pct}%, below 5% target.",
-                "timestamp": now,
+                "alert_type": "margin_low",
+                "severity": "warning",
+                "title": "Low Operating Margin",
+                "message": f"Operating margin at {margin_pct}%, below 5% target.",
+                "metric_value": float(margin_pct),
+                "threshold_value": 5.0,
+                "created_at": now,
             })
 
         # Version status alerts
         if version.status == BudgetVersionStatus.WORKING:
             alerts.append({
-                "id": f"{budget_version_id}-version-draft",
-                "type": "INFO",
+                "alert_type": "version_draft",
+                "severity": "info",
+                "title": "Draft Budget Version",
                 "message": f"Budget version '{version.name}' is still in working status.",
-                "timestamp": now,
+                "metric_value": None,
+                "threshold_value": None,
+                "created_at": now,
             })
 
         return alerts
@@ -586,7 +598,9 @@ class DashboardService:
         Returns:
             List of activity dictionaries with:
                 - id: Unique activity identifier
-                - action: Type of action (Created, Submitted, Approved)
+                - version_id: Budget version UUID as string
+                - activity_type: Type of activity (version_created, version_submitted, version_approved)
+                - action: Human-readable action (Created, Submitted, Approved)
                 - user: User who performed action
                 - timestamp: When activity occurred
                 - details: Activity description
@@ -605,10 +619,14 @@ class DashboardService:
         versions = result.scalars().all()
 
         for version in versions:
+            version_id_str = str(version.id)
+
             # Version creation activity
             if version.created_at:
                 activities.append({
                     "id": f"{version.id}-created",
+                    "version_id": version_id_str,
+                    "activity_type": "version_created",
                     "action": "Created",
                     "user": "System",
                     "timestamp": version.created_at.isoformat(),
@@ -619,6 +637,8 @@ class DashboardService:
             if version.submitted_at:
                 activities.append({
                     "id": f"{version.id}-submitted",
+                    "version_id": version_id_str,
+                    "activity_type": "version_submitted",
                     "action": "Submitted",
                     "user": "User",
                     "timestamp": version.submitted_at.isoformat(),
@@ -629,6 +649,8 @@ class DashboardService:
             if version.approved_at:
                 activities.append({
                     "id": f"{version.id}-approved",
+                    "version_id": version_id_str,
+                    "activity_type": "version_approved",
                     "action": "Approved",
                     "user": "Approver",
                     "timestamp": version.approved_at.isoformat(),
@@ -692,3 +714,126 @@ class DashboardService:
                 })
 
         return comparison
+
+    async def get_kpi_summary(
+        self,
+        budget_version_id: uuid.UUID,
+    ) -> dict[str, Any]:
+        """
+        Get key performance indicator summary for a budget version.
+
+        Args:
+            budget_version_id: Budget version UUID
+
+        Returns:
+            Dictionary with KPI metrics:
+                - financial: Operating margin, cost per student, revenue per student
+                - operational: Capacity utilization, student-teacher ratio
+                - staffing: Teacher FTE, admin FTE, support ratio
+
+        Raises:
+            NotFoundError: If budget version not found
+        """
+        # Get base dashboard summary
+        summary = await self.get_dashboard_summary(budget_version_id)
+
+        total_revenue = Decimal(str(summary.get("total_revenue_sar", 0)))
+        total_costs = Decimal(str(summary.get("total_costs_sar", 0)))
+        total_students = int(summary.get("total_students", 0))
+        total_teachers_fte = Decimal(str(summary.get("total_teachers_fte", 0)))
+
+        # Calculate per-student metrics
+        revenue_per_student = float(total_revenue / total_students) if total_students else 0
+        cost_per_student = float(total_costs / total_students) if total_students else 0
+
+        # Calculate operational ratios
+        student_teacher_ratio = float(
+            Decimal(str(total_students)) / total_teachers_fte
+        ) if total_teachers_fte else 0
+
+        kpi_summary = {
+            "version_id": str(budget_version_id),
+            "version_name": summary.get("version_name", ""),
+            "financial_kpis": {
+                "total_revenue_sar": float(total_revenue),
+                "total_costs_sar": float(total_costs),
+                "net_result_sar": float(total_revenue - total_costs),
+                "operating_margin_pct": summary.get("operating_margin_pct", 0),
+                "revenue_per_student_sar": revenue_per_student,
+                "cost_per_student_sar": cost_per_student,
+            },
+            "operational_kpis": {
+                "total_students": total_students,
+                "total_classes": summary.get("total_classes", 0),
+                "capacity_utilization_pct": summary.get("capacity_utilization_pct", 0),
+                "student_teacher_ratio": student_teacher_ratio,
+            },
+            "staffing_kpis": {
+                "total_teachers_fte": float(total_teachers_fte),
+            },
+        }
+
+        return kpi_summary
+
+    async def get_budget_status_widget(
+        self,
+        budget_version_id: uuid.UUID,
+    ) -> dict[str, Any]:
+        """
+        Get budget status widget data for dashboard display.
+
+        Args:
+            budget_version_id: Budget version UUID
+
+        Returns:
+            Dictionary with widget data:
+                - version_info: Name, status, fiscal year
+                - status_badge: Status color and label
+                - metrics: Key metrics for display
+                - alerts_count: Number of active alerts
+
+        Raises:
+            NotFoundError: If budget version not found
+        """
+        # Get dashboard summary
+        summary = await self.get_dashboard_summary(budget_version_id)
+
+        # Get alerts count
+        alerts = await self.get_alerts(budget_version_id)
+        critical_alerts = len([a for a in alerts if a.get("severity") == "critical"])
+        warning_alerts = len([a for a in alerts if a.get("severity") == "warning"])
+
+        # Determine status badge styling
+        status = summary.get("status", "draft")
+        status_badges = {
+            "draft": {"color": "gray", "label": "Draft"},
+            "submitted": {"color": "blue", "label": "Submitted"},
+            "approved": {"color": "green", "label": "Approved"},
+            "locked": {"color": "purple", "label": "Locked"},
+            "archived": {"color": "slate", "label": "Archived"},
+        }
+
+        widget = {
+            "version_info": {
+                "id": str(budget_version_id),
+                "name": summary.get("version_name", ""),
+                "fiscal_year": summary.get("fiscal_year", 0),
+                "status": status,
+            },
+            "status_badge": status_badges.get(status, {"color": "gray", "label": status.title()}),
+            "metrics": {
+                "total_revenue_sar": summary.get("total_revenue_sar", 0),
+                "total_costs_sar": summary.get("total_costs_sar", 0),
+                "net_result_sar": summary.get("net_result_sar", 0),
+                "operating_margin_pct": summary.get("operating_margin_pct", 0),
+                "total_students": summary.get("total_students", 0),
+                "capacity_utilization_pct": summary.get("capacity_utilization_pct", 0),
+            },
+            "alerts": {
+                "total": len(alerts),
+                "critical": critical_alerts,
+                "warning": warning_alerts,
+            },
+        }
+
+        return widget

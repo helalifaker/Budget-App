@@ -38,7 +38,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel, PortableJSON, VersionedMixin, get_schema
+from app.models.base import BaseModel, PortableJSON, VersionedMixin, get_fk_target, get_schema
 
 if TYPE_CHECKING:
     from app.models.configuration import BudgetVersion
@@ -105,6 +105,43 @@ class ActualDataSource(str, enum.Enum):
     ODOO_IMPORT = "odoo_import"  # Imported from Odoo GL
     MANUAL_ENTRY = "manual_entry"  # Manually entered
     SYSTEM_CALC = "system_calc"  # System-calculated (aggregations)
+
+
+# ============================================================================
+# Historical Comparison - Enums
+# ============================================================================
+
+
+class HistoricalModuleCode(str, enum.Enum):
+    """Module code for historical data categorization."""
+
+    ENROLLMENT = "enrollment"  # Student counts by level
+    CLASS_STRUCTURE = "class_structure"  # Class counts by level
+    DHG = "dhg"  # Teacher FTE/hours by subject
+    REVENUE = "revenue"  # Revenue by account code
+    COSTS = "costs"  # Costs by account code and category
+    CAPEX = "capex"  # Capital expenditures by category
+
+
+class HistoricalDimensionType(str, enum.Enum):
+    """Dimension type for historical data grouping."""
+
+    LEVEL = "level"  # For enrollment (level_id)
+    SUBJECT = "subject"  # For DHG (subject_code)
+    ACCOUNT_CODE = "account_code"  # For revenue/costs/capex
+    COST_CATEGORY = "cost_category"  # For costs breakdown
+    TEACHER_CATEGORY = "teacher_category"  # For DHG (AEFE, local, etc.)
+    NATIONALITY = "nationality"  # For enrollment nationality distribution
+    FEE_TYPE = "fee_type"  # For revenue by fee type
+
+
+class HistoricalDataSource(str, enum.Enum):
+    """Source of historical data."""
+
+    ODOO_IMPORT = "odoo_import"  # Imported from Odoo GL
+    MANUAL_UPLOAD = "manual_upload"  # Manual Excel/CSV upload
+    SKOLENGO_IMPORT = "skolengo_import"  # Imported from Skolengo
+    SYSTEM_AGGREGATION = "system_aggregation"  # System-aggregated
 
 
 # ============================================================================
@@ -179,7 +216,7 @@ class KPIDefinition(BaseModel):
 
     # Classification
     category: Mapped[KPICategory] = mapped_column(
-        Enum(KPICategory, schema=get_schema("efir_budget")),
+        Enum(KPICategory, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
         comment="KPI category for grouping",
@@ -297,7 +334,7 @@ class KPIValue(BaseModel, VersionedMixin):
     # Foreign Keys
     kpi_definition_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("kpi_definitions.id"),
+        ForeignKey(get_fk_target("efir_budget", "kpi_definitions", "id")),
         nullable=False,
         index=True,
         comment="KPI being calculated",
@@ -443,7 +480,7 @@ class DashboardConfig(BaseModel):
 
     # Classification
     dashboard_role: Mapped[DashboardRole | None] = mapped_column(
-        Enum(DashboardRole, schema=get_schema("efir_budget")),
+        Enum(DashboardRole, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=True,
         index=True,
         comment="Role for system templates (NULL for user custom)",
@@ -459,7 +496,7 @@ class DashboardConfig(BaseModel):
     # Ownership
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey(get_fk_target("efir_budget", "users", "id"), ondelete="CASCADE"),
         nullable=True,
         index=True,
         comment="Owner user (NULL for system templates)",
@@ -594,7 +631,7 @@ class DashboardWidget(BaseModel):
     # Foreign Keys
     dashboard_config_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("dashboard_configs.id", ondelete="CASCADE"),
+        ForeignKey(get_fk_target("efir_budget", "dashboard_configs", "id"), ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Parent dashboard",
@@ -602,7 +639,7 @@ class DashboardWidget(BaseModel):
 
     # Widget Configuration
     widget_type: Mapped[WidgetType] = mapped_column(
-        Enum(WidgetType, schema=get_schema("efir_budget")),
+        Enum(WidgetType, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
         comment="Type of widget",
@@ -735,7 +772,7 @@ class UserPreferences(BaseModel):
     # Foreign Keys
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
+        ForeignKey(get_fk_target("efir_budget", "users", "id"), ondelete="CASCADE"),
         nullable=False,
         unique=True,
         index=True,
@@ -743,7 +780,7 @@ class UserPreferences(BaseModel):
     )
     default_dashboard_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("dashboard_configs.id", ondelete="SET NULL"),
+        ForeignKey(get_fk_target("efir_budget", "dashboard_configs", "id"), ondelete="SET NULL"),
         nullable=True,
         comment="User's default dashboard (overrides role default)",
     )
@@ -920,7 +957,7 @@ class ActualData(BaseModel):
         comment="When data was imported from Odoo",
     )
     source: Mapped[ActualDataSource] = mapped_column(
-        Enum(ActualDataSource, schema=get_schema("efir_budget")),
+        Enum(ActualDataSource, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=ActualDataSource.ODOO_IMPORT,
         index=True,
@@ -1072,7 +1109,7 @@ class BudgetVsActual(BaseModel, VersionedMixin):
         comment="Variance as percentage ((variance ÷ budget) × 100)",
     )
     variance_status: Mapped[VarianceStatus] = mapped_column(
-        Enum(VarianceStatus, schema=get_schema("efir_budget")),
+        Enum(VarianceStatus, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
         comment="Favorability status",
@@ -1173,7 +1210,7 @@ class VarianceExplanation(BaseModel):
     # Foreign Keys
     budget_vs_actual_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("budget_vs_actual.id", ondelete="CASCADE"),
+        ForeignKey(get_fk_target("efir_budget", "budget_vs_actual", "id"), ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Variance being explained",
@@ -1222,6 +1259,218 @@ class VarianceExplanation(BaseModel):
         return (
             f"<VarianceExplanation(variance_id={self.budget_vs_actual_id}, "
             f"cause={self.root_cause}, status={status})>"
+        )
+
+
+# ============================================================================
+# Historical Comparison - Models
+# ============================================================================
+
+
+class HistoricalActuals(BaseModel):
+    """
+    Historical actuals for planning comparison (N-2, N-1 data).
+
+    Stores annual historical data by module and dimension to enable
+    comparison of current budget planning against prior year actuals.
+    Supports 2 years of historical data (N-2, N-1, Current).
+
+    Data Structure:
+    ---------------
+    Each record represents an annual aggregate for a specific dimension:
+    - Fiscal year (e.g., 2024 for FY 2024-2025)
+    - Module code (enrollment, dhg, revenue, costs, capex)
+    - Dimension type and code (level, subject, account_code, etc.)
+    - Value columns appropriate for the module
+
+    Module-Specific Usage:
+    ----------------------
+    1. Enrollment (module_code='enrollment'):
+       - dimension_type: 'level'
+       - dimension_code: Level code (e.g., '6EME', 'CP')
+       - annual_count: Student count
+
+    2. DHG (module_code='dhg'):
+       - dimension_type: 'subject' or 'teacher_category'
+       - dimension_code: Subject code (e.g., 'MATH', 'FRAN')
+       - annual_fte: Teacher FTE
+       - annual_hours: Teaching hours
+
+    3. Revenue (module_code='revenue'):
+       - dimension_type: 'account_code' or 'fee_type'
+       - dimension_code: PCG account code (e.g., '70110')
+       - annual_amount_sar: Revenue amount
+
+    4. Costs (module_code='costs'):
+       - dimension_type: 'account_code' or 'cost_category'
+       - dimension_code: PCG account code (e.g., '64110')
+       - annual_amount_sar: Cost amount
+
+    5. CapEx (module_code='capex'):
+       - dimension_type: 'account_code'
+       - dimension_code: PCG account code (e.g., '21500')
+       - annual_amount_sar: CapEx amount
+
+    Example Data:
+    -------------
+    Enrollment FY2024:
+        fiscal_year: 2024
+        module_code: 'enrollment'
+        dimension_type: 'level'
+        dimension_code: '6EME'
+        dimension_name: 'Sixième'
+        annual_count: 115
+        data_source: 'manual_upload'
+
+    Revenue FY2024:
+        fiscal_year: 2024
+        module_code: 'revenue'
+        dimension_type: 'account_code'
+        dimension_code: '70110'
+        dimension_name: 'Tuition Revenue'
+        annual_amount_sar: 45,000,000
+        data_source: 'odoo_import'
+
+    Import Sources:
+    ---------------
+    - manual_upload: Excel/CSV file uploaded by admin
+    - odoo_import: Aggregated from actual_data table
+    - skolengo_import: Student data from Skolengo system
+    - system_aggregation: Calculated from other tables
+    """
+
+    __tablename__ = "historical_actuals"
+    __table_args__ = (
+        UniqueConstraint(
+            "fiscal_year",
+            "module_code",
+            "dimension_type",
+            "dimension_code",
+            name="uk_historical_year_module_dim",
+        ),
+        CheckConstraint(
+            "fiscal_year >= 2020 AND fiscal_year <= 2099",
+            name="ck_historical_fiscal_year_range",
+        ),
+        CheckConstraint(
+            "(annual_amount_sar IS NOT NULL) OR (annual_count IS NOT NULL) OR "
+            "(annual_fte IS NOT NULL) OR (annual_hours IS NOT NULL) OR (annual_classes IS NOT NULL)",
+            name="ck_historical_has_value",
+        ),
+        Index(
+            "ix_historical_lookup",
+            "fiscal_year",
+            "module_code",
+            "dimension_type",
+        ),
+        {"comment": __doc__} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget", "comment": __doc__},
+    )
+
+    # Period Information
+    fiscal_year: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        index=True,
+        comment="Fiscal year of historical data (e.g., 2024 for FY 2024-2025)",
+    )
+
+    # Module & Dimension
+    module_code: Mapped[HistoricalModuleCode] = mapped_column(
+        Enum(
+            HistoricalModuleCode,
+            schema=get_schema("efir_budget"),
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        index=True,
+        comment="Module identifier: enrollment, dhg, revenue, costs, capex",
+    )
+    dimension_type: Mapped[HistoricalDimensionType] = mapped_column(
+        Enum(
+            HistoricalDimensionType,
+            schema=get_schema("efir_budget"),
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        comment="Type of dimension: level, subject, account_code, etc.",
+    )
+    dimension_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        comment="Reference UUID (level_id, subject_id, etc.) if applicable",
+    )
+    dimension_code: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Human-readable code (level_code, account_code, subject_code)",
+    )
+    dimension_name: Mapped[str | None] = mapped_column(
+        String(200),
+        nullable=True,
+        comment="Human-readable name for display purposes",
+    )
+
+    # Value Columns (use appropriate one based on module)
+    annual_amount_sar: Mapped[Decimal | None] = mapped_column(
+        Numeric(15, 2),
+        nullable=True,
+        comment="Annual monetary amount in SAR (for revenue, costs, capex)",
+    )
+    annual_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Annual count value (for enrollment student counts)",
+    )
+    annual_fte: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2),
+        nullable=True,
+        comment="Annual FTE value (for DHG teacher allocations)",
+    )
+    annual_hours: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2),
+        nullable=True,
+        comment="Annual hours value (for DHG subject hours)",
+    )
+    annual_classes: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment="Annual class count (for class_structure)",
+    )
+
+    # Metadata
+    data_source: Mapped[HistoricalDataSource] = mapped_column(
+        Enum(
+            HistoricalDataSource,
+            schema=get_schema("efir_budget"),
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+        default=HistoricalDataSource.MANUAL_UPLOAD,
+        comment="Source of historical data (odoo_import, manual_upload, etc.)",
+    )
+    import_batch_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment="Batch identifier for grouped imports",
+    )
+    notes: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="Optional notes about this historical data point",
+    )
+
+    def __repr__(self) -> str:
+        """String representation."""
+        value = (
+            f"{self.annual_amount_sar:,.2f} SAR"
+            if self.annual_amount_sar
+            else f"{self.annual_count or self.annual_fte or self.annual_hours or self.annual_classes}"
+        )
+        return (
+            f"<HistoricalActuals(FY{self.fiscal_year}, "
+            f"{self.module_code.value}/{self.dimension_code}, {value})>"
         )
 
 

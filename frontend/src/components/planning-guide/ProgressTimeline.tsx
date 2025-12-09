@@ -18,7 +18,7 @@ export function ProgressTimeline({ steps }: ProgressTimelineProps) {
       case 'error':
         return <AlertCircle className={`${iconClass} text-error-600`} />
       case 'blocked':
-        return <Lock className={`${iconClass} text-twilight-400`} />
+        return <Lock className={`${iconClass} text-text-muted`} />
       default:
         return <Circle className={`${iconClass} text-sand-400`} />
     }
@@ -31,7 +31,7 @@ export function ProgressTimeline({ steps }: ProgressTimelineProps) {
     if (currentStep.status === 'in_progress') {
       return 'bg-gradient-to-r from-warning-400 to-sand-300'
     }
-    return 'bg-sand-300'
+    return 'bg-subtle'
   }
 
   const getStepBgColor = (step: StepProgress) => {
@@ -45,19 +45,19 @@ export function ProgressTimeline({ steps }: ProgressTimelineProps) {
       case 'blocked':
         return 'bg-twilight-100 border-twilight-300'
       default:
-        return 'bg-sand-100 border-sand-300'
+        return 'bg-subtle border-border-medium'
     }
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-sand-200 p-6">
-      <h3 className="text-lg font-semibold text-brown-800 mb-6 font-serif">Planning Steps</h3>
+    <div className="bg-white rounded-lg shadow-sm border border-border-light p-6">
+      <h3 className="text-lg font-semibold text-text-primary mb-6 font-serif">Planning Steps</h3>
 
       {/* Desktop: Horizontal Timeline */}
       <div className="hidden lg:block">
         <div className="relative">
           {/* Connector Line */}
-          <div className="absolute top-5 left-0 right-0 h-0.5 bg-sand-300" />
+          <div className="absolute top-5 left-0 right-0 h-0.5 bg-subtle" />
 
           {/* Steps */}
           <div className="relative flex justify-between">
@@ -80,17 +80,17 @@ export function ProgressTimeline({ steps }: ProgressTimelineProps) {
 
                   {/* Step Number & Title */}
                   <div className="mt-3 text-center">
-                    <div className="text-xs font-medium text-twilight-600">
+                    <div className="text-xs font-medium text-text-secondary">
                       Step {step.step_number}
                     </div>
-                    <div className="text-sm font-medium text-brown-800 mt-1 max-w-[120px]">
+                    <div className="text-sm font-medium text-text-primary mt-1 max-w-[120px]">
                       {metadata?.title}
                     </div>
                   </div>
 
                   {/* Progress Percentage */}
                   {step.status !== 'not_started' && (
-                    <div className="mt-1 text-xs text-twilight-600">
+                    <div className="mt-1 text-xs text-text-secondary">
                       {Math.round(step.progress_percentage)}%
                     </div>
                   )}
@@ -124,7 +124,7 @@ export function ProgressTimeline({ steps }: ProgressTimelineProps) {
           return (
             <div key={step.step_id} className="relative flex items-start gap-4">
               {/* Vertical Connector */}
-              {!isLast && <div className="absolute left-5 top-12 bottom-0 w-0.5 bg-sand-300" />}
+              {!isLast && <div className="absolute left-5 top-12 bottom-0 w-0.5 bg-subtle" />}
 
               {/* Step Circle */}
               <div
@@ -140,13 +140,13 @@ export function ProgressTimeline({ steps }: ProgressTimelineProps) {
               <div className="flex-1 pt-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-medium text-twilight-600">
+                    <div className="text-xs font-medium text-text-secondary">
                       Step {step.step_number}
                     </div>
-                    <div className="text-sm font-medium text-brown-800">{metadata?.title}</div>
+                    <div className="text-sm font-medium text-text-primary">{metadata?.title}</div>
                   </div>
                   {step.status !== 'not_started' && (
-                    <div className="text-sm font-medium text-twilight-700">
+                    <div className="text-sm font-medium text-text-secondary">
                       {Math.round(step.progress_percentage)}%
                     </div>
                   )}

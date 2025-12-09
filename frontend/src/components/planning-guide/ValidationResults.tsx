@@ -39,7 +39,7 @@ export function ValidationResults({ validation }: ValidationResultsProps) {
 
   return (
     <div className="space-y-2">
-      <h4 className="text-sm font-semibold text-brown-800">Validation Checks</h4>
+      <h4 className="text-sm font-semibold text-text-primary">Validation Checks</h4>
       <div className="space-y-2">
         {validation.map((check) => (
           <div
@@ -55,7 +55,7 @@ export function ValidationResults({ validation }: ValidationResultsProps) {
                 {check.message}
               </p>
               {check.details && Object.keys(check.details).length > 0 && (
-                <div className="mt-2 text-xs text-twilight-600 bg-white bg-opacity-50 rounded px-2 py-1">
+                <div className="mt-2 text-xs text-text-secondary bg-white bg-opacity-50 rounded px-2 py-1">
                   {Object.entries(check.details).map(([key, value]) => (
                     <div key={key} className="flex justify-between">
                       <span className="font-medium">

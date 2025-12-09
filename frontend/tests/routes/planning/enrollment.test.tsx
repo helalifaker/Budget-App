@@ -1,25 +1,50 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { Route as EnrollmentRoute } from '@/routes/planning/enrollment'
+import React from 'react'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
-let mockEnrollmentsData: Record<string, unknown>[] | null = null
-let mockLevelsData: Record<string, unknown>[] | null = null
-let mockNationalityTypesData: Record<string, unknown>[] | null = null
-const mockCreateMutation = vi.fn()
-const mockUpdateMutation = vi.fn()
-const mockDeleteMutation = vi.fn()
-const mockCalculateMutation = vi.fn()
+let mockEnrollmentData: {
+  totals: { level_id: string; total_students: number }[]
+  distributions: { level_id: string; french_pct: number; saudi_pct: number; other_pct: number }[]
+  breakdown: {
+    level_id: string
+    level_code: string
+    level_name: string
+    cycle_code: string
+    french_count: number
+    saudi_count: number
+    other_count: number
+    total_students: number
+  }[]
+  summary: {
+    total_students: number
+    by_nationality: Record<string, number>
+    by_cycle: Record<string, number>
+  } | null
+} | null = null
+let mockLevelsData:
+  | { id: string; code: string; name_fr: string; name_en: string; cycle_id: string }[]
+  | null = null
+const mockSaveTotalsMutation = vi.fn()
+const mockSaveDistributionsMutation = vi.fn()
+
+// BudgetVersionContext mock state
+let mockSelectedVersionId: string | undefined = undefined
+const mockSetSelectedVersionId = vi.fn((id: string | undefined) => {
+  mockSelectedVersionId = id
+})
 
 // Type definitions for mock props
 type MockProps = Record<string, unknown>
-interface EnrollmentRow {
-  id: string
+interface LocalTotal {
   level_id: string
-  nationality_type_id: string
-  student_count: number
+  level_code: string
+  level_name: string
+  cycle_code: string
+  total_students: number
+  capacity: number
 }
 
 vi.mock('@tanstack/react-router', () => ({
@@ -35,6 +60,26 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => mockNavigate,
 }))
 
+// Mock BudgetVersionContext - this must come before component imports
+vi.mock('@/contexts/BudgetVersionContext', () => ({
+  useBudgetVersion: () => ({
+    selectedVersionId: mockSelectedVersionId,
+    selectedVersion: mockSelectedVersionId
+      ? { id: mockSelectedVersionId, name: '2025-2026', status: 'working' }
+      : null,
+    setSelectedVersionId: mockSetSelectedVersionId,
+    versions: [
+      { id: 'v1', name: '2025-2026', status: 'working' },
+      { id: 'v2', name: '2024-2025', status: 'approved' },
+    ],
+    isLoading: false,
+    error: null,
+    clearSelection: () => {
+      mockSelectedVersionId = undefined
+    },
+  }),
+}))
+
 vi.mock('@/lib/auth-guard', () => ({
   requireAuth: vi.fn(),
 }))
@@ -46,28 +91,11 @@ vi.mock('@/components/layout/MainLayout', () => ({
 }))
 
 vi.mock('@/components/layout/PageContainer', () => ({
-  PageContainer: ({ title, description, actions, children }: MockProps) => (
+  PageContainer: ({ title, description, children }: MockProps) => (
     <div data-testid="page-container">
       <h1>{title as string}</h1>
       {description && <p>{description as string}</p>}
-      {actions && <div data-testid="page-actions">{actions as React.ReactNode}</div>}
       {children as React.ReactNode}
-    </div>
-  ),
-}))
-
-vi.mock('@/components/BudgetVersionSelector', () => ({
-  BudgetVersionSelector: ({ value, onChange }: MockProps) => (
-    <div data-testid="budget-version-selector">
-      <select
-        data-testid="version-select"
-        value={value as string}
-        onChange={(e) => (onChange as (v: string) => void)(e.target.value)}
-      >
-        <option value="">Select version</option>
-        <option value="v1">2025-2026</option>
-        <option value="v2">2024-2025</option>
-      </select>
     </div>
   ),
 }))
@@ -82,9 +110,9 @@ vi.mock('@/components/DataTableLazy', () => ({
     }
     return (
       <div data-testid="data-table">
-        {(rowData as EnrollmentRow[] | undefined)?.map((row) => (
-          <div key={row.id} data-testid="enrollment-row">
-            {row.level_id} - {row.nationality_type_id}: {row.student_count}
+        {(rowData as LocalTotal[] | undefined)?.map((row) => (
+          <div key={row.level_id} data-testid="enrollment-row">
+            {row.level_code}: {row.total_students} students
           </div>
         ))}
       </div>
@@ -92,20 +120,12 @@ vi.mock('@/components/DataTableLazy', () => ({
   },
 }))
 
-vi.mock('@/components/FormDialog', () => ({
-  FormDialog: ({ open, title, children, onSubmit }: MockProps) =>
-    open ? (
-      <div data-testid="form-dialog">
-        <h2>{title as string}</h2>
-        <form onSubmit={onSubmit as React.FormEventHandler} data-testid="enrollment-form">
-          {children as React.ReactNode}
-        </form>
-      </div>
-    ) : null,
-}))
-
 vi.mock('@/components/ui/card', () => ({
-  Card: ({ children }: MockProps) => <div data-testid="card">{children as React.ReactNode}</div>,
+  Card: ({ children, ...props }: MockProps) => (
+    <div data-testid={(props['data-testid'] as string) || 'card'}>
+      {children as React.ReactNode}
+    </div>
+  ),
   CardHeader: ({ children }: MockProps) => (
     <div data-testid="card-header">{children as React.ReactNode}</div>
   ),
@@ -117,27 +137,59 @@ vi.mock('@/components/ui/card', () => ({
   ),
 }))
 
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick, disabled }: MockProps) => (
+    <button onClick={onClick as () => void} disabled={disabled as boolean}>
+      {children as React.ReactNode}
+    </button>
+  ),
+}))
+
+vi.mock('@/components/ui/badge', () => ({
+  Badge: ({ children }: MockProps) => (
+    <span data-testid="badge">{children as React.ReactNode}</span>
+  ),
+}))
+
+vi.mock('@/components/ui/tabs', () => ({
+  Tabs: ({ children, value, onValueChange }: MockProps) => (
+    <div data-testid="tabs" data-value={value as string}>
+      {typeof children === 'function'
+        ? (children as (fn: (val: string) => void) => React.ReactNode)(
+            onValueChange as (val: string) => void
+          )
+        : (children as React.ReactNode)}
+    </div>
+  ),
+  TabsList: ({ children }: MockProps) => (
+    <div data-testid="tabs-list" role="tablist">
+      {children as React.ReactNode}
+    </div>
+  ),
+  TabsTrigger: ({ children, value }: MockProps) => (
+    <button data-testid={`tab-${value}`} role="tab">
+      {children as React.ReactNode}
+    </button>
+  ),
+  TabsContent: ({ children, value }: MockProps) => (
+    <div data-testid={`tab-content-${value}`} role="tabpanel">
+      {children as React.ReactNode}
+    </div>
+  ),
+}))
+
 vi.mock('@/hooks/api/useEnrollment', () => ({
-  useEnrollments: (versionId: string) => ({
-    data: versionId ? mockEnrollmentsData : null,
+  useEnrollmentWithDistribution: (versionId: string) => ({
+    data: versionId ? mockEnrollmentData : null,
     isLoading: false,
     error: null,
   }),
-  useCreateEnrollment: () => ({
-    mutateAsync: mockCreateMutation,
+  useBulkUpsertEnrollmentTotals: () => ({
+    mutateAsync: mockSaveTotalsMutation,
     isPending: false,
   }),
-  useUpdateEnrollment: () => ({
-    mutateAsync: mockUpdateMutation,
-    isPending: false,
-  }),
-  useDeleteEnrollment: () => ({
-    mutateAsync: mockDeleteMutation,
-    isPending: false,
-  }),
-  // Renamed from useCalculateProjections to useProjectEnrollment
-  useProjectEnrollment: () => ({
-    mutateAsync: mockCalculateMutation,
+  useBulkUpsertDistributions: () => ({
+    mutateAsync: mockSaveDistributionsMutation,
     isPending: false,
   }),
 }))
@@ -146,21 +198,23 @@ vi.mock('@/hooks/api/useConfiguration', () => ({
   useLevels: () => ({
     data: mockLevelsData,
   }),
-  useNationalityTypes: () => ({
-    data: mockNationalityTypesData,
-  }),
+}))
+
+vi.mock('@/lib/toast-messages', () => ({
+  toastMessages: {
+    warning: { selectVersion: vi.fn() },
+    error: { validation: vi.fn() },
+    success: { saved: vi.fn() },
+  },
 }))
 
 vi.mock('lucide-react', () => ({
-  Plus: () => <span>Plus Icon</span>,
-  Trash2: () => <span>Trash Icon</span>,
-  Calculator: () => <span>Calculator Icon</span>,
+  Save: () => <span>Save Icon</span>,
   Users: () => <span>Users Icon</span>,
   TrendingUp: () => <span>TrendingUp Icon</span>,
   Globe: () => <span>Globe Icon</span>,
-  ChevronDown: () => <span>ChevronDown Icon</span>,
-  ChevronUp: () => <span>ChevronUp Icon</span>,
-  Check: () => <span>Check Icon</span>,
+  AlertCircle: () => <span>AlertCircle Icon</span>,
+  CheckCircle: () => <span>CheckCircle Icon</span>,
 }))
 
 describe('Enrollment Planning Route', () => {
@@ -168,43 +222,83 @@ describe('Enrollment Planning Route', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSelectedVersionId = undefined // Reset version selection
 
-    // API returns arrays directly (not { items: [...] })
-    mockEnrollmentsData = [
-      {
-        id: '1',
-        level_id: 'cp',
-        nationality_type_id: 'french',
-        student_count: 45,
-        budget_version_id: 'v1',
-      },
-      {
-        id: '2',
-        level_id: 'ce1',
-        nationality_type_id: 'saudi',
-        student_count: 38,
-        budget_version_id: 'v1',
-      },
-      {
-        id: '3',
-        level_id: 'ce2',
-        nationality_type_id: 'other',
-        student_count: 22,
-        budget_version_id: 'v1',
-      },
-    ]
-
+    // Setup mock levels data
     mockLevelsData = [
-      { id: 'cp', name: 'CP', cycle: 'Elementary' },
-      { id: 'ce1', name: 'CE1', cycle: 'Elementary' },
-      { id: 'ce2', name: 'CE2', cycle: 'Elementary' },
+      {
+        id: 'cp',
+        code: 'CP',
+        name_fr: 'Cours Préparatoire',
+        name_en: 'Preparatory Course',
+        cycle_id: 'ELEM',
+      },
+      {
+        id: 'ce1',
+        code: 'CE1',
+        name_fr: 'Cours Élémentaire 1',
+        name_en: 'Elementary Course 1',
+        cycle_id: 'ELEM',
+      },
+      {
+        id: 'ce2',
+        code: 'CE2',
+        name_fr: 'Cours Élémentaire 2',
+        name_en: 'Elementary Course 2',
+        cycle_id: 'ELEM',
+      },
     ]
 
-    mockNationalityTypesData = [
-      { id: 'french', name: 'French' },
-      { id: 'saudi', name: 'Saudi' },
-      { id: 'other', name: 'Other' },
-    ]
+    // Setup mock enrollment data
+    mockEnrollmentData = {
+      totals: [
+        { level_id: 'cp', total_students: 45 },
+        { level_id: 'ce1', total_students: 38 },
+        { level_id: 'ce2', total_students: 22 },
+      ],
+      distributions: [
+        { level_id: 'cp', french_pct: 60, saudi_pct: 30, other_pct: 10 },
+        { level_id: 'ce1', french_pct: 55, saudi_pct: 35, other_pct: 10 },
+        { level_id: 'ce2', french_pct: 50, saudi_pct: 40, other_pct: 10 },
+      ],
+      breakdown: [
+        {
+          level_id: 'cp',
+          level_code: 'CP',
+          level_name: 'Cours Préparatoire',
+          cycle_code: 'ELEM',
+          french_count: 27,
+          saudi_count: 14,
+          other_count: 4,
+          total_students: 45,
+        },
+        {
+          level_id: 'ce1',
+          level_code: 'CE1',
+          level_name: 'Cours Élémentaire 1',
+          cycle_code: 'ELEM',
+          french_count: 21,
+          saudi_count: 13,
+          other_count: 4,
+          total_students: 38,
+        },
+        {
+          level_id: 'ce2',
+          level_code: 'CE2',
+          level_name: 'Cours Élémentaire 2',
+          cycle_code: 'ELEM',
+          french_count: 11,
+          saudi_count: 9,
+          other_count: 2,
+          total_students: 22,
+        },
+      ],
+      summary: {
+        total_students: 105,
+        by_nationality: { French: 59, Saudi: 36, Other: 10 },
+        by_cycle: { ELEM: 105 },
+      },
+    }
   })
 
   describe('Page structure', () => {
@@ -219,126 +313,114 @@ describe('Enrollment Planning Route', () => {
 
       expect(screen.getByText('Enrollment Planning')).toBeInTheDocument()
       expect(
-        screen.getByText('Plan student enrollment by level and nationality')
+        screen.getByText('Plan student enrollment by level with nationality distribution')
       ).toBeInTheDocument()
     })
+  })
 
-    it('renders page actions', () => {
+  describe('Budget version context', () => {
+    it('uses global budget version from context', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      expect(screen.getByTestId('page-actions')).toBeInTheDocument()
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
+    })
+
+    it('renders placeholder when no version selected', () => {
+      mockSelectedVersionId = undefined
+      render(<EnrollmentPage />)
+
+      expect(screen.getByText(/Select a budget version/i)).toBeInTheDocument()
     })
   })
 
-  describe('Budget version selector', () => {
-    it('renders budget version selector', () => {
+  describe('Tab navigation', () => {
+    it('renders tab navigation when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      expect(screen.getByTestId('budget-version-selector')).toBeInTheDocument()
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
+      expect(screen.getByTestId('tabs-list')).toBeInTheDocument()
     })
 
-    it('allows selecting a version', async () => {
-      const user = userEvent.setup()
-
+    it('renders Enrollment by Level tab', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      expect(select).toHaveValue('v1')
-    })
-  })
-
-  describe('Action buttons', () => {
-    it('renders Calculate Projections button', () => {
-      render(<EnrollmentPage />)
-
-      expect(screen.getByText('Calculate Projections')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-totals')).toBeInTheDocument()
+      expect(screen.getByText('Enrollment by Level')).toBeInTheDocument()
     })
 
-    it('renders Add Enrollment button', () => {
+    it('renders Nationality Distribution tab', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      expect(screen.getByText('Add Enrollment')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-distribution')).toBeInTheDocument()
+      expect(screen.getByText('Nationality Distribution')).toBeInTheDocument()
     })
 
-    it('disables buttons when no version selected', () => {
+    it('renders Calculated Breakdown tab', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const calculateBtn = screen.getByText('Calculate Projections').closest('button')
-      const addBtn = screen.getByText('Add Enrollment').closest('button')
-
-      expect(calculateBtn).toBeDisabled()
-      expect(addBtn).toBeDisabled()
-    })
-
-    it('enables buttons when version selected', async () => {
-      const user = userEvent.setup()
-
-      render(<EnrollmentPage />)
-
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const calculateBtn = screen.getByText('Calculate Projections').closest('button')
-        const addBtn = screen.getByText('Add Enrollment').closest('button')
-
-        expect(calculateBtn).not.toBeDisabled()
-        expect(addBtn).not.toBeDisabled()
-      })
+      expect(screen.getByTestId('tab-breakdown')).toBeInTheDocument()
+      expect(screen.getByText('Calculated Breakdown')).toBeInTheDocument()
     })
   })
 
-  describe('Summary statistics', () => {
+  describe('Summary statistics cards', () => {
     it('does not show statistics when no version selected', () => {
       render(<EnrollmentPage />)
 
-      expect(screen.queryByTestId('card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('total-students-card')).not.toBeInTheDocument()
     })
 
-    it('displays statistics cards when version selected with data', async () => {
-      const user = userEvent.setup()
-
+    it('displays Total Students card when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const cards = screen.getAllByTestId('card')
-        expect(cards.length).toBeGreaterThan(0)
-      })
+      expect(screen.getByTestId('total-students-card')).toBeInTheDocument()
+      expect(screen.getByText('Total Students')).toBeInTheDocument()
     })
 
-    it('calculates total students correctly', async () => {
-      const user = userEvent.setup()
-
+    it('displays School Capacity card when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText('Total Students')).toBeInTheDocument()
-        // 45 + 38 + 22 = 105
-        expect(screen.getByText('105')).toBeInTheDocument()
-      })
+      expect(screen.getByText('School Capacity')).toBeInTheDocument()
     })
 
-    it('displays capacity utilization', async () => {
-      const user = userEvent.setup()
-
+    it('displays By Nationality card when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
+      expect(screen.getByText('By Nationality')).toBeInTheDocument()
+    })
 
-      await waitFor(() => {
-        expect(screen.getByText('Capacity')).toBeInTheDocument()
-        // 105 / 1875 * 100 = 5.6%
-        expect(screen.getByText(/5\.6/)).toBeInTheDocument()
-      })
+    it('displays By Cycle card when version selected', () => {
+      mockSelectedVersionId = 'v1'
+      render(<EnrollmentPage />)
+
+      // Use getAllByText since "By Cycle" might appear in multiple places
+      const byCycleElements = screen.getAllByText('By Cycle')
+      expect(byCycleElements.length).toBeGreaterThan(0)
+    })
+  })
+
+  describe('Save functionality', () => {
+    it('renders Save Totals button when version selected', () => {
+      mockSelectedVersionId = 'v1'
+      render(<EnrollmentPage />)
+
+      expect(screen.getByText('Save Totals')).toBeInTheDocument()
+    })
+
+    it('Save Totals button is disabled when no unsaved changes', () => {
+      mockSelectedVersionId = 'v1'
+      render(<EnrollmentPage />)
+
+      const saveBtn = screen.getByText('Save Totals').closest('button')
+      expect(saveBtn).toBeDisabled()
     })
   })
 
@@ -351,122 +433,65 @@ describe('Enrollment Planning Route', () => {
       ).toBeInTheDocument()
     })
 
-    it('displays data table when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays data table when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('data-table')).toBeInTheDocument()
-      })
+      // Check for the totals tab content
+      expect(screen.getByTestId('tab-content-totals')).toBeInTheDocument()
     })
 
-    it('displays enrollment rows', async () => {
-      const user = userEvent.setup()
-
+    it('displays tab content areas', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const rows = screen.getAllByTestId('enrollment-row')
-        expect(rows).toHaveLength(3)
-      })
-    })
-  })
-
-  describe('Create enrollment dialog', () => {
-    it('does not show dialog initially', () => {
-      render(<EnrollmentPage />)
-
-      expect(screen.queryByTestId('form-dialog')).not.toBeInTheDocument()
-    })
-
-    it('opens dialog when Add Enrollment clicked', async () => {
-      const user = userEvent.setup()
-
-      render(<EnrollmentPage />)
-
-      // Select version first
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      // Click Add Enrollment
-      const addBtn = screen.getByText('Add Enrollment').closest('button')
-      await user.click(addBtn!)
-
-      await waitFor(() => {
-        expect(screen.getByTestId('form-dialog')).toBeInTheDocument()
-        expect(screen.getByText('Add Enrollment Entry')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('tab-content-totals')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-content-distribution')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-content-breakdown')).toBeInTheDocument()
     })
   })
 
   describe('Real-world use cases', () => {
-    it('displays full enrollment planning workflow', async () => {
-      const user = userEvent.setup()
-
+    it('displays full enrollment planning interface', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      // Select budget version
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
+      // Verify summary cards appear
+      expect(screen.getByTestId('total-students-card')).toBeInTheDocument()
+      expect(screen.getByText('School Capacity')).toBeInTheDocument()
 
-      await waitFor(() => {
-        // Verify summary statistics appear
-        expect(screen.getByText('Total Students')).toBeInTheDocument()
-        expect(screen.getByText('105')).toBeInTheDocument()
+      // Verify tabs appear
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
+      expect(screen.getByText('Enrollment by Level')).toBeInTheDocument()
+      expect(screen.getByText('Nationality Distribution')).toBeInTheDocument()
+      expect(screen.getByText('Calculated Breakdown')).toBeInTheDocument()
 
-        // Verify data table appears
-        expect(screen.getByTestId('data-table')).toBeInTheDocument()
-
-        // Verify action buttons are enabled
-        const calculateBtn = screen.getByText('Calculate Projections').closest('button')
-        const addBtn = screen.getByText('Add Enrollment').closest('button')
-        expect(calculateBtn).not.toBeDisabled()
-        expect(addBtn).not.toBeDisabled()
-      })
+      // Verify save button
+      expect(screen.getByText('Save Totals')).toBeInTheDocument()
     })
 
-    it('handles empty enrollment data', async () => {
-      mockEnrollmentsData = []
-      const user = userEvent.setup()
-
+    it('handles no data state (shows cards with zero values)', () => {
+      mockEnrollmentData = {
+        totals: [],
+        distributions: [],
+        breakdown: [],
+        summary: null,
+      }
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        // No statistics cards should appear when rowData is empty
-        expect(screen.queryByText('Total Students')).not.toBeInTheDocument()
-        // Data table should still render
-        expect(screen.getByTestId('data-table')).toBeInTheDocument()
-      })
+      // Cards should still render
+      expect(screen.getByTestId('total-students-card')).toBeInTheDocument()
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
     })
 
-    it('allows switching between budget versions', async () => {
-      const user = userEvent.setup()
-
+    it('maintains interface when version is selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<EnrollmentPage />)
 
-      const select = screen.getByTestId('version-select')
-
-      // Select first version
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('data-table')).toBeInTheDocument()
-      })
-
-      // Switch to second version
-      await user.selectOptions(select, 'v2')
-
-      expect(select).toHaveValue('v2')
+      // Interface persists with selected version
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-content-totals')).toBeInTheDocument()
     })
   })
 

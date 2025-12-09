@@ -34,9 +34,8 @@ class TestClientIdentification:
     def test_get_client_identifier_with_user(self):
         """Test identification with authenticated user."""
         request = MagicMock(spec=Request)
-        user = MagicMock()
-        user.id = "user-123"
-        request.state.user = user
+        # The middleware stores user_id directly on request.state (not user.id)
+        request.state.user_id = "user-123"
         request.headers = {}
 
         result = get_client_identifier(request)
@@ -83,6 +82,16 @@ class TestCategoryDetection:
     def test_consolidation_category(self):
         """Test consolidation path detection."""
         assert get_rate_limit_category("/api/v1/consolidation/submit") == "consolidation"
+
+    def test_consolidation_status_category(self):
+        """Test consolidation status endpoints get higher limit."""
+        assert get_rate_limit_category("/api/v1/consolidation/abc-123/status") == "consolidation_status"
+        assert get_rate_limit_category("/api/v1/consolidation/abc-123/summary") == "consolidation_status"
+
+    def test_summary_endpoints_get_read_category(self):
+        """Test that non-consolidation summary/status endpoints get read category."""
+        assert get_rate_limit_category("/api/v1/planning/enrollment/abc-123/summary") == "read"
+        assert get_rate_limit_category("/api/v1/planning/costs/abc-123/summary") == "read"
 
     def test_export_category(self):
         """Test export path detection."""

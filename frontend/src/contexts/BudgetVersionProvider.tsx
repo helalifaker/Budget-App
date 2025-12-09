@@ -13,7 +13,6 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useBudgetVersions } from '@/hooks/api/useBudgetVersions'
-import { useAuth } from '@/contexts/AuthContext'
 import { BudgetVersionContext, type BudgetVersionContextType } from './BudgetVersionContext'
 import type { BudgetVersion } from '@/types/api'
 
@@ -72,12 +71,11 @@ function findDefaultVersion(versions: BudgetVersion[]): BudgetVersion | undefine
 }
 
 export function BudgetVersionProvider({ children }: { children: React.ReactNode }) {
-  const { loading: authLoading } = useAuth()
-
-  // Fetch all budget versions
+  // Fetch all budget versions - query is enabled based on session existence
   const {
     data: versionsData,
     isLoading: versionsLoading,
+    isFetching: versionsFetching,
     error: versionsError,
   } = useBudgetVersions(1, 100) // Fetch up to 100 versions
 
@@ -98,12 +96,9 @@ export function BudgetVersionProvider({ children }: { children: React.ReactNode 
   // Auto-select a default version when versions load (if none selected)
   useEffect(() => {
     // Don't auto-select if:
-    // - Auth is still loading
     // - Versions are still loading
-    // - We already have a selection
     // - We've already auto-selected
-    // - There are no versions
-    if (authLoading || versionsLoading || hasAutoSelected || versions.length === 0) {
+    if (versionsLoading || hasAutoSelected) {
       return
     }
 
@@ -115,8 +110,19 @@ export function BudgetVersionProvider({ children }: { children: React.ReactNode 
         setHasAutoSelected(true)
         return
       }
-      // Persisted version no longer exists, clear it
+      // Persisted version no longer exists (or no versions at all), clear it
       console.log('[BudgetVersionProvider] Persisted version no longer exists, clearing')
+      setSelectedVersionIdState(undefined)
+      persistVersionId(undefined)
+      // Mark as auto-selected to prevent re-running this block
+      setHasAutoSelected(true)
+      return
+    }
+
+    // If no versions exist, just mark as auto-selected and return
+    if (versions.length === 0) {
+      setHasAutoSelected(true)
+      return
     }
 
     // Auto-select a default version
@@ -132,7 +138,8 @@ export function BudgetVersionProvider({ children }: { children: React.ReactNode 
     }
 
     setHasAutoSelected(true)
-  }, [authLoading, versionsLoading, versions, selectedVersionId, hasAutoSelected])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Only run once when conditions are met, selectedVersionId changes are handled internally
+  }, [versionsLoading, versions, hasAutoSelected])
 
   // Handler to update selected version
   const setSelectedVersionId = useCallback((id: string | undefined) => {
@@ -152,26 +159,32 @@ export function BudgetVersionProvider({ children }: { children: React.ReactNode 
     return versions.find((v) => v.id === selectedVersionId) ?? null
   }, [selectedVersionId, versions])
 
-  // Compute loading state
-  const isLoading = authLoading || versionsLoading
+  // Compute loading state - use versionsLoading for initial load, isFetching for refetch
+  const isLoading = versionsLoading || versionsFetching
+
+  // Only expose the selectedVersionId after validation is complete
+  // This prevents stale localStorage IDs from triggering API calls before validation
+  const validatedVersionId = hasAutoSelected ? selectedVersionId : undefined
+  const validatedVersion = hasAutoSelected ? selectedVersion : null
 
   // Build context value
   const value: BudgetVersionContextType = useMemo(
     () => ({
-      selectedVersionId,
-      selectedVersion,
+      selectedVersionId: validatedVersionId,
+      selectedVersion: validatedVersion,
       setSelectedVersionId,
       versions,
-      isLoading,
+      isLoading: isLoading || !hasAutoSelected, // Include validation in loading state
       error: versionsError as Error | null,
       clearSelection,
     }),
     [
-      selectedVersionId,
-      selectedVersion,
+      validatedVersionId,
+      validatedVersion,
       setSelectedVersionId,
       versions,
       isLoading,
+      hasAutoSelected,
       versionsError,
       clearSelection,
     ]

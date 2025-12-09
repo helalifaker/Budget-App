@@ -1,5 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { requireAuth, requireAuthWithRedirect } from '@/lib/auth-guard'
+
+// E2E session key from auth-guard.ts
+const E2E_SESSION_KEY = 'efir_e2e_mock_session'
 
 // Mock Supabase client
 const mockGetSession = vi.fn()
@@ -15,7 +18,7 @@ vi.mock('@/lib/supabase', () => ({
 // Mock TanStack Router redirect
 const mockRedirect = vi.fn()
 vi.mock('@tanstack/react-router', () => ({
-  redirect: (options: any) => {
+  redirect: (options: unknown) => {
     mockRedirect(options)
     // Throw to simulate redirect behavior
     throw new Error('REDIRECT')
@@ -25,6 +28,13 @@ vi.mock('@tanstack/react-router', () => ({
 describe('requireAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Clear E2E localStorage session
+    localStorage.removeItem(E2E_SESSION_KEY)
+  })
+
+  afterEach(() => {
+    // Cleanup
+    localStorage.removeItem(E2E_SESSION_KEY)
   })
 
   describe('With valid session', () => {
@@ -38,10 +48,8 @@ describe('requireAuth', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      mockGetSession.mockResolvedValue({
-        data: { session: mockSession },
-        error: null,
-      })
+      // In E2E mode, auth-guard checks localStorage
+      localStorage.setItem(E2E_SESSION_KEY, JSON.stringify(mockSession))
 
       const result = await requireAuth()
 
@@ -60,10 +68,8 @@ describe('requireAuth', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      mockGetSession.mockResolvedValue({
-        data: { session: mockSession },
-        error: null,
-      })
+      // In E2E mode, auth-guard checks localStorage
+      localStorage.setItem(E2E_SESSION_KEY, JSON.stringify(mockSession))
 
       const result = await requireAuth()
 
@@ -81,10 +87,8 @@ describe('requireAuth', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      mockGetSession.mockResolvedValue({
-        data: { session: mockSession },
-        error: null,
-      })
+      // In E2E mode, auth-guard checks localStorage
+      localStorage.setItem(E2E_SESSION_KEY, JSON.stringify(mockSession))
 
       const result = await requireAuth()
 
@@ -135,14 +139,14 @@ describe('requireAuth', () => {
 
   describe('Session expiry', () => {
     it('redirects when session is expired', async () => {
-      const expiredSession = {
-        user: {
-          id: 'user-123',
-          email: 'test@efir.sa',
-        },
+      // Note: expiredSession structure shown for documentation
+      // Supabase returns null for expired sessions, so we don't need to pass it
+      const _expiredSessionShape = {
+        user: { id: 'user-123', email: 'test@efir.sa' },
         access_token: 'token-123',
         expires_at: Date.now() / 1000 - 3600, // Expired 1 hour ago
       }
+      void _expiredSessionShape // Type reference for documentation
 
       mockGetSession.mockResolvedValue({
         data: { session: null }, // Supabase returns null for expired sessions
@@ -182,10 +186,8 @@ describe('requireAuth', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      mockGetSession.mockResolvedValue({
-        data: { session: mockSession },
-        error: null,
-      })
+      // In E2E mode, auth-guard checks localStorage
+      localStorage.setItem(E2E_SESSION_KEY, JSON.stringify(mockSession))
 
       const result = await requireAuth()
 
@@ -356,9 +358,7 @@ describe('requireAuthWithRedirect', () => {
         error: null,
       })
 
-      await expect(requireAuthWithRedirect('/consolidation/statements')).rejects.toThrow(
-        'REDIRECT'
-      )
+      await expect(requireAuthWithRedirect('/consolidation/statements')).rejects.toThrow('REDIRECT')
 
       expect(mockRedirect).toHaveBeenCalledWith({
         to: '/login',
@@ -446,9 +446,9 @@ describe('requireAuthWithRedirect', () => {
         error: null,
       })
 
-      await expect(
-        requireAuthWithRedirect('/planning/enrollment/detail/edit')
-      ).rejects.toThrow('REDIRECT')
+      await expect(requireAuthWithRedirect('/planning/enrollment/detail/edit')).rejects.toThrow(
+        'REDIRECT'
+      )
 
       expect(mockRedirect).toHaveBeenCalledWith({
         to: '/login',

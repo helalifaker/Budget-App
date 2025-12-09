@@ -40,6 +40,7 @@ from app.models.base import (
     PortableJSON,
     ReferenceDataModel,
     VersionedMixin,
+    get_fk_target,
     get_schema,
 )
 
@@ -133,7 +134,7 @@ class BudgetVersion(BaseModel):
     )
 
     status: Mapped[BudgetVersionStatus] = mapped_column(
-        Enum(BudgetVersionStatus, schema=get_schema("efir_budget")),
+        Enum(BudgetVersionStatus, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=BudgetVersionStatus.WORKING,
         index=True,
@@ -148,7 +149,7 @@ class BudgetVersion(BaseModel):
 
     submitted_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id"),
+        ForeignKey(get_fk_target("efir_budget", "users", "id")),
         nullable=True,
         comment="User who submitted version",
     )
@@ -161,7 +162,7 @@ class BudgetVersion(BaseModel):
 
     approved_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id"),
+        ForeignKey(get_fk_target("efir_budget", "users", "id")),
         nullable=True,
         comment="User who approved version",
     )
@@ -181,7 +182,7 @@ class BudgetVersion(BaseModel):
 
     parent_version_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("budget_versions.id"),
+        ForeignKey(get_fk_target("efir_budget", "budget_versions", "id")),
         nullable=True,
         comment="Parent version (for forecast revisions)",
     )
@@ -284,7 +285,7 @@ class AcademicLevel(ReferenceDataModel):
 
     cycle_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_cycles.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_cycles", "id")),
         nullable=False,
         index=True,
         comment="Parent academic cycle",
@@ -357,7 +358,7 @@ class ClassSizeParam(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_levels.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_levels", "id")),
         nullable=True,
         index=True,
         comment="Specific academic level (NULL for cycle default)",
@@ -365,7 +366,7 @@ class ClassSizeParam(BaseModel, VersionedMixin):
 
     cycle_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_cycles.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_cycles", "id")),
         nullable=True,
         index=True,
         comment="Academic cycle (NULL if level-specific)",
@@ -475,7 +476,7 @@ class SubjectHoursMatrix(BaseModel, VersionedMixin):
 
     subject_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("subjects.id"),
+        ForeignKey(get_fk_target("efir_budget", "subjects", "id")),
         nullable=False,
         index=True,
         comment="Subject being taught",
@@ -483,7 +484,7 @@ class SubjectHoursMatrix(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_levels.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_levels", "id")),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -577,7 +578,7 @@ class TeacherCostParam(BaseModel, VersionedMixin):
 
     category_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("teacher_categories.id"),
+        ForeignKey(get_fk_target("efir_budget", "teacher_categories", "id")),
         nullable=False,
         index=True,
         comment="Teacher category",
@@ -585,7 +586,7 @@ class TeacherCostParam(BaseModel, VersionedMixin):
 
     cycle_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_cycles.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_cycles", "id")),
         nullable=True,
         index=True,
         comment="Academic cycle (NULL for all cycles)",
@@ -771,7 +772,7 @@ class FeeStructure(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_levels.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_levels", "id")),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -779,7 +780,7 @@ class FeeStructure(BaseModel, VersionedMixin):
 
     nationality_type_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("nationality_types.id"),
+        ForeignKey(get_fk_target("efir_budget", "nationality_types", "id")),
         nullable=False,
         index=True,
         comment="Nationality type (French, Saudi, Other)",
@@ -787,7 +788,7 @@ class FeeStructure(BaseModel, VersionedMixin):
 
     fee_category_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("fee_categories.id"),
+        ForeignKey(get_fk_target("efir_budget", "fee_categories", "id")),
         nullable=False,
         index=True,
         comment="Fee category (tuition, DAI, etc.)",
@@ -842,7 +843,7 @@ class TimetableConstraint(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_levels.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_levels", "id")),
         nullable=False,
         index=True,
         comment="Academic level",

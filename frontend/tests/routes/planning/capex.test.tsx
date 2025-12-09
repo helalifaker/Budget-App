@@ -1,12 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { Route as CapExRoute } from '@/routes/planning/capex'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
 let mockCapExData: Record<string, unknown>[] | null = null
 let mockDepreciationSchedule: Record<string, unknown>[] | null = null
+
+// BudgetVersionContext mock state
+let mockSelectedVersionId: string | undefined = undefined
+const mockSetSelectedVersionId = vi.fn((id: string | undefined) => {
+  mockSelectedVersionId = id
+})
 
 // Type definitions for mock props
 type MockProps = Record<string, unknown>
@@ -28,6 +33,26 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => mockNavigate,
+}))
+
+// Mock BudgetVersionContext - this must come before component imports
+vi.mock('@/contexts/BudgetVersionContext', () => ({
+  useBudgetVersion: () => ({
+    selectedVersionId: mockSelectedVersionId,
+    selectedVersion: mockSelectedVersionId
+      ? { id: mockSelectedVersionId, name: '2025-2026', status: 'working' }
+      : null,
+    setSelectedVersionId: mockSetSelectedVersionId,
+    versions: [
+      { id: 'v1', name: '2025-2026', status: 'working' },
+      { id: 'v2', name: '2024-2025', status: 'approved' },
+    ],
+    isLoading: false,
+    error: null,
+    clearSelection: () => {
+      mockSelectedVersionId = undefined
+    },
+  }),
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
@@ -121,7 +146,7 @@ vi.mock('ag-grid-react', () => ({
     <div data-testid="ag-grid">
       {(rowData as CapExRow[] | undefined)?.map((row) => (
         <div key={row.id} data-testid="capex-row">
-          {row.description}: {row.asset_type}
+          {row.description}: {row.asset_type || row.category}
         </div>
       ))}
     </div>
@@ -165,16 +190,16 @@ describe('CapEx Planning Route', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSelectedVersionId = undefined // Reset version selection
 
-    // API returns arrays directly - matches CapExItem type from backend
     mockCapExData = [
       {
         id: '1',
         description: 'Classroom Projectors',
-        category: 'EQUIPMENT', // was asset_type
+        category: 'EQUIPMENT',
         account_code: '21500',
-        acquisition_date: '2025-01-15', // was purchase_date
-        total_cost_sar: 50000, // was cost
+        acquisition_date: '2025-01-15',
+        total_cost_sar: 50000,
         useful_life_years: 5,
         annual_depreciation_sar: 10000,
         notes: null,
@@ -203,7 +228,6 @@ describe('CapEx Planning Route', () => {
       },
     ]
 
-    // Depreciation schedule - field renamed from depreciation to annual_depreciation
     mockDepreciationSchedule = [
       { year: 1, annual_depreciation: 10000, book_value: 40000 },
       { year: 2, annual_depreciation: 10000, book_value: 30000 },
@@ -228,22 +252,19 @@ describe('CapEx Planning Route', () => {
     })
   })
 
-  describe('Budget version selector', () => {
-    it('renders budget version selector', () => {
+  describe('Budget version context', () => {
+    it('uses global budget version from context', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
-
-      expect(screen.getByTestId('budget-version-selector')).toBeInTheDocument()
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
     })
 
-    it('allows selecting a version', async () => {
-      const user = userEvent.setup()
-
+    it('renders placeholder when no version selected', () => {
+      mockSelectedVersionId = undefined
       render(<CapExPage />)
-
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      expect(select).toHaveValue('v1')
+      expect(
+        screen.getByText('Select a budget version to view capital expenditure planning')
+      ).toBeInTheDocument()
     })
   })
 
@@ -267,18 +288,12 @@ describe('CapEx Planning Route', () => {
       expect(addBtn).toBeDisabled()
     })
 
-    it('enables Add CapEx Item button when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('enables Add CapEx Item button when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const addBtn = screen.getByText('Add CapEx Item').closest('button')
-        expect(addBtn).not.toBeDisabled()
-      })
+      const addBtn = screen.getByText('Add CapEx Item').closest('button')
+      expect(addBtn).not.toBeDisabled()
     })
   })
 
@@ -289,121 +304,79 @@ describe('CapEx Planning Route', () => {
       expect(screen.queryByTestId('summary-card-total-capex')).not.toBeInTheDocument()
     })
 
-    it('displays summary cards when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays summary cards when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('summary-card-total-capex')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-equipment')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-it-and-software')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-avg-useful-life')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('summary-card-total-capex')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-equipment')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-it-and-software')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-avg-useful-life')).toBeInTheDocument()
     })
 
-    it('calculates total CapEx correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates total CapEx correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const totalCard = screen.getByTestId('summary-card-total-capex')
-        // 50,000 + 80,000 + 30,000 = 160,000
-        expect(totalCard).toHaveTextContent('SAR')
-        expect(totalCard).toHaveTextContent('3 items')
-      })
+      const totalCard = screen.getByTestId('summary-card-total-capex')
+      // 50,000 + 80,000 + 30,000 = 160,000
+      expect(totalCard).toHaveTextContent('SAR')
+      expect(totalCard).toHaveTextContent('3 items')
     })
 
-    it('calculates average useful life correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates average useful life correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const avgLifeCard = screen.getByTestId('summary-card-avg-useful-life')
-        // (5 + 3 + 10) / 3 = 6.0 years
-        expect(avgLifeCard).toHaveTextContent('6.0 years')
-      })
+      const avgLifeCard = screen.getByTestId('summary-card-avg-useful-life')
+      // (5 + 3 + 10) / 3 = 6.0 years
+      expect(avgLifeCard).toHaveTextContent('6.0 years')
     })
   })
 
   describe('AG Grid', () => {
-    it('displays AG Grid with CapEx data', async () => {
-      const user = userEvent.setup()
-
+    it('displays AG Grid with CapEx data', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
-        const rows = screen.getAllByTestId('capex-row')
-        expect(rows).toHaveLength(3)
-      })
+      expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
+      const rows = screen.getAllByTestId('capex-row')
+      expect(rows).toHaveLength(3)
     })
 
-    it('displays CapEx row details', async () => {
-      const user = userEvent.setup()
-
+    it('displays CapEx row details', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText(/Classroom Projectors: EQUIPMENT/)).toBeInTheDocument()
-        expect(screen.getByText(/Laptops for Teachers: IT/)).toBeInTheDocument()
-        expect(screen.getByText(/Office Furniture: FURNITURE/)).toBeInTheDocument()
-      })
+      expect(screen.getByText(/Classroom Projectors: EQUIPMENT/)).toBeInTheDocument()
+      expect(screen.getByText(/Laptops for Teachers: IT/)).toBeInTheDocument()
+      expect(screen.getByText(/Office Furniture: FURNITURE/)).toBeInTheDocument()
     })
   })
 
   describe('Asset Categories section', () => {
-    it('displays asset categories breakdown', async () => {
-      const user = userEvent.setup()
-
+    it('displays asset categories breakdown', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const allCards = screen.getAllByTestId('card-title')
-        const assetCategoriesCard = allCards.find((card) =>
-          card.textContent?.includes('Asset Categories')
-        )
-        expect(assetCategoriesCard).toBeInTheDocument()
-      })
+      const allCards = screen.getAllByTestId('card-title')
+      const assetCategoriesCard = allCards.find((card) =>
+        card.textContent?.includes('Asset Categories')
+      )
+      expect(assetCategoriesCard).toBeInTheDocument()
     })
   })
 
   describe('Depreciation Info section', () => {
-    it('displays depreciation information', async () => {
-      const user = userEvent.setup()
-
+    it('displays depreciation information', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText('Depreciation Info')).toBeInTheDocument()
-        expect(screen.getByText('Straight Line')).toBeInTheDocument()
-        expect(screen.getByText('Declining Balance')).toBeInTheDocument()
-        expect(screen.getByText('Account Codes (2xxx)')).toBeInTheDocument()
-        expect(screen.getByText('Purchase Date')).toBeInTheDocument()
-      })
+      expect(screen.getByText('Depreciation Info')).toBeInTheDocument()
+      expect(screen.getByText('Straight Line')).toBeInTheDocument()
+      expect(screen.getByText('Declining Balance')).toBeInTheDocument()
+      expect(screen.getByText('Account Codes (2xxx)')).toBeInTheDocument()
+      expect(screen.getByText('Purchase Date')).toBeInTheDocument()
     })
   })
 
@@ -416,70 +389,65 @@ describe('CapEx Planning Route', () => {
       ).toBeInTheDocument()
     })
 
-    it('hides placeholder when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('hides placeholder when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText('Select a budget version to view capital expenditure planning')
-        ).not.toBeInTheDocument()
-      })
+      expect(
+        screen.queryByText('Select a budget version to view capital expenditure planning')
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('Real-world use cases', () => {
-    it('displays full CapEx planning workflow', async () => {
-      const user = userEvent.setup()
-
+    it('displays full CapEx planning workflow', () => {
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      // Select budget version
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
+      // Verify summary cards appear
+      expect(screen.getByTestId('summary-card-total-capex')).toBeInTheDocument()
 
-      await waitFor(() => {
-        // Verify summary cards appear
-        expect(screen.getByTestId('summary-card-total-capex')).toBeInTheDocument()
+      // Verify AG Grid appears
+      expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
 
-        // Verify AG Grid appears
-        expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
+      // Verify asset categories appear
+      const assetCategories = screen
+        .getAllByTestId('card-title')
+        .find((card) => card.textContent?.includes('Asset Categories'))
+      expect(assetCategories).toBeInTheDocument()
 
-        // Verify asset categories appear
-        const assetCategories = screen
-          .getAllByTestId('card-title')
-          .find((card) => card.textContent?.includes('Asset Categories'))
-        expect(assetCategories).toBeInTheDocument()
+      // Verify depreciation info appears
+      expect(screen.getByText('Depreciation Info')).toBeInTheDocument()
 
-        // Verify depreciation info appears
-        expect(screen.getByText('Depreciation Info')).toBeInTheDocument()
-
-        // Verify action button is enabled
-        const addBtn = screen.getByText('Add CapEx Item').closest('button')
-        expect(addBtn).not.toBeDisabled()
-      })
+      // Verify action button is enabled
+      const addBtn = screen.getByText('Add CapEx Item').closest('button')
+      expect(addBtn).not.toBeDisabled()
     })
 
-    it('handles empty CapEx data', async () => {
+    it('handles empty CapEx data', () => {
       mockCapExData = []
-      const user = userEvent.setup()
-
+      mockSelectedVersionId = 'v1'
       render(<CapExPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
+      // Summary cards should show 0 values
+      expect(screen.getByTestId('summary-card-total-capex')).toBeInTheDocument()
+      // Grid should still render but with no rows
+      expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
+      expect(screen.queryAllByTestId('capex-row')).toHaveLength(0)
+    })
 
-      await waitFor(() => {
-        // Summary cards should show 0 values
-        expect(screen.getByTestId('summary-card-total-capex')).toBeInTheDocument()
-        // Grid should still render but with no rows
-        expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
-        expect(screen.queryAllByTestId('capex-row')).toHaveLength(0)
-      })
+    it('context provides version switching capability', () => {
+      mockSelectedVersionId = 'v1'
+      const { rerender } = render(<CapExPage />)
+
+      expect(screen.getByTestId('ag-grid')).toBeInTheDocument()
+
+      // Simulate version change via context
+      mockSelectedVersionId = 'v2'
+      rerender(<CapExPage />)
+
+      // Page should still render (context provides new version)
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
     })
   })
 

@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen } from '@testing-library/react'
 import { Route as CostsRoute } from '@/routes/planning/costs'
+import React from 'react'
 
 // Mock dependencies
 const mockNavigate = vi.fn()
 let mockPersonnelCostsData: Record<string, unknown>[] | null = null
 let mockOperatingCostsData: Record<string, unknown>[] | null = null
 const mockCalculatePersonnelMutation = vi.fn()
+
+// BudgetVersionContext mock state
+let mockSelectedVersionId: string | undefined = undefined
+const mockSetSelectedVersionId = vi.fn((id: string | undefined) => {
+  mockSelectedVersionId = id
+})
 
 // Type definitions for mock props
 type MockProps = Record<string, unknown>
@@ -27,6 +33,26 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => mockNavigate,
+}))
+
+// Mock BudgetVersionContext - this must come before component imports
+vi.mock('@/contexts/BudgetVersionContext', () => ({
+  useBudgetVersion: () => ({
+    selectedVersionId: mockSelectedVersionId,
+    selectedVersion: mockSelectedVersionId
+      ? { id: mockSelectedVersionId, name: '2025-2026', status: 'working' }
+      : null,
+    setSelectedVersionId: mockSetSelectedVersionId,
+    versions: [
+      { id: 'v1', name: '2025-2026', status: 'working' },
+      { id: 'v2', name: '2024-2025', status: 'approved' },
+    ],
+    isLoading: false,
+    error: null,
+    clearSelection: () => {
+      mockSelectedVersionId = undefined
+    },
+  }),
 }))
 
 vi.mock('@/components/layout/MainLayout', () => ({
@@ -179,6 +205,7 @@ describe('Cost Planning Route', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSelectedVersionId = undefined // Reset version selection
 
     // API returns arrays directly - matches PersonnelCostPlan type
     mockPersonnelCostsData = [
@@ -262,22 +289,19 @@ describe('Cost Planning Route', () => {
     })
   })
 
-  describe('Budget version selector', () => {
-    it('renders budget version selector', () => {
+  describe('Budget version context', () => {
+    it('uses global budget version from context', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      expect(screen.getByTestId('budget-version-selector')).toBeInTheDocument()
+      expect(screen.getByTestId('main-layout')).toBeInTheDocument()
     })
 
-    it('allows selecting a version', async () => {
-      const user = userEvent.setup()
-
+    it('renders placeholder when no version selected', () => {
+      mockSelectedVersionId = undefined
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      expect(select).toHaveValue('v1')
+      expect(screen.getByText(/Select a budget version/i)).toBeInTheDocument()
     })
   })
 
@@ -301,18 +325,12 @@ describe('Cost Planning Route', () => {
       expect(calculateBtn).toBeDisabled()
     })
 
-    it('enables Recalculate button when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('enables Recalculate button when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const calculateBtn = screen.getByText('Recalculate Personnel Costs').closest('button')
-        expect(calculateBtn).not.toBeDisabled()
-      })
+      const calculateBtn = screen.getByText('Recalculate Personnel Costs').closest('button')
+      expect(calculateBtn).not.toBeDisabled()
     })
   })
 
@@ -323,113 +341,71 @@ describe('Cost Planning Route', () => {
       expect(screen.queryByTestId('summary-card-total-costs')).not.toBeInTheDocument()
     })
 
-    it('displays summary cards when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays summary cards when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('summary-card-total-costs')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-personnel-costs')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-operating-costs')).toBeInTheDocument()
-        expect(screen.getByTestId('summary-card-personnel-%')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('summary-card-total-costs')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-personnel-costs')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-operating-costs')).toBeInTheDocument()
+      expect(screen.getByTestId('summary-card-personnel-%')).toBeInTheDocument()
     })
 
-    it('calculates total costs correctly', async () => {
-      const user = userEvent.setup()
-
+    it('calculates total costs correctly', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const totalCard = screen.getByTestId('summary-card-total-costs')
-        // Personnel (5,600,000) + Operating (1,100,000) = 6,700,000
-        expect(totalCard).toHaveTextContent('SAR')
-      })
+      const totalCard = screen.getByTestId('summary-card-total-costs')
+      // Personnel (5,600,000) + Operating (1,100,000) = 6,700,000
+      expect(totalCard).toHaveTextContent('SAR')
     })
   })
 
   describe('Tabs', () => {
-    it('displays tabs component', async () => {
-      const user = userEvent.setup()
-
+    it('displays tabs component', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('tabs')).toBeInTheDocument()
-        expect(screen.getByTestId('tab-trigger-personnel')).toBeInTheDocument()
-        expect(screen.getByTestId('tab-trigger-operating')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-trigger-personnel')).toBeInTheDocument()
+      expect(screen.getByTestId('tab-trigger-operating')).toBeInTheDocument()
     })
 
-    it('defaults to personnel tab', async () => {
-      const user = userEvent.setup()
-
+    it('defaults to personnel tab', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        const tabs = screen.getByTestId('tabs')
-        expect(tabs).toHaveAttribute('data-value', 'personnel')
-      })
+      const tabs = screen.getByTestId('tabs')
+      expect(tabs).toHaveAttribute('data-value', 'personnel')
     })
   })
 
   describe('Personnel costs tab', () => {
-    it('displays personnel costs grid', async () => {
-      const user = userEvent.setup()
-
+    it('displays personnel costs grid', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('tab-content-personnel')).toBeInTheDocument()
-        // Personnel Costs appears both in tab trigger and card title, so use getAllByText
-        const personnelTexts = screen.getAllByText('Personnel Costs')
-        expect(personnelTexts.length).toBeGreaterThan(0)
-      })
+      expect(screen.getByTestId('tab-content-personnel')).toBeInTheDocument()
+      // Personnel Costs appears both in tab trigger and card title, so use getAllByText
+      const personnelTexts = screen.getAllByText('Personnel Costs')
+      expect(personnelTexts.length).toBeGreaterThan(0)
     })
 
-    it('displays personnel cost rows', async () => {
-      const user = userEvent.setup()
-
+    it('displays personnel cost rows', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText(/64110: Teacher Salaries/)).toBeInTheDocument()
-        expect(screen.getByText(/64510: Social Charges/)).toBeInTheDocument()
-      })
+      expect(screen.getByText(/64110: Teacher Salaries/)).toBeInTheDocument()
+      expect(screen.getByText(/64510: Social Charges/)).toBeInTheDocument()
     })
   })
 
   describe('Operating costs tab', () => {
-    it('displays Add Line Item button', async () => {
-      const user = userEvent.setup()
-
+    it('displays Add Line Item button', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText('Add Line Item')).toBeInTheDocument()
-      })
+      expect(screen.getByText('Add Line Item')).toBeInTheDocument()
     })
   })
 
@@ -440,38 +416,26 @@ describe('Cost Planning Route', () => {
       expect(screen.queryByTestId('cost-chart')).not.toBeInTheDocument()
     })
 
-    it('displays cost chart when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays cost chart when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByTestId('cost-chart')).toBeInTheDocument()
-        expect(screen.getByText('Cost Breakdown by Period')).toBeInTheDocument()
-        expect(screen.getByText('Chart with 3 periods')).toBeInTheDocument()
-      })
+      expect(screen.getByTestId('cost-chart')).toBeInTheDocument()
+      expect(screen.getByText('Cost Breakdown by Period')).toBeInTheDocument()
+      expect(screen.getByText('Chart with 3 periods')).toBeInTheDocument()
     })
   })
 
   describe('Cost notes', () => {
-    it('displays cost notes section when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('displays cost notes section when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(screen.getByText('Cost Planning Notes')).toBeInTheDocument()
-        expect(screen.getByText('Personnel Costs (641xx, 645xx)')).toBeInTheDocument()
-        expect(screen.getByText('AEFE Contributions')).toBeInTheDocument()
-        expect(screen.getByText('Operating Costs (606xx-625xx)')).toBeInTheDocument()
-        expect(screen.getByText('Period Allocation')).toBeInTheDocument()
-      })
+      expect(screen.getByText('Cost Planning Notes')).toBeInTheDocument()
+      expect(screen.getByText('Personnel Costs (641xx, 645xx)')).toBeInTheDocument()
+      expect(screen.getByText('AEFE Contributions')).toBeInTheDocument()
+      expect(screen.getByText('Operating Costs (606xx-625xx)')).toBeInTheDocument()
+      expect(screen.getByText('Period Allocation')).toBeInTheDocument()
     })
   })
 
@@ -482,67 +446,48 @@ describe('Cost Planning Route', () => {
       expect(screen.getByText('Select a budget version to view cost planning')).toBeInTheDocument()
     })
 
-    it('hides placeholder when version selected', async () => {
-      const user = userEvent.setup()
-
+    it('hides placeholder when version selected', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        expect(
-          screen.queryByText('Select a budget version to view cost planning')
-        ).not.toBeInTheDocument()
-      })
+      expect(
+        screen.queryByText('Select a budget version to view cost planning')
+      ).not.toBeInTheDocument()
     })
   })
 
   describe('Real-world use cases', () => {
-    it('displays full cost planning workflow', async () => {
-      const user = userEvent.setup()
-
+    it('displays full cost planning workflow', () => {
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      // Select budget version
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
+      // Verify summary cards appear
+      expect(screen.getByTestId('summary-card-total-costs')).toBeInTheDocument()
 
-      await waitFor(() => {
-        // Verify summary cards appear
-        expect(screen.getByTestId('summary-card-total-costs')).toBeInTheDocument()
+      // Verify tabs appear
+      expect(screen.getByTestId('tabs')).toBeInTheDocument()
 
-        // Verify tabs appear
-        expect(screen.getByTestId('tabs')).toBeInTheDocument()
+      // Verify chart appears
+      expect(screen.getByTestId('cost-chart')).toBeInTheDocument()
 
-        // Verify chart appears
-        expect(screen.getByTestId('cost-chart')).toBeInTheDocument()
+      // Verify notes appear
+      expect(screen.getByText('Cost Planning Notes')).toBeInTheDocument()
 
-        // Verify notes appear
-        expect(screen.getByText('Cost Planning Notes')).toBeInTheDocument()
-
-        // Verify action button is enabled
-        const calculateBtn = screen.getByText('Recalculate Personnel Costs').closest('button')
-        expect(calculateBtn).not.toBeDisabled()
-      })
+      // Verify action button is enabled
+      const calculateBtn = screen.getByText('Recalculate Personnel Costs').closest('button')
+      expect(calculateBtn).not.toBeDisabled()
     })
 
-    it('handles empty cost data', async () => {
+    it('handles empty cost data', () => {
       mockPersonnelCostsData = []
       mockOperatingCostsData = []
-      const user = userEvent.setup()
-
+      mockSelectedVersionId = 'v1'
       render(<CostsPage />)
 
-      const select = screen.getByTestId('version-select')
-      await user.selectOptions(select, 'v1')
-
-      await waitFor(() => {
-        // Summary cards should show 0 values
-        expect(screen.getByTestId('summary-card-total-costs')).toBeInTheDocument()
-        // Grid should still render but with no rows
-        expect(screen.queryAllByTestId('cost-row')).toHaveLength(0)
-      })
+      // Summary cards should show 0 values
+      expect(screen.getByTestId('summary-card-total-costs')).toBeInTheDocument()
+      // Grid should still render but with no rows
+      expect(screen.queryAllByTestId('cost-row')).toHaveLength(0)
     })
   })
 

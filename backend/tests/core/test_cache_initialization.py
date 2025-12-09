@@ -93,13 +93,11 @@ class TestInitializeCache:
             mock_redis_client.ping = AsyncMock(return_value=True)
             mock_redis_client.close = AsyncMock()
 
-            # Mock redis.from_url as an async function
-            async def mock_from_url(*args, **kwargs):
-                return mock_redis_client
-
+            # redis.from_url is a SYNC function that returns a Redis client
+            # Do NOT use async here - it's a synchronous factory function
             with (
                 patch("app.core.cache.cache.setup") as mock_setup,
-                patch("app.core.cache.redis.from_url", side_effect=mock_from_url),
+                patch("app.core.cache.redis.from_url", return_value=mock_redis_client),
             ):
                 result = await initialize_cache()
 
@@ -210,20 +208,36 @@ class TestInitializeCache:
     @pytest.mark.asyncio
     async def test_ping_timeout_with_required_false(self):
         """Test ping timeout with REDIS_REQUIRED=false (graceful degradation)."""
-        mock_redis_client = AsyncMock()
-        mock_redis_client.ping = AsyncMock(side_effect=TimeoutError("Ping timeout"))
-        mock_redis_client.close = AsyncMock()
+        import app.core.cache as cache_module
 
-        with (
-            patch("app.core.cache.REDIS_ENABLED", True),
-            patch("app.core.cache.REDIS_REQUIRED", False),
-            patch("app.core.cache.cache.setup"),
-            patch("app.core.cache.redis.from_url", return_value=mock_redis_client),
-            patch("asyncio.wait_for", side_effect=[mock_redis_client, TimeoutError("Ping timeout")]),
-        ):
-            result = await initialize_cache()
+        # Force module-level values
+        original_enabled = cache_module.REDIS_ENABLED
+        original_required = cache_module.REDIS_REQUIRED
+        cache_module.REDIS_ENABLED = True
+        cache_module.REDIS_REQUIRED = False
 
-            assert result is False
+        try:
+            mock_redis_client = AsyncMock()
+            mock_redis_client.ping = AsyncMock(return_value=True)
+            mock_redis_client.close = AsyncMock()
+
+            # asyncio.wait_for raises TimeoutError when ping times out
+            async def timeout_wait_for(coro, timeout):
+                # Close the coroutine to avoid warning
+                coro.close() if hasattr(coro, "close") else None
+                raise TimeoutError("Ping timeout")
+
+            with (
+                patch("app.core.cache.cache.setup"),
+                patch("app.core.cache.redis.from_url", return_value=mock_redis_client),
+                patch("asyncio.wait_for", side_effect=timeout_wait_for),
+            ):
+                result = await initialize_cache()
+
+                assert result is False
+        finally:
+            cache_module.REDIS_ENABLED = original_enabled
+            cache_module.REDIS_REQUIRED = original_required
 
     @pytest.mark.asyncio
     async def test_idempotent_initialization(self):
@@ -239,13 +253,10 @@ class TestInitializeCache:
             mock_redis_client.ping = AsyncMock(return_value=True)
             mock_redis_client.close = AsyncMock()
 
-            # Mock redis.from_url as an async function
-            async def mock_from_url(*args, **kwargs):
-                return mock_redis_client
-
+            # redis.from_url is a SYNC function - use return_value, not side_effect
             with (
                 patch("app.core.cache.cache.setup") as mock_setup,
-                patch("app.core.cache.redis.from_url", side_effect=mock_from_url),
+                patch("app.core.cache.redis.from_url", return_value=mock_redis_client),
             ):
                 # First call
                 result1 = await initialize_cache()
@@ -264,38 +275,45 @@ class TestInitializeCache:
     @pytest.mark.asyncio
     async def test_concurrent_initialization_thread_safety(self):
         """Test that concurrent initialization calls are thread-safe."""
-        mock_redis_client = AsyncMock()
-        mock_redis_client.ping = AsyncMock(return_value=True)
-        mock_redis_client.close = AsyncMock()
+        import app.core.cache as cache_module
 
-        call_count = 0
+        # Force REDIS_ENABLED to True
+        original_enabled = cache_module.REDIS_ENABLED
+        cache_module.REDIS_ENABLED = True
 
-        async def delayed_from_url(*args, **kwargs):
-            nonlocal call_count
-            call_count += 1
-            await asyncio.sleep(0.1)  # Simulate network delay
-            return mock_redis_client
+        try:
+            mock_redis_client = AsyncMock()
+            mock_redis_client.ping = AsyncMock(return_value=True)
+            mock_redis_client.close = AsyncMock()
 
-        with (
-            patch("app.core.cache.REDIS_ENABLED", True),
-            patch("app.core.cache.cache.setup") as mock_setup,
-            patch("app.core.cache.redis.from_url", side_effect=delayed_from_url),
-        ):
-            # Launch 5 concurrent initialization attempts
-            results = await asyncio.gather(
-                initialize_cache(),
-                initialize_cache(),
-                initialize_cache(),
-                initialize_cache(),
-                initialize_cache(),
-            )
+            call_count = 0
 
-            # All should succeed
-            assert all(results)
+            def sync_from_url(*args, **kwargs):
+                nonlocal call_count
+                call_count += 1
+                return mock_redis_client
 
-            # Setup should only be called once (thread-safe)
-            assert mock_setup.call_count == 1
-            assert call_count == 1
+            with (
+                patch("app.core.cache.cache.setup") as mock_setup,
+                patch("app.core.cache.redis.from_url", side_effect=sync_from_url),
+            ):
+                # Launch 5 concurrent initialization attempts
+                results = await asyncio.gather(
+                    initialize_cache(),
+                    initialize_cache(),
+                    initialize_cache(),
+                    initialize_cache(),
+                    initialize_cache(),
+                )
+
+                # All should succeed
+                assert all(results)
+
+                # Setup should only be called once (thread-safe)
+                assert mock_setup.call_count == 1
+                assert call_count == 1
+        finally:
+            cache_module.REDIS_ENABLED = original_enabled
 
 
 class TestGetCacheStatus:

@@ -19,6 +19,11 @@ from app.models.analysis import (
     DashboardConfig,
     DashboardRole,
     DashboardWidget,
+    # Historical Comparison
+    HistoricalActuals,
+    HistoricalDataSource,
+    HistoricalDimensionType,
+    HistoricalModuleCode,
     KPICategory,
     KPIDefinition,
     KPIValue,
@@ -74,6 +79,19 @@ from app.models.planning import (
     RevenuePlan,
     TeacherAllocation,
 )
+from app.models.personnel import (
+    # Enums
+    AEFEPositionType,
+    ContractType,
+    EmployeeCategory,
+    EmployeeNationality,
+    TerminationType,
+    # Models
+    AEFEPosition,
+    Employee,
+    EmployeeSalary,
+    EOSProvision,
+)
 from app.models.strategic import (
     # Enums
     InitiativeStatus,
@@ -91,12 +109,13 @@ __all__ = [
     "AcademicLevel",
     "ActualData",
     "ActualDataSource",
+    # Personnel Layer (Workforce Module)
+    "AEFEPosition",
+    "AEFEPositionType",
     "AuditMixin",
     # Base classes
     "Base",
     "BaseModel",
-    # Auth models
-    "User",
     # Consolidation Layer (Modules 13-14)
     "BudgetConsolidation",
     "BudgetVersion",
@@ -106,17 +125,28 @@ __all__ = [
     "ClassSizeParam",
     "ClassStructure",
     "ConsolidationCategory",
+    "ContractType",
     "DHGSubjectHours",
     "DHGTeacherRequirement",
     "DashboardConfig",
     "DashboardRole",
     "DashboardWidget",
+    "Employee",
+    "EmployeeCategory",
+    "EmployeeNationality",
+    "EmployeeSalary",
     # Planning Layer (Modules 7-12)
     "EnrollmentPlan",
+    "EOSProvision",
     "FeeCategory",
     "FeeStructure",
     "FinancialStatement",
     "FinancialStatementLine",
+    # Historical Comparison
+    "HistoricalActuals",
+    "HistoricalDataSource",
+    "HistoricalDimensionType",
+    "HistoricalModuleCode",
     "InitiativeStatus",
     # Analysis Layer (Modules 15-17)
     # Enums
@@ -150,8 +180,11 @@ __all__ = [
     "TeacherAllocation",
     "TeacherCategory",
     "TeacherCostParam",
+    "TerminationType",
     "TimestampMixin",
     "TimetableConstraint",
+    # Auth models
+    "User",
     "UserPreferences",
     "VarianceExplanation",
     "VarianceStatus",

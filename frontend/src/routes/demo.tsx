@@ -13,7 +13,6 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
-import { MainLayout } from '@/components/layout/MainLayout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,27 +43,25 @@ export const Route = createFileRoute('/demo')({
 
 function DemoPage() {
   return (
-    <MainLayout>
-      <div className="space-y-16 pb-16">
-        {/* Hero Section */}
-        <HeroSection />
+    <div className="space-y-16 pb-16">
+      {/* Hero Section */}
+      <HeroSection />
 
-        {/* Color Palette */}
-        <ColorPaletteSection />
+      {/* Color Palette */}
+      <ColorPaletteSection />
 
-        {/* Typography */}
-        <TypographySection />
+      {/* Typography */}
+      <TypographySection />
 
-        {/* Components Gallery */}
-        <ComponentsSection />
+      {/* Components Gallery */}
+      <ComponentsSection />
 
-        {/* Feature Highlights */}
-        <FeaturesSection />
+      {/* Feature Highlights */}
+      <FeaturesSection />
 
-        {/* Live KPI Preview */}
-        <KPIPreviewSection />
-      </div>
-    </MainLayout>
+      {/* Live KPI Preview */}
+      <KPIPreviewSection />
+    </div>
   )
 }
 
@@ -78,7 +75,7 @@ function HeroSection() {
       {/* Animated background shapes */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-gold-200/30 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-sand-200/40 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-subtle/40 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
       <div className="relative text-center space-y-6">
@@ -89,13 +86,13 @@ function HeroSection() {
         </Badge>
 
         {/* Main headline */}
-        <h1 className="font-display text-5xl md:text-6xl font-bold text-brown-900 tracking-tight">
+        <h1 className="font-display text-5xl md:text-6xl font-bold text-text-primary tracking-tight">
           Budget Planning
           <span className="block text-gold-600">Reimagined</span>
         </h1>
 
         {/* Subtitle */}
-        <p className="text-lg text-twilight-600 max-w-2xl mx-auto">
+        <p className="text-lg text-text-secondary max-w-2xl mx-auto">
           A premium, enterprise-grade financial planning experience with thoughtful design,
           intuitive navigation, and real-time insights.
         </p>
@@ -143,13 +140,13 @@ function MetricPill({
       className={cn(
         'flex items-center gap-2 px-4 py-2 rounded-full',
         'bg-white/80 backdrop-blur-sm',
-        'border border-sand-200',
+        'border border-border-light',
         'shadow-sm'
       )}
     >
       <Icon className="w-4 h-4 text-gold-600" />
-      <span className="font-mono font-bold text-brown-900">{value}</span>
-      <span className="text-sm text-twilight-500">{label}</span>
+      <span className="font-mono font-bold text-text-primary">{value}</span>
+      <span className="text-sm text-text-tertiary">{label}</span>
     </div>
   )
 }
@@ -175,10 +172,10 @@ function ColorPaletteSection() {
       name: 'Sand & Cream (Backgrounds)',
       colors: [
         { name: 'cream-50', bg: 'bg-cream-50', hex: '#FDFBF7' },
-        { name: 'sand-50', bg: 'bg-sand-50', hex: '#FBF8F3' },
-        { name: 'sand-100', bg: 'bg-sand-100', hex: '#F5EFE6' },
-        { name: 'sand-200', bg: 'bg-sand-200', hex: '#EBE3D6' },
-        { name: 'sand-300', bg: 'bg-sand-300', hex: '#D9CFC0' },
+        { name: 'sand-50', bg: 'bg-subtle', hex: '#FBF8F3' },
+        { name: 'sand-100', bg: 'bg-subtle', hex: '#F5EFE6' },
+        { name: 'sand-200', bg: 'bg-subtle', hex: '#EBE3D6' },
+        { name: 'sand-300', bg: 'bg-subtle', hex: '#D9CFC0' },
       ],
     },
     {
@@ -211,8 +208,8 @@ function ColorPaletteSection() {
   return (
     <section className="space-y-8">
       <div>
-        <h2 className="font-display text-3xl font-bold text-brown-900">Color Palette</h2>
-        <p className="text-twilight-600 mt-2">
+        <h2 className="font-display text-3xl font-bold text-text-primary">Color Palette</h2>
+        <p className="text-text-secondary mt-2">
           A warm, premium palette inspired by luxury desert aesthetics
         </p>
       </div>
@@ -220,7 +217,7 @@ function ColorPaletteSection() {
       <div className="space-y-6">
         {colorGroups.map((group) => (
           <div key={group.name} className="space-y-3">
-            <h3 className="text-sm font-semibold text-twilight-700 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wide">
               {group.name}
             </h3>
             <div className="flex flex-wrap gap-3">
@@ -229,12 +226,12 @@ function ColorPaletteSection() {
                   <div
                     className={cn(
                       color.bg,
-                      'w-20 h-20 rounded-xl border border-sand-200',
+                      'w-20 h-20 rounded-xl border border-border-light',
                       'shadow-sm group-hover:shadow-md transition-shadow'
                     )}
                   />
-                  <p className="text-xs text-brown-700 mt-1 font-mono">{color.name}</p>
-                  <p className="text-[10px] text-twilight-500">{color.hex}</p>
+                  <p className="text-xs text-text-secondary mt-1 font-mono">{color.name}</p>
+                  <p className="text-[10px] text-text-tertiary">{color.hex}</p>
                 </div>
               ))}
             </div>
@@ -253,68 +250,68 @@ function TypographySection() {
   return (
     <section className="space-y-8">
       <div>
-        <h2 className="font-display text-3xl font-bold text-brown-900">Typography</h2>
-        <p className="text-twilight-600 mt-2">
+        <h2 className="font-display text-3xl font-bold text-text-primary">Typography</h2>
+        <p className="text-text-secondary mt-2">
           Elegant type hierarchy with Playfair Display for headings and Inter for body
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Display Headings */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">
+            <CardTitle className="text-sm text-text-secondary font-normal">
               Display Headings (Playfair Display)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="font-display text-4xl font-bold text-brown-900">Display XL</p>
-            <p className="font-display text-3xl font-bold text-brown-900">Display LG</p>
-            <p className="font-display text-2xl font-bold text-brown-900">Display MD</p>
-            <p className="font-display text-xl font-semibold text-brown-900">Display SM</p>
+            <p className="font-display text-4xl font-bold text-text-primary">Display XL</p>
+            <p className="font-display text-3xl font-bold text-text-primary">Display LG</p>
+            <p className="font-display text-2xl font-bold text-text-primary">Display MD</p>
+            <p className="font-display text-xl font-semibold text-text-primary">Display SM</p>
           </CardContent>
         </Card>
 
         {/* Body Text */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">
+            <CardTitle className="text-sm text-text-secondary font-normal">
               Body Text (Inter)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-lg text-brown-800">Large body text - 18px</p>
-            <p className="text-base text-brown-700">Regular body text - 16px</p>
-            <p className="text-sm text-twilight-600">Small text - 14px</p>
-            <p className="text-xs text-twilight-500">Caption text - 12px</p>
+            <p className="text-lg text-text-primary">Large body text - 18px</p>
+            <p className="text-base text-text-secondary">Regular body text - 16px</p>
+            <p className="text-sm text-text-secondary">Small text - 14px</p>
+            <p className="text-xs text-text-tertiary">Caption text - 12px</p>
           </CardContent>
         </Card>
 
         {/* Monospace Numbers */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">
+            <CardTitle className="text-sm text-text-secondary font-normal">
               Monospace Numbers (Space Mono)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="font-mono text-2xl font-bold text-brown-900">SAR 8,247,500.00</p>
-            <p className="font-mono text-xl text-brown-800">+12.5% YoY</p>
-            <p className="font-mono text-lg text-twilight-600">FTE 42.50</p>
+            <p className="font-mono text-2xl font-bold text-text-primary">SAR 8,247,500.00</p>
+            <p className="font-mono text-xl text-text-primary">+12.5% YoY</p>
+            <p className="font-mono text-lg text-text-secondary">FTE 42.50</p>
           </CardContent>
         </Card>
 
         {/* Font Weights */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">Font Weights</CardTitle>
+            <CardTitle className="text-sm text-text-secondary font-normal">Font Weights</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="font-light text-brown-800">Light (300)</p>
-            <p className="font-normal text-brown-800">Regular (400)</p>
-            <p className="font-medium text-brown-800">Medium (500)</p>
-            <p className="font-semibold text-brown-800">Semibold (600)</p>
-            <p className="font-bold text-brown-800">Bold (700)</p>
+            <p className="font-light text-text-primary">Light (300)</p>
+            <p className="font-normal text-text-primary">Regular (400)</p>
+            <p className="font-medium text-text-primary">Medium (500)</p>
+            <p className="font-semibold text-text-primary">Semibold (600)</p>
+            <p className="font-bold text-text-primary">Bold (700)</p>
           </CardContent>
         </Card>
       </div>
@@ -332,26 +329,26 @@ function ComponentsSection() {
   return (
     <section className="space-y-8">
       <div>
-        <h2 className="font-display text-3xl font-bold text-brown-900">Component Gallery</h2>
-        <p className="text-twilight-600 mt-2">
+        <h2 className="font-display text-3xl font-bold text-text-primary">Component Gallery</h2>
+        <p className="text-text-secondary mt-2">
           Premium components with gold accents and warm interactions
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Buttons */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">Buttons</CardTitle>
+            <CardTitle className="text-sm text-text-secondary font-normal">Buttons</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Button className="w-full bg-gold-500 hover:bg-gold-600 text-white">
               Primary Action
             </Button>
-            <Button variant="outline" className="w-full border-sand-300 text-brown-700">
+            <Button variant="outline" className="w-full border-border-medium text-text-secondary">
               Secondary
             </Button>
-            <Button variant="ghost" className="w-full text-brown-700 hover:bg-sand-100">
+            <Button variant="ghost" className="w-full text-text-secondary hover:bg-subtle">
               Ghost
             </Button>
             <Button variant="destructive" className="w-full">
@@ -361,9 +358,9 @@ function ComponentsSection() {
         </Card>
 
         {/* Badges */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">Badges</CardTitle>
+            <CardTitle className="text-sm text-text-secondary font-normal">Badges</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Badge variant="default">Default</Badge>
@@ -376,25 +373,25 @@ function ComponentsSection() {
         </Card>
 
         {/* Form Inputs */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">Form Inputs</CardTitle>
+            <CardTitle className="text-sm text-text-secondary font-normal">Form Inputs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="demo-input" className="text-brown-700">
+              <Label htmlFor="demo-input" className="text-text-secondary">
                 Text Input
               </Label>
               <Input
                 id="demo-input"
                 placeholder="Enter value..."
-                className="mt-1 border-sand-300 focus:border-gold-500 focus:ring-gold-500/20"
+                className="mt-1 border-border-medium focus:border-gold-500 focus:ring-gold-500/20"
               />
             </div>
             <div>
-              <Label className="text-brown-700">Select</Label>
+              <Label className="text-text-secondary">Select</Label>
               <Select value={selectValue} onValueChange={setSelectValue}>
-                <SelectTrigger className="mt-1 border-sand-300">
+                <SelectTrigger className="mt-1 border-border-medium">
                   <SelectValue placeholder="Choose option..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -408,55 +405,57 @@ function ComponentsSection() {
         </Card>
 
         {/* Cards */}
-        <Card className="bg-white border-sand-200 hover:shadow-lg transition-shadow">
+        <Card className="bg-white border-border-light hover:shadow-lg transition-shadow">
           <CardHeader>
-            <CardTitle className="text-brown-900">Interactive Card</CardTitle>
+            <CardTitle className="text-text-primary">Interactive Card</CardTitle>
             <CardDescription>With hover elevation effect</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-twilight-600">
+            <p className="text-sm text-text-secondary">
               Cards lift on hover with a premium shadow effect.
             </p>
           </CardContent>
         </Card>
 
         {/* Status Badges */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">
+            <CardTitle className="text-sm text-text-secondary font-normal">
               Budget Status Badges
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-brown-700">Working</span>
+              <span className="text-sm text-text-secondary">Working</span>
               <Badge variant="info">Working</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-brown-700">Submitted</span>
+              <span className="text-sm text-text-secondary">Submitted</span>
               <Badge variant="warning">Submitted</Badge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-brown-700">Approved</span>
+              <span className="text-sm text-text-secondary">Approved</span>
               <Badge variant="success">Approved</Badge>
             </div>
           </CardContent>
         </Card>
 
         {/* Loading States */}
-        <Card className="bg-white border-sand-200">
+        <Card className="bg-white border-border-light">
           <CardHeader>
-            <CardTitle className="text-sm text-twilight-600 font-normal">Loading States</CardTitle>
+            <CardTitle className="text-sm text-text-secondary font-normal">
+              Loading States
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="h-4 bg-sand-200 rounded animate-pulse" />
-            <div className="h-4 bg-sand-200 rounded animate-pulse w-3/4" />
-            <div className="h-4 bg-sand-200 rounded animate-pulse w-1/2" />
+            <div className="h-4 bg-subtle rounded animate-pulse" />
+            <div className="h-4 bg-subtle rounded animate-pulse w-3/4" />
+            <div className="h-4 bg-subtle rounded animate-pulse w-1/2" />
             <div className="flex gap-2 mt-4">
-              <div className="w-12 h-12 bg-sand-200 rounded-lg animate-pulse" />
+              <div className="w-12 h-12 bg-subtle rounded-lg animate-pulse" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 bg-sand-200 rounded animate-pulse" />
-                <div className="h-3 bg-sand-200 rounded animate-pulse w-2/3" />
+                <div className="h-3 bg-subtle rounded animate-pulse" />
+                <div className="h-3 bg-subtle rounded animate-pulse w-2/3" />
               </div>
             </div>
           </CardContent>
@@ -495,8 +494,8 @@ function FeaturesSection() {
   return (
     <section className="space-y-8">
       <div className="text-center">
-        <h2 className="font-display text-3xl font-bold text-brown-900">Feature Highlights</h2>
-        <p className="text-twilight-600 mt-2">Designed for efficiency, built for delight</p>
+        <h2 className="font-display text-3xl font-bold text-text-primary">Feature Highlights</h2>
+        <p className="text-text-secondary mt-2">Designed for efficiency, built for delight</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -504,7 +503,7 @@ function FeaturesSection() {
           <Card
             key={feature.title}
             className={cn(
-              'bg-white border-sand-200',
+              'bg-white border-border-light',
               'hover:shadow-xl hover:-translate-y-1',
               'transition-all duration-300'
             )}
@@ -515,13 +514,13 @@ function FeaturesSection() {
                   'w-12 h-12 rounded-xl flex items-center justify-center mb-4',
                   feature.color === 'gold' && 'bg-gold-100 text-gold-600',
                   feature.color === 'sage' && 'bg-sage-100 text-sage-600',
-                  feature.color === 'twilight' && 'bg-twilight-100 text-twilight-600'
+                  feature.color === 'twilight' && 'bg-twilight-100 text-text-secondary'
                 )}
               >
                 <feature.icon className="w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-brown-900 mb-2">{feature.title}</h3>
-              <p className="text-sm text-twilight-600">{feature.description}</p>
+              <h3 className="font-semibold text-text-primary mb-2">{feature.title}</h3>
+              <p className="text-sm text-text-secondary">{feature.description}</p>
             </CardContent>
           </Card>
         ))}
@@ -545,8 +544,8 @@ function KPIPreviewSection() {
   return (
     <section className="space-y-8">
       <div>
-        <h2 className="font-display text-3xl font-bold text-brown-900">Live KPI Dashboard</h2>
-        <p className="text-twilight-600 mt-2">Real-time financial metrics at your fingertips</p>
+        <h2 className="font-display text-3xl font-bold text-text-primary">Live KPI Dashboard</h2>
+        <p className="text-text-secondary mt-2">Real-time financial metrics at your fingertips</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -554,18 +553,18 @@ function KPIPreviewSection() {
           <Card
             key={kpi.label}
             className={cn(
-              'bg-white border-sand-200',
+              'bg-white border-border-light',
               'hover:border-gold-300 hover:shadow-md',
               'transition-all duration-200'
             )}
           >
             <CardContent className="pt-6">
-              <p className="text-sm text-twilight-600 mb-1">{kpi.label}</p>
-              <p className="text-2xl font-mono font-bold text-brown-900">{kpi.value}</p>
+              <p className="text-sm text-text-secondary mb-1">{kpi.label}</p>
+              <p className="text-2xl font-mono font-bold text-text-primary">{kpi.value}</p>
               <div className="flex items-center gap-1 mt-2">
                 <TrendingUp className="w-4 h-4 text-sage-600" />
                 <span className="text-sm font-medium text-sage-600">{kpi.change}</span>
-                <span className="text-xs text-twilight-500">vs. prior year</span>
+                <span className="text-xs text-text-tertiary">vs. prior year</span>
               </div>
             </CardContent>
           </Card>
@@ -577,12 +576,12 @@ function KPIPreviewSection() {
         <div
           className={cn(
             'inline-flex items-center gap-3 px-4 py-2 rounded-full',
-            'bg-sand-100 border border-sand-200',
-            'text-sm text-twilight-600'
+            'bg-subtle border border-border-light',
+            'text-sm text-text-secondary'
           )}
         >
           <span>Try the command palette:</span>
-          <kbd className="px-2 py-0.5 bg-white rounded border border-sand-300 font-mono text-xs">
+          <kbd className="px-2 py-0.5 bg-white rounded border border-border-medium font-mono text-xs">
             ⌘K
           </kbd>
         </div>

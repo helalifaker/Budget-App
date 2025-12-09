@@ -50,8 +50,9 @@ def upgrade() -> None:
         "strategic",
         name="kpicategory",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    kpi_category.create(op.get_bind())
+    kpi_category.create(op.get_bind(), checkfirst=True)
 
     # Module 16: WidgetType enum
     widget_type = postgresql.ENUM(
@@ -65,8 +66,9 @@ def upgrade() -> None:
         "heatmap",
         name="widgettype",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    widget_type.create(op.get_bind())
+    widget_type.create(op.get_bind(), checkfirst=True)
 
     # Module 16: DashboardRole enum
     dashboard_role = postgresql.ENUM(
@@ -76,8 +78,9 @@ def upgrade() -> None:
         "operations",
         name="dashboardrole",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    dashboard_role.create(op.get_bind())
+    dashboard_role.create(op.get_bind(), checkfirst=True)
 
     # Module 17: VarianceStatus enum
     variance_status = postgresql.ENUM(
@@ -87,8 +90,9 @@ def upgrade() -> None:
         "not_applicable",
         name="variancestatus",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    variance_status.create(op.get_bind())
+    variance_status.create(op.get_bind(), checkfirst=True)
 
     # Module 17: ActualDataSource enum
     actual_data_source = postgresql.ENUM(
@@ -97,8 +101,9 @@ def upgrade() -> None:
         "system_calc",
         name="actualdatasource",
         schema="efir_budget",
+        create_type=False,  # Prevent auto-creation when used in Column
     )
-    actual_data_source.create(op.get_bind())
+    actual_data_source.create(op.get_bind(), checkfirst=True)
 
     # ========================================================================
     # Module 15: Statistical Analysis - kpi_definitions (Reference Data)
@@ -132,14 +137,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "category",
-            postgresql.ENUM(
-                "educational",
-                "financial",
-                "operational",
-                "strategic",
-                name="kpicategory",
-                schema="efir_budget",
-            ),
+            kpi_category,  # Use already-created enum variable
             nullable=False,
             comment="KPI category for grouping",
         ),
@@ -390,14 +388,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "dashboard_role",
-            postgresql.ENUM(
-                "executive",
-                "finance_manager",
-                "department",
-                "operations",
-                name="dashboardrole",
-                schema="efir_budget",
-            ),
+            dashboard_role,  # Use already-created enum variable
             nullable=True,
             comment="Role for system templates (NULL for user custom)",
         ),
@@ -528,18 +519,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "widget_type",
-            postgresql.ENUM(
-                "kpi_card",
-                "chart",
-                "table",
-                "variance_table",
-                "waterfall",
-                "gauge",
-                "timeline",
-                "heatmap",
-                name="widgettype",
-                schema="efir_budget",
-            ),
+            widget_type,  # Use already-created enum variable
             nullable=False,
             comment="Type of widget",
         ),
@@ -838,13 +818,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "source",
-            postgresql.ENUM(
-                "odoo_import",
-                "manual_entry",
-                "system_calc",
-                name="actualdatasource",
-                schema="efir_budget",
-            ),
+            actual_data_source,  # Use already-created enum variable
             nullable=False,
             server_default=sa.text("'odoo_import'"),
             comment="Source of actual data",
@@ -1020,14 +994,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "variance_status",
-            postgresql.ENUM(
-                "favorable",
-                "unfavorable",
-                "neutral",
-                "not_applicable",
-                name="variancestatus",
-                schema="efir_budget",
-            ),
+            variance_status,  # Use already-created enum variable
             nullable=False,
             comment="Favorability status",
         ),

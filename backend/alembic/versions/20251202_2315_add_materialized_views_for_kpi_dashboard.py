@@ -32,7 +32,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "bfc62faea07a"
-down_revision: str | None = "007_strategic_layer"
+down_revision: str | None = "008_performance_indexes"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -118,16 +118,16 @@ def upgrade() -> None:
             ), 0) as fees_revenue_sar,
             COALESCE(SUM(rp.amount_sar), 0) as total_revenue_sar,
 
-            COALESCE(SUM(pcp.amount_sar) FILTER (
+            COALESCE(SUM(pcp.total_cost_sar) FILTER (
                 WHERE pcp.account_code LIKE '641%'
             ), 0) as teaching_salaries_sar,
-            COALESCE(SUM(pcp.amount_sar) FILTER (
+            COALESCE(SUM(pcp.total_cost_sar) FILTER (
                 WHERE pcp.account_code LIKE '64%' AND pcp.account_code NOT LIKE '641%'
             ), 0) as other_personnel_sar,
-            COALESCE(SUM(pcp.amount_sar), 0) as total_personnel_costs_sar,
+            COALESCE(SUM(pcp.total_cost_sar), 0) as total_personnel_costs_sar,
 
             COALESCE(SUM(ocp.amount_sar), 0) as total_operating_costs_sar,
-            COALESCE(SUM(cp.amount_sar), 0) as total_capex_sar,
+            COALESCE(SUM(cp.total_cost_sar), 0) as total_capex_sar,
 
             -- ================================================================
             -- Calculated KPIs
@@ -162,16 +162,16 @@ def upgrade() -> None:
             -- Personnel Cost per Student
             CASE
                 WHEN SUM(ep.student_count) > 0
-                THEN ROUND(COALESCE(SUM(pcp.amount_sar), 0) / SUM(ep.student_count), 2)
+                THEN ROUND(COALESCE(SUM(pcp.total_cost_sar), 0) / SUM(ep.student_count), 2)
                 ELSE 0
             END as personnel_cost_per_student_sar,
 
             -- Budget Balance (Net Income)
             (
                 COALESCE(SUM(rp.amount_sar), 0) -
-                COALESCE(SUM(pcp.amount_sar), 0) -
+                COALESCE(SUM(pcp.total_cost_sar), 0) -
                 COALESCE(SUM(ocp.amount_sar), 0) -
-                COALESCE(SUM(cp.amount_sar), 0)
+                COALESCE(SUM(cp.total_cost_sar), 0)
             ) as net_budget_sar,
 
             -- Budget Margin Percentage
@@ -180,9 +180,9 @@ def upgrade() -> None:
                 THEN ROUND(
                     (
                         (COALESCE(SUM(rp.amount_sar), 0) -
-                         COALESCE(SUM(pcp.amount_sar), 0) -
+                         COALESCE(SUM(pcp.total_cost_sar), 0) -
                          COALESCE(SUM(ocp.amount_sar), 0) -
-                         COALESCE(SUM(cp.amount_sar), 0))
+                         COALESCE(SUM(cp.total_cost_sar), 0))
                         / SUM(rp.amount_sar) * 100
                     ),
                     2
@@ -268,7 +268,6 @@ def upgrade() -> None:
             bc.account_name,
             bc.consolidation_category,
             SUM(bc.amount_sar) as total_amount_sar,
-            SUM(bc.amount_eur) as total_amount_eur,
             COUNT(*) as line_item_count,
             MAX(bc.updated_at) as last_updated
 

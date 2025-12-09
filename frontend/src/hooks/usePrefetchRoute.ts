@@ -43,8 +43,8 @@ export function usePrefetchRoute() {
         return
       }
 
-      // Planning routes
-      if (to.includes('/planning/enrollment')) {
+      // Enrollment routes (new module structure)
+      if (to.includes('/enrollment/planning') || to.includes('/planning/enrollment')) {
         queryClient.prefetchQuery({
           queryKey: enrollmentKeys.byVersion(budgetVersionId),
           queryFn: () => enrollmentApi.getAll(budgetVersionId),
@@ -58,24 +58,24 @@ export function usePrefetchRoute() {
           queryKey: dhgKeys.teacherRequirements(budgetVersionId),
           queryFn: () => dhgApi.getTeacherRequirements(budgetVersionId),
         })
-      } else if (to.includes('/planning/classes')) {
+      } else if (to.includes('/enrollment/class-structure') || to.includes('/planning/classes')) {
         // Class structure would use class structure keys if available
         // For now, we'll skip prefetching
-      } else if (to.includes('/planning/revenue')) {
+      } else if (to.includes('/finance/revenue') || to.includes('/planning/revenue')) {
         // Revenue planning - would prefetch revenue data
-      } else if (to.includes('/planning/costs')) {
+      } else if (to.includes('/finance/costs') || to.includes('/planning/costs')) {
         // Cost planning - would prefetch cost data
-      } else if (to.includes('/planning/capex')) {
+      } else if (to.includes('/finance/capex') || to.includes('/planning/capex')) {
         // CapEx planning - would prefetch capex data
       }
 
-      // Consolidation routes
-      else if (to.includes('/consolidation/budget')) {
+      // Finance routes (new module structure)
+      else if (to.includes('/finance/consolidation') || to.includes('/consolidation/budget')) {
         queryClient.prefetchQuery({
           queryKey: consolidationKeys.summary(budgetVersionId),
           queryFn: () => consolidationService.getStatus(budgetVersionId),
         })
-      } else if (to.includes('/consolidation/statements')) {
+      } else if (to.includes('/finance/statements') || to.includes('/consolidation/statements')) {
         queryClient.prefetchQuery({
           queryKey: consolidationKeys.statements(budgetVersionId, 'PCG'),
           queryFn: () =>

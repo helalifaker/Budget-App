@@ -199,20 +199,28 @@ class AuditMixin:
 
     @declared_attr
     def created_by_id(cls) -> Mapped[uuid.UUID | None]:
-        """Foreign key to user who created the record."""
+        """Reference to user who created the record.
+
+        Note: No ForeignKey constraint at ORM level because auth.users is managed
+        by Supabase and doesn't have a corresponding SQLAlchemy model.
+        The database FK constraint is managed via migrations.
+        """
         return mapped_column(
             PortableUUID,
-            ForeignKey(get_fk_target("auth", "users", "id"), ondelete="SET NULL"),
             nullable=True,
             comment="User who created the record (NULL if system-generated or user deleted)",
         )
 
     @declared_attr
     def updated_by_id(cls) -> Mapped[uuid.UUID | None]:
-        """Foreign key to user who last updated the record."""
+        """Reference to user who last updated the record.
+
+        Note: No ForeignKey constraint at ORM level because auth.users is managed
+        by Supabase and doesn't have a corresponding SQLAlchemy model.
+        The database FK constraint is managed via migrations.
+        """
         return mapped_column(
             PortableUUID,
-            ForeignKey(get_fk_target("auth", "users", "id"), ondelete="SET NULL"),
             nullable=True,
             comment="User who last updated the record (NULL if system-updated or user deleted)",
         )

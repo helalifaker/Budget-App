@@ -71,20 +71,20 @@ export function CellHistoryDialog({ cellId, open, onOpenChange }: CellHistoryDia
         <ScrollArea className="h-[400px]">
           {isLoading ? (
             <div className="flex justify-center p-4">
-              <Loader2 className="h-6 w-6 animate-spin text-twilight-600" />
+              <Loader2 className="h-6 w-6 animate-spin text-text-secondary" />
             </div>
           ) : changes.length === 0 ? (
-            <p className="text-center text-twilight-600 p-4">Aucune modification enregistrée</p>
+            <p className="text-center text-text-secondary p-4">Aucune modification enregistrée</p>
           ) : (
             <div className="space-y-2 pr-4">
               {changes.map((change) => (
                 <div
                   key={change.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-sand-200 bg-white hover:bg-sand-50 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-lg border border-border-light bg-white hover:bg-subtle transition-colors"
                 >
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-twilight-800">{change.field_name}</p>
-                    <p className="text-xs text-twilight-600 mt-1">
+                    <p className="text-sm font-medium text-text-secondary">{change.field_name}</p>
+                    <p className="text-xs text-text-secondary mt-1">
                       {formatDate(change.changed_at)} • {change.changed_by}
                     </p>
                   </div>
@@ -95,7 +95,7 @@ export function CellHistoryDialog({ cellId, open, onOpenChange }: CellHistoryDia
                         <Badge variant="outline" className="font-mono">
                           {change.old_value?.toString() || 'N/A'}
                         </Badge>
-                        <ArrowRight className="h-4 w-4 text-twilight-400" />
+                        <ArrowRight className="h-4 w-4 text-text-muted" />
                         <Badge className="font-mono bg-gold-100 text-gold-800 border-gold-300">
                           {change.new_value?.toString() || 'N/A'}
                         </Badge>

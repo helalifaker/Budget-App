@@ -648,126 +648,6 @@ async def get_consolidation_summary(
 # ==============================================================================
 
 
-@router.get("/{version_id}/statements/{statement_type}")
-async def get_financial_statement(
-    version_id: uuid.UUID,
-    statement_type: str,
-    format: str = Query(
-        default="PCG",
-        description="Statement format: 'PCG' for French PCG, 'IFRS' for IFRS",
-    ),
-    period: str = Query(
-        default="ANNUAL",
-        description="Period: 'ANNUAL', 'P1', 'P2', 'SUMMER'",
-    ),
-    statements_service: FinancialStatementsService = Depends(
-        _resolve_financial_statements_service
-    ),
-    user: UserDep = ...,
-):
-    """
-    Get financial statement for a budget version.
-
-    Unified endpoint that handles INCOME, BALANCE, and CASHFLOW statements.
-
-    Args:
-        version_id: Budget version UUID
-        statement_type: Statement type ('INCOME', 'BALANCE', 'CASHFLOW')
-        format: Statement format ('PCG' or 'IFRS')
-        period: Period filter
-        statements_service: Financial statements service
-        user: Current authenticated user
-
-    Returns:
-        Financial statement based on type
-
-    Raises:
-        404: Budget version not found
-        400: Invalid statement type or format
-    """
-    try:
-        statement_type_upper = statement_type.upper()
-
-        if statement_type_upper == "INCOME":
-            statement = await statements_service.get_income_statement(version_id, format)
-            normalized = _normalize_income_statement(
-                statement, version_id, StatementType.INCOME_STATEMENT
-            )
-            data = normalized.model_dump()
-            # Preserve legacy format string expected by tests/client
-            data["statement_format"] = (
-                "pcg" if str(format).lower().startswith("pcg") else "ifrs"
-            )
-            return data
-
-        elif statement_type_upper == "BALANCE":
-            balance_sheet = await statements_service.get_balance_sheet(version_id)
-
-            # Check if balanced
-            assets_total = getattr(
-                balance_sheet["assets"], "total_amount_sar", Decimal("0")
-            )
-            liabilities_total = getattr(
-                balance_sheet["liabilities"], "total_amount_sar", Decimal("0")
-            )
-            is_balanced = assets_total == liabilities_total
-
-            # Get budget version for fiscal year
-            budget_version = await statements_service.budget_version_service.get_by_id(
-                version_id
-            )
-
-            if not budget_version:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Budget version {version_id} not found",
-                )
-
-            assets_stmt = _normalize_income_statement(
-                balance_sheet.get("assets"),
-                version_id,
-                StatementType.BALANCE_SHEET_ASSETS,
-            )
-            liabilities_stmt = _normalize_income_statement(
-                balance_sheet.get("liabilities"),
-                version_id,
-                StatementType.BALANCE_SHEET_LIABILITIES,
-            )
-
-            return BalanceSheetResponse(
-                budget_version_id=version_id,
-                fiscal_year=budget_version.fiscal_year,
-                assets=assets_stmt,
-                liabilities=liabilities_stmt,
-                is_balanced=is_balanced,
-            )
-
-        elif statement_type_upper == "CASHFLOW":
-            # CASHFLOW not implemented yet
-            raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
-                detail="Cash flow statement not yet implemented",
-            )
-
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid statement type: {statement_type}. Must be INCOME, BALANCE, or CASHFLOW",
-            )
-
-    except NotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
-    except ValidationError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get financial statement: {e!s}",
-        )
-
-
 @router.get("/{version_id}/statements/income", response_model=IncomeStatementResponse)
 async def get_income_statement(
     version_id: uuid.UUID,
@@ -989,4 +869,132 @@ async def get_period_total(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get period total: {e!s}",
+        )
+
+
+# ==============================================================================
+# Generic Financial Statement Endpoint (must be AFTER specific routes)
+# ==============================================================================
+
+
+@router.get("/{version_id}/statements/{statement_type}")
+async def get_financial_statement(
+    version_id: uuid.UUID,
+    statement_type: str,
+    format: str = Query(
+        default="PCG",
+        description="Statement format: 'PCG' for French PCG, 'IFRS' for IFRS",
+    ),
+    period: str = Query(
+        default="ANNUAL",
+        description="Period: 'ANNUAL', 'P1', 'P2', 'SUMMER'",
+    ),
+    statements_service: FinancialStatementsService = Depends(
+        _resolve_financial_statements_service
+    ),
+    user: UserDep = ...,
+):
+    """
+    Get financial statement for a budget version.
+
+    Unified endpoint that handles INCOME, BALANCE, and CASHFLOW statements.
+    Note: This generic endpoint MUST be defined AFTER specific routes like
+    /statements/income, /statements/balance, /statements/periods to ensure
+    FastAPI matches the specific routes first.
+
+    Args:
+        version_id: Budget version UUID
+        statement_type: Statement type ('INCOME', 'BALANCE', 'CASHFLOW')
+        format: Statement format ('PCG' or 'IFRS')
+        period: Period filter
+        statements_service: Financial statements service
+        user: Current authenticated user
+
+    Returns:
+        Financial statement based on type
+
+    Raises:
+        404: Budget version not found
+        400: Invalid statement type or format
+    """
+    try:
+        statement_type_upper = statement_type.upper()
+
+        if statement_type_upper == "INCOME":
+            statement = await statements_service.get_income_statement(version_id, format)
+            normalized = _normalize_income_statement(
+                statement, version_id, StatementType.INCOME_STATEMENT
+            )
+            data = normalized.model_dump()
+            # Preserve legacy format string expected by tests/client
+            data["statement_format"] = (
+                "pcg" if str(format).lower().startswith("pcg") else "ifrs"
+            )
+            return data
+
+        elif statement_type_upper == "BALANCE":
+            balance_sheet = await statements_service.get_balance_sheet(version_id)
+
+            # Check if balanced
+            assets_total = getattr(
+                balance_sheet["assets"], "total_amount_sar", Decimal("0")
+            )
+            liabilities_total = getattr(
+                balance_sheet["liabilities"], "total_amount_sar", Decimal("0")
+            )
+            is_balanced = assets_total == liabilities_total
+
+            # Get budget version for fiscal year
+            budget_version = await statements_service.budget_version_service.get_by_id(
+                version_id
+            )
+
+            if not budget_version:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Budget version {version_id} not found",
+                )
+
+            assets_stmt = _normalize_income_statement(
+                balance_sheet.get("assets"),
+                version_id,
+                StatementType.BALANCE_SHEET_ASSETS,
+            )
+            liabilities_stmt = _normalize_income_statement(
+                balance_sheet.get("liabilities"),
+                version_id,
+                StatementType.BALANCE_SHEET_LIABILITIES,
+            )
+
+            return BalanceSheetResponse(
+                budget_version_id=version_id,
+                fiscal_year=budget_version.fiscal_year,
+                assets=assets_stmt,
+                liabilities=liabilities_stmt,
+                is_balanced=is_balanced,
+            )
+
+        elif statement_type_upper == "CASHFLOW":
+            # CASHFLOW not implemented yet
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Cash flow statement not yet implemented",
+            )
+
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid statement type: {statement_type}. Must be INCOME, BALANCE, or CASHFLOW",
+            )
+
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get financial statement: {e!s}",
         )

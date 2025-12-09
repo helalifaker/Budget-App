@@ -19,15 +19,19 @@ pnpm install              # Install dependencies
 pnpm dev                  # Start dev server (http://localhost:5173)
 pnpm build                # Production build
 pnpm build:analyze        # Bundle size analysis
+pnpm build:stats          # Build + show JS bundle sizes
 pnpm test                 # Run Vitest (watch mode)
 pnpm test -- --run        # Run tests once (CI mode)
 pnpm test:ui              # Vitest UI (interactive test runner)
+pnpm test:all             # Run Vitest + Playwright together
 pnpm test:e2e             # Playwright E2E tests
 pnpm test:e2e:ui          # Playwright UI (visual debugging)
 pnpm test:e2e:debug       # Playwright debugger
+pnpm test:e2e:report      # Show Playwright HTML report
 pnpm lint:fix             # ESLint with auto-fix
 pnpm format               # Prettier formatting
 pnpm typecheck            # TypeScript check (tsc --noEmit)
+pnpm generate:types       # Generate TS types from OpenAPI (backend must be running)
 ```
 
 ### Backend (from `backend/`)
@@ -110,9 +114,15 @@ Configuration Layer (1-6)     Planning Layer (7-12)        Consolidation (13-14)
 ├─ Fee Structure              ├─ Cost Planning             ├─ KPIs
 └─ Timetable Constraints      └─ CapEx Planning            ├─ Dashboards
                                                            └─ Budget vs Actual
-
 Strategic Layer (18)
 └─ 5-Year Planning
+
+Workforce Module (integrated across Planning):
+├─ Employee Management (salaries, contracts)
+├─ DHG Requirements & Gap Analysis (TRMD)
+├─ AEFE Positions Management
+├─ GOSI/EOS Cost Calculations
+└─ HSA (Overtime) Configuration
 ```
 
 ### Critical Data Flow
@@ -129,7 +139,14 @@ Revenue ←───────────────────────
 ```
 backend/app/
 ├── api/v1/          # FastAPI routes (configuration, planning, consolidation, analysis, etc.)
-├── engine/          # Pure calculation engines (dhg/, enrollment/, kpi/, revenue/, financial_statements/)
+├── engine/          # Pure calculation engines:
+│   ├── dhg/             # DHG hours & FTE calculations
+│   ├── enrollment/      # Enrollment projections
+│   ├── eos/             # End of Service calculations
+│   ├── financial_statements/  # PCG/IFRS statements
+│   ├── gosi/            # GOSI (social insurance) calculations
+│   ├── kpi/             # Key performance indicators
+│   └── revenue/         # Revenue projections
 ├── models/          # SQLAlchemy ORM (configuration, planning, consolidation, analysis, strategic)
 ├── schemas/         # Pydantic request/response models
 ├── services/        # Business logic layer
@@ -139,15 +156,24 @@ backend/app/
 ### Frontend Structure
 ```
 frontend/src/
-├── routes/          # TanStack Router pages (mirrors module structure)
-│   ├── configuration/   # class-sizes, fees, subject-hours, teacher-costs, etc.
-│   ├── planning/        # enrollment, classes, dhg, revenue, costs, capex
-│   ├── consolidation/   # budget, statements
-│   ├── analysis/        # kpis, dashboards, variance
-│   └── strategic/       # 5-year planning
-├── components/      # Reusable components (ui/, charts/, layout/)
-├── contexts/        # React contexts (AuthContext)
-└── schemas/         # Zod validation schemas
+├── routes/                  # TanStack Router pages
+│   ├── _authenticated/      # Auth-protected routes wrapper
+│   │   ├── admin/               # Historical data import
+│   │   ├── analysis/            # kpis, dashboards, variance
+│   │   ├── configuration/       # class-sizes, fees, subject-hours, etc.
+│   │   ├── consolidation/       # budget, checklist, statements
+│   │   ├── enrollment/          # class-structure, planning
+│   │   ├── finance/             # capex, costs, revenue, statements
+│   │   ├── planning/            # dhg, guide, classes, costs, revenue
+│   │   ├── strategic/           # 5-year planning
+│   │   └── workforce/           # employees, salaries, dhg/, settings/
+│   ├── _authenticated.command-center.tsx  # Ctrl+K command palette
+│   └── _authenticated.tsx   # Auth layout wrapper
+├── components/              # Reusable components (ui/, charts/, layout/, grid/)
+├── contexts/                # React contexts (AuthContext, BudgetVersionProvider)
+├── hooks/                   # Custom hooks (api/, useExcelKeyboard, useImpactCalculation)
+├── services/                # API client functions
+└── types/                   # TypeScript types and API contracts
 ```
 
 ---
@@ -208,12 +234,17 @@ Teacher FTE Required = Total Subject Hours ÷ Standard Hours (18h/week secondary
 
 ### Key Acronyms
 
+**French Education System:**
 - **DHG**: Dotation Horaire Globale (Global Hours Allocation)
 - **TRMD**: Tableau de Répartition des Moyens par Discipline (Gap Analysis)
 - **HSA**: Heures Supplémentaires Annuelles (Annual Overtime)
 - **PRRD**: Participation à la Rémunération des Résidents Détachés
 - **H/E**: Heures/Élève (Hours per Student ratio)
 - **E/D**: Élèves/Division (Students per Class)
+
+**Saudi-Specific:**
+- **GOSI**: General Organization for Social Insurance (employer 12% + employee 10%)
+- **EOS**: End of Service (gratuity calculation per Saudi Labor Law)
 
 ### Financial Rules
 
@@ -251,12 +282,14 @@ All must pass before commit:
 
 ## Database Migrations
 
-Linear migration chain in `backend/alembic/versions/`:
+Linear migration chain in `backend/alembic/versions/` (15 migrations):
 ```
-001_initial_config → 002_planning_layer → 003_consolidation_layer →
+001_initial_configuration → 002_planning_layer → 003_consolidation_layer →
 004_fix_critical_issues → 005_analysis_layer → 006_class_structure_validation →
 007_strategic_layer → 008_performance_indexes → 009_materialized_views_kpi →
-010_planning_cells_writeback
+010_planning_cells_writeback → 011_audit_columns_nationality →
+012_seed_subjects → 013_historical_comparison → 014_workforce_personnel →
+015_seed_reference_data_distributions
 ```
 
 ---

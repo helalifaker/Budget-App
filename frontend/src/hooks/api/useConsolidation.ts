@@ -7,6 +7,7 @@ export const consolidationKeys = {
   all: ['consolidation'] as const,
   status: (versionId: string) => [...consolidationKeys.all, 'status', versionId] as const,
   summary: (versionId: string) => [...consolidationKeys.all, 'summary', versionId] as const,
+  validation: (versionId: string) => [...consolidationKeys.all, 'validation', versionId] as const,
   lineItems: (versionId: string) => [...consolidationKeys.all, 'line-items', versionId] as const,
   statements: (versionId: string, format: string) =>
     [...consolidationKeys.all, 'statements', versionId, format] as const,
@@ -87,6 +88,33 @@ export function useFinancialStatement(
   return useQuery({
     queryKey: consolidationKeys.statement(versionId ?? '', type, format, period),
     queryFn: () => consolidationService.getStatement(versionId!, type, format, period),
+    enabled: !!versionId,
+  })
+}
+
+/**
+ * Hook to fetch validation results for a budget version
+ *
+ * Returns completeness status, missing modules, and warnings.
+ */
+export function useConsolidationValidation(versionId: string | undefined) {
+  return useQuery({
+    queryKey: consolidationKeys.validation(versionId ?? ''),
+    queryFn: () => consolidationService.getValidation(versionId!),
+    enabled: !!versionId,
+    staleTime: 10000, // Consider data stale after 10 seconds
+  })
+}
+
+/**
+ * Hook to fetch consolidation summary for a budget version
+ *
+ * Returns totals and key metrics without detailed line items.
+ */
+export function useConsolidationSummary(versionId: string | undefined) {
+  return useQuery({
+    queryKey: consolidationKeys.summary(versionId ?? ''),
+    queryFn: () => consolidationService.getSummary(versionId!),
     enabled: !!versionId,
   })
 }

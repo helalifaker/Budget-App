@@ -13,8 +13,8 @@ All planning data is versioned and drives financial projections.
 """
 
 from __future__ import annotations
-import os
 
+import os
 import uuid
 from datetime import date
 from decimal import Decimal
@@ -34,7 +34,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
-from app.models.base import get_table_args, BaseModel, VersionedMixin
+from app.models.base import BaseModel, VersionedMixin, get_fk_target
 
 if TYPE_CHECKING:
     from app.models.configuration import (
@@ -77,7 +77,7 @@ class EnrollmentPlan(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_levels.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_levels", "id")),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -85,7 +85,7 @@ class EnrollmentPlan(BaseModel, VersionedMixin):
 
     nationality_type_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("nationality_types.id"),
+        ForeignKey(get_fk_target("efir_budget", "nationality_types", "id")),
         nullable=False,
         index=True,
         comment="Nationality type (French, Saudi, Other)",
@@ -155,7 +155,7 @@ class NationalityDistribution(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_levels.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_levels", "id")),
         nullable=False,
         index=True,
         comment="Academic level (per-level distribution)",
@@ -232,7 +232,7 @@ class ClassStructure(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_levels.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_levels", "id")),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -355,7 +355,7 @@ class DHGSubjectHours(BaseModel, VersionedMixin):
 
     subject_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("subjects.id"),
+        ForeignKey(get_fk_target("efir_budget", "subjects", "id")),
         nullable=False,
         index=True,
         comment="Subject being taught",
@@ -363,7 +363,7 @@ class DHGSubjectHours(BaseModel, VersionedMixin):
 
     level_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_levels.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_levels", "id")),
         nullable=False,
         index=True,
         comment="Academic level",
@@ -444,7 +444,7 @@ class DHGTeacherRequirement(BaseModel, VersionedMixin):
 
     subject_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("subjects.id"),
+        ForeignKey(get_fk_target("efir_budget", "subjects", "id")),
         nullable=False,
         index=True,
         comment="Subject",
@@ -520,7 +520,7 @@ class TeacherAllocation(BaseModel, VersionedMixin):
 
     subject_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("subjects.id"),
+        ForeignKey(get_fk_target("efir_budget", "subjects", "id")),
         nullable=False,
         index=True,
         comment="Subject",
@@ -528,7 +528,7 @@ class TeacherAllocation(BaseModel, VersionedMixin):
 
     cycle_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_cycles.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_cycles", "id")),
         nullable=False,
         index=True,
         comment="Academic cycle (primary grouping for allocations)",
@@ -536,7 +536,7 @@ class TeacherAllocation(BaseModel, VersionedMixin):
 
     category_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("teacher_categories.id"),
+        ForeignKey(get_fk_target("efir_budget", "teacher_categories", "id")),
         nullable=False,
         index=True,
         comment="Teacher category (AEFE Detached, AEFE Funded, Local)",
@@ -719,7 +719,7 @@ class PersonnelCostPlan(BaseModel, VersionedMixin):
 
     category_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("teacher_categories.id"),
+        ForeignKey(get_fk_target("efir_budget", "teacher_categories", "id")),
         nullable=True,
         index=True,
         comment="Teacher category (NULL for non-teaching staff)",
@@ -727,7 +727,7 @@ class PersonnelCostPlan(BaseModel, VersionedMixin):
 
     cycle_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("academic_cycles.id"),
+        ForeignKey(get_fk_target("efir_budget", "academic_cycles", "id")),
         nullable=True,
         index=True,
         comment="Academic cycle (NULL for admin/support)",

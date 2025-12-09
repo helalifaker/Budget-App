@@ -10,10 +10,12 @@ Handles CRUD operations for:
 - Fee structure
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.logging import logger
+from app.data.curriculum_templates import CURRICULUM_TEMPLATES, get_template
 from app.models.configuration import (
     AcademicCycle,
     AcademicLevel,
@@ -41,9 +44,17 @@ from app.services.base import BaseService
 from app.services.exceptions import (
     BusinessRuleError,
     ConflictError,
+    NotFoundError,
     ServiceException,
     ValidationError,
 )
+
+if TYPE_CHECKING:
+    from app.schemas.configuration import (
+        SubjectHoursBatchResponse,
+        SubjectHoursEntry,
+        SubjectHoursMatrixResponse,
+    )
 
 
 class ConfigurationService:
@@ -732,7 +743,8 @@ class ConfigurationService:
         Returns:
             List of Subject instances
         """
-        query = select(Subject).where(Subject.is_active is True)
+        # Use == True for SQLAlchemy comparison (not Python's 'is' operator)
+        query = select(Subject).where(Subject.is_active == True).order_by(Subject.name_en)  # noqa: E712
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
@@ -1143,3 +1155,380 @@ class ConfigurationService:
             )
         else:
             return await self.timetable_constraint_service.create(data, user_id=user_id)
+
+    # ========================================================================
+    # Subject Hours Matrix - Batch Operations & Templates
+    # ========================================================================
+
+    async def batch_upsert_subject_hours(
+        self,
+        version_id: uuid.UUID,
+        entries: list[SubjectHoursEntry],
+        user_id: uuid.UUID | None = None,
+    ) -> SubjectHoursBatchResponse:
+        """
+        Batch create, update, or delete subject hours entries.
+
+        Entries with hours_per_week=None will be deleted (soft delete).
+
+        Args:
+            version_id: Budget version UUID
+            entries: List of subject hours entries
+            user_id: User ID for audit trail
+
+        Returns:
+            SubjectHoursBatchResponse with counts and errors
+        """
+        from app.schemas.configuration import SubjectHoursBatchResponse
+
+        created_count = 0
+        updated_count = 0
+        deleted_count = 0
+        errors: list[str] = []
+
+        for entry in entries:
+            try:
+                # Find existing entry
+                query = select(SubjectHoursMatrix).where(
+                    and_(
+                        SubjectHoursMatrix.budget_version_id == version_id,
+                        SubjectHoursMatrix.subject_id == entry.subject_id,
+                        SubjectHoursMatrix.level_id == entry.level_id,
+                        SubjectHoursMatrix.deleted_at.is_(None),
+                    )
+                )
+                result = await self.session.execute(query)
+                existing = result.scalar_one_or_none()
+
+                # Handle deletion
+                if entry.hours_per_week is None:
+                    if existing:
+                        await self.subject_hours_service.soft_delete(existing.id, user_id)
+                        deleted_count += 1
+                    continue
+
+                # Validate hours range
+                if entry.hours_per_week < 0 or entry.hours_per_week > 12:
+                    errors.append(
+                        f"Invalid hours for subject {entry.subject_id}, level {entry.level_id}: "
+                        f"must be 0-12, got {entry.hours_per_week}"
+                    )
+                    continue
+
+                data = {
+                    "budget_version_id": version_id,
+                    "subject_id": entry.subject_id,
+                    "level_id": entry.level_id,
+                    "hours_per_week": entry.hours_per_week,
+                    "is_split": entry.is_split,
+                    "notes": entry.notes,
+                }
+
+                if existing:
+                    await self.subject_hours_service.update(existing.id, data, user_id=user_id)
+                    updated_count += 1
+                else:
+                    await self.subject_hours_service.create(data, user_id=user_id)
+                    created_count += 1
+
+            except Exception as e:
+                errors.append(
+                    f"Error processing subject {entry.subject_id}, level {entry.level_id}: {e!s}"
+                )
+
+        return SubjectHoursBatchResponse(
+            created_count=created_count,
+            updated_count=updated_count,
+            deleted_count=deleted_count,
+            errors=errors,
+        )
+
+    async def get_subject_hours_matrix_by_cycle(
+        self,
+        version_id: uuid.UUID,
+        cycle_code: str | None = None,
+    ) -> list[SubjectHoursMatrixResponse]:
+        """
+        Get subject hours organized as a matrix by cycle.
+
+        Returns all subjects with their hours for each level in the cycle,
+        including subjects with no hours configured (empty cells).
+
+        Args:
+            version_id: Budget version UUID
+            cycle_code: Optional cycle code filter (e.g., 'COLL', 'LYC')
+
+        Returns:
+            List of SubjectHoursMatrixResponse (one per cycle)
+        """
+        from app.schemas.configuration import (
+            LevelInfo,
+            SubjectHoursMatrixResponse,
+            SubjectLevelHours,
+            SubjectWithHours,
+        )
+
+        # Get cycles
+        cycles_query = select(AcademicCycle).order_by(AcademicCycle.sort_order)
+        if cycle_code:
+            cycles_query = cycles_query.where(AcademicCycle.code == cycle_code)
+        cycles_result = await self.session.execute(cycles_query)
+        cycles = list(cycles_result.scalars().all())
+
+        # Get all subjects
+        subjects = await self.get_subjects()
+
+        # Get all subject hours for this version
+        hours_query = select(SubjectHoursMatrix).where(
+            and_(
+                SubjectHoursMatrix.budget_version_id == version_id,
+                SubjectHoursMatrix.deleted_at.is_(None),
+            )
+        )
+        hours_result = await self.session.execute(hours_query)
+        all_hours = list(hours_result.scalars().all())
+
+        # Create hours lookup: (subject_id, level_id) -> SubjectHoursMatrix
+        hours_lookup: dict[tuple[uuid.UUID, uuid.UUID], SubjectHoursMatrix] = {
+            (h.subject_id, h.level_id): h for h in all_hours
+        }
+
+        result: list[SubjectHoursMatrixResponse] = []
+
+        for cycle in cycles:
+            # Get levels for this cycle
+            levels_query = (
+                select(AcademicLevel)
+                .where(AcademicLevel.cycle_id == cycle.id)
+                .order_by(AcademicLevel.sort_order)
+            )
+            levels_result = await self.session.execute(levels_query)
+            levels = list(levels_result.scalars().all())
+
+            level_infos = [
+                LevelInfo(
+                    id=level.id,
+                    code=level.code,
+                    name_en=level.name_en,
+                    name_fr=level.name_fr,
+                    sort_order=level.sort_order,
+                )
+                for level in levels
+            ]
+
+            # Build subject data with hours
+            subjects_with_hours: list[SubjectWithHours] = []
+            for subject in subjects:
+                # Determine if subject is applicable to this cycle
+                # For now, all subjects are applicable to COLL and LYC
+                is_applicable = cycle.code in ("COLL", "LYC")
+
+                hours_dict: dict[str, SubjectLevelHours] = {}
+                for level in levels:
+                    key = (subject.id, level.id)
+                    if key in hours_lookup:
+                        h = hours_lookup[key]
+                        hours_dict[str(level.id)] = SubjectLevelHours(
+                            hours_per_week=h.hours_per_week,
+                            is_split=h.is_split,
+                            notes=h.notes,
+                        )
+                    else:
+                        hours_dict[str(level.id)] = SubjectLevelHours(
+                            hours_per_week=None,
+                            is_split=False,
+                            notes=None,
+                        )
+
+                subjects_with_hours.append(
+                    SubjectWithHours(
+                        id=subject.id,
+                        code=subject.code,
+                        name_en=subject.name_en,
+                        name_fr=subject.name_fr,
+                        category=subject.category,
+                        is_applicable=is_applicable,
+                        hours=hours_dict,
+                    )
+                )
+
+            result.append(
+                SubjectHoursMatrixResponse(
+                    cycle_id=cycle.id,
+                    cycle_code=cycle.code,
+                    cycle_name=cycle.name_en,
+                    levels=level_infos,
+                    subjects=subjects_with_hours,
+                )
+            )
+
+        return result
+
+    async def apply_curriculum_template(
+        self,
+        version_id: uuid.UUID,
+        template_code: str,
+        cycle_codes: list[str],
+        overwrite_existing: bool = False,
+        user_id: uuid.UUID | None = None,
+    ) -> dict[str, Any]:
+        """
+        Apply a curriculum template to populate subject hours.
+
+        Args:
+            version_id: Budget version UUID
+            template_code: Template code (e.g., 'AEFE_STANDARD_COLL')
+            cycle_codes: Cycles to apply to
+            overwrite_existing: Whether to overwrite existing values
+            user_id: User ID for audit trail
+
+        Returns:
+            Dict with applied_count, skipped_count, template_name
+
+        Raises:
+            NotFoundError: If template not found
+        """
+        template = get_template(template_code)
+        if not template:
+            raise NotFoundError(f"Template '{template_code}' not found")
+
+        # Get subject code -> id mapping
+        subjects = await self.get_subjects()
+        subject_lookup = {s.code: s.id for s in subjects}
+
+        # Get level code -> id mapping for requested cycles
+        levels_query = (
+            select(AcademicLevel)
+            .join(AcademicCycle)
+            .where(AcademicCycle.code.in_(cycle_codes))
+        )
+        levels_result = await self.session.execute(levels_query)
+        levels = list(levels_result.scalars().all())
+        level_lookup = {level.code: level.id for level in levels}
+
+        applied_count = 0
+        skipped_count = 0
+
+        for subject_code, level_hours in template["hours"].items():
+            subject_id = subject_lookup.get(subject_code)
+            if not subject_id:
+                continue  # Subject not in database
+
+            is_split = template["split_defaults"].get(subject_code, False)
+
+            for level_code, hours in level_hours.items():
+                level_id = level_lookup.get(level_code)
+                if not level_id:
+                    continue  # Level not in requested cycles
+
+                # Skip if hours is 0
+                if hours == Decimal("0.0"):
+                    continue
+
+                # Check for existing entry
+                query = select(SubjectHoursMatrix).where(
+                    and_(
+                        SubjectHoursMatrix.budget_version_id == version_id,
+                        SubjectHoursMatrix.subject_id == subject_id,
+                        SubjectHoursMatrix.level_id == level_id,
+                        SubjectHoursMatrix.deleted_at.is_(None),
+                    )
+                )
+                result = await self.session.execute(query)
+                existing = result.scalar_one_or_none()
+
+                if existing and not overwrite_existing:
+                    skipped_count += 1
+                    continue
+
+                data = {
+                    "budget_version_id": version_id,
+                    "subject_id": subject_id,
+                    "level_id": level_id,
+                    "hours_per_week": hours,
+                    "is_split": is_split,
+                    "notes": f"From template: {template['template_name']}",
+                }
+
+                if existing:
+                    await self.subject_hours_service.update(existing.id, data, user_id=user_id)
+                else:
+                    await self.subject_hours_service.create(data, user_id=user_id)
+
+                applied_count += 1
+
+        return {
+            "applied_count": applied_count,
+            "skipped_count": skipped_count,
+            "template_name": template["template_name"],
+        }
+
+    async def create_subject(
+        self,
+        code: str,
+        name_fr: str,
+        name_en: str,
+        category: str,
+        user_id: uuid.UUID | None = None,
+    ) -> Subject:
+        """
+        Create a new custom subject.
+
+        Args:
+            code: Subject code (2-6 uppercase alphanumeric)
+            name_fr: French name
+            name_en: English name
+            category: Subject category (core, elective, specialty, local)
+            user_id: User ID for audit trail
+
+        Returns:
+            Created Subject instance
+
+        Raises:
+            ConflictError: If subject code already exists
+        """
+        # Check for existing subject with same code
+        query = select(Subject).where(Subject.code == code.upper())
+        result = await self.session.execute(query)
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            raise ConflictError(f"Subject with code '{code}' already exists")
+
+        # Create the subject
+        subject = Subject(
+            code=code.upper(),
+            name_fr=name_fr,
+            name_en=name_en,
+            category=category,
+            is_active=True,
+        )
+        self.session.add(subject)
+        await self.session.flush()
+        await self.session.refresh(subject)
+
+        logger.info(
+            "Created custom subject",
+            subject_code=code,
+            category=category,
+            user_id=str(user_id) if user_id else None,
+        )
+
+        return subject
+
+    def get_available_templates(self) -> list[dict[str, Any]]:
+        """
+        Get list of available curriculum templates.
+
+        Returns:
+            List of template info dicts
+        """
+        return [
+            {
+                "code": t["template_code"],
+                "name": t["template_name"],
+                "description": t["description"],
+                "cycle_codes": t["cycle_codes"],
+            }
+            for t in CURRICULUM_TEMPLATES.values()
+        ]

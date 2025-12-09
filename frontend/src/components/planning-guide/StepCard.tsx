@@ -40,7 +40,7 @@ export function StepCard({ step, stepNumber }: StepCardProps) {
       case 'error':
         return <AlertCircle className={`${iconClass} text-error-600`} />
       case 'blocked':
-        return <Lock className={`${iconClass} text-twilight-600`} />
+        return <Lock className={`${iconClass} text-text-secondary`} />
       default:
         return <Circle className={`${iconClass} text-sand-400`} />
     }
@@ -88,9 +88,9 @@ export function StepCard({ step, stepNumber }: StepCardProps) {
       case 'error':
         return 'bg-error-500'
       case 'blocked':
-        return 'bg-twilight-400'
+        return 'bg-text-muted'
       default:
-        return 'bg-sand-400'
+        return 'bg-text-muted'
     }
   }
 
@@ -138,8 +138,10 @@ export function StepCard({ step, stepNumber }: StepCardProps) {
 
             {/* Title & Description */}
             <div className="flex-1">
-              <h3 className="text-xl font-semibold text-brown-800 font-serif">{metadata?.title}</h3>
-              <p className="text-sm text-twilight-600 mt-1">{metadata?.description}</p>
+              <h3 className="text-xl font-semibold text-text-primary font-serif">
+                {metadata?.title}
+              </h3>
+              <p className="text-sm text-text-secondary mt-1">{metadata?.description}</p>
             </div>
           </div>
 
@@ -150,7 +152,7 @@ export function StepCard({ step, stepNumber }: StepCardProps) {
               {getStatusLabel()}
             </Badge>
             {step.status !== 'not_started' && (
-              <span className="text-sm font-medium text-twilight-700">
+              <span className="text-sm font-medium text-text-secondary">
                 {Math.round(step.progress_percentage)}%
               </span>
             )}
@@ -160,7 +162,7 @@ export function StepCard({ step, stepNumber }: StepCardProps) {
         {/* Progress Bar */}
         {step.status !== 'not_started' && (
           <div className="mt-4">
-            <div className="w-full bg-sand-200 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-subtle rounded-full h-2 overflow-hidden">
               <div
                 className={cn(
                   'h-2 rounded-full transition-all duration-500 ease-out',
@@ -178,9 +180,9 @@ export function StepCard({ step, stepNumber }: StepCardProps) {
         {metrics && metrics.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {metrics.map((metric) => (
-              <div key={metric.key} className="bg-white rounded-lg border border-sand-200 p-3">
-                <div className="text-xs text-twilight-600">{metric.key}</div>
-                <div className="text-lg font-semibold text-brown-800 mt-1">{metric.value}</div>
+              <div key={metric.key} className="bg-white rounded-lg border border-border-light p-3">
+                <div className="text-xs text-text-secondary">{metric.key}</div>
+                <div className="text-lg font-semibold text-text-primary mt-1">{metric.value}</div>
               </div>
             ))}
           </div>
@@ -192,14 +194,14 @@ export function StepCard({ step, stepNumber }: StepCardProps) {
         {/* Blockers */}
         {step.blockers.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-brown-800 flex items-center gap-2">
-              <Lock className="h-4 w-4 text-twilight-600" />
+            <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+              <Lock className="h-4 w-4 text-text-secondary" />
               Blockers
             </h4>
             {step.blockers.map((blocker, index) => (
               <div key={index} className="bg-twilight-50 border border-twilight-300 rounded-lg p-4">
-                <p className="text-sm text-twilight-800 font-medium mb-2">{blocker.message}</p>
-                <p className="text-sm text-twilight-600">
+                <p className="text-sm text-text-secondary font-medium mb-2">{blocker.message}</p>
+                <p className="text-sm text-text-secondary">
                   <strong>Resolution:</strong> {blocker.resolution}
                 </p>
               </div>
@@ -208,24 +210,24 @@ export function StepCard({ step, stepNumber }: StepCardProps) {
         )}
 
         {/* Help Section (Expandable) */}
-        <div className="border border-sand-300 rounded-lg">
+        <div className="border border-border-medium rounded-lg">
           <button
             onClick={() => setHelpExpanded(!helpExpanded)}
-            className="w-full flex items-center justify-between p-4 hover:bg-sand-50 transition-colors rounded-lg"
+            className="w-full flex items-center justify-between p-4 hover:bg-subtle transition-colors rounded-lg"
           >
-            <div className="flex items-center gap-2 text-brown-800 font-medium">
+            <div className="flex items-center gap-2 text-text-primary font-medium">
               <BookOpen className="h-5 w-5 text-gold-600" />
               <span>How to complete this step</span>
             </div>
             {helpExpanded ? (
-              <ChevronUp className="h-5 w-5 text-twilight-600" />
+              <ChevronUp className="h-5 w-5 text-text-secondary" />
             ) : (
-              <ChevronDown className="h-5 w-5 text-twilight-600" />
+              <ChevronDown className="h-5 w-5 text-text-secondary" />
             )}
           </button>
 
           {helpExpanded && (
-            <div className="border-t border-sand-300 p-4 animate-slideIn">
+            <div className="border-t border-border-medium p-4 animate-slideIn">
               <HelpContent stepId={step.step_id} />
             </div>
           )}

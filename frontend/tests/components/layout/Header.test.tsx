@@ -6,7 +6,7 @@ import { Header } from '@/components/layout/Header'
 // Mock dependencies
 const mockSignOut = vi.fn()
 const mockNavigate = vi.fn()
-let mockUser: any = null
+let mockUser: { email?: string; role?: string } | null = null
 
 vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
@@ -32,10 +32,46 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, onClick, variant, size, ...props }: any) => (
+  Button: ({
+    children,
+    onClick,
+    variant,
+    size,
+    ...props
+  }: {
+    children: React.ReactNode
+    onClick?: () => void
+    variant?: string
+    size?: string
+    [key: string]: unknown
+  }) => (
     <button onClick={onClick} data-variant={variant} data-size={size} {...props}>
       {children}
     </button>
+  ),
+}))
+
+// Mock GlobalVersionSelector
+vi.mock('@/components/GlobalVersionSelector', () => ({
+  GlobalVersionSelector: () => <div data-testid="global-version-selector">Version Selector</div>,
+}))
+
+// Mock AccessibilityToggle
+vi.mock('@/components/accessibility', () => ({
+  AccessibilityToggle: () => <div data-testid="accessibility-toggle">Accessibility</div>,
+}))
+
+// Mock lucide-react icons - must spread props to pass data-testid from component
+vi.mock('lucide-react', () => ({
+  LogOut: ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
+    <svg data-testid="logout-icon" className={className} {...props}>
+      LogOut
+    </svg>
+  ),
+  User: ({ className, ...props }: { className?: string; [key: string]: unknown }) => (
+    <svg className={className} {...props}>
+      User
+    </svg>
   ),
 }))
 
@@ -56,16 +92,32 @@ describe('Header', () => {
     it('renders application title', () => {
       render(<Header />)
 
-      expect(screen.getByText('Budget Planning Application')).toBeInTheDocument()
+      expect(screen.getByText('EFIR Budget')).toBeInTheDocument()
     })
 
     it('title has correct styling', () => {
       render(<Header />)
 
-      const title = screen.getByText('Budget Planning Application')
-      expect(title.className).toMatch(/text-lg/)
+      const title = screen.getByText('EFIR Budget')
+      expect(title.className).toMatch(/text-base/)
       expect(title.className).toMatch(/font-semibold/)
-      expect(title.className).toMatch(/text-gray-900/)
+      expect(title.className).toMatch(/text-brown-900/)
+    })
+  })
+
+  describe('Global Version Selector', () => {
+    it('renders GlobalVersionSelector in the center', () => {
+      render(<Header />)
+
+      expect(screen.getByTestId('global-version-selector')).toBeInTheDocument()
+    })
+  })
+
+  describe('Accessibility Toggle', () => {
+    it('renders AccessibilityToggle', () => {
+      render(<Header />)
+
+      expect(screen.getByTestId('accessibility-toggle')).toBeInTheDocument()
     })
   })
 
@@ -81,20 +133,26 @@ describe('Header', () => {
     it('displays User icon', () => {
       render(<Header />)
 
-      const icons = document.querySelectorAll('svg.lucide-user')
-      expect(icons.length).toBeGreaterThan(0)
+      expect(screen.getByTestId('user-avatar')).toBeInTheDocument()
+    })
+
+    it('user info has correct test ids', () => {
+      render(<Header />)
+
+      expect(screen.getByTestId('user-info')).toBeInTheDocument()
+      expect(screen.getByTestId('user-email')).toBeInTheDocument()
+      expect(screen.getByTestId('user-avatar')).toBeInTheDocument()
     })
 
     it('user info has correct styling', () => {
       render(<Header />)
 
-      const email = screen.getByText('test@efir.sa')
-      const container = email.parentElement
+      const userInfo = screen.getByTestId('user-info')
 
-      expect(container?.className).toMatch(/flex/)
-      expect(container?.className).toMatch(/items-center/)
-      expect(container?.className).toMatch(/text-sm/)
-      expect(container?.className).toMatch(/text-gray-600/)
+      expect(userInfo.className).toMatch(/flex/)
+      expect(userInfo.className).toMatch(/items-center/)
+      expect(userInfo.className).toMatch(/gap-2/)
+      expect(userInfo.className).toMatch(/rounded-lg/)
     })
   })
 
@@ -108,15 +166,14 @@ describe('Header', () => {
     it('sign out button has LogOut icon', () => {
       render(<Header />)
 
-      const icons = document.querySelectorAll('svg.lucide-log-out')
-      expect(icons.length).toBeGreaterThan(0)
+      expect(screen.getByTestId('logout-icon')).toBeInTheDocument()
     })
 
-    it('button has outline variant and sm size', () => {
+    it('button has ghost variant and sm size', () => {
       render(<Header />)
 
-      const button = screen.getByText('Sign Out').closest('button')
-      expect(button).toHaveAttribute('data-variant', 'outline')
+      const button = screen.getByTestId('logout-button')
+      expect(button).toHaveAttribute('data-variant', 'ghost')
       expect(button).toHaveAttribute('data-size', 'sm')
     })
   })
@@ -128,7 +185,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockSignOut).toHaveBeenCalledTimes(1)
@@ -140,7 +197,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockToast.success).toHaveBeenCalledWith('Signed out successfully', {
@@ -154,7 +211,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockNavigate).toHaveBeenCalledWith({ to: '/login' })
@@ -166,7 +223,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockToast.error).toHaveBeenCalledWith('Sign out failed', {
@@ -180,7 +237,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockNavigate).not.toHaveBeenCalled()
@@ -192,10 +249,12 @@ describe('Header', () => {
       const { container } = render(<Header />)
 
       const header = container.querySelector('header')
+      // Sahara Luxe Theme: Glass morphism effect
       expect(header?.className).toMatch(/bg-white/)
+      expect(header?.className).toMatch(/backdrop-blur-md/)
       expect(header?.className).toMatch(/border-b/)
-      expect(header?.className).toMatch(/border-gray-200/)
-      expect(header?.className).toMatch(/h-16/)
+      expect(header?.className).toMatch(/border-sand-200/)
+      expect(header?.className).toMatch(/h-14/)
     })
 
     it('header uses flexbox for layout', () => {
@@ -205,29 +264,24 @@ describe('Header', () => {
       expect(header?.className).toMatch(/flex/)
       expect(header?.className).toMatch(/items-center/)
       expect(header?.className).toMatch(/justify-between/)
-      expect(header?.className).toMatch(/px-6/)
+      expect(header?.className).toMatch(/px-5/)
     })
 
-    it('left section has title', () => {
-      render(<Header />)
+    it('header has aria attributes for accessibility', () => {
+      const { container } = render(<Header />)
 
-      const title = screen.getByText('Budget Planning Application')
-      const leftSection = title.parentElement
-
-      expect(leftSection?.className).toMatch(/flex/)
-      expect(leftSection?.className).toMatch(/items-center/)
-      expect(leftSection?.className).toMatch(/space-x-4/)
+      const header = container.querySelector('header')
+      expect(header).toHaveAttribute('role', 'banner')
+      expect(header).toHaveAttribute('aria-label', 'Application header')
     })
 
-    it('right section has user info and sign out', () => {
+    it('user menu section has correct structure', () => {
       render(<Header />)
 
-      const signOut = screen.getByText('Sign Out')
-      const rightSection = signOut.parentElement
-
-      expect(rightSection?.className).toMatch(/flex/)
-      expect(rightSection?.className).toMatch(/items-center/)
-      expect(rightSection?.className).toMatch(/space-x-4/)
+      const userMenu = screen.getByTestId('user-menu')
+      expect(userMenu.className).toMatch(/flex/)
+      expect(userMenu.className).toMatch(/items-center/)
+      expect(userMenu.className).toMatch(/gap-3/)
     })
   })
 
@@ -272,9 +326,9 @@ describe('Header', () => {
 
       render(<Header />)
 
-      expect(screen.getByText('Budget Planning Application')).toBeInTheDocument()
+      expect(screen.getByText('EFIR Budget')).toBeInTheDocument()
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockSignOut).toHaveBeenCalled()
@@ -290,7 +344,7 @@ describe('Header', () => {
 
       expect(screen.getByText('teacher@efir.sa')).toBeInTheDocument()
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockToast.success).toHaveBeenCalledWith('Signed out successfully', {
@@ -304,7 +358,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockToast.error).toHaveBeenCalledWith('Sign out failed', {
@@ -319,7 +373,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       await user.click(button)
 
       expect(mockToast.error).toHaveBeenCalledWith('Sign out failed', {
@@ -335,7 +389,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       expect(button).toBeEnabled()
 
       await user.click(button)
@@ -348,7 +402,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       button.focus()
       await user.keyboard('{Enter}')
 
@@ -361,7 +415,7 @@ describe('Header', () => {
 
       render(<Header />)
 
-      const button = screen.getByText('Sign Out')
+      const button = screen.getByTestId('logout-button')
       button.focus()
       await user.keyboard(' ')
 
@@ -373,18 +427,18 @@ describe('Header', () => {
     it('User icon has correct size classes', () => {
       render(<Header />)
 
-      const userIcon = document.querySelector('svg.lucide-user')
-      expect(userIcon?.getAttribute('class')).toMatch(/w-4/)
-      expect(userIcon?.getAttribute('class')).toMatch(/h-4/)
+      const userIcon = screen.getByTestId('user-avatar')
+      // Compact icon size for Sahara Luxe header
+      expect(userIcon.getAttribute('class')).toMatch(/w-3\.5/)
+      expect(userIcon.getAttribute('class')).toMatch(/h-3\.5/)
     })
 
-    it('LogOut icon has correct size and margin', () => {
+    it('LogOut icon has correct size', () => {
       render(<Header />)
 
-      const logOutIcon = document.querySelector('svg.lucide-log-out')
-      expect(logOutIcon?.getAttribute('class')).toMatch(/w-4/)
-      expect(logOutIcon?.getAttribute('class')).toMatch(/h-4/)
-      expect(logOutIcon?.getAttribute('class')).toMatch(/mr-2/)
+      const logOutIcon = screen.getByTestId('logout-icon')
+      expect(logOutIcon.getAttribute('class')).toMatch(/w-4/)
+      expect(logOutIcon.getAttribute('class')).toMatch(/h-4/)
     })
   })
 })

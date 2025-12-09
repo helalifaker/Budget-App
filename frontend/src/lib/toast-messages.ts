@@ -34,6 +34,7 @@ export const toastMessages = {
     submitted: () => toast.success('Soumis avec succès'),
     approved: () => toast.success('Approuvé avec succès'),
     cloned: () => toast.success('Copie créée avec succès'),
+    custom: (message: string) => toast.success(message),
   },
 
   // Error messages
@@ -57,6 +58,7 @@ export const toastMessages = {
     saving: () => toast.loading('Sauvegarde en cours...'),
     importing: () => toast.loading('Importation en cours...'),
     exporting: () => toast.loading('Export en cours...'),
+    custom: (message: string) => toast.info(message),
   },
 
   // Warning messages

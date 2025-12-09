@@ -76,26 +76,26 @@ export function CellCommentDialog({ cellId, open, onOpenChange }: CellCommentDia
           <ScrollArea className="h-[300px]">
             {isLoading ? (
               <div className="flex justify-center p-4">
-                <Loader2 className="h-6 w-6 animate-spin text-twilight-600" />
+                <Loader2 className="h-6 w-6 animate-spin text-text-secondary" />
               </div>
             ) : comments.length === 0 ? (
-              <p className="text-center text-twilight-600 p-4">Aucun commentaire</p>
+              <p className="text-center text-text-secondary p-4">Aucun commentaire</p>
             ) : (
               <div className="space-y-3 pr-4">
                 {comments.map((comment) => (
                   <div
                     key={comment.id}
                     className={cn(
-                      'p-3 rounded-lg border border-sand-200 bg-white',
-                      comment.is_resolved && 'opacity-50 bg-sand-50'
+                      'p-3 rounded-lg border border-border-light bg-white',
+                      comment.is_resolved && 'opacity-50 bg-subtle'
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1">
-                        <p className="text-sm text-twilight-700 whitespace-pre-wrap">
+                        <p className="text-sm text-text-secondary whitespace-pre-wrap">
                           {comment.comment_text}
                         </p>
-                        <p className="text-xs text-twilight-500 mt-1">
+                        <p className="text-xs text-text-tertiary mt-1">
                           {comment.created_by} • {formatDate(comment.created_at)}
                         </p>
                         {comment.is_resolved && comment.resolved_by && (

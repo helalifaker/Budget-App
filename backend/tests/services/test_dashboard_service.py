@@ -17,11 +17,6 @@ from app.services.dashboard_service import DashboardService
 from app.services.exceptions import NotFoundError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# Skip tests for methods not yet implemented
-SKIP_NOT_IMPLEMENTED = pytest.mark.skip(
-    reason="Method not yet implemented in DashboardService"
-)
-
 
 class TestGetDashboardSummary:
     """Tests for dashboard summary retrieval."""
@@ -866,7 +861,6 @@ class TestGetComparisonData:
         assert result["versions"][0]["id"] == str(test_budget_version.id)
 
 
-@SKIP_NOT_IMPLEMENTED
 class TestKPISummary:
     """Tests for KPI summary generation."""
 
@@ -877,10 +871,50 @@ class TestKPISummary:
         test_budget_version: BudgetVersion,
     ):
         """Test successful KPI summary retrieval."""
-        pass
+        service = DashboardService(db_session)
+
+        result = await service.get_kpi_summary(test_budget_version.id)
+
+        assert result is not None
+        assert result["version_id"] == str(test_budget_version.id)
+        assert "financial_kpis" in result
+        assert "operational_kpis" in result
+        assert "staffing_kpis" in result
+
+        # Check financial KPIs structure
+        financial = result["financial_kpis"]
+        assert "total_revenue_sar" in financial
+        assert "total_costs_sar" in financial
+        assert "net_result_sar" in financial
+        assert "operating_margin_pct" in financial
+        assert "revenue_per_student_sar" in financial
+        assert "cost_per_student_sar" in financial
+
+        # Check operational KPIs structure
+        operational = result["operational_kpis"]
+        assert "total_students" in operational
+        assert "total_classes" in operational
+        assert "capacity_utilization_pct" in operational
+        assert "student_teacher_ratio" in operational
+
+        # Check staffing KPIs structure
+        staffing = result["staffing_kpis"]
+        assert "total_teachers_fte" in staffing
+
+    @pytest.mark.asyncio
+    async def test_get_kpi_summary_not_found(
+        self,
+        db_session: AsyncSession,
+    ):
+        """Test KPI summary for non-existent version."""
+        from app.services.exceptions import NotFoundError
+
+        service = DashboardService(db_session)
+
+        with pytest.raises(NotFoundError):
+            await service.get_kpi_summary(uuid.uuid4())
 
 
-@SKIP_NOT_IMPLEMENTED
 class TestDashboardWidgets:
     """Tests for dashboard widget data generation."""
 
@@ -891,4 +925,52 @@ class TestDashboardWidgets:
         test_budget_version: BudgetVersion,
     ):
         """Test budget status widget data."""
-        pass
+        service = DashboardService(db_session)
+
+        result = await service.get_budget_status_widget(test_budget_version.id)
+
+        assert result is not None
+        assert "version_info" in result
+        assert "status_badge" in result
+        assert "metrics" in result
+        assert "alerts" in result
+
+        # Check version info
+        version_info = result["version_info"]
+        assert version_info["id"] == str(test_budget_version.id)
+        assert "name" in version_info
+        assert "fiscal_year" in version_info
+        assert "status" in version_info
+
+        # Check status badge
+        status_badge = result["status_badge"]
+        assert "color" in status_badge
+        assert "label" in status_badge
+
+        # Check metrics
+        metrics = result["metrics"]
+        assert "total_revenue_sar" in metrics
+        assert "total_costs_sar" in metrics
+        assert "net_result_sar" in metrics
+        assert "operating_margin_pct" in metrics
+        assert "total_students" in metrics
+        assert "capacity_utilization_pct" in metrics
+
+        # Check alerts
+        alerts = result["alerts"]
+        assert "total" in alerts
+        assert "critical" in alerts
+        assert "warning" in alerts
+
+    @pytest.mark.asyncio
+    async def test_get_budget_status_widget_not_found(
+        self,
+        db_session: AsyncSession,
+    ):
+        """Test budget status widget for non-existent version."""
+        from app.services.exceptions import NotFoundError
+
+        service = DashboardService(db_session)
+
+        with pytest.raises(NotFoundError):
+            await service.get_budget_status_widget(uuid.uuid4())

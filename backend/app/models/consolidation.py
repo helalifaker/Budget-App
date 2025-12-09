@@ -31,7 +31,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel, VersionedMixin, get_schema
+from app.models.base import BaseModel, VersionedMixin, get_fk_target, get_schema
 
 if TYPE_CHECKING:
     from app.models.configuration import BudgetVersion
@@ -150,7 +150,7 @@ class BudgetConsolidation(BaseModel, VersionedMixin):
         comment="Account name (e.g., 'Scolarité T1', 'Salaires enseignants')",
     )
     consolidation_category: Mapped[ConsolidationCategory] = mapped_column(
-        Enum(ConsolidationCategory, schema=get_schema("efir_budget")),
+        Enum(ConsolidationCategory, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
         comment="Grouping category for reporting",
@@ -292,13 +292,13 @@ class FinancialStatement(BaseModel, VersionedMixin):
 
     # Statement Configuration
     statement_type: Mapped[StatementType] = mapped_column(
-        Enum(StatementType, schema=get_schema("efir_budget")),
+        Enum(StatementType, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
         comment="Type of financial statement",
     )
     statement_format: Mapped[StatementFormat] = mapped_column(
-        Enum(StatementFormat, schema=get_schema("efir_budget")),
+        Enum(StatementFormat, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
         comment="Accounting standard format",
@@ -428,7 +428,7 @@ class FinancialStatementLine(BaseModel):
     # Foreign Keys
     statement_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("financial_statements.id", ondelete="CASCADE"),
+        ForeignKey(get_fk_target("efir_budget", "financial_statements", "id"), ondelete="CASCADE"),
         nullable=False,
         index=True,
         comment="Financial statement this line belongs to",
@@ -441,7 +441,7 @@ class FinancialStatementLine(BaseModel):
         comment="Sequential line number for ordering (1, 2, 3, ...)",
     )
     line_type: Mapped[LineType] = mapped_column(
-        Enum(LineType, schema=get_schema("efir_budget")),
+        Enum(LineType, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         comment="Type of line (header, account, subtotal, total)",
     )

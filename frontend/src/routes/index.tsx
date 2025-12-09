@@ -23,7 +23,7 @@ function IndexRedirect() {
 
   // Redirect based on authentication status
   if (user) {
-    return <Navigate to="/dashboard" />
+    return <Navigate to="/command-center" />
   }
 
   return <Navigate to="/login" />

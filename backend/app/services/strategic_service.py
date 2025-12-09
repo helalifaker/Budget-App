@@ -695,6 +695,217 @@ class StrategicService:
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
+    async def get_plan_summary(
+        self,
+        plan_id: uuid.UUID,
+    ) -> dict[str, Any]:
+        """
+        Get summary of a strategic plan.
+
+        Args:
+            plan_id: Strategic plan UUID
+
+        Returns:
+            Dictionary with plan summary including scenarios and key metrics
+
+        Raises:
+            NotFoundError: If plan not found
+        """
+        plan = await self.get_strategic_plan(plan_id)
+
+        summary = {
+            "id": str(plan.id),
+            "name": plan.name,
+            "description": plan.description,
+            "base_year": plan.base_year,
+            "status": plan.status,
+            "scenario_count": len(plan.scenarios),
+            "initiative_count": len(plan.initiatives),
+            "scenarios_summary": [],
+            "initiatives_summary": [],
+        }
+
+        # Summarize scenarios
+        for scenario in plan.scenarios:
+            total_revenue = sum(
+                p.amount_sar
+                for p in scenario.projections
+                if p.category == ProjectionCategory.REVENUE
+            )
+            total_costs = sum(
+                p.amount_sar
+                for p in scenario.projections
+                if p.category in [ProjectionCategory.PERSONNEL_COSTS, ProjectionCategory.OPERATING_COSTS]
+            )
+
+            summary["scenarios_summary"].append({
+                "scenario_type": scenario.scenario_type.value,
+                "name": scenario.name,
+                "five_year_revenue_sar": float(total_revenue),
+                "five_year_costs_sar": float(total_costs),
+                "five_year_margin_sar": float(total_revenue - total_costs),
+            })
+
+        # Summarize initiatives
+        for initiative in plan.initiatives:
+            summary["initiatives_summary"].append({
+                "name": initiative.name,
+                "planned_year": initiative.planned_year,
+                "capex_sar": float(initiative.capex_amount_sar),
+                "status": initiative.status.value,
+            })
+
+        return summary
+
+    async def create_scenario(
+        self,
+        plan_id: uuid.UUID,
+        scenario_type: ScenarioType,
+        name: str,
+        description: str | None = None,
+        enrollment_growth_rate: Decimal = Decimal("0.04"),
+        fee_increase_rate: Decimal = Decimal("0.03"),
+        salary_inflation_rate: Decimal = Decimal("0.035"),
+        operating_inflation_rate: Decimal = Decimal("0.025"),
+    ) -> StrategicPlanScenario:
+        """
+        Create a new scenario for a strategic plan.
+
+        Args:
+            plan_id: Strategic plan UUID
+            scenario_type: Type of scenario
+            name: Scenario name
+            description: Optional description
+            enrollment_growth_rate: Annual enrollment growth rate
+            fee_increase_rate: Annual fee increase rate
+            salary_inflation_rate: Annual salary inflation rate
+            operating_inflation_rate: Annual operating inflation rate
+
+        Returns:
+            Created StrategicPlanScenario instance
+
+        Raises:
+            NotFoundError: If plan not found
+            BusinessRuleError: If scenario type already exists for plan
+        """
+        # Verify plan exists
+        await self.plan_service.get_by_id(plan_id)
+
+        # Check for duplicate scenario type
+        existing_query = select(StrategicPlanScenario).where(
+            and_(
+                StrategicPlanScenario.strategic_plan_id == plan_id,
+                StrategicPlanScenario.scenario_type == scenario_type,
+            )
+        )
+        existing_result = await self.session.execute(existing_query)
+        if existing_result.scalar_one_or_none():
+            raise BusinessRuleError(
+                "duplicate_scenario",
+                f"Scenario type '{scenario_type.value}' already exists for this plan",
+            )
+
+        # Create scenario
+        scenario = StrategicPlanScenario(
+            strategic_plan_id=plan_id,
+            scenario_type=scenario_type,
+            name=name,
+            description=description,
+            enrollment_growth_rate=enrollment_growth_rate,
+            fee_increase_rate=fee_increase_rate,
+            salary_inflation_rate=salary_inflation_rate,
+            operating_inflation_rate=operating_inflation_rate,
+            additional_assumptions={
+                "created_manually": True,
+            },
+        )
+
+        self.session.add(scenario)
+        await self.session.flush()
+        await self.session.refresh(scenario)
+
+        return scenario
+
+    async def get_scenarios_for_plan(
+        self,
+        plan_id: uuid.UUID,
+    ) -> list[StrategicPlanScenario]:
+        """
+        Get all scenarios for a strategic plan.
+
+        Args:
+            plan_id: Strategic plan UUID
+
+        Returns:
+            List of StrategicPlanScenario instances
+
+        Raises:
+            NotFoundError: If plan not found
+        """
+        # Verify plan exists
+        await self.plan_service.get_by_id(plan_id)
+
+        query = (
+            select(StrategicPlanScenario)
+            .where(StrategicPlanScenario.strategic_plan_id == plan_id)
+            .options(selectinload(StrategicPlanScenario.projections))
+        )
+
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def get_initiatives_for_plan(
+        self,
+        plan_id: uuid.UUID,
+    ) -> list[StrategicInitiative]:
+        """
+        Get all initiatives for a strategic plan.
+
+        Args:
+            plan_id: Strategic plan UUID
+
+        Returns:
+            List of StrategicInitiative instances
+
+        Raises:
+            NotFoundError: If plan not found
+        """
+        # Verify plan exists
+        await self.plan_service.get_by_id(plan_id)
+
+        query = select(StrategicInitiative).where(
+            StrategicInitiative.strategic_plan_id == plan_id
+        ).order_by(StrategicInitiative.planned_year)
+
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
+
+    async def update_initiative_status(
+        self,
+        initiative_id: uuid.UUID,
+        status: InitiativeStatus,
+    ) -> StrategicInitiative:
+        """
+        Update the status of a strategic initiative.
+
+        Args:
+            initiative_id: Initiative UUID
+            status: New status
+
+        Returns:
+            Updated StrategicInitiative instance
+
+        Raises:
+            NotFoundError: If initiative not found
+        """
+        initiative = await self.initiative_service.get_by_id(initiative_id)
+        initiative.status = status
+
+        await self.session.flush()
+        await self.session.refresh(initiative)
+
+        return initiative
+
     async def _get_base_projection_inputs(
         self,
         base_version_id: uuid.UUID,

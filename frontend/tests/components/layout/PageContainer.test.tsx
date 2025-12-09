@@ -37,10 +37,7 @@ describe('PageContainer', () => {
 
     it('renders description when provided', () => {
       render(
-        <PageContainer
-          title="DHG Workforce"
-          description="Manage teacher allocation and hours"
-        >
+        <PageContainer title="DHG Workforce" description="Manage teacher allocation and hours">
           <div>Content</div>
         </PageContainer>
       )
@@ -67,9 +64,11 @@ describe('PageContainer', () => {
       )
 
       const heading = screen.getByRole('heading', { level: 1 })
-      expect(heading.className).toMatch(/text-3xl/)
+      // Sahara Luxe Theme: serif font with brown color
+      expect(heading.className).toMatch(/text-2xl/)
       expect(heading.className).toMatch(/font-bold/)
-      expect(heading.className).toMatch(/text-gray-900/)
+      expect(heading.className).toMatch(/text-brown-900/)
+      expect(heading.className).toMatch(/font-serif/)
     })
 
     it('description has correct styling', () => {
@@ -81,17 +80,14 @@ describe('PageContainer', () => {
 
       const description = screen.getByText('Test description')
       expect(description.className).toMatch(/text-sm/)
-      expect(description.className).toMatch(/text-gray-600/)
+      expect(description.className).toMatch(/text-twilight-700/)
     })
   })
 
   describe('Actions', () => {
     it('renders action buttons when provided', () => {
       render(
-        <PageContainer
-          title="Budget Versions"
-          actions={<button>Create New Version</button>}
-        >
+        <PageContainer title="Budget Versions" actions={<button>Create New Version</button>}>
           <div>Content</div>
         </PageContainer>
       )
@@ -121,7 +117,7 @@ describe('PageContainer', () => {
     })
 
     it('does not render actions div when actions not provided', () => {
-      const { container } = render(
+      render(
         <PageContainer title="Test">
           <div>Content</div>
         </PageContainer>
@@ -160,7 +156,7 @@ describe('PageContainer', () => {
 
   describe('Content container', () => {
     it('renders children in white card container', () => {
-      const { container } = render(
+      render(
         <PageContainer title="Test Page">
           <div data-testid="test-content">Page content here</div>
         </PageContainer>
@@ -299,10 +295,7 @@ describe('PageContainer', () => {
       render(
         <PageContainer
           title="System Configuration"
-          breadcrumbs={[
-            { label: 'Home', href: '/dashboard' },
-            { label: 'Configuration' },
-          ]}
+          breadcrumbs={[{ label: 'Home', href: '/dashboard' }, { label: 'Configuration' }]}
         >
           <form>
             <label>Fiscal Year</label>
@@ -321,7 +314,7 @@ describe('PageContainer', () => {
 
   describe('Layout structure', () => {
     it('has correct container spacing', () => {
-      const { container } = render(
+      render(
         <PageContainer title="Test">
           <div>Content</div>
         </PageContainer>
