@@ -5,6 +5,7 @@ This is the entry point for the FastAPI backend server.
 """
 
 import asyncio
+import errno
 import os
 import sys
 import traceback
@@ -13,7 +14,7 @@ import httpx
 import sentry_sdk
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sqlalchemy import text
@@ -157,6 +158,31 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
+# Client disconnect errors - expected behavior, not application errors
+# These occur when clients close connections before server responds (e.g., CORS preflight)
+CLIENT_DISCONNECT_ERRORS = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
+
+
+def is_client_disconnect_error(exc: Exception) -> bool:
+    """
+    Check if exception is due to client disconnecting.
+
+    These are expected behaviors, not application errors:
+    - BrokenPipeError: Client closed connection (errno 32)
+    - ConnectionResetError: Connection reset by peer
+    - ConnectionAbortedError: Connection aborted
+
+    Returns:
+        True if this is a client disconnect error that should be silently ignored
+    """
+    if isinstance(exc, CLIENT_DISCONNECT_ERRORS):
+        return True
+    # Also check for OSError with errno 32 (EPIPE - Broken pipe)
+    if isinstance(exc, OSError) and getattr(exc, "errno", None) == errno.EPIPE:
+        return True
+    return False
+
+
 # Global exception handler to catch and log all exceptions with full stack trace
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -169,7 +195,17 @@ async def global_exception_handler(request: Request, exc: Exception):
     - Exception type and message
 
     IMPORTANT: Explicitly adds CORS headers to ensure browser can read error responses.
+
+    Client disconnect errors (BrokenPipeError, ConnectionResetError) are silently
+    ignored as they are expected behavior when clients close connections early.
     """
+    # Silently ignore client disconnect errors - these are expected behavior
+    # Client already disconnected, so we can't send a meaningful response anyway
+    if is_client_disconnect_error(exc):
+        # Return HTTP 499 (Client Closed Request) - nginx convention
+        # This helps distinguish client-side disconnects from server errors in monitoring
+        return Response(status_code=499)
+
     print("\n" + "="*80)
     print("GLOBAL EXCEPTION HANDLER CAUGHT AN ERROR!")
     print("="*80)
@@ -180,7 +216,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     print(f"Request Headers: {dict(request.headers)}")
     print("\nFull Stack Trace:")
     print("-"*80)
-    traceback.print_exc()
+    # Wrap traceback.print_exc() to handle stdout unavailability
+    try:
+        traceback.print_exc()
+    except (BrokenPipeError, OSError):
+        pass  # stdout unavailable, skip traceback printing
     print("-"*80)
     print("="*80 + "\n")
 

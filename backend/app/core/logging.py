@@ -5,6 +5,7 @@ This module configures structured logging with JSON output for production,
 correlation IDs for request tracing, and proper log level management.
 """
 
+import errno
 import logging
 import uuid
 from typing import Any
@@ -12,6 +13,30 @@ from typing import Any
 import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+# Client disconnect errors - expected behavior, not application errors
+# These occur when clients close connections before server responds
+CLIENT_DISCONNECT_ERRORS = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
+
+
+def is_client_disconnect_error(exc: Exception) -> bool:
+    """
+    Check if exception is due to client disconnecting.
+
+    These are expected behaviors, not application errors:
+    - BrokenPipeError: Client closed connection (errno 32)
+    - ConnectionResetError: Connection reset by peer
+    - ConnectionAbortedError: Connection aborted
+
+    Returns:
+        True if this is a client disconnect error that should be silently ignored
+    """
+    if isinstance(exc, CLIENT_DISCONNECT_ERRORS):
+        return True
+    # Also check for OSError with errno 32 (EPIPE - Broken pipe)
+    if isinstance(exc, OSError) and getattr(exc, "errno", None) == errno.EPIPE:
+        return True
+    return False
 
 
 def configure_logging() -> structlog.BoundLogger:
@@ -116,13 +141,15 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             return response
 
         except Exception as exc:
-            # Log request failure
-            logger.error(
-                "request_failed",
-                exc_info=True,
-                error_type=type(exc).__name__,
-                error_message=str(exc),
-            )
+            # Don't log client disconnect errors as failures - they're expected behavior
+            # when clients close connections before server responds (e.g., CORS preflight)
+            if not is_client_disconnect_error(exc):
+                logger.error(
+                    "request_failed",
+                    exc_info=True,
+                    error_type=type(exc).__name__,
+                    error_message=str(exc),
+                )
             raise
 
         finally:
