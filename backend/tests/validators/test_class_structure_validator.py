@@ -1,17 +1,9 @@
 """Tests for class structure validators."""
 
 import uuid
-import pytest
 from decimal import Decimal
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.validators.class_structure import (
-    ClassStructureValidationError,
-    validate_class_size_params,
-    validate_class_structure,
-    validate_class_structure_sync,
-    validate_enrollment_distribution,
-)
+import pytest
 from app.models.configuration import (
     AcademicCycle,
     AcademicLevel,
@@ -20,6 +12,14 @@ from app.models.configuration import (
     ClassSizeParam,
 )
 from app.services.exceptions import ValidationError
+from app.validators.class_structure import (
+    ClassStructureValidationError,
+    validate_class_size_params,
+    validate_class_structure,
+    validate_class_structure_sync,
+    validate_enrollment_distribution,
+)
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestClassSizeValidation:

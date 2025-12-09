@@ -4,25 +4,15 @@ Comprehensive async tests for Configuration Service.
 Tests all async CRUD operations, business logic validation, and error handling.
 """
 
-import uuid
-from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.configuration import (
-    BudgetVersion,
     BudgetVersionStatus,
-    ClassSizeParam,
-    FeeCategory,
-    FeeStructure,
-    SubjectHoursMatrix,
-    SystemConfig,
-    TeacherCostParam,
 )
 from app.services.configuration_service import ConfigurationService
 from app.services.exceptions import BusinessRuleError, ConflictError, ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestSystemConfigOperations:
@@ -165,13 +155,13 @@ class TestBudgetVersionOperations:
         service = ConfigurationService(db_session)
 
         # Create multiple versions
-        v1 = await service.create_budget_version(
+        await service.create_budget_version(
             name="Budget 2025",
             fiscal_year=2025,
             academic_year="2024-2025",
             user_id=test_user_id,
         )
-        v2 = await service.create_budget_version(
+        await service.create_budget_version(
             name="Budget 2026",
             fiscal_year=2026,
             academic_year="2025-2026",

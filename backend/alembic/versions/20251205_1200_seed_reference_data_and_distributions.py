@@ -13,7 +13,7 @@ Creates nationality_distributions table for per-level percentage tracking.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from alembic import op
@@ -42,7 +42,7 @@ def upgrade() -> None:
     cycle_coll_id = uuid.uuid4()
     cycle_lyc_id = uuid.uuid4()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     cycles_data = [
         {

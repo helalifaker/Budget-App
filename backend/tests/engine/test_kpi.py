@@ -23,7 +23,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
 from app.engine.kpi import (
     KPIInput,
     KPIResult,
@@ -55,6 +54,7 @@ from app.engine.kpi.validators import (
     validate_staff_cost_ratio,
     validate_student_teacher_ratio,
 )
+from pydantic import ValidationError
 
 
 class TestStudentTeacherRatioCalculations:

@@ -20,7 +20,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
 from app.engine.dhg import (
     DHGHoursResult,
     DHGInput,
@@ -52,6 +51,7 @@ from app.engine.dhg.validators import (
     validate_max_hsa_per_teacher,
     validate_subject_hours_list_consistency,
 )
+from pydantic import ValidationError
 
 
 class TestDHGHoursCalculations:

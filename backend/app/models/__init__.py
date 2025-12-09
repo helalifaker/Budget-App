@@ -67,6 +67,19 @@ from app.models.consolidation import (
     StatementFormat,
     StatementType,
 )
+from app.models.personnel import (
+    # Models
+    AEFEPosition,
+    # Enums
+    AEFEPositionType,
+    ContractType,
+    Employee,
+    EmployeeCategory,
+    EmployeeNationality,
+    EmployeeSalary,
+    EOSProvision,
+    TerminationType,
+)
 from app.models.planning import (
     CapExPlan,
     ClassStructure,
@@ -78,19 +91,6 @@ from app.models.planning import (
     PersonnelCostPlan,
     RevenuePlan,
     TeacherAllocation,
-)
-from app.models.personnel import (
-    # Enums
-    AEFEPositionType,
-    ContractType,
-    EmployeeCategory,
-    EmployeeNationality,
-    TerminationType,
-    # Models
-    AEFEPosition,
-    Employee,
-    EmployeeSalary,
-    EOSProvision,
 )
 from app.models.strategic import (
     # Enums
@@ -105,13 +105,13 @@ from app.models.strategic import (
 )
 
 __all__ = [
+    # Personnel Layer (Workforce Module)
+    "AEFEPosition",
+    "AEFEPositionType",
     "AcademicCycle",
     "AcademicLevel",
     "ActualData",
     "ActualDataSource",
-    # Personnel Layer (Workforce Module)
-    "AEFEPosition",
-    "AEFEPositionType",
     "AuditMixin",
     # Base classes
     "Base",
@@ -131,13 +131,13 @@ __all__ = [
     "DashboardConfig",
     "DashboardRole",
     "DashboardWidget",
+    "EOSProvision",
     "Employee",
     "EmployeeCategory",
     "EmployeeNationality",
     "EmployeeSalary",
     # Planning Layer (Modules 7-12)
     "EnrollmentPlan",
-    "EOSProvision",
     "FeeCategory",
     "FeeStructure",
     "FinancialStatement",

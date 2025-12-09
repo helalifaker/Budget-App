@@ -4,7 +4,6 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-
 from app.models.integrations import IntegrationLog, IntegrationSettings
 from app.schemas import integrations as schemas
 

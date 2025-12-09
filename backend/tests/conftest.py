@@ -25,6 +25,10 @@ import pytest
 
 # Import all models to ensure they're registered with SQLAlchemy
 from app.models import *  # noqa: F403
+
+# Import User from app.models.auth (already imported via `from app.models import *`)
+# The User model in auth.py properly handles both SQLite and PostgreSQL schemas
+from app.models.auth import User  # Re-import explicitly for clarity
 from app.models.base import Base
 from app.models.configuration import (
     AcademicCycle,
@@ -47,13 +51,9 @@ from app.models.planning import (
     DHGTeacherRequirement,
     EnrollmentPlan,
 )
-from sqlalchemy import event, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-
-# Import User from app.models.auth (already imported via `from app.models import *`)
-# The User model in auth.py properly handles both SQLite and PostgreSQL schemas
-from app.models.auth import User  # noqa: F401  # Re-import explicitly for clarity
 
 # ==============================================================================
 # CRITICAL: Strip schemas IMMEDIATELY after models are imported

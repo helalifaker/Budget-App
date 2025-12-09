@@ -305,7 +305,7 @@ class TestBudgetVersionEndpoints:
 
     def test_submit_budget_version_wrong_status(self, client, mock_user):
         """Test submission fails when budget is not in WORKING status."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             from app.services.exceptions import BusinessRuleError
@@ -396,7 +396,7 @@ class TestAcademicDataEndpoints:
 
     def test_get_academic_levels_by_cycle(self, client, mock_user):
         """Test retrieval of levels filtered by cycle."""
-        cycle_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
@@ -473,7 +473,7 @@ class TestClassSizeParamEndpoints:
 
     def test_delete_class_size_param_success(self, client, mock_user):
         """Test successful deletion of class size parameter."""
-        param_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
@@ -804,7 +804,7 @@ class TestBudgetVersionWorkflowExpanded:
 
     def test_version_state_transition_invalid(self, client, mock_user):
         """Test invalid budget state transition."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             from app.services.exceptions import BusinessRuleError
@@ -855,8 +855,7 @@ class TestParameterManagementExpanded:
 
     def test_fee_structure_by_nationality(self, client, mock_user):
         """Test fee structure retrieval by nationality."""
-        version_id = uuid.uuid4()
-        nationality = "FRENCH"
+        uuid.uuid4()
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
@@ -884,7 +883,7 @@ class TestParameterManagementExpanded:
 
     def test_parameter_rollback(self, client, mock_user):
         """Test parameter rollback to previous version."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
@@ -904,7 +903,7 @@ class TestAcademicDataEndpointsExpanded:
 
     def test_get_academic_levels_by_cycle_maternelle(self, client, mock_user):
         """Test retrieval of Maternelle levels."""
-        cycle_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
@@ -921,7 +920,7 @@ class TestAcademicDataEndpointsExpanded:
 
     def test_get_academic_levels_by_cycle_college(self, client, mock_user):
         """Test retrieval of Collège levels."""
-        cycle_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()

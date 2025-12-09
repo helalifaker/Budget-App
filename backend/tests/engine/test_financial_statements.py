@@ -1057,7 +1057,7 @@ class TestValidationFunctions:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError, match="greater than or equal to 1"):
-            line = StatementLine(
+            StatementLine(
                 line_number=0,  # Invalid - must be >= 1
                 line_type=StatementLineType.ACCOUNT_LINE,
                 indent_level=0,
@@ -1070,7 +1070,7 @@ class TestValidationFunctions:
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError, match="less than or equal to 5"):
-            line = StatementLine(
+            StatementLine(
                 line_number=1,
                 line_type=StatementLineType.ACCOUNT_LINE,
                 indent_level=10,  # Invalid - must be 0-5

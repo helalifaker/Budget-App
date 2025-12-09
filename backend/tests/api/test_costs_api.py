@@ -60,7 +60,7 @@ class TestRevenueEndpoints:
 
     def test_calculate_revenue_success(self, client, mock_user):
         """Test successful revenue calculation from enrollment."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
             mock_service = AsyncMock()
@@ -85,7 +85,7 @@ class TestRevenueEndpoints:
 
     def test_calculate_revenue_missing_enrollment(self, client, mock_user):
         """Test revenue calculation fails without enrollment data."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -122,7 +122,7 @@ class TestRevenueEndpoints:
 
     def test_create_revenue_entry_invalid_account(self, client, mock_user):
         """Test revenue entry creation with invalid account code."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -139,7 +139,7 @@ class TestRevenueEndpoints:
 
     def test_get_revenue_summary_success(self, client, mock_user):
         """Test successful retrieval of revenue summary."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
             mock_service = AsyncMock()
@@ -191,7 +191,7 @@ class TestPersonnelCostEndpoints:
 
     def test_calculate_personnel_costs_success(self, client, mock_user):
         """Test successful personnel cost calculation from DHG."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -214,7 +214,7 @@ class TestPersonnelCostEndpoints:
 
     def test_calculate_personnel_costs_missing_dhg(self, client, mock_user):
         """Test personnel cost calculation fails without DHG data."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -252,7 +252,7 @@ class TestPersonnelCostEndpoints:
 
     def test_create_personnel_cost_invalid_account(self, client, mock_user):
         """Test personnel cost entry with invalid account code."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -300,7 +300,7 @@ class TestOperatingCostEndpoints:
 
     def test_calculate_operating_costs_success(self, client, mock_user):
         """Test successful operating cost calculation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -343,7 +343,7 @@ class TestOperatingCostEndpoints:
 
     def test_get_cost_summary_success(self, client, mock_user):
         """Test successful retrieval of combined cost summary."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -442,7 +442,7 @@ class TestCapExEndpoints:
 
     def test_update_capex_entry_not_found(self, client, mock_user):
         """Test update fails when CapEx entry doesn't exist."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
         capex_id = uuid.uuid4()
 
         with patch("app.api.v1.costs.get_capex_service") as mock_svc:
@@ -460,8 +460,8 @@ class TestCapExEndpoints:
 
     def test_delete_capex_entry_success(self, client, mock_user):
         """Test successful deletion of CapEx entry."""
-        version_id = uuid.uuid4()
-        capex_id = uuid.uuid4()
+        uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_capex_service") as mock_svc:
             mock_service = AsyncMock()
@@ -494,7 +494,7 @@ class TestCapExEndpoints:
 
     def test_get_depreciation_schedule_success(self, client, mock_user):
         """Test successful retrieval of depreciation schedule."""
-        capex_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_capex_service") as mock_svc:
             mock_service = AsyncMock()
@@ -520,7 +520,7 @@ class TestCapExEndpoints:
 
     def test_get_capex_summary_success(self, client, mock_user):
         """Test successful retrieval of CapEx summary."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_capex_service") as mock_svc:
             mock_service = AsyncMock()
@@ -542,7 +542,7 @@ class TestCapExEndpoints:
 
     def test_get_annual_depreciation_success(self, client, mock_user):
         """Test successful retrieval of annual depreciation totals."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
         year = 2024
 
         with patch("app.api.v1.costs.get_capex_service") as mock_svc:
@@ -573,7 +573,7 @@ class TestRevenueEndpointsExpanded:
 
     def test_update_revenue_entry_success(self, client, mock_user):
         """Test successful revenue entry update."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
         revenue_id = uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
@@ -590,8 +590,8 @@ class TestRevenueEndpointsExpanded:
 
     def test_delete_revenue_entry_success(self, client, mock_user):
         """Test successful revenue entry deletion."""
-        version_id = uuid.uuid4()
-        revenue_id = uuid.uuid4()
+        uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
             mock_service = AsyncMock()
@@ -604,7 +604,7 @@ class TestRevenueEndpointsExpanded:
 
     def test_revenue_by_source_breakdown(self, client, mock_user):
         """Test revenue breakdown by source."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
             mock_service = AsyncMock()
@@ -621,7 +621,7 @@ class TestRevenueEndpointsExpanded:
 
     def test_revenue_by_period_breakdown(self, client, mock_user):
         """Test revenue breakdown by period."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
             mock_service = AsyncMock()
@@ -638,7 +638,7 @@ class TestRevenueEndpointsExpanded:
 
     def test_revenue_validation_negative_amount(self, client, mock_user):
         """Test validation for negative revenue amount."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -656,7 +656,7 @@ class TestRevenueEndpointsExpanded:
 
     def test_revenue_not_found(self, client, mock_user):
         """Test retrieval of non-existent revenue entry."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
         revenue_id = uuid.uuid4()
 
         with patch("app.api.v1.costs.get_revenue_service") as mock_svc:
@@ -678,7 +678,7 @@ class TestPersonnelCostEndpointsExpanded:
 
     def test_calculate_aefe_costs_eur_conversion(self, client, mock_user):
         """Test AEFE cost calculation with EUR to SAR conversion."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -697,7 +697,7 @@ class TestPersonnelCostEndpointsExpanded:
 
     def test_calculate_local_teacher_costs(self, client, mock_user):
         """Test local teacher cost calculation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -716,7 +716,7 @@ class TestPersonnelCostEndpointsExpanded:
 
     def test_calculate_atsem_costs(self, client, mock_user):
         """Test ATSEM cost calculation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -733,7 +733,7 @@ class TestPersonnelCostEndpointsExpanded:
 
     def test_personnel_account_validation_64xxx(self, client, mock_user):
         """Test personnel account code validation (must be 64xxx)."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -750,7 +750,7 @@ class TestPersonnelCostEndpointsExpanded:
 
     def test_personnel_cost_by_category(self, client, mock_user):
         """Test personnel cost breakdown by category."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -767,7 +767,7 @@ class TestPersonnelCostEndpointsExpanded:
 
     def test_personnel_cost_summary(self, client, mock_user):
         """Test personnel cost summary."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -784,7 +784,7 @@ class TestPersonnelCostEndpointsExpanded:
 
     def test_personnel_cost_not_found(self, client, mock_user):
         """Test retrieval of non-existent personnel cost entry."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
         cost_id = uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
@@ -806,7 +806,7 @@ class TestOperatingCostEndpointsExpanded:
 
     def test_calculate_driver_based_costs(self, client, mock_user):
         """Test driver-based operating cost calculation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -823,7 +823,7 @@ class TestOperatingCostEndpointsExpanded:
 
     def test_operating_cost_fixed_vs_variable(self, client, mock_user):
         """Test operating cost breakdown: fixed vs variable."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -840,7 +840,7 @@ class TestOperatingCostEndpointsExpanded:
 
     def test_operating_cost_by_category(self, client, mock_user):
         """Test operating cost breakdown by category."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -857,7 +857,7 @@ class TestOperatingCostEndpointsExpanded:
 
     def test_operating_account_validation_60xxx_68xxx(self, client, mock_user):
         """Test operating account code validation (60xxx-68xxx)."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -874,7 +874,7 @@ class TestOperatingCostEndpointsExpanded:
 
     def test_cost_allocation_by_center(self, client, mock_user):
         """Test cost allocation by cost center."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -893,7 +893,7 @@ class TestOperatingCostEndpointsExpanded:
 
     def test_operating_cost_summary(self, client, mock_user):
         """Test operating cost summary."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
             mock_service = AsyncMock()
@@ -910,7 +910,7 @@ class TestOperatingCostEndpointsExpanded:
 
     def test_operating_cost_not_found(self, client, mock_user):
         """Test retrieval of non-existent operating cost entry."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
         cost_id = uuid.uuid4()
 
         with patch("app.api.v1.costs.get_cost_service") as mock_svc:
@@ -932,7 +932,7 @@ class TestCapExEndpointsExpanded:
 
     def test_capex_depreciation_straight_line_method(self, client, mock_user):
         """Test straight-line depreciation method."""
-        capex_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_capex_service") as mock_svc:
             mock_service = AsyncMock()
@@ -949,7 +949,7 @@ class TestCapExEndpointsExpanded:
 
     def test_capex_annual_depreciation_total(self, client, mock_user):
         """Test total annual depreciation across all assets."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
         year = 2024
 
         with patch("app.api.v1.costs.get_capex_service") as mock_svc:
@@ -967,7 +967,7 @@ class TestCapExEndpointsExpanded:
 
     def test_capex_account_validation_20xxx_21xxx(self, client, mock_user):
         """Test CapEx account code validation (20xxx-21xxx)."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.costs.get_capex_service") as mock_svc:
             from app.services.exceptions import ValidationError

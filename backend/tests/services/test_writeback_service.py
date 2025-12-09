@@ -338,7 +338,7 @@ class TestCacheInvalidation:
 
     def test_cache_entity_values_not_empty(self):
         """Test cache entity values are meaningful strings."""
-        for module, entity in MODULE_TO_CACHE_ENTITY.items():
+        for _module, entity in MODULE_TO_CACHE_ENTITY.items():
             assert isinstance(entity, str)
             assert len(entity) > 0
             assert entity.islower() or "_" in entity

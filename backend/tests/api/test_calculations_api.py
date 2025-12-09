@@ -18,10 +18,10 @@ from unittest.mock import patch
 
 import pytest
 from app.main import app
-from app.schemas.dhg import DHGCalculationRequest, DHGCalculationResponse
-from app.schemas.enrollment import EnrollmentProjectionRequest, EnrollmentProjectionResponse
-from app.schemas.kpi import KPICalculationRequest, KPICalculationResponse
-from app.schemas.revenue import RevenueCalculationRequest, RevenueCalculationResponse
+from app.schemas.dhg import DHGCalculationResponse
+from app.schemas.enrollment import EnrollmentProjectionResponse
+from app.schemas.kpi import KPICalculationResponse
+from app.schemas.revenue import RevenueCalculationResponse
 from fastapi.testclient import TestClient
 
 

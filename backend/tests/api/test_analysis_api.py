@@ -49,7 +49,7 @@ class TestKPIEndpoints:
 
     def test_calculate_kpis_success(self, client, mock_user):
         """Test successful KPI calculation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -122,7 +122,7 @@ class TestKPIEndpoints:
 
     def test_get_all_kpis_by_category(self, client, mock_user):
         """Test retrieval of KPIs filtered by category."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -166,8 +166,7 @@ class TestKPIEndpoints:
 
     def test_get_specific_kpi_not_found(self, client, mock_user):
         """Test retrieval of non-existent KPI."""
-        version_id = uuid.uuid4()
-        kpi_code = "NONEXISTENT_KPI"
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -180,7 +179,6 @@ class TestKPIEndpoints:
 
     def test_get_kpi_trends_success(self, client, mock_user):
         """Test successful retrieval of KPI trends."""
-        kpi_code = "H_E_PRIMARY"
         version_ids = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
@@ -202,7 +200,7 @@ class TestKPIEndpoints:
 
     def test_get_benchmark_comparison_success(self, client, mock_user):
         """Test successful retrieval of benchmark comparison."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -235,7 +233,7 @@ class TestDashboardEndpoints:
 
     def test_get_dashboard_summary_success(self, client, mock_user):
         """Test successful retrieval of dashboard summary."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -254,7 +252,7 @@ class TestDashboardEndpoints:
 
     def test_get_enrollment_chart_success(self, client, mock_user):
         """Test successful retrieval of enrollment chart data."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -273,7 +271,7 @@ class TestDashboardEndpoints:
 
     def test_get_cost_breakdown_chart_success(self, client, mock_user):
         """Test successful retrieval of cost breakdown chart."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -292,7 +290,7 @@ class TestDashboardEndpoints:
 
     def test_get_revenue_breakdown_chart_success(self, client, mock_user):
         """Test successful retrieval of revenue breakdown chart."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -311,7 +309,7 @@ class TestDashboardEndpoints:
 
     def test_get_alerts_success(self, client, mock_user):
         """Test successful retrieval of alerts."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -335,7 +333,7 @@ class TestDashboardEndpoints:
 
     def test_get_recent_activity_success(self, client, mock_user):
         """Test successful retrieval of recent activity."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -382,7 +380,7 @@ class TestBudgetActualEndpoints:
 
     def test_import_actuals_success(self, client, mock_user):
         """Test successful import of actual data."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_budget_actual_service") as mock_svc:
             mock_service = AsyncMock()
@@ -399,8 +397,7 @@ class TestBudgetActualEndpoints:
 
     def test_calculate_variance_success(self, client, mock_user):
         """Test successful variance calculation."""
-        version_id = uuid.uuid4()
-        period = 6
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_budget_actual_service") as mock_svc:
             mock_service = AsyncMock()
@@ -415,7 +412,7 @@ class TestBudgetActualEndpoints:
 
     def test_get_variance_report_success(self, client, mock_user):
         """Test successful retrieval of variance report."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_budget_actual_service") as mock_svc:
             mock_service = AsyncMock()
@@ -432,7 +429,7 @@ class TestBudgetActualEndpoints:
 
     def test_create_forecast_revision_success(self, client, mock_user):
         """Test successful forecast revision creation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         mock_forecast = MagicMock()
         mock_forecast.id = uuid.uuid4()
@@ -513,7 +510,7 @@ class TestStrategicPlanningEndpoints:
 
     def test_get_year_projection_success(self, client, mock_user):
         """Test successful year projection retrieval."""
-        plan_id = uuid.uuid4()
+        uuid.uuid4()
         year = 2025
 
         with patch("app.api.v1.analysis.get_strategic_service") as mock_svc:
@@ -570,7 +567,7 @@ class TestStrategicPlanningEndpoints:
 
     def test_add_initiative_success(self, client, mock_user):
         """Test successful initiative addition."""
-        plan_id = uuid.uuid4()
+        uuid.uuid4()
 
         mock_initiative = MagicMock()
         mock_initiative.id = uuid.uuid4()
@@ -660,7 +657,7 @@ class TestKPIEndpointsExpanded:
 
     def test_calculate_kpis_enrollment_metrics(self, client, mock_user):
         """Test KPI calculation for enrollment metrics."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -676,7 +673,7 @@ class TestKPIEndpointsExpanded:
 
     def test_calculate_kpis_financial_metrics(self, client, mock_user):
         """Test KPI calculation for financial metrics."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -692,7 +689,7 @@ class TestKPIEndpointsExpanded:
 
     def test_calculate_kpis_workforce_metrics(self, client, mock_user):
         """Test KPI calculation for workforce metrics."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -708,7 +705,7 @@ class TestKPIEndpointsExpanded:
 
     def test_calculate_kpis_operational_metrics(self, client, mock_user):
         """Test KPI calculation for operational metrics."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -724,7 +721,7 @@ class TestKPIEndpointsExpanded:
 
     def test_get_kpi_by_category_educational(self, client, mock_user):
         """Test retrieval of educational KPIs."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -737,7 +734,7 @@ class TestKPIEndpointsExpanded:
 
     def test_get_kpi_period_filtering(self, client, mock_user):
         """Test KPI retrieval with period filter."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -750,7 +747,7 @@ class TestKPIEndpointsExpanded:
 
     def test_get_kpi_missing_data_handling(self, client, mock_user):
         """Test KPI calculation handles missing data gracefully."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -767,7 +764,6 @@ class TestKPIEndpointsExpanded:
 
     def test_get_kpi_year_over_year_change(self, client, mock_user):
         """Test KPI year-over-year change calculation."""
-        kpi_code = "H_E_PRIMARY"
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -784,7 +780,7 @@ class TestKPIEndpointsExpanded:
 
     def test_get_kpi_export_to_excel(self, client, mock_user):
         """Test KPI export to Excel."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_kpi_service") as mock_svc:
             mock_service = AsyncMock()
@@ -801,7 +797,7 @@ class TestDashboardEndpointsExpanded:
 
     def test_get_enrollment_chart_by_cycle(self, client, mock_user):
         """Test enrollment chart data grouped by cycle."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -818,7 +814,7 @@ class TestDashboardEndpointsExpanded:
 
     def test_get_alerts_capacity_warning(self, client, mock_user):
         """Test alerts include capacity warnings."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -838,7 +834,7 @@ class TestDashboardEndpointsExpanded:
 
     def test_get_alerts_variance_warning(self, client, mock_user):
         """Test alerts include variance warnings."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -858,7 +854,7 @@ class TestDashboardEndpointsExpanded:
 
     def test_dashboard_refresh_materialized_views(self, client, mock_user):
         """Test dashboard triggers materialized view refresh."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -874,7 +870,7 @@ class TestDashboardEndpointsExpanded:
 
     def test_dashboard_filter_by_date_range(self, client, mock_user):
         """Test dashboard filtering by date range."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -887,7 +883,7 @@ class TestDashboardEndpointsExpanded:
 
     def test_dashboard_filter_by_version(self, client, mock_user):
         """Test dashboard filtering by budget version."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_dashboard_service") as mock_svc:
             mock_service = AsyncMock()
@@ -921,7 +917,7 @@ class TestBudgetActualEndpointsExpanded:
 
     def test_import_actuals_validation_error(self, client, mock_user):
         """Test actuals import with validation errors."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_budget_actual_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -938,7 +934,7 @@ class TestBudgetActualEndpointsExpanded:
 
     def test_get_variance_report_by_period(self, client, mock_user):
         """Test variance report for specific period."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
         period = 6
 
         with patch("app.api.v1.analysis.get_budget_actual_service") as mock_svc:
@@ -956,7 +952,7 @@ class TestBudgetActualEndpointsExpanded:
 
     def test_forecast_revision_from_ytd(self, client, mock_user):
         """Test forecast revision based on YTD actuals."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         mock_forecast = MagicMock()
         mock_forecast.id = uuid.uuid4()
@@ -1028,7 +1024,7 @@ class TestStrategicPlanningEndpointsExpanded:
 
     def test_create_strategic_scenario_custom(self, client, mock_user):
         """Test creating custom strategic scenario."""
-        plan_id = uuid.uuid4()
+        uuid.uuid4()
 
         mock_scenario = MagicMock()
         mock_scenario.id = uuid.uuid4()
@@ -1062,7 +1058,7 @@ class TestStrategicPlanningEndpointsExpanded:
 
     def test_add_strategic_initiative_capex(self, client, mock_user):
         """Test adding CapEx strategic initiative."""
-        plan_id = uuid.uuid4()
+        uuid.uuid4()
 
         mock_initiative = MagicMock()
         mock_initiative.id = uuid.uuid4()
@@ -1098,7 +1094,7 @@ class TestStrategicPlanningEndpointsExpanded:
 
     def test_compare_scenarios_three_way(self, client, mock_user):
         """Test three-way scenario comparison."""
-        plan_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.analysis.get_strategic_service") as mock_svc:
             mock_service = AsyncMock()

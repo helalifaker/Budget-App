@@ -562,7 +562,7 @@ class TestATSEMAllocation:
                         return_value=created
                     )
 
-                    result = await class_structure_service.calculate_class_structure(
+                    await class_structure_service.calculate_class_structure(
                         version_id=mock_budget_version_id,
                         method="target",
                         user_id=test_user_id,
@@ -1019,7 +1019,7 @@ class TestEdgeCases:
                         return_value=created
                     )
 
-                    result = await class_structure_service.calculate_class_structure(
+                    await class_structure_service.calculate_class_structure(
                         version_id=mock_budget_version_id,
                         method="target",
                         user_id=test_user_id,

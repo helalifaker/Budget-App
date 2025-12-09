@@ -69,14 +69,14 @@ class TestEnrollmentEndpoints:
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-                response = client.get(f"/api/v1/planning/enrollment/{version_id}")
+                client.get(f"/api/v1/planning/enrollment/{version_id}")
 
                 # Note: In real test, would need proper auth setup
                 # This is a structural test
 
     def test_create_enrollment_validation_error(self, client, mock_user):
         """Test enrollment creation with validation error."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_enrollment_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -92,7 +92,7 @@ class TestEnrollmentEndpoints:
 
     def test_create_enrollment_capacity_exceeded(self, client, mock_user):
         """Test enrollment creation exceeding capacity."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_enrollment_service") as mock_svc:
             from app.services.exceptions import BusinessRuleError
@@ -112,13 +112,9 @@ class TestEnrollmentProjectionEndpoints:
 
     def test_project_enrollment_success(self, client, mock_user):
         """Test successful enrollment projection."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         # Test data
-        projection_request = {
-            "years_to_project": 5,
-            "growth_scenario": "base",
-        }
 
         with patch("app.api.v1.planning.get_enrollment_service") as mock_svc:
             mock_service = AsyncMock()
@@ -137,12 +133,8 @@ class TestEnrollmentProjectionEndpoints:
 
     def test_project_enrollment_invalid_scenario(self, client, mock_user):
         """Test projection with invalid growth scenario."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
-        projection_request = {
-            "years_to_project": 5,
-            "growth_scenario": "invalid_scenario",
-        }
 
         # Would expect 400 Bad Request
 
@@ -172,11 +164,8 @@ class TestClassStructureEndpoints:
 
     def test_calculate_class_structure_success(self, client, mock_user):
         """Test successful class structure calculation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
-        calc_request = {
-            "use_target_size": True,
-        }
 
         with patch("app.api.v1.planning.get_class_structure_service") as mock_svc:
             mock_service = AsyncMock()
@@ -200,7 +189,7 @@ class TestDHGEndpoints:
 
     def test_get_dhg_subject_hours_success(self, client, mock_user):
         """Test successful retrieval of DHG subject hours."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_dhg_service") as mock_svc:
             mock_service = AsyncMock()
@@ -219,7 +208,7 @@ class TestDHGEndpoints:
 
     def test_calculate_dhg_hours_success(self, client, mock_user):
         """Test successful DHG hours calculation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_dhg_service") as mock_svc:
             mock_service = AsyncMock()
@@ -234,7 +223,7 @@ class TestDHGEndpoints:
 
     def test_get_teacher_requirements_success(self, client, mock_user):
         """Test successful retrieval of teacher requirements."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_dhg_service") as mock_svc:
             mock_service = AsyncMock()
@@ -254,9 +243,9 @@ class TestDHGEndpoints:
 
     def test_calculate_fte_success(self, client, mock_user):
         """Test successful FTE calculation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
-        fte_request = {
+        {
             "standard_hours_secondary": Decimal("18"),
             "standard_hours_primary": Decimal("24"),
             "max_hsa_hours": Decimal("4"),
@@ -275,7 +264,7 @@ class TestDHGEndpoints:
 
     def test_get_trmd_gap_analysis_success(self, client, mock_user):
         """Test successful TRMD (gap analysis) retrieval."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_dhg_service") as mock_svc:
             mock_service = AsyncMock()
@@ -303,7 +292,7 @@ class TestTeacherAllocationEndpoints:
 
     def test_get_teacher_allocations_success(self, client, mock_user):
         """Test successful retrieval of teacher allocations."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_dhg_service") as mock_svc:
             mock_service = AsyncMock()
@@ -322,7 +311,7 @@ class TestTeacherAllocationEndpoints:
 
     def test_create_teacher_allocation_success(self, client, mock_user):
         """Test successful teacher allocation creation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         allocation_data = {
             "subject_id": str(uuid.uuid4()),
@@ -343,7 +332,7 @@ class TestTeacherAllocationEndpoints:
 
     def test_bulk_update_allocations_success(self, client, mock_user):
         """Test successful bulk allocation update."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         allocations = [
             {
@@ -372,7 +361,7 @@ class TestEnrollmentSummaryEndpoint:
 
     def test_get_enrollment_summary_success(self, client, mock_user):
         """Test successful retrieval of enrollment summary."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_enrollment_service") as mock_svc:
             mock_service = AsyncMock()
@@ -408,7 +397,7 @@ class TestErrorHandling:
 
     def test_validation_error(self, client, mock_user):
         """Test 400 error for validation failure."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_enrollment_service") as mock_svc:
             from app.services.exceptions import ValidationError
@@ -424,7 +413,7 @@ class TestErrorHandling:
 
     def test_business_rule_error(self, client, mock_user):
         """Test 422 error for business rule violation."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_enrollment_service") as mock_svc:
             from app.services.exceptions import BusinessRuleError
@@ -440,7 +429,7 @@ class TestErrorHandling:
 
     def test_internal_server_error(self, client, mock_user):
         """Test 500 error for unexpected exceptions."""
-        version_id = uuid.uuid4()
+        uuid.uuid4()
 
         with patch("app.api.v1.planning.get_enrollment_service") as mock_svc:
             mock_service = AsyncMock()

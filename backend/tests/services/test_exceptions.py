@@ -1,9 +1,9 @@
 
 from app.services.exceptions import (
-    ForbiddenError,
-    UnauthorizedError,
     BusinessRuleError,
+    ForbiddenError,
     IntegrationError,
+    UnauthorizedError,
 )
 
 

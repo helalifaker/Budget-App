@@ -18,8 +18,6 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
-
 from app.engine.enrollment import (
     EnrollmentGrowthScenario,
     EnrollmentInput,
@@ -43,6 +41,7 @@ from app.engine.enrollment.validators import (
     validate_retention_rate,
     validate_total_capacity,
 )
+from pydantic import ValidationError
 
 
 class TestEnrollmentProjectionCalculations:

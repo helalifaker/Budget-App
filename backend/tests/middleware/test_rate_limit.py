@@ -168,7 +168,7 @@ class TestRateLimitConfiguration:
     def test_admin_has_highest_multiplier(self):
         """Test that admin has highest multiplier."""
         admin_mult = ROLE_MULTIPLIERS["admin"]
-        for role, mult in ROLE_MULTIPLIERS.items():
+        for _role, mult in ROLE_MULTIPLIERS.items():
             assert admin_mult >= mult
 
 
@@ -241,7 +241,7 @@ class TestRedisIntegration:
         middleware = RateLimitMiddleware(app=None)
 
         with patch("app.middleware.rate_limit.REDIS_ENABLED", False):
-            is_allowed, count, reset = await middleware._check_rate_limit(
+            is_allowed, count, _reset = await middleware._check_rate_limit(
                 client_id="test-client",
                 category="default",
                 max_requests=10,
@@ -261,7 +261,7 @@ class TestRedisIntegration:
                 "app.core.cache.get_redis_client",
                 side_effect=Exception("Redis connection failed"),
             ):
-                is_allowed, count, reset = await middleware._check_rate_limit(
+                is_allowed, _count, _reset = await middleware._check_rate_limit(
                     client_id="test-client",
                     category="default",
                     max_requests=10,

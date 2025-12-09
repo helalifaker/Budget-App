@@ -15,7 +15,7 @@ Seeds essential subjects for DHG calculations:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from alembic import op
@@ -31,7 +31,7 @@ def upgrade() -> None:
     """Seed subjects reference data."""
 
     conn = op.get_bind()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # =========================================================================
     # Seed Subjects for French Education System

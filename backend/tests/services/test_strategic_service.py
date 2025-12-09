@@ -13,6 +13,10 @@ from decimal import Decimal
 
 import pytest
 from app.models.configuration import BudgetVersion
+from app.models.consolidation import (
+    BudgetConsolidation,
+    ConsolidationCategory,
+)
 from app.models.strategic import (
     ProjectionCategory,
     ScenarioType,
@@ -20,10 +24,6 @@ from app.models.strategic import (
 from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
 from app.services.strategic_service import StrategicService
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.consolidation import (
-    BudgetConsolidation,
-    ConsolidationCategory,
-)
 
 
 class TestCreateStrategicPlan:

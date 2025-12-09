@@ -19,11 +19,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.models.analysis import KPICategory, KPIDefinition, KPIValue
-from app.models.configuration import BudgetVersion, BudgetVersionStatus
+from app.models.configuration import AcademicLevel, BudgetVersion, BudgetVersionStatus, Subject
+from app.models.planning import DHGSubjectHours
 from app.services.exceptions import NotFoundError, ValidationError
 from app.services.kpi_service import KPIService
-from app.models.planning import DHGSubjectHours
-from app.models.configuration import AcademicLevel, Subject
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -670,7 +669,7 @@ class TestKPIValueStorage:
             "get_kpi_definition",
             return_value=h_e_def,
         ):
-            result = await kpi_service.save_kpi_values(
+            await kpi_service.save_kpi_values(
                 budget_version_id=mock_budget_version.id,
                 kpi_results=kpi_results,
             )
@@ -713,7 +712,7 @@ class TestKPIValueStorage:
             "get_kpi_definition",
             return_value=h_e_def,
         ):
-            result = await kpi_service.save_kpi_values(
+            await kpi_service.save_kpi_values(
                 budget_version_id=mock_budget_version.id,
                 kpi_results=kpi_results,
             )

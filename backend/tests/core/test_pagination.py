@@ -122,7 +122,6 @@ class TestPaginatedResponse:
 
     def test_generic_type_parameter(self):
         """Test that PaginatedResponse works with generic types."""
-        from typing import List
 
         class UserResponse:
             def __init__(self, id: int, name: str):

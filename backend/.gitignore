@@ -1,1 +1,6 @@
+# Test coverage
 .coverage
+
+# Debug files (temporary development files)
+debug*.py
+*.debug.py

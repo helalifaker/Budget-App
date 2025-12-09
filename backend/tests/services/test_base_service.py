@@ -252,7 +252,7 @@ class TestSoftDelete:
         mock_result.scalar_one_or_none.return_value = mock_instance
         db_session.execute.return_value = mock_result
 
-        result = await base_service.soft_delete(test_id)
+        await base_service.soft_delete(test_id)
 
         # deleted_at should be set
         assert mock_instance.deleted_at is not None or hasattr(mock_instance, 'deleted_at')
@@ -273,7 +273,7 @@ class TestRestore:
         mock_result.scalar_one_or_none.return_value = mock_instance
         db_session.execute.return_value = mock_result
 
-        result = await base_service.restore(test_id)
+        await base_service.restore(test_id)
 
         # deleted_at should be None
         db_session.flush.assert_called()

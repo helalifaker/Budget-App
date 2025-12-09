@@ -56,7 +56,6 @@ class TestBudgetVersionStatusTransitions:
     def test_working_to_submitted(self):
         """Test transition from WORKING to SUBMITTED is valid."""
         current = BudgetVersionStatus.WORKING
-        target = BudgetVersionStatus.SUBMITTED
 
         # Only WORKING can transition to SUBMITTED
         valid_transition = current == BudgetVersionStatus.WORKING
@@ -65,7 +64,6 @@ class TestBudgetVersionStatusTransitions:
     def test_submitted_to_approved(self):
         """Test transition from SUBMITTED to APPROVED is valid."""
         current = BudgetVersionStatus.SUBMITTED
-        target = BudgetVersionStatus.APPROVED
 
         # Only SUBMITTED can transition to APPROVED
         valid_transition = current == BudgetVersionStatus.SUBMITTED

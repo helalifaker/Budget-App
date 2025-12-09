@@ -558,6 +558,7 @@ class TestGetRecentActivity:
         """Test recent activity is ordered by timestamp descending."""
         # Create multiple budget versions with different timestamps
         from datetime import datetime, timedelta
+
         from app.models.configuration import BudgetVersionStatus
 
         version1 = BudgetVersion(
@@ -605,6 +606,7 @@ class TestGetRecentActivity:
         # Create 5 budget versions
         versions = []
         from datetime import datetime, timedelta
+
         from app.models.configuration import BudgetVersionStatus
 
         for i in range(5):
@@ -680,6 +682,7 @@ class TestGetRecentActivity:
     ):
         """Test recent activity includes submission activity."""
         from datetime import datetime
+
         from app.models.configuration import BudgetVersionStatus
 
         version = BudgetVersion(
@@ -712,6 +715,7 @@ class TestGetRecentActivity:
     ):
         """Test recent activity includes approval activity."""
         from datetime import datetime
+
         from app.models.configuration import BudgetVersionStatus
 
         version = BudgetVersion(

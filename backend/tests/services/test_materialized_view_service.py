@@ -10,10 +10,8 @@ Tests cover:
 """
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.services.materialized_view_service import MaterializedViewService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestMaterializedViewServiceRefreshAll:
@@ -71,7 +69,7 @@ class TestMaterializedViewServiceRefreshAll:
         try:
             results = await MaterializedViewService.refresh_all(db_session)
             
-            for view_name, result in results.items():
+            for _view_name, result in results.items():
                 if result["status"] == "success":
                     assert "duration_seconds" in result
                     assert isinstance(result["duration_seconds"], (int, float))

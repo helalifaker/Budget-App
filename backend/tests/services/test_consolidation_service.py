@@ -154,7 +154,7 @@ class TestConsolidationServiceConsolidate:
         service = ConsolidationService(db_session)
 
         # First consolidation
-        result1 = await service.consolidate_budget(
+        await service.consolidate_budget(
             test_budget_version.id,
             user_id=test_user_id,
         )
@@ -163,7 +163,7 @@ class TestConsolidationServiceConsolidate:
         revenue.amount_sar = Decimal("1500000.00")
         await db_session.flush()
 
-        result2 = await service.consolidate_budget(
+        await service.consolidate_budget(
             test_budget_version.id,
             user_id=test_user_id,
         )

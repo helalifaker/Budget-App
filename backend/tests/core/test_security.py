@@ -8,11 +8,9 @@ Covers:
 - Edge cases and error handling
 """
 
-import os
 from datetime import timedelta
 from unittest.mock import patch
 
-import pytest
 from app.core.security import (
     create_access_token,
     decode_access_token,
@@ -160,8 +158,8 @@ class TestSupabaseJWT:
 
     def test_verify_supabase_jwt_with_custom_secret(self):
         """Test Supabase JWT verification with custom secret."""
-        from jose import jwt
         from app.core.security import ALGORITHM
+        from jose import jwt
 
         # Create a valid Supabase JWT with proper claims
         secret = "test-supabase-jwt-secret"
@@ -217,8 +215,8 @@ class TestSupabaseJWT:
 
     def test_verify_supabase_jwt_uses_default_secret(self):
         """Test that Supabase JWT returns None if secret not configured."""
-        from jose import jwt
         from app.core.security import ALGORITHM
+        from jose import jwt
 
         data = {"sub": "123", "aud": "authenticated"}
         token = jwt.encode(data, "any-secret", algorithm=ALGORITHM)

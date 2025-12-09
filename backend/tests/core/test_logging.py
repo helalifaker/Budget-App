@@ -8,8 +8,7 @@ Covers:
 - Request/response logging
 """
 
-import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from app.core.logging import LoggingMiddleware, configure_logging, logger
@@ -123,7 +122,7 @@ class TestLoggingMiddleware:
             await middleware.dispatch(request, call_next)
 
             # Should log request_started
-            log_calls = [str(call) for call in mock_log.call_args_list]
+            [str(call) for call in mock_log.call_args_list]
             assert any("request_started" in str(call) for call in mock_log.call_args_list)
 
     @pytest.mark.asyncio
