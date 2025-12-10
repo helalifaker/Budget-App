@@ -2,24 +2,63 @@
 Pytest configuration and fixtures for EFIR Budget Planning Application tests.
 
 This file provides common fixtures and configuration for all tests, including:
-- Database setup
+- Database setup (worker-isolated SQLite for parallel testing)
 - Sample data fixtures
 - Budget version fixtures
 - Configuration fixtures
 - Authentication mocks
+
+NOTE: This configuration supports pytest-xdist parallel execution by using
+unique IN-MEMORY SQLite databases per worker with distinct connection URIs.
 """
 
-import asyncio
 import os
+import tempfile
+from pathlib import Path
+
+# ==============================================================================
+# CRITICAL: Set test environment variables BEFORE importing app modules
+# ==============================================================================
+# This must happen before any app imports because app/database.py reads
+# environment variables at import time to configure the database engine.
+
+# Force lightweight SQLite database for tests to avoid external dependencies
+os.environ["USE_SQLITE_FOR_TESTS"] = "true"
+os.environ["PYTEST_RUNNING"] = "true"
+os.environ["REDIS_ENABLED"] = "false"
+
+# Create worker-specific database URL for pytest-xdist parallel execution
+# Each worker gets its own SQLite file to prevent "index already exists" errors
+_worker_id = os.environ.get("PYTEST_XDIST_WORKER", "master")
+
+# Use PID-based unique temp directory for additional isolation
+# This ensures each pytest run (even concurrent ones) gets unique databases
+_pid = os.getpid()
+_temp_dir = Path(tempfile.gettempdir()) / f"efir_test_dbs_{_pid}"
+_temp_dir.mkdir(exist_ok=True)
+_WORKER_DB_PATH: Path = _temp_dir / f"test_efir_{_worker_id}.db"
+
+# Clean up any existing database file from previous runs
+if _WORKER_DB_PATH.exists():
+    try:
+        _WORKER_DB_PATH.unlink()
+    except OSError:
+        pass  # File might be locked, will be overwritten
+
+# Set TEST_DATABASE_URL so app/database.py uses the worker-specific file
+_worker_db_url = f"sqlite+aiosqlite:///{_WORKER_DB_PATH}"
+os.environ["TEST_DATABASE_URL"] = _worker_db_url
+print(f"\n🔧 Worker {_worker_id} (PID {_pid}): Using database at {_WORKER_DB_PATH}")
+
+# ==============================================================================
+# Now safe to import app modules
+# ==============================================================================
+
+import asyncio
 from collections.abc import AsyncGenerator, Generator
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
-
-# Force lightweight SQLite database for tests to avoid external dependencies
-os.environ.setdefault("USE_SQLITE_FOR_TESTS", "true")
-os.environ.setdefault("PYTEST_RUNNING", "true")
-os.environ.setdefault("REDIS_ENABLED", "false")
 
 import pytest
 
@@ -54,6 +93,56 @@ from app.models.planning import (
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+
+# ==============================================================================
+# Pytest Hooks for Database Setup and Cleanup
+# ==============================================================================
+
+
+def pytest_configure(config):
+    """
+    Pytest hook called early during pytest startup.
+
+    Ensures test environment is properly configured before any tests run.
+    This hook runs BEFORE test collection, making it ideal for environment setup.
+    """
+    # Ensure test flags are set (belt and suspenders approach)
+    os.environ["PYTEST_RUNNING"] = "true"
+    os.environ["USE_SQLITE_FOR_TESTS"] = "true"
+    os.environ["REDIS_ENABLED"] = "false"
+
+
+def pytest_unconfigure(config):
+    """
+    Pytest hook called before test process exits.
+
+    Cleans up the worker-specific SQLite database file and temp directory.
+    """
+    if _WORKER_DB_PATH and _WORKER_DB_PATH.exists():
+        try:
+            _WORKER_DB_PATH.unlink()
+            print(f"\n🧹 Cleaned up test database: {_WORKER_DB_PATH}")
+        except OSError:
+            pass  # Best effort cleanup
+
+    # Clean up the temp directory if empty
+    if _temp_dir and _temp_dir.exists():
+        try:
+            # Only remove if empty (other workers might still be using it)
+            if not list(_temp_dir.iterdir()):
+                _temp_dir.rmdir()
+        except OSError:
+            pass
+
+
+def get_worker_database_url() -> str:
+    """
+    Get the worker-specific SQLite database URL.
+
+    Returns a file-based SQLite URL unique to the current pytest-xdist worker,
+    preventing parallel test execution conflicts.
+    """
+    return _worker_db_url
 
 # ==============================================================================
 # CRITICAL: Strip schemas IMMEDIATELY after models are imported
@@ -143,10 +232,12 @@ def test_database_url() -> str:
     """
     Get test database URL.
 
-    Uses in-memory SQLite for fast tests.
+    Uses file-based SQLite with worker-specific paths for pytest-xdist isolation.
+    Each parallel worker gets its own database file to prevent conflicts.
+
     For integration tests with PostgreSQL, override this fixture.
     """
-    return "sqlite+aiosqlite:///:memory:"
+    return get_worker_database_url()
 
 
 @pytest.fixture(scope="session")
@@ -155,87 +246,95 @@ async def engine(test_database_url: str):
     Create async database engine for tests.
 
     Creates all tables in the test database including auth schema.
+    Uses file-based SQLite with worker isolation for pytest-xdist parallel execution.
+
+    IMPORTANT: For pytest-xdist, each worker gets its own database file,
+    which is cleaned up after the test session ends.
     """
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "master")
+
     # For SQLite, use schema translation to strip PostgreSQL schemas
     # This is the recommended SQLAlchemy 2.0 approach for cross-database compatibility
     if test_database_url.startswith("sqlite"):
-        engine = create_async_engine(
+        test_engine = create_async_engine(
             test_database_url,
             echo=False,  # Set to True for SQL debugging
             execution_options={
                 "schema_translate_map": {
-                    "efir_budget": None,  # Translate efir_budget schema to no schema (main database)
+                    "efir_budget": None,  # Translate efir_budget schema to no schema
                     "auth": None,  # Translate auth schema to no schema
                 }
             },
         )
     else:
-        engine = create_async_engine(
+        test_engine = create_async_engine(
             test_database_url,
             echo=False,
         )
 
-    async with engine.begin() as conn:
-        # For SQLite tests, temporarily remove schema from metadata to create tables
-        # in the main database (SQLite doesn't support PostgreSQL-style schemas)
+    async with test_engine.begin() as conn:
         if test_database_url.startswith("sqlite"):
-            # Use schema_translate_map via DDL to strip schemas during create_all
-            # First, strip schema from table metadata objects
+            # Step 1: Ensure schemas are stripped from Base.metadata
+            # SQLite doesn't support PostgreSQL-style schemas
             for table in Base.metadata.tables.values():
                 table.schema = None
 
-            # Strip schema from all ForeignKey constraints
-            for table in Base.metadata.tables.values():
-                for constraint in table.constraints:
-                    if hasattr(constraint, 'elements'):
-                        for fk_element in constraint.elements:
-                            if hasattr(fk_element, '_colspec'):
-                                original_colspec = fk_element._colspec
-                                if '.' in original_colspec:
-                                    parts = original_colspec.split('.')
-                                    if len(parts) == 3:  # schema.table.column
-                                        fk_element._colspec = f"{parts[1]}.{parts[2]}"
+            # Step 2: FORCE drop all objects using raw SQL
+            # This is more reliable than SQLAlchemy's drop_all for SQLite
+            # because it ensures indexes are dropped before tables
+            print(f"\n🗑️ Worker {worker_id}: Force-dropping all SQLite objects...")
 
-                # Strip schema from column foreign_keys
-                for column in table.columns:
-                    for fk in column.foreign_keys:
-                        if hasattr(fk, '_colspec'):
-                            original_colspec = fk._colspec
-                            if '.' in original_colspec:
-                                parts = original_colspec.split('.')
-                                if len(parts) == 3:  # schema.table.column
-                                    fk._colspec = f"{parts[1]}.{parts[2]}"
+            # Get all indexes and drop them first
+            index_result = await conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'")
+            )
+            indexes = [row[0] for row in index_result.fetchall()]
+            for idx_name in indexes:
+                try:
+                    await conn.execute(text(f'DROP INDEX IF EXISTS "{idx_name}"'))
+                except Exception:
+                    pass  # Index might be auto-dropped with table
 
-            # CRITICAL: Clear SQLAlchemy's metadata table cache and rebuild with schema-less keys
-            # The metadata._schemas dict tracks table keys - we need to rebuild this
-            from sqlalchemy import MetaData
-            new_metadata = MetaData()
+            # Get all tables and drop them
+            table_result = await conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+            )
+            tables = [row[0] for row in table_result.fetchall()]
+            for table_name in tables:
+                try:
+                    await conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}"'))
+                except Exception:
+                    pass  # Table might have dependencies
 
-            # Copy tables to new metadata without schema in keys
-            for table in Base.metadata.tables.values():
-                # table.schema is already None from above
-                # Create table in new metadata - this registers with schema-less key
-                table.tometadata(new_metadata)
+            # Also call SQLAlchemy's drop_all for completeness
+            await conn.run_sync(Base.metadata.drop_all)
 
-            print(f"\n🔍 Creating {len(new_metadata.tables)} tables for SQLite tests (schemas stripped)")
-            for table_name in list(new_metadata.tables.keys())[:5]:
-                print(f"  - {table_name}")
+            # Verify database is now empty
+            verify_result = await conn.execute(
+                text("SELECT type, name FROM sqlite_master WHERE type IN ('table', 'index') AND name NOT LIKE 'sqlite_%'")
+            )
+            remaining = [(row[0], row[1]) for row in verify_result.fetchall()]
+            if remaining:
+                print(f"⚠️ Worker {worker_id}: Still have {len(remaining)} objects after cleanup: {remaining[:5]}...")
+            else:
+                print(f"✅ Worker {worker_id}: Database is clean")
 
-            # Create all tables using the new schema-less metadata
-            await conn.run_sync(new_metadata.create_all)
-        else:
-            # Create all tables with original metadata
+            print(f"\n🔍 Worker {worker_id}: Creating {len(Base.metadata.tables)} tables...")
+
+            # Step 3: Create all tables fresh
             await conn.run_sync(Base.metadata.create_all)
 
-        # Debug: Verify tables were created
-        if test_database_url.startswith("sqlite"):
+            # Verify tables were created
             result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
             tables = [row[0] for row in result.fetchall()]
-            print(f"✅ Created {len(tables)} tables in SQLite: {tables[:10]}")
+            print(f"✅ Worker {worker_id}: Created {len(tables)} tables in SQLite")
+        else:
+            # PostgreSQL: Create all tables with original metadata
+            await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
-    yield engine
+    yield test_engine
 
-    await engine.dispose()
+    await test_engine.dispose()
 
 
 @pytest.fixture
@@ -1139,15 +1238,18 @@ async def system_configs(
 
 
 @pytest.fixture(scope="module")
-def client():
+def client(engine):
     """
-    Create test client that properly triggers FastAPI lifespan events.
+    Create test client for API tests.
 
-    CRITICAL: Uses context manager to ensure startup event (which calls init_db())
-    is executed, creating all SQLite tables before tests run.
+    IMPORTANT: This fixture depends on 'engine' to ensure the session-scoped
+    database setup completes BEFORE TestClient is created. This prevents
+    "index already exists" errors from competing create_all() calls.
 
-    This fixture is module-scoped for efficiency - the database is initialized
-    once per test module rather than once per test.
+    The engine fixture handles all table creation; startup_event's init_db()
+    is skipped when PYTEST_RUNNING is set.
+
+    This fixture is module-scoped for efficiency - one client per test module.
 
     Usage in API tests:
         def test_my_endpoint(client):
@@ -1157,5 +1259,6 @@ def client():
     from starlette.testclient import TestClient
 
     # Use context manager to trigger startup/shutdown events
+    # Note: init_db() in startup_event is skipped due to PYTEST_RUNNING env var
     with TestClient(app) as test_client:
         yield test_client

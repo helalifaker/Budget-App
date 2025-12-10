@@ -113,7 +113,8 @@ class Employee(BaseModel, VersionedMixin):
     """
 
     __tablename__ = "employees"
-    __table_args__ = (
+    # Build table args dynamically - skip explicit indexes during pytest to avoid SQLite collision
+    _base_table_args = (
         # Unique employee code per budget version
         UniqueConstraint(
             "budget_version_id",
@@ -125,12 +126,18 @@ class Employee(BaseModel, VersionedMixin):
             "basic_salary_percentage IS NULL OR basic_salary_percentage >= 0.50",
             name="ck_employees_basic_salary_min_50_percent",
         ),
-        # Performance indexes
-        Index("ix_employees_category", "category"),
-        Index("ix_employees_is_active", "is_active"),
-        Index("ix_employees_is_placeholder", "is_placeholder"),
-        {} if os.environ.get("PYTEST_RUNNING") else {"schema": "efir_budget"},
     )
+    # Only add explicit indexes in production (PostgreSQL) - SQLite handles indexes via column attrs
+    if not os.environ.get("PYTEST_RUNNING"):
+        __table_args__ = (
+            *_base_table_args,
+            Index("ix_employees_category", "category"),
+            Index("ix_employees_is_active", "is_active"),
+            Index("ix_employees_is_placeholder", "is_placeholder"),
+            {"schema": "efir_budget"},
+        )
+    else:
+        __table_args__ = (*_base_table_args, {})
 
     # Auto-generated employee code (EMP001, EMP002, etc.)
     employee_code: Mapped[str] = mapped_column(
@@ -157,7 +164,7 @@ class Employee(BaseModel, VersionedMixin):
     category: Mapped[EmployeeCategory] = mapped_column(
         Enum(EmployeeCategory, schema=get_schema("efir_budget"), values_callable=lambda x: [e.value for e in x]),
         nullable=False,
-        index=True,
+        # Note: index defined explicitly in __table_args__ as ix_employees_category
         comment="Employee category (AEFE_DETACHED, AEFE_FUNDED, LOCAL_TEACHER, ADMINISTRATIVE, SUPPORT)",
     )
 
@@ -232,7 +239,7 @@ class Employee(BaseModel, VersionedMixin):
         Boolean,
         nullable=False,
         default=True,
-        index=True,
+        # Note: index defined explicitly in __table_args__ as ix_employees_is_active
         comment="Whether employee is currently active",
     )
 
@@ -240,7 +247,7 @@ class Employee(BaseModel, VersionedMixin):
         Boolean,
         nullable=False,
         default=False,
-        index=True,
+        # Note: index defined explicitly in __table_args__ as ix_employees_is_placeholder
         comment="True = Planned position (from DHG gap), False = Base 100 (existing employee)",
     )
 
