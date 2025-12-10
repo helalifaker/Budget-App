@@ -137,7 +137,7 @@ class Employee(BaseModel, VersionedMixin):
             {"schema": "efir_budget"},
         )
     else:
-        __table_args__ = (*_base_table_args, {})
+        __table_args__ = (*_base_table_args, {})  # type: ignore[assignment]
 
     # Auto-generated employee code (EMP001, EMP002, etc.)
     employee_code: Mapped[str] = mapped_column(
