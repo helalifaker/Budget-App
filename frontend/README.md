@@ -145,6 +145,122 @@ frontend/
 └── package.json           # Dependencies and scripts
 ```
 
+## UI Layout System (Redesign Phase 1-9)
+
+The application uses a modern, accessible layout system implemented in Phase 1-9 of the UI redesign.
+
+### Layout Structure
+
+```
+┌────────┬────────────────────────────────────────────────────────────────────┐
+│        │ ModuleHeader (48px) - Title + Search + Version + User              │
+│        ├────────────────────────────────────────────────────────────────────┤
+│ App    │ WorkflowTabs (40px) - Horizontal tab navigation                    │
+│ Side   ├────────────────────────────────────────────────────────────────────┤
+│ bar    │ TaskDescription (32px) - Contextual help text                      │
+│ (64px) ├────────────────────────────────────────────────────────────────────┤
+│        │                                                                    │
+│        │ Content Area (flexible) - AG Grid / Forms / Tables                 │
+│        │                                                                    │
+└────────┴────────────────────────────────────────────────────────────────────┘
+Mobile: MobileBottomNav (fixed at bottom)
+```
+
+**Total Chrome Height**: 120px (48 + 40 + 32)
+
+### Layout Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| `ModuleLayout` | `layout/ModuleLayout.tsx` | Main layout wrapper with all providers |
+| `AppSidebar` | `layout/AppSidebar.tsx` | Collapsible sidebar (64px → 240px on hover) |
+| `ModuleHeader` | `layout/ModuleHeader.tsx` | Module title, search, version selector |
+| `WorkflowTabs` | `layout/WorkflowTabs.tsx` | Horizontal workflow step navigation |
+| `TaskDescription` | `layout/TaskDescription.tsx` | Contextual task descriptions |
+| `MobileDrawer` | `layout/MobileDrawer.tsx` | Slide-out navigation for mobile |
+| `MobileBottomNav` | `layout/MobileBottomNav.tsx` | Bottom tab navigation for mobile |
+
+### Using ModuleLayout
+
+The `ModuleLayout` component is the main entry point for authenticated pages:
+
+```tsx
+// In _authenticated.tsx
+import { ModuleLayout } from '@/components/layout/ModuleLayout'
+
+function AuthenticatedLayout() {
+  return (
+    <ModuleLayout>
+      <Outlet />
+    </ModuleLayout>
+  )
+}
+```
+
+Module-specific routes automatically inherit:
+- Sidebar navigation with module highlighting
+- Workflow tabs for subpages
+- Settings tab (for Enrollment, Workforce, Finance modules)
+- Task descriptions based on route
+
+### Typography System
+
+Import typography utilities from `@/styles/typography`:
+
+```tsx
+import { getTypographyClasses, TYPOGRAPHY, MODULE_COLORS, LAYOUT } from '@/styles/typography'
+
+// Use Tailwind classes
+<h1 className={getTypographyClasses('moduleTitle')}>Enrollment</h1>
+
+// Available typography styles:
+// moduleTitle, tabLabel, description, tableHeader, tableContent, button
+```
+
+### Module Colors
+
+Each module has a distinct accent color:
+
+| Module | Color | Hex |
+|--------|-------|-----|
+| Enrollment | Sage | #7D9082 |
+| Workforce | Wine | #8B5C6B |
+| Finance | Gold | #A68B5B |
+| Analysis | Slate | #64748B |
+| Strategic | Neutral | #6B7280 |
+| Configuration | Neutral | #6B7280 |
+
+### Accessibility Features
+
+The layout system includes comprehensive accessibility support:
+
+- **Skip Navigation**: Links to skip to main content, navigation, or data grid
+- **ARIA Landmarks**: Proper `role` attributes on all sections
+- **Keyboard Navigation**: Full keyboard support (Tab, Arrow keys, Home, End)
+- **Screen Reader Support**: Route announcements, live regions
+- **Focus Indicators**: Visible focus states on all interactive elements
+- **Touch Targets**: 44px minimum height for mobile compliance
+- **Reduced Motion**: Respects `prefers-reduced-motion`
+- **High Contrast**: Supports high contrast mode
+
+### CSS Variables
+
+Layout dimensions are defined in `index.css`:
+
+```css
+:root {
+  --sidebar-width-collapsed: 64px;
+  --sidebar-width-expanded: 240px;
+  --header-line-height: 48px;
+  --tabs-line-height: 40px;
+  --description-line-height: 32px;
+  --layout-chrome-height: 120px;
+  --redesign-content-height: calc(100vh - var(--layout-chrome-height));
+}
+```
+
+---
+
 ## Setup
 
 ### Prerequisites

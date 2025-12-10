@@ -151,16 +151,6 @@ function StrategicPlanningPage() {
 
   return (
     <div className="p-6" style={{ background: 'var(--efir-bg-canvas)' }}>
-      {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-display font-bold text-[var(--efir-text-primary)]">
-          Strategic Planning
-        </h1>
-        <p className="text-sm text-[var(--efir-text-secondary)] mt-1">
-          Create and manage 5-year strategic plans with scenarios
-        </p>
-      </div>
-
       <div className="space-y-6">
         {/* Create Plan Button */}
         <div className="flex justify-end">

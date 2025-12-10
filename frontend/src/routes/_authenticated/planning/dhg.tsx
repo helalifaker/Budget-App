@@ -1,8 +1,16 @@
+/**
+ * DHG Workforce Planning Page - /planning/dhg
+ *
+ * Manages DHG (Dotation Horaire Globale) workforce planning.
+ * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
+ *
+ * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
+ */
+
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { ColDef, themeQuartz } from 'ag-grid-community'
-import { PlanningPageWrapper } from '@/components/planning/PlanningPageWrapper'
 import { SummaryCard } from '@/components/SummaryCard'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -71,158 +79,152 @@ function DHGPage() {
   const totalSubjects = trmdGapItems.length
 
   return (
-    <PlanningPageWrapper
-      stepId="dhg"
-      actions={
+    <div className="p-6 space-y-5">
+      {/* Page Actions */}
+      <div className="flex items-center justify-end gap-3">
+        <HistoricalToggle
+          showHistorical={showHistorical}
+          onToggle={setShowHistorical}
+          disabled={!selectedVersionId}
+          isLoading={historicalLoading}
+          currentFiscalYear={currentFiscalYear}
+        />
+        <Button
+          data-testid="calculate-button"
+          onClick={handleCalculateFTE}
+          disabled={!selectedVersionId || calculateFTE.isPending}
+          variant="premium"
+        >
+          <Calculator className="w-4 h-4" />
+          Recalculate FTE
+        </Button>
+      </div>
+
+      {/* Content */}
+      {selectedVersionId ? (
         <>
-          <HistoricalToggle
-            showHistorical={showHistorical}
-            onToggle={setShowHistorical}
-            disabled={!selectedVersionId}
-            isLoading={historicalLoading}
-            currentFiscalYear={currentFiscalYear}
-          />
-          <Button
-            data-testid="calculate-button"
-            onClick={handleCalculateFTE}
-            disabled={!selectedVersionId || calculateFTE.isPending}
-            variant="premium"
-          >
-            <Calculator className="w-4 h-4" />
-            Recalculate FTE
-          </Button>
-        </>
-      }
-    >
-      <div className="p-6 space-y-5">
-        {selectedVersionId ? (
-          <>
-            {/* Historical Summary for FTE */}
-            {showHistorical && historicalData?.totals_fte && (
-              <div className="flex gap-4 mb-4">
+          {/* Historical Summary for FTE */}
+          {showHistorical && historicalData?.totals_fte && (
+            <div className="flex gap-4 mb-4">
+              <HistoricalSummary
+                currentValue={totalFTE}
+                priorYearValue={historicalData.totals_fte.n_minus_1?.value ?? null}
+                changePercent={historicalData.totals_fte.vs_n_minus_1_pct ?? null}
+                label="Total FTE vs Prior Year"
+                isCurrency={false}
+              />
+              {historicalData.totals_hours && (
                 <HistoricalSummary
-                  currentValue={totalFTE}
-                  priorYearValue={historicalData.totals_fte.n_minus_1?.value ?? null}
-                  changePercent={historicalData.totals_fte.vs_n_minus_1_pct ?? null}
-                  label="Total FTE vs Prior Year"
+                  currentValue={fteItems.reduce((sum, item) => sum + (item.required_hours || 0), 0)}
+                  priorYearValue={historicalData.totals_hours.n_minus_1?.value ?? null}
+                  changePercent={historicalData.totals_hours.vs_n_minus_1_pct ?? null}
+                  label="Total Hours vs Prior Year"
                   isCurrency={false}
                 />
-                {historicalData.totals_hours && (
-                  <HistoricalSummary
-                    currentValue={fteItems.reduce(
-                      (sum, item) => sum + (item.required_hours || 0),
-                      0
-                    )}
-                    priorYearValue={historicalData.totals_hours.n_minus_1?.value ?? null}
-                    changePercent={historicalData.totals_hours.vs_n_minus_1_pct ?? null}
-                    label="Total Hours vs Prior Year"
-                    isCurrency={false}
-                  />
-                )}
-              </div>
-            )}
-
-            {/* Summary Cards - Premium Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <SummaryCard
-                title="Total FTE Required"
-                value={totalFTE.toFixed(2)}
-                subtitle="Full-time equivalents"
-                icon={<Users className="w-4 h-4" />}
-                compact
-              />
-              <SummaryCard
-                title="HSA Hours"
-                value={totalHSAHours.toFixed(1)}
-                subtitle="Overtime hours"
-                icon={<Clock className="w-4 h-4" />}
-                compact
-              />
-              <SummaryCard
-                title="Deficit Hours"
-                value={totalDeficit.toFixed(1)}
-                subtitle="Hours to fill"
-                icon={<AlertTriangle className="w-4 h-4" />}
-                valueClassName={totalDeficit > 0 ? 'text-error-600' : 'text-success-600'}
-                trend={totalDeficit > 0 ? 'down' : 'up'}
-                compact
-              />
-              <SummaryCard
-                title="Subjects Analyzed"
-                value={totalSubjects}
-                subtitle="In TRMD gap analysis"
-                icon={<TrendingUp className="w-4 h-4" />}
-                compact
-              />
+              )}
             </div>
+          )}
 
-            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger data-testid="subject-hours-tab" value="hours">
-                  Subject Hours
-                </TabsTrigger>
-                <TabsTrigger data-testid="fte-tab" value="fte">
-                  Teacher FTE
-                </TabsTrigger>
-                <TabsTrigger data-testid="trmd-tab" value="trmd">
-                  TRMD Gap Analysis
-                </TabsTrigger>
-                <TabsTrigger data-testid="hsa-tab" value="hsa">
-                  HSA Planning
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="hours" className="mt-6">
-                <SubjectHoursTab data={subjectHours || []} isLoading={loadingHours} />
-              </TabsContent>
-
-              <TabsContent value="fte" className="mt-6">
-                <TeacherFTETab data={fteItems} isLoading={loadingFTE} />
-              </TabsContent>
-
-              <TabsContent value="trmd" className="mt-6">
-                {trmdMissingPrerequisites ? (
-                  <Card>
-                    <CardContent className="py-12">
-                      <div className="text-center text-gray-500">
-                        <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
-                        <p className="text-lg font-medium mb-2">
-                          Teacher Requirements Not Calculated
-                        </p>
-                        <p className="text-sm">
-                          Please calculate teacher FTE requirements first before viewing TRMD gap
-                          analysis.
-                        </p>
-                        <Button
-                          onClick={handleCalculateFTE}
-                          className="mt-4"
-                          disabled={calculateFTE.isPending}
-                        >
-                          <Calculator className="w-4 h-4 mr-2" />
-                          {calculateFTE.isPending
-                            ? 'Calculating...'
-                            : 'Calculate Teacher Requirements'}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <TRMDTab data={trmdGapItems} isLoading={loadingTRMD} />
-                )}
-              </TabsContent>
-
-              <TabsContent value="hsa" className="mt-6">
-                <HSATab data={[]} isLoading={false} />
-              </TabsContent>
-            </Tabs>
-          </>
-        ) : (
-          <div className="text-center py-12 text-text-secondary">
-            Please select a budget version to view DHG workforce planning
+          {/* Summary Cards - Premium Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard
+              title="Total FTE Required"
+              value={totalFTE.toFixed(2)}
+              subtitle="Full-time equivalents"
+              icon={<Users className="w-4 h-4" />}
+              compact
+            />
+            <SummaryCard
+              title="HSA Hours"
+              value={totalHSAHours.toFixed(1)}
+              subtitle="Overtime hours"
+              icon={<Clock className="w-4 h-4" />}
+              compact
+            />
+            <SummaryCard
+              title="Deficit Hours"
+              value={totalDeficit.toFixed(1)}
+              subtitle="Hours to fill"
+              icon={<AlertTriangle className="w-4 h-4" />}
+              valueClassName={totalDeficit > 0 ? 'text-error-600' : 'text-success-600'}
+              trend={totalDeficit > 0 ? 'down' : 'up'}
+              compact
+            />
+            <SummaryCard
+              title="Subjects Analyzed"
+              value={totalSubjects}
+              subtitle="In TRMD gap analysis"
+              icon={<TrendingUp className="w-4 h-4" />}
+              compact
+            />
           </div>
-        )}
-      </div>
-    </PlanningPageWrapper>
+
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger data-testid="subject-hours-tab" value="hours">
+                Subject Hours
+              </TabsTrigger>
+              <TabsTrigger data-testid="fte-tab" value="fte">
+                Teacher FTE
+              </TabsTrigger>
+              <TabsTrigger data-testid="trmd-tab" value="trmd">
+                TRMD Gap Analysis
+              </TabsTrigger>
+              <TabsTrigger data-testid="hsa-tab" value="hsa">
+                HSA Planning
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="hours" className="mt-6">
+              <SubjectHoursTab data={subjectHours || []} isLoading={loadingHours} />
+            </TabsContent>
+
+            <TabsContent value="fte" className="mt-6">
+              <TeacherFTETab data={fteItems} isLoading={loadingFTE} />
+            </TabsContent>
+
+            <TabsContent value="trmd" className="mt-6">
+              {trmdMissingPrerequisites ? (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="text-center text-gray-500">
+                      <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
+                      <p className="text-lg font-medium mb-2">
+                        Teacher Requirements Not Calculated
+                      </p>
+                      <p className="text-sm">
+                        Please calculate teacher FTE requirements first before viewing TRMD gap
+                        analysis.
+                      </p>
+                      <Button
+                        onClick={handleCalculateFTE}
+                        className="mt-4"
+                        disabled={calculateFTE.isPending}
+                      >
+                        <Calculator className="w-4 h-4 mr-2" />
+                        {calculateFTE.isPending
+                          ? 'Calculating...'
+                          : 'Calculate Teacher Requirements'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <TRMDTab data={trmdGapItems} isLoading={loadingTRMD} />
+              )}
+            </TabsContent>
+
+            <TabsContent value="hsa" className="mt-6">
+              <HSATab data={[]} isLoading={false} />
+            </TabsContent>
+          </Tabs>
+        </>
+      ) : (
+        <div className="text-center py-12 text-text-secondary">
+          Please select a budget version to view DHG workforce planning
+        </div>
+      )}
+    </div>
   )
 }
 

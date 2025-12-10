@@ -86,8 +86,8 @@ const TabsList = React.forwardRef<React.ElementRef<typeof TabsPrimitive.List>, T
       className={cn(
         // Layout
         'inline-flex h-11 items-center justify-center',
-        variant === 'default' && ['p-1', 'rounded-xl bg-subtle', 'border border-[#E8E6E1]'],
-        variant === 'underline' && ['gap-1', 'border-b border-[#E8E6E1]'],
+        variant === 'default' && ['p-1', 'rounded-xl bg-subtle', 'border border-border-light'],
+        variant === 'underline' && ['gap-1', 'border-b border-border-light'],
         // Text
         'text-text-tertiary',
         className

@@ -101,7 +101,7 @@ describe('Header', () => {
       const title = screen.getByText('EFIR Budget')
       expect(title.className).toMatch(/text-base/)
       expect(title.className).toMatch(/font-semibold/)
-      expect(title.className).toMatch(/text-brown-900/)
+      expect(title.className).toMatch(/text-text-primary/)
     })
   })
 
@@ -253,7 +253,7 @@ describe('Header', () => {
       expect(header?.className).toMatch(/bg-white/)
       expect(header?.className).toMatch(/backdrop-blur-md/)
       expect(header?.className).toMatch(/border-b/)
-      expect(header?.className).toMatch(/border-sand-200/)
+      expect(header?.className).toMatch(/border-border-light/)
       expect(header?.className).toMatch(/h-14/)
     })
 

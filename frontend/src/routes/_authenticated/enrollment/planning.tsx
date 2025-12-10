@@ -2,16 +2,15 @@
  * Enrollment Planning Page - /enrollment/planning
  *
  * Manages student enrollment by level with nationality distribution.
- * Navigation (SmartHeader + ModuleDock) provided by _authenticated.tsx layout.
+ * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
  *
- * Migrated from /planning/enrollment
+ * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { ColDef, CellValueChangedEvent, ValueFormatterParams } from 'ag-grid-community'
-import { PlanningPageWrapper } from '@/components/planning/PlanningPageWrapper'
 import { DataTableLazy } from '@/components/DataTableLazy'
 import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { Button } from '@/components/ui/button'
@@ -535,237 +534,234 @@ function EnrollmentPlanningPage() {
   // ============================================================================
 
   return (
-    <PlanningPageWrapper stepId="enrollment">
-      <div className="p-6 space-y-6">
-        {/* Summary Cards */}
-        {selectedVersionId && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {/* Total Students */}
-            <Card data-testid="total-students-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div data-testid="total-students" className="text-2xl font-bold">
-                  {statistics.totalStudents.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Across all 15 levels</p>
-              </CardContent>
-            </Card>
+    <div className="p-6 space-y-6">
+      {/* Summary Cards */}
+      {selectedVersionId && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {/* Total Students */}
+          <Card data-testid="total-students-card">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Students</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div data-testid="total-students" className="text-2xl font-bold">
+                {statistics.totalStudents.toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Across all 15 levels</p>
+            </CardContent>
+          </Card>
 
-            {/* Capacity Utilization */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">School Capacity</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{statistics.capacityUtilization}%</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {statistics.totalStudents.toLocaleString()} / {SCHOOL_CAPACITY.toLocaleString()}{' '}
-                  max
-                </p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div
-                    className={`h-2 rounded-full ${
-                      statistics.capacityUtilization > 90
-                        ? 'bg-red-500'
-                        : statistics.capacityUtilization > 75
-                          ? 'bg-yellow-500'
-                          : 'bg-green-500'
-                    }`}
-                    style={{ width: `${Math.min(statistics.capacityUtilization, 100)}%` }}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          {/* Capacity Utilization */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">School Capacity</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{statistics.capacityUtilization}%</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {statistics.totalStudents.toLocaleString()} / {SCHOOL_CAPACITY.toLocaleString()} max
+              </p>
+              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div
+                  className={`h-2 rounded-full ${
+                    statistics.capacityUtilization > 90
+                      ? 'bg-red-500'
+                      : statistics.capacityUtilization > 75
+                        ? 'bg-yellow-500'
+                        : 'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.min(statistics.capacityUtilization, 100)}%` }}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* By Nationality */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">By Nationality</CardTitle>
-                <Globe className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  {Object.entries(statistics.byNationality).map(([nationality, count]) => (
-                    <div key={nationality} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{nationality}</span>
-                      <span className="font-medium">{count}</span>
-                    </div>
-                  ))}
-                  {Object.keys(statistics.byNationality).length === 0 && (
-                    <p className="text-xs text-muted-foreground">No data yet</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* By Cycle */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">By Cycle</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  {Object.entries(statistics.byCycle).map(([cycle, count]) => (
-                    <div key={cycle} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{cycle}</span>
-                      <span className="font-medium">{count}</span>
-                    </div>
-                  ))}
-                  {Object.keys(statistics.byCycle).length === 0 && (
-                    <p className="text-xs text-muted-foreground">No data yet</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Historical Toggle and Summary */}
-        {selectedVersionId && (
-          <div className="flex items-center justify-between mb-4">
-            <HistoricalToggle
-              showHistorical={showHistorical}
-              onToggle={setShowHistorical}
-              disabled={!selectedVersionId}
-              isLoading={historicalLoading}
-              currentFiscalYear={currentFiscalYear}
-            />
-            {showHistorical && historicalData?.totals && (
-              <HistoricalSummary
-                currentValue={statistics.totalStudents}
-                priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
-                changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
-                label="Total Students vs Prior Year"
-                isCurrency={false}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Tabbed Interface */}
-        {selectedVersionId ? (
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <TabsList>
-                <TabsTrigger value="totals">
-                  Enrollment by Level
-                  {hasUnsavedTotals && (
-                    <Badge variant="secondary" className="ml-2 bg-yellow-100">
-                      Unsaved
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="distribution">
-                  Nationality Distribution
-                  {hasUnsavedDistributions && (
-                    <Badge variant="secondary" className="ml-2 bg-yellow-100">
-                      Unsaved
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="breakdown">Calculated Breakdown</TabsTrigger>
-              </TabsList>
-
-              {/* Save Button based on active tab */}
-              {activeTab === 'totals' && (
-                <Button
-                  onClick={handleSaveTotals}
-                  disabled={!hasUnsavedTotals || saveTotalsMutation.isPending}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {saveTotalsMutation.isPending ? 'Saving...' : 'Save Totals'}
-                </Button>
-              )}
-              {activeTab === 'distribution' && (
-                <Button
-                  onClick={handleSaveDistributions}
-                  disabled={
-                    !hasUnsavedDistributions ||
-                    saveDistributionsMutation.isPending ||
-                    !allDistributionsValid
-                  }
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {saveDistributionsMutation.isPending ? 'Saving...' : 'Save Distribution'}
-                </Button>
-              )}
-            </div>
-
-            {/* Tab 1: Enrollment Totals by Level */}
-            <TabsContent value="totals" className="space-y-4">
-              <div className="text-sm text-muted-foreground mb-2">
-                Enter total student count per level. Changes are saved when you click "Save Totals".
-                {showHistorical && (
-                  <span className="ml-2 text-text-secondary">
-                    Historical columns show actual enrollment from prior fiscal years.
-                  </span>
+          {/* By Nationality */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">By Nationality</CardTitle>
+              <Globe className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {Object.entries(statistics.byNationality).map(([nationality, count]) => (
+                  <div key={nationality} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{nationality}</span>
+                    <span className="font-medium">{count}</span>
+                  </div>
+                ))}
+                {Object.keys(statistics.byNationality).length === 0 && (
+                  <p className="text-xs text-muted-foreground">No data yet</p>
                 )}
               </div>
-              <DataTableLazy
-                rowData={mergedTotals}
-                columnDefs={totalsColumnDefs}
-                loading={isLoading || (showHistorical && historicalLoading)}
-                error={error}
-                pagination={false}
-                onCellValueChanged={onTotalsCellValueChanged}
-                groupDisplayType="groupRows"
-                suppressMovableColumns
-              />
-            </TabsContent>
+            </CardContent>
+          </Card>
 
-            {/* Tab 2: Nationality Distribution */}
-            <TabsContent value="distribution" className="space-y-4">
-              <div className="text-sm text-muted-foreground mb-2">
-                Set nationality percentages per level (must sum to 100%). These percentages are
-                applied to calculate the breakdown.
+          {/* By Cycle */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">By Cycle</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {Object.entries(statistics.byCycle).map(([cycle, count]) => (
+                  <div key={cycle} className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{cycle}</span>
+                    <span className="font-medium">{count}</span>
+                  </div>
+                ))}
+                {Object.keys(statistics.byCycle).length === 0 && (
+                  <p className="text-xs text-muted-foreground">No data yet</p>
+                )}
               </div>
-              {!allDistributionsValid && (
-                <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
-                  <AlertCircle className="inline h-4 w-4 mr-2" />
-                  Some rows have percentages that don't sum to 100%. Please correct them before
-                  saving.
-                </div>
-              )}
-              <DataTableLazy
-                rowData={localDistributions}
-                columnDefs={distributionColumnDefs}
-                loading={isLoading}
-                error={error}
-                pagination={false}
-                onCellValueChanged={onDistributionCellValueChanged}
-                groupDisplayType="groupRows"
-                suppressMovableColumns
-              />
-            </TabsContent>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-            {/* Tab 3: Calculated Breakdown (Read-only) */}
-            <TabsContent value="breakdown" className="space-y-4">
-              <div className="text-sm text-muted-foreground mb-2">
-                This view shows the calculated student counts by level and nationality based on your
-                totals and distribution percentages.
-              </div>
-              <DataTableLazy
-                rowData={enrollmentData?.breakdown ?? []}
-                columnDefs={breakdownColumnDefs}
-                loading={isLoading}
-                error={error}
-                pagination={false}
-                groupDisplayType="groupRows"
-                suppressMovableColumns
-              />
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            Please select a budget version to view enrollment data
+      {/* Historical Toggle and Summary */}
+      {selectedVersionId && (
+        <div className="flex items-center justify-between mb-4">
+          <HistoricalToggle
+            showHistorical={showHistorical}
+            onToggle={setShowHistorical}
+            disabled={!selectedVersionId}
+            isLoading={historicalLoading}
+            currentFiscalYear={currentFiscalYear}
+          />
+          {showHistorical && historicalData?.totals && (
+            <HistoricalSummary
+              currentValue={statistics.totalStudents}
+              priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
+              changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
+              label="Total Students vs Prior Year"
+              isCurrency={false}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Tabbed Interface */}
+      {selectedVersionId ? (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="totals">
+                Enrollment by Level
+                {hasUnsavedTotals && (
+                  <Badge variant="secondary" className="ml-2 bg-yellow-100">
+                    Unsaved
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="distribution">
+                Nationality Distribution
+                {hasUnsavedDistributions && (
+                  <Badge variant="secondary" className="ml-2 bg-yellow-100">
+                    Unsaved
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="breakdown">Calculated Breakdown</TabsTrigger>
+            </TabsList>
+
+            {/* Save Button based on active tab */}
+            {activeTab === 'totals' && (
+              <Button
+                onClick={handleSaveTotals}
+                disabled={!hasUnsavedTotals || saveTotalsMutation.isPending}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saveTotalsMutation.isPending ? 'Saving...' : 'Save Totals'}
+              </Button>
+            )}
+            {activeTab === 'distribution' && (
+              <Button
+                onClick={handleSaveDistributions}
+                disabled={
+                  !hasUnsavedDistributions ||
+                  saveDistributionsMutation.isPending ||
+                  !allDistributionsValid
+                }
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saveDistributionsMutation.isPending ? 'Saving...' : 'Save Distribution'}
+              </Button>
+            )}
           </div>
-        )}
-      </div>
-    </PlanningPageWrapper>
+
+          {/* Tab 1: Enrollment Totals by Level */}
+          <TabsContent value="totals" className="space-y-4">
+            <div className="text-sm text-muted-foreground mb-2">
+              Enter total student count per level. Changes are saved when you click "Save Totals".
+              {showHistorical && (
+                <span className="ml-2 text-text-secondary">
+                  Historical columns show actual enrollment from prior fiscal years.
+                </span>
+              )}
+            </div>
+            <DataTableLazy
+              rowData={mergedTotals}
+              columnDefs={totalsColumnDefs}
+              loading={isLoading || (showHistorical && historicalLoading)}
+              error={error}
+              pagination={false}
+              onCellValueChanged={onTotalsCellValueChanged}
+              groupDisplayType="groupRows"
+              suppressMovableColumns
+            />
+          </TabsContent>
+
+          {/* Tab 2: Nationality Distribution */}
+          <TabsContent value="distribution" className="space-y-4">
+            <div className="text-sm text-muted-foreground mb-2">
+              Set nationality percentages per level (must sum to 100%). These percentages are
+              applied to calculate the breakdown.
+            </div>
+            {!allDistributionsValid && (
+              <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+                <AlertCircle className="inline h-4 w-4 mr-2" />
+                Some rows have percentages that don't sum to 100%. Please correct them before
+                saving.
+              </div>
+            )}
+            <DataTableLazy
+              rowData={localDistributions}
+              columnDefs={distributionColumnDefs}
+              loading={isLoading}
+              error={error}
+              pagination={false}
+              onCellValueChanged={onDistributionCellValueChanged}
+              groupDisplayType="groupRows"
+              suppressMovableColumns
+            />
+          </TabsContent>
+
+          {/* Tab 3: Calculated Breakdown (Read-only) */}
+          <TabsContent value="breakdown" className="space-y-4">
+            <div className="text-sm text-muted-foreground mb-2">
+              This view shows the calculated student counts by level and nationality based on your
+              totals and distribution percentages.
+            </div>
+            <DataTableLazy
+              rowData={enrollmentData?.breakdown ?? []}
+              columnDefs={breakdownColumnDefs}
+              loading={isLoading}
+              error={error}
+              pagination={false}
+              groupDisplayType="groupRows"
+              suppressMovableColumns
+            />
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">
+          Please select a budget version to view enrollment data
+        </div>
+      )}
+    </div>
   )
 }

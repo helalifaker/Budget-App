@@ -2,16 +2,15 @@
  * CapEx Planning Page - /finance/capex
  *
  * Manages capital expenditure and depreciation.
- * Navigation (SmartHeader + ModuleDock) provided by _authenticated.tsx layout.
+ * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
  *
- * Migrated from /planning/capex
+ * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { ColDef, ICellRendererParams, themeQuartz } from 'ag-grid-community'
-import { PlanningPageWrapper } from '@/components/planning/PlanningPageWrapper'
 import { SummaryCard } from '@/components/SummaryCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -186,202 +185,200 @@ function CapExPage() {
   ]
 
   return (
-    <PlanningPageWrapper
-      stepId="capex"
-      actions={
-        <>
-          <HistoricalToggle
-            showHistorical={showHistorical}
-            onToggle={setShowHistorical}
-            disabled={!selectedVersionId}
-            isLoading={historicalLoading}
-            currentFiscalYear={currentFiscalYear}
-          />
-          <Button data-testid="add-capex-button" disabled={!selectedVersionId}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add CapEx Item
-          </Button>
-          <Button data-testid="export-button" variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </>
-      }
-    >
-      <div className="p-6 space-y-6">
-        {selectedVersionId ? (
-          <>
-            {/* Historical Summary for CapEx */}
-            {showHistorical && historicalData?.totals && (
-              <HistoricalSummary
-                currentValue={totalCapEx}
-                priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
-                changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
-                label="Total CapEx vs Prior Year"
-                isCurrency={true}
-                className="mb-4"
-              />
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <SummaryCard
-                title="Total CapEx"
-                value={formatCurrency(totalCapEx)}
-                subtitle={`${capexItems.length} items`}
-                icon={<Building2 className="w-5 h-5" />}
-                valueClassName="text-blue-600"
-              />
-              <SummaryCard
-                title="Equipment"
-                value={formatCurrency(equipmentCost)}
-                subtitle={`${((equipmentCost / totalCapEx) * 100).toFixed(1)}% of total`}
-                icon={<Wrench className="w-5 h-5" />}
-              />
-              <SummaryCard
-                title="IT & Software"
-                value={formatCurrency(itCost)}
-                subtitle={`${((itCost / totalCapEx) * 100).toFixed(1)}% of total`}
-                icon={<Laptop className="w-5 h-5" />}
-              />
-              <SummaryCard
-                title="Avg. Useful Life"
-                value={`${avgUsefulLife.toFixed(1)} years`}
-                subtitle="Average across all assets"
-                icon={<TrendingDown className="w-5 h-5" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Capital Expenditure Items</CardTitle>
-                    <p className="text-sm text-gray-600">
-                      Add and manage capital expenditure items. Click the eye icon to view
-                      depreciation schedule.
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <div style={{ height: 600 }}>
-                      <AgGridReact
-                        rowData={capexItems}
-                        columnDefs={columnDefs}
-                        defaultColDef={{
-                          sortable: true,
-                          filter: true,
-                          resizable: true,
-                        }}
-                        loading={isLoading}
-                        theme={themeQuartz}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Asset Categories</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {[
-                        {
-                          type: 'EQUIPMENT',
-                          icon: <Wrench className="w-4 h-4" />,
-                          label: 'Equipment',
-                        },
-                        {
-                          type: 'IT',
-                          icon: <Laptop className="w-4 h-4" />,
-                          label: 'IT Hardware',
-                        },
-                        {
-                          type: 'FURNITURE',
-                          icon: <Building2 className="w-4 h-4" />,
-                          label: 'Furniture',
-                        },
-                        {
-                          type: 'BUILDING_IMPROVEMENTS',
-                          icon: <Building2 className="w-4 h-4" />,
-                          label: 'Building Improvements',
-                        },
-                        {
-                          type: 'SOFTWARE',
-                          icon: <Laptop className="w-4 h-4" />,
-                          label: 'Software',
-                        },
-                      ].map(({ type, icon, label }) => {
-                        const count = capexItems.filter(
-                          (item: CapExItem) => item.category === type
-                        ).length
-                        const cost = capexItems
-                          .filter((item: CapExItem) => item.category === type)
-                          .reduce((sum: number, item: CapExItem) => sum + item.total_cost_sar, 0)
-                        return (
-                          <div
-                            key={type}
-                            className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
-                          >
-                            <div className="flex items-center gap-2">
-                              {icon}
-                              <span className="text-sm font-medium">{label}</span>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-sm font-bold">{formatCurrency(cost)}</div>
-                              <div className="text-xs text-gray-500">{count} items</div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Depreciation Info</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4 text-sm">
-                      <div>
-                        <h4 className="font-medium mb-1">Straight Line</h4>
-                        <p className="text-gray-600">
-                          Equal depreciation each year. Annual = Cost ÷ Useful Life
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Declining Balance</h4>
-                        <p className="text-gray-600">
-                          Accelerated depreciation. Higher in early years, typically 20% per year.
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Account Codes (2xxx)</h4>
-                        <p className="text-gray-600">
-                          All capital assets are recorded in the 2000 series of accounts.
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Purchase Date</h4>
-                        <p className="text-gray-600">
-                          Must be within the budget fiscal year for proper allocation.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-12 text-text-secondary">
-            Please select a budget version to view capital expenditure planning
-          </div>
-        )}
+    <div className="p-6 space-y-6">
+      {/* Page Actions */}
+      <div className="flex items-center justify-end gap-3">
+        <HistoricalToggle
+          showHistorical={showHistorical}
+          onToggle={setShowHistorical}
+          disabled={!selectedVersionId}
+          isLoading={historicalLoading}
+          currentFiscalYear={currentFiscalYear}
+        />
+        <Button data-testid="add-capex-button" disabled={!selectedVersionId}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add CapEx Item
+        </Button>
+        <Button data-testid="export-button" variant="outline">
+          <Download className="w-4 h-4 mr-2" />
+          Export
+        </Button>
       </div>
 
+      {/* Content */}
+      {selectedVersionId ? (
+        <>
+          {/* Historical Summary for CapEx */}
+          {showHistorical && historicalData?.totals && (
+            <HistoricalSummary
+              currentValue={totalCapEx}
+              priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
+              changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
+              label="Total CapEx vs Prior Year"
+              isCurrency={true}
+              className="mb-4"
+            />
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard
+              title="Total CapEx"
+              value={formatCurrency(totalCapEx)}
+              subtitle={`${capexItems.length} items`}
+              icon={<Building2 className="w-5 h-5" />}
+              valueClassName="text-blue-600"
+            />
+            <SummaryCard
+              title="Equipment"
+              value={formatCurrency(equipmentCost)}
+              subtitle={`${((equipmentCost / totalCapEx) * 100).toFixed(1)}% of total`}
+              icon={<Wrench className="w-5 h-5" />}
+            />
+            <SummaryCard
+              title="IT & Software"
+              value={formatCurrency(itCost)}
+              subtitle={`${((itCost / totalCapEx) * 100).toFixed(1)}% of total`}
+              icon={<Laptop className="w-5 h-5" />}
+            />
+            <SummaryCard
+              title="Avg. Useful Life"
+              value={`${avgUsefulLife.toFixed(1)} years`}
+              subtitle="Average across all assets"
+              icon={<TrendingDown className="w-5 h-5" />}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Capital Expenditure Items</CardTitle>
+                  <p className="text-sm text-gray-600">
+                    Add and manage capital expenditure items. Click the eye icon to view
+                    depreciation schedule.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div style={{ height: 600 }}>
+                    <AgGridReact
+                      rowData={capexItems}
+                      columnDefs={columnDefs}
+                      defaultColDef={{
+                        sortable: true,
+                        filter: true,
+                        resizable: true,
+                      }}
+                      loading={isLoading}
+                      theme={themeQuartz}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Asset Categories</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[
+                      {
+                        type: 'EQUIPMENT',
+                        icon: <Wrench className="w-4 h-4" />,
+                        label: 'Equipment',
+                      },
+                      {
+                        type: 'IT',
+                        icon: <Laptop className="w-4 h-4" />,
+                        label: 'IT Hardware',
+                      },
+                      {
+                        type: 'FURNITURE',
+                        icon: <Building2 className="w-4 h-4" />,
+                        label: 'Furniture',
+                      },
+                      {
+                        type: 'BUILDING_IMPROVEMENTS',
+                        icon: <Building2 className="w-4 h-4" />,
+                        label: 'Building Improvements',
+                      },
+                      {
+                        type: 'SOFTWARE',
+                        icon: <Laptop className="w-4 h-4" />,
+                        label: 'Software',
+                      },
+                    ].map(({ type, icon, label }) => {
+                      const count = capexItems.filter(
+                        (item: CapExItem) => item.category === type
+                      ).length
+                      const cost = capexItems
+                        .filter((item: CapExItem) => item.category === type)
+                        .reduce((sum: number, item: CapExItem) => sum + item.total_cost_sar, 0)
+                      return (
+                        <div
+                          key={type}
+                          className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
+                        >
+                          <div className="flex items-center gap-2">
+                            {icon}
+                            <span className="text-sm font-medium">{label}</span>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-bold">{formatCurrency(cost)}</div>
+                            <div className="text-xs text-gray-500">{count} items</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Depreciation Info</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-1">Straight Line</h4>
+                      <p className="text-gray-600">
+                        Equal depreciation each year. Annual = Cost ÷ Useful Life
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Declining Balance</h4>
+                      <p className="text-gray-600">
+                        Accelerated depreciation. Higher in early years, typically 20% per year.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Account Codes (2xxx)</h4>
+                      <p className="text-gray-600">
+                        All capital assets are recorded in the 2000 series of accounts.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Purchase Date</h4>
+                      <p className="text-gray-600">
+                        Must be within the budget fiscal year for proper allocation.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-12 text-text-secondary">
+          Please select a budget version to view capital expenditure planning
+        </div>
+      )}
+
+      {/* Depreciation Dialog */}
       <Dialog open={showDepreciation} onOpenChange={setShowDepreciation}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -409,6 +406,6 @@ function CapExPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </PlanningPageWrapper>
+    </div>
   )
 }

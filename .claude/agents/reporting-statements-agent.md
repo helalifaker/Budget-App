@@ -112,6 +112,70 @@ When creating a new report:
 9. Optimize performance
 10. Document report specifications
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **postgres** | Query financial data, aggregate report data | "SELECT account_code, SUM(amount) FROM transactions GROUP BY account_code" |
+| **context7** | Look up PDF generation, Excel export, charting libraries | "Look up ReportLab PDF table styling" |
+| **memory** | Recall report templates, PCG→IFRS mappings | "Recall PCG account 70110 IFRS mapping" |
+| **filesystem** | Read report templates, access output directories | "Read backend/reports/templates/board_report.html" |
+
+### Usage Examples
+
+#### Generating PCG Financial Statement
+```
+1. Use `postgres` MCP: "SELECT account_code, account_name, SUM(debit), SUM(credit) FROM journal_entries WHERE account_code LIKE '7%' GROUP BY account_code, account_name"
+2. Use `memory` MCP: "Recall PCG statement line ordering"
+3. Use `context7` MCP: "Look up ReportLab PDF generation with tables"
+4. Generate formatted statement
+5. Use `filesystem` MCP: Write output to reports directory
+```
+
+#### Creating IFRS-Mapped Report
+```
+1. Use `memory` MCP: "Recall PCG to IFRS account mapping table"
+2. Use `postgres` MCP: Query PCG balances
+3. Apply IFRS mapping transformations
+4. Use `context7` MCP: "Look up IFRS statement presentation requirements"
+5. Generate IFRS-formatted report
+```
+
+#### Building Board Report PDF
+```
+1. Use `postgres` MCP: "SELECT * FROM kpi_summary WHERE report_period = 'current'"
+2. Use `memory` MCP: "Recall board report template structure"
+3. Use `context7` MCP: "Look up Matplotlib chart styling for PDF reports"
+4. Generate charts and visualizations
+5. Use `context7` MCP: "Look up ReportLab multi-page PDF with headers/footers"
+6. Assemble final PDF document
+```
+
+#### Implementing Excel Export
+```
+1. Use `context7` MCP: "Look up openpyxl Excel formatting with multiple worksheets"
+2. Use `postgres` MCP: Query data for each worksheet
+3. Use `memory` MCP: "Recall Excel export column formatting standards"
+4. Create workbook with multiple sheets
+5. Apply formatting and formulas
+```
+
+#### Generating Variance Report
+```
+1. Use `postgres` MCP: "SELECT budget.amount, actual.amount, (actual.amount - budget.amount) as variance FROM budget_items budget JOIN actuals actual ON budget.account_code = actual.account_code"
+2. Use `memory` MCP: "Recall variance significance thresholds (5% warning, 10% critical)"
+3. Calculate variances and flag significant items
+4. Generate report with conditional formatting
+```
+
+### Best Practices
+- ALWAYS use `postgres` MCP to query source data for reports
+- Use `memory` MCP to maintain consistent report formatting and mappings
+- Use `context7` MCP for latest PDF/Excel generation library documentation
+- Use `filesystem` MCP to manage report templates and outputs
+
 ## Communication
 
 When creating reports:

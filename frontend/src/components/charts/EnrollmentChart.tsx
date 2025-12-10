@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { chartColors } from '@/lib/theme.constants'
 
 interface EnrollmentData {
   level: string
@@ -45,19 +46,19 @@ export function EnrollmentChart({
       const capacity = payload[0].payload?.capacity
       const level = payload[0].payload?.level
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 mb-1">{level}</p>
+        <div className="bg-paper border border-border-light rounded-lg shadow-lg p-3">
+          <p className="font-medium text-text-primary mb-1">{level}</p>
           <p className="text-sm">
-            <span className="text-gray-600">Students:</span>{' '}
-            <span className="font-semibold text-blue-600">{value}</span>
+            <span className="text-text-secondary">Students:</span>{' '}
+            <span className="font-semibold text-efir-gold">{value}</span>
           </p>
           {showCapacity && capacity && (
             <>
               <p className="text-sm">
-                <span className="text-gray-600">Capacity:</span>{' '}
-                <span className="font-semibold text-green-600">{capacity}</span>
+                <span className="text-text-secondary">Capacity:</span>{' '}
+                <span className="font-semibold text-sage">{capacity}</span>
               </p>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-text-tertiary mt-1">
                 Utilization: {((value / capacity) * 100).toFixed(1)}%
               </p>
             </>
@@ -74,7 +75,9 @@ export function EnrollmentChart({
     <Card className={className}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <div className="text-2xl font-bold text-gray-900">{total.toLocaleString()} students</div>
+        <div className="text-2xl font-bold text-text-primary">
+          {total.toLocaleString()} students
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -84,8 +87,10 @@ export function EnrollmentChart({
             <YAxis />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="students" fill="#3B82F6" name="Students" />
-            {showCapacity && <Bar dataKey="capacity" fill="#10B981" name="Capacity" />}
+            <Bar dataKey="students" fill={chartColors.primary} name="Students" />
+            {showCapacity && (
+              <Bar dataKey="capacity" fill={chartColors.secondary} name="Capacity" />
+            )}
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

@@ -150,9 +150,6 @@ function AnalysisDashboard() {
   return (
     <div className="p-6" style={{ background: 'var(--efir-bg-canvas)' }}>
       <ModuleDashboard
-        title="Analysis"
-        description="KPIs, dashboards, and variance analysis"
-        icon={BarChart3}
         metricsPanel={
           <MetricsPanel metrics={metrics} title="Key Performance Indicators" columns={3} />
         }

@@ -9,8 +9,8 @@ describe('Badge', () => {
     const badge = screen.getByText('Default Badge')
     expect(badge).toBeInTheDocument()
     // Sahara Luxe Theme: Gold-based default styling
-    expect(badge.className).toMatch(/bg-gold-50/)
-    expect(badge.className).toMatch(/text-gold-800/)
+    expect(badge.className).toMatch(/bg-efir-gold-50/)
+    expect(badge.className).toMatch(/text-efir-gold-800/)
   })
 
   describe('Variants', () => {
@@ -18,58 +18,58 @@ describe('Badge', () => {
       render(<Badge variant="default">Default</Badge>)
 
       const badge = screen.getByText('Default')
-      expect(badge.className).toMatch(/bg-gold-50/)
-      expect(badge.className).toMatch(/text-gold-800/)
-      expect(badge.className).toMatch(/border-gold-200/)
+      expect(badge.className).toMatch(/bg-efir-gold-50/)
+      expect(badge.className).toMatch(/text-efir-gold-800/)
+      expect(badge.className).toMatch(/border-efir-gold-200/)
     })
 
     it('renders secondary variant with sand background', () => {
       render(<Badge variant="secondary">Secondary</Badge>)
 
       const badge = screen.getByText('Secondary')
-      expect(badge.className).toMatch(/bg-sand-100/)
-      expect(badge.className).toMatch(/text-brown-800/)
+      expect(badge.className).toMatch(/bg-subtle/)
+      expect(badge.className).toMatch(/text-text-secondary/)
     })
 
     it('renders destructive variant with error styling', () => {
       render(<Badge variant="destructive">Error</Badge>)
 
       const badge = screen.getByText('Error')
-      expect(badge.className).toMatch(/bg-error-50/)
-      expect(badge.className).toMatch(/text-error-800/)
+      expect(badge.className).toMatch(/bg-terracotta-50/)
+      expect(badge.className).toMatch(/text-terracotta-800/)
     })
 
     it('renders outline variant with border only', () => {
       render(<Badge variant="outline">Outline</Badge>)
 
       const badge = screen.getByText('Outline')
-      expect(badge.className).toMatch(/text-brown-800/)
+      expect(badge.className).toMatch(/text-text-primary/)
       expect(badge.className).toMatch(/bg-transparent/)
-      expect(badge.className).toMatch(/border-sand-300/)
+      expect(badge.className).toMatch(/border-border-medium/)
     })
 
     it('renders success variant with success styling', () => {
       render(<Badge variant="success">Success</Badge>)
 
       const badge = screen.getByText('Success')
-      expect(badge.className).toMatch(/bg-success-50/)
-      expect(badge.className).toMatch(/text-success-800/)
+      expect(badge.className).toMatch(/bg-sage-50/)
+      expect(badge.className).toMatch(/text-sage-800/)
     })
 
     it('renders warning variant with warning styling', () => {
       render(<Badge variant="warning">Warning</Badge>)
 
       const badge = screen.getByText('Warning')
-      expect(badge.className).toMatch(/bg-warning-50/)
-      expect(badge.className).toMatch(/text-warning-800/)
+      expect(badge.className).toMatch(/bg-terracotta-50/)
+      expect(badge.className).toMatch(/text-terracotta-800/)
     })
 
     it('renders info variant with info styling', () => {
       render(<Badge variant="info">Info</Badge>)
 
       const badge = screen.getByText('Info')
-      expect(badge.className).toMatch(/bg-info-50/)
-      expect(badge.className).toMatch(/text-info-800/)
+      expect(badge.className).toMatch(/bg-efir-slate-50/)
+      expect(badge.className).toMatch(/text-efir-slate-800/)
     })
   })
 
@@ -110,7 +110,7 @@ describe('Badge', () => {
       const badge = screen.getByText('Focus Badge')
       expect(badge.className).toMatch(/focus:outline-none/)
       expect(badge.className).toMatch(/focus:ring-2/)
-      expect(badge.className).toMatch(/focus:ring-gold-500/)
+      expect(badge.className).toMatch(/focus:ring-efir-gold/)
     })
   })
 
@@ -121,7 +121,7 @@ describe('Badge', () => {
       const badge = screen.getByText('Custom')
       expect(badge.className).toMatch(/custom-badge/)
       // Still has default variant (gold-based)
-      expect(badge.className).toMatch(/bg-gold-50/)
+      expect(badge.className).toMatch(/bg-efir-gold-50/)
     })
 
     it('allows overriding background with custom class', () => {
@@ -186,14 +186,14 @@ describe('Badge', () => {
       render(<Badge variant="success">APPROVED</Badge>)
 
       const badge = screen.getByText('APPROVED')
-      expect(badge.className).toMatch(/bg-success-50/)
+      expect(badge.className).toMatch(/bg-sage-50/)
     })
 
     it('displays count badge for notifications', () => {
       render(<Badge variant="destructive">5</Badge>)
 
       const badge = screen.getByText('5')
-      expect(badge.className).toMatch(/bg-error-50/)
+      expect(badge.className).toMatch(/bg-terracotta-50/)
     })
 
     it('displays category tag', () => {
@@ -206,7 +206,7 @@ describe('Badge', () => {
       render(<Badge variant="warning">WARNING</Badge>)
 
       const badge = screen.getByText('WARNING')
-      expect(badge.className).toMatch(/bg-warning-50/)
+      expect(badge.className).toMatch(/bg-terracotta-50/)
     })
   })
 })

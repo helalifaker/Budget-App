@@ -20,11 +20,11 @@ export function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
 
 export function ErrorState({ error }: { error: string }) {
   return (
-    <div className="rounded-md bg-red-50 p-4">
+    <div className="rounded-md bg-terracotta-50 p-4">
       <div className="flex">
-        <AlertCircle className="h-5 w-5 text-red-400" />
+        <AlertCircle className="h-5 w-5 text-terracotta-400" />
         <div className="ml-3">
-          <p className="text-sm text-red-800">{error}</p>
+          <p className="text-sm text-terracotta-800">{error}</p>
         </div>
       </div>
     </div>
@@ -42,8 +42,8 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
-      <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-      {description && <p className="mt-2 text-sm text-gray-500">{description}</p>}
+      <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+      {description && <p className="mt-2 text-sm text-text-tertiary">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   )
@@ -53,7 +53,7 @@ export function SkeletonLoader({ rows = 3 }: { rows?: number }) {
   return (
     <div className="space-y-3 animate-pulse">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-12 bg-gray-200 rounded" />
+        <div key={i} className="h-12 bg-subtle dark:bg-border-light rounded" />
       ))}
     </div>
   )

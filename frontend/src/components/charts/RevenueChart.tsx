@@ -1,10 +1,11 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { chartColors } from '@/lib/theme.constants'
 
 interface RevenueData {
   category: string
   amount: number
-  color: string
+  color?: string
 }
 
 interface RevenueChartProps {
@@ -28,8 +29,6 @@ interface PieLabelProps {
   percent?: number
 }
 
-const COLORS = ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B', '#EF4444']
-
 export function RevenueChart({ data, title = 'Revenue Breakdown', className }: RevenueChartProps) {
   const formatCurrency = (value: number | undefined) => {
     if (value === undefined) return '—'
@@ -46,10 +45,10 @@ export function RevenueChart({ data, title = 'Revenue Breakdown', className }: R
       const value = payload[0].value
       const total = data.reduce((sum, d) => sum + d.amount, 0)
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900">{payload[0].name}</p>
-          <p className="text-lg font-bold text-green-600">{formatCurrency(value)}</p>
-          <p className="text-xs text-gray-500">{((value / total) * 100).toFixed(1)}%</p>
+        <div className="bg-paper border border-border-light rounded-lg shadow-lg p-3">
+          <p className="font-medium text-text-primary">{payload[0].name}</p>
+          <p className="text-lg font-bold text-sage">{formatCurrency(value)}</p>
+          <p className="text-xs text-text-tertiary">{((value / total) * 100).toFixed(1)}%</p>
         </div>
       )
     }
@@ -59,7 +58,7 @@ export function RevenueChart({ data, title = 'Revenue Breakdown', className }: R
   const chartData = data.map((item, index) => ({
     name: item.category,
     value: item.amount,
-    color: item.color || COLORS[index % COLORS.length],
+    color: item.color || chartColors.series[index % chartColors.series.length],
   }))
 
   const total = data.reduce((sum, item) => sum + item.amount, 0)
@@ -73,7 +72,7 @@ export function RevenueChart({ data, title = 'Revenue Breakdown', className }: R
     <Card className={className}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
-        <div className="text-2xl font-bold text-gray-900">{formatCurrency(total)}</div>
+        <div className="text-2xl font-bold text-text-primary">{formatCurrency(total)}</div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -85,7 +84,7 @@ export function RevenueChart({ data, title = 'Revenue Breakdown', className }: R
               labelLine={false}
               label={renderLabel}
               outerRadius={80}
-              fill="#8884d8"
+              fill={chartColors.primary}
               dataKey="value"
             >
               {chartData.map((entry, index) => (

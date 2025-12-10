@@ -118,9 +118,9 @@ describe('ThemeToggle', () => {
       render(<ThemeToggle />)
 
       const button = screen.getByRole('button')
-      // Ghost variant renders with hover:bg-sand-100 and text-brown-700
-      expect(button.className).toMatch(/hover:bg-sand-100/)
-      expect(button.className).toMatch(/text-brown-700/)
+      // Ghost variant renders with hover:bg-subtle and text-text-secondary
+      expect(button.className).toMatch(/hover:bg-subtle/)
+      expect(button.className).toMatch(/text-text-secondary/)
     })
 
     it('button has icon size styling', () => {
@@ -136,7 +136,7 @@ describe('ThemeToggle', () => {
       render(<ThemeToggle />)
 
       const button = screen.getByRole('button')
-      expect(button.className).toMatch(/transition-colors/)
+      expect(button.className).toMatch(/transition-all/)
     })
   })
 

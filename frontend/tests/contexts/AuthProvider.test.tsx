@@ -1,7 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
+import { act } from 'react'
 import { AuthProvider } from '@/contexts/AuthProvider'
 import { useAuth } from '@/contexts/AuthContext'
+
+// Type definitions for Supabase auth mocks
+interface AuthCredentials {
+  email: string
+  password: string
+}
+
+interface MockSession {
+  user: {
+    id: string
+    email: string
+  }
+  access_token: string
+  expires_at: number
+}
+
+type AuthChangeEvent = 'SIGNED_IN' | 'SIGNED_OUT' | 'TOKEN_REFRESHED' | 'USER_UPDATED'
+type AuthStateChangeCallback = (event: AuthChangeEvent, session: MockSession | null) => void
 
 // Mock Supabase client
 const mockGetSession = vi.fn()
@@ -15,11 +34,11 @@ vi.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       getSession: () => mockGetSession(),
-      signInWithPassword: (credentials: any) => mockSignInWithPassword(credentials),
-      signUp: (credentials: any) => mockSignUp(credentials),
+      signInWithPassword: (credentials: AuthCredentials) => mockSignInWithPassword(credentials),
+      signUp: (credentials: AuthCredentials) => mockSignUp(credentials),
       signOut: () => mockSignOut(),
       resetPasswordForEmail: (email: string) => mockResetPasswordForEmail(email),
-      onAuthStateChange: (callback: any) => {
+      onAuthStateChange: (callback: AuthStateChangeCallback) => {
         mockOnAuthStateChange(callback)
         return {
           data: {
@@ -53,6 +72,8 @@ function TestComponent() {
 describe('AuthProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    // Clear localStorage to prevent E2E mode interference
+    localStorage.clear()
     // Default: no session
     mockGetSession.mockResolvedValue({
       data: { session: null },
@@ -188,7 +209,7 @@ describe('AuthProvider', () => {
     })
 
     it('updates state when auth state changes', async () => {
-      let authStateCallback: any
+      let authStateCallback: AuthStateChangeCallback
 
       mockOnAuthStateChange.mockImplementation((callback) => {
         authStateCallback = callback
@@ -222,7 +243,9 @@ describe('AuthProvider', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      authStateCallback('SIGNED_IN', mockSession)
+      await act(async () => {
+        authStateCallback('SIGNED_IN', mockSession)
+      })
 
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('new@example.com')
@@ -445,7 +468,7 @@ describe('AuthProvider', () => {
 
   describe('Real-world use cases', () => {
     it('handles complete sign in flow', async () => {
-      let authStateCallback: any
+      let authStateCallback: AuthStateChangeCallback
 
       mockOnAuthStateChange.mockImplementation((callback) => {
         authStateCallback = callback
@@ -500,7 +523,9 @@ describe('AuthProvider', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      authStateCallback('SIGNED_IN', mockSession)
+      await act(async () => {
+        authStateCallback('SIGNED_IN', mockSession)
+      })
 
       await waitFor(() => {
         expect(screen.getByTestId('user')).toHaveTextContent('user@efir.sa')

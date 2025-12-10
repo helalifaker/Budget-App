@@ -99,8 +99,8 @@ describe('ActivityFeed', () => {
       render(<ActivityFeed activities={[activity]} />)
 
       const badge = screen.getByText('Created budget version')
-      expect(badge.className).toMatch(/bg-green-100/)
-      expect(badge.className).toMatch(/text-green-800/)
+      expect(badge.className).toMatch(/bg-sage-100/)
+      expect(badge.className).toMatch(/text-sage-800/)
     })
 
     it('applies blue color for "update" actions', () => {
@@ -108,8 +108,8 @@ describe('ActivityFeed', () => {
       render(<ActivityFeed activities={[activity]} />)
 
       const badge = screen.getByText('Updated enrollment data')
-      expect(badge.className).toMatch(/bg-blue-100/)
-      expect(badge.className).toMatch(/text-blue-800/)
+      expect(badge.className).toMatch(/bg-efir-slate-100/)
+      expect(badge.className).toMatch(/text-efir-slate-800/)
     })
 
     it('applies red color for "delete" actions', () => {
@@ -117,8 +117,8 @@ describe('ActivityFeed', () => {
       render(<ActivityFeed activities={[activity]} />)
 
       const badge = screen.getByText('Deleted class configuration')
-      expect(badge.className).toMatch(/bg-red-100/)
-      expect(badge.className).toMatch(/text-red-800/)
+      expect(badge.className).toMatch(/bg-terracotta-100/)
+      expect(badge.className).toMatch(/text-terracotta-800/)
     })
 
     it('applies purple color for "approve" actions', () => {
@@ -126,8 +126,8 @@ describe('ActivityFeed', () => {
       render(<ActivityFeed activities={[activity]} />)
 
       const badge = screen.getByText('Approved budget')
-      expect(badge.className).toMatch(/bg-purple-100/)
-      expect(badge.className).toMatch(/text-purple-800/)
+      expect(badge.className).toMatch(/bg-wine-100/)
+      expect(badge.className).toMatch(/text-wine-800/)
     })
 
     it('applies gray color for other actions', () => {
@@ -135,8 +135,8 @@ describe('ActivityFeed', () => {
       render(<ActivityFeed activities={[activity]} />)
 
       const badge = screen.getByText('Viewed report')
-      expect(badge.className).toMatch(/bg-gray-100/)
-      expect(badge.className).toMatch(/text-gray-800/)
+      expect(badge.className).toMatch(/bg-bg-muted/)
+      expect(badge.className).toMatch(/text-text-primary/)
     })
 
     it('handles case-insensitive action matching', () => {
@@ -144,7 +144,7 @@ describe('ActivityFeed', () => {
       render(<ActivityFeed activities={[activity]} />)
 
       const badge = screen.getByText('CREATED')
-      expect(badge.className).toMatch(/bg-green-100/)
+      expect(badge.className).toMatch(/bg-sage-100/)
     })
   })
 
@@ -236,7 +236,7 @@ describe('ActivityFeed', () => {
     const { container } = render(<ActivityFeed activities={activities} />)
 
     // Each activity should have a user icon container
-    const icons = container.querySelectorAll('.bg-gray-200.rounded-full')
+    const icons = container.querySelectorAll('.bg-subtle.rounded-full')
     expect(icons.length).toBe(2)
   })
 

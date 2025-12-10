@@ -445,7 +445,344 @@ An orchestrated workflow is successful when:
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2024-12-01
+## MCP Server Integration Guide
+
+### Available MCP Servers
+
+| Server | Purpose | Primary Users |
+|--------|---------|---------------|
+| **supabase** | Supabase Management API (tables, RLS, storage) | database-supabase-agent, security-rls-agent |
+| **postgres** | Direct SQL queries | database-supabase-agent, performance-agent |
+| **github** | GitHub API (PRs, issues, code) | All agents (for code review) |
+| **sentry** | Error monitoring & tracking | qa-validation-agent, performance-agent |
+| **context7** | Latest library documentation | All implementation agents |
+| **memory** | Persistent knowledge storage | efir-master-agent, all agents |
+| **playwright** | E2E browser automation | qa-validation-agent, frontend-ui-agent |
+| **filesystem** | Local file operations | All agents |
+| **brave-search** | Web search | documentation-training-agent, all agents |
+| **sequential-thinking** | Complex multi-step reasoning | efir-master-agent, system-architect-agent |
+
+### Agent-MCP Mapping
+
+#### database-supabase-agent
+**Primary MCP Servers**: `supabase`, `postgres`
+
+```
+Use Cases:
+├─ supabase MCP → Manage tables, RLS policies, storage buckets, edge functions
+├─ postgres MCP → Execute raw SQL, inspect schema, run migrations
+└─ context7 MCP → Look up latest Supabase/PostgreSQL documentation
+```
+
+**Example Usage:**
+```
+Task: "Create RLS policy for budget_versions table"
+
+1. Use `supabase` MCP to list existing tables and policies
+2. Use `postgres` MCP to execute CREATE POLICY SQL
+3. Use `supabase` MCP to verify policy was created correctly
+```
+
+#### backend-engine-agent
+**Primary MCP Servers**: `context7`, `memory`
+
+```
+Use Cases:
+├─ context7 MCP → Look up Pydantic, Python 3.11+ features, NumPy/Pandas docs
+├─ memory MCP → Store/recall calculation formulas, business rules
+└─ postgres MCP → Verify data structures for calculations
+```
+
+**Example Usage:**
+```
+Task: "Implement DHG hours calculation engine"
+
+1. Use `memory` MCP to recall DHG formula specifications
+2. Use `context7` MCP to look up Pydantic model best practices
+3. Implement calculation logic following retrieved patterns
+```
+
+#### backend-api-specialist
+**Primary MCP Servers**: `context7`, `postgres`
+
+```
+Use Cases:
+├─ context7 MCP → Look up FastAPI, Pydantic, SQLAlchemy documentation
+├─ postgres MCP → Verify database schema for API responses
+└─ memory MCP → Recall API design decisions and patterns
+```
+
+**Example Usage:**
+```
+Task: "Create /v1/enrollment/projections endpoint"
+
+1. Use `context7` MCP to look up FastAPI 0.115+ patterns
+2. Use `postgres` MCP to verify enrollment_data schema
+3. Implement endpoint following latest FastAPI best practices
+```
+
+#### frontend-ui-agent
+**Primary MCP Servers**: `context7`, `playwright`, `memory`
+
+```
+Use Cases:
+├─ context7 MCP → Look up React 19, TanStack Router, AG Grid, shadcn/ui docs
+├─ playwright MCP → Test UI components, capture screenshots
+├─ memory MCP → Recall component patterns, design decisions
+└─ github MCP → Check component implementations in other repos
+```
+
+**Example Usage:**
+```
+Task: "Build enrollment planning grid with AG Grid"
+
+1. Use `context7` MCP to look up AG Grid React documentation
+2. Use `memory` MCP to recall grid styling patterns used in project
+3. Use `playwright` MCP to test grid interactions after implementation
+```
+
+#### qa-validation-agent
+**Primary MCP Servers**: `playwright`, `sentry`, `postgres`
+
+```
+Use Cases:
+├─ playwright MCP → Run E2E tests, capture screenshots, test user flows
+├─ sentry MCP → Check for errors, analyze error patterns
+├─ postgres MCP → Verify test data, check database state
+├─ context7 MCP → Look up Vitest, Playwright, pytest documentation
+└─ github MCP → Check test patterns in CI workflows
+```
+
+**Example Usage:**
+```
+Task: "Create E2E test for budget approval workflow"
+
+1. Use `playwright` MCP to navigate to budget page
+2. Use `playwright` MCP to interact with approval button
+3. Use `playwright` MCP to verify state change
+4. Use `sentry` MCP to check no errors were logged
+5. Use `postgres` MCP to verify database state changed correctly
+```
+
+#### security-rls-agent
+**Primary MCP Servers**: `supabase`, `postgres`, `context7`
+
+```
+Use Cases:
+├─ supabase MCP → Manage RLS policies, auth settings, MFA configuration
+├─ postgres MCP → Execute RLS policy SQL, test permissions
+├─ context7 MCP → Look up Supabase Auth, RLS best practices
+└─ memory MCP → Recall security decisions and patterns
+```
+
+**Example Usage:**
+```
+Task: "Implement role-based access for Finance Director"
+
+1. Use `context7` MCP to look up Supabase RLS documentation
+2. Use `supabase` MCP to check existing auth configuration
+3. Use `postgres` MCP to create RLS policy with role check
+4. Use `supabase` MCP to verify policy is active
+```
+
+#### performance-agent
+**Primary MCP Servers**: `postgres`, `sentry`, `context7`
+
+```
+Use Cases:
+├─ postgres MCP → Run EXPLAIN ANALYZE, check indexes, query performance
+├─ sentry MCP → Analyze performance issues, trace slow requests
+├─ context7 MCP → Look up optimization techniques
+└─ playwright MCP → Measure frontend performance metrics
+```
+
+**Example Usage:**
+```
+Task: "Optimize slow DHG calculation query"
+
+1. Use `sentry` MCP to identify slow transactions
+2. Use `postgres` MCP to run EXPLAIN ANALYZE on query
+3. Use `postgres` MCP to create missing indexes
+4. Use `sentry` MCP to verify improvement
+```
+
+#### data-migration-agent
+**Primary MCP Servers**: `postgres`, `supabase`, `filesystem`
+
+```
+Use Cases:
+├─ postgres MCP → Execute bulk inserts, verify data integrity
+├─ supabase MCP → Check table schemas, storage for file uploads
+├─ filesystem MCP → Read import files, parse Excel/CSV
+└─ context7 MCP → Look up pandas, openpyxl documentation
+```
+
+**Example Usage:**
+```
+Task: "Import DHG allocations from Excel"
+
+1. Use `filesystem` MCP to read Excel file
+2. Use `postgres` MCP to verify dhg_allocations schema
+3. Use `postgres` MCP to insert parsed data
+4. Use `postgres` MCP to verify row counts match
+```
+
+#### documentation-training-agent
+**Primary MCP Servers**: `context7`, `github`, `brave-search`, `memory`
+
+```
+Use Cases:
+├─ context7 MCP → Look up library documentation for accuracy
+├─ github MCP → Check code for documentation accuracy
+├─ brave-search MCP → Research best practices, standards
+├─ memory MCP → Recall documentation style guidelines
+└─ filesystem MCP → Read/write documentation files
+```
+
+**Example Usage:**
+```
+Task: "Create API documentation for DHG endpoints"
+
+1. Use `github` MCP to read current API implementation
+2. Use `context7` MCP to look up OpenAPI documentation standards
+3. Use `memory` MCP to recall project documentation conventions
+4. Write documentation following retrieved patterns
+```
+
+#### efir-master-agent
+**Primary MCP Servers**: `memory`, `sequential-thinking`, `github`
+
+```
+Use Cases:
+├─ memory MCP → Store/recall routing decisions, workflow patterns
+├─ sequential-thinking MCP → Plan complex multi-agent workflows
+├─ github MCP → Check project status, PRs, issues
+└─ sentry MCP → Check system health before routing tasks
+```
+
+**Example Usage:**
+```
+Task: "Route 'implement 5-year planning module' to agents"
+
+1. Use `sequential-thinking` MCP to plan agent workflow
+2. Use `memory` MCP to recall similar routing patterns
+3. Use `github` MCP to check related issues/PRs
+4. Route to agents in correct dependency order
+```
+
+#### system-architect-agent
+**Primary MCP Servers**: `context7`, `sequential-thinking`, `memory`, `github`
+
+```
+Use Cases:
+├─ context7 MCP → Look up architecture patterns, framework docs
+├─ sequential-thinking MCP → Design complex system architectures
+├─ memory MCP → Recall architectural decisions (ADRs)
+├─ github MCP → Review existing code architecture
+└─ brave-search MCP → Research industry best practices
+```
+
+**Example Usage:**
+```
+Task: "Design API contract for enrollment module"
+
+1. Use `context7` MCP to look up FastAPI/OpenAPI best practices
+2. Use `sequential-thinking` MCP to plan contract structure
+3. Use `memory` MCP to recall existing API patterns in project
+4. Design contract following established conventions
+```
+
+#### product-architect-agent
+**Primary MCP Servers**: `memory`, `brave-search`, `context7`
+
+```
+Use Cases:
+├─ memory MCP → Store/recall business rules, formulas, requirements
+├─ brave-search MCP → Research AEFE standards, French education regulations
+├─ context7 MCP → Look up domain-specific documentation
+└─ filesystem MCP → Read PRD, FRS, module specifications
+```
+
+**Example Usage:**
+```
+Task: "Provide DHG calculation formula for Terminale"
+
+1. Use `memory` MCP to recall stored DHG formulas
+2. Use `filesystem` MCP to verify against MODULE_08 specification
+3. Provide validated formula to requesting agent
+```
+
+### MCP Usage Best Practices
+
+#### 1. Always Use Context7 for Latest Documentation
+```
+❌ WRONG: Assume you know React 19 patterns from training data
+✅ CORRECT: Use context7 MCP to look up latest React 19 documentation
+
+Example:
+"Use context7 to look up React 19 Suspense best practices"
+→ Gets current documentation, not outdated training data
+```
+
+#### 2. Use Memory for Cross-Session Knowledge
+```
+❌ WRONG: Repeat explanations about project decisions each session
+✅ CORRECT: Store decisions in memory MCP for future recall
+
+Example:
+"Store in memory: 'Project uses kebab-case for all file names'"
+→ Can recall this decision in future sessions
+```
+
+#### 3. Use Postgres for Data Verification
+```
+❌ WRONG: Assume database schema from code
+✅ CORRECT: Use postgres MCP to verify actual schema
+
+Example:
+"Use postgres to describe enrollment_data table"
+→ Gets actual column types, constraints, indexes
+```
+
+#### 4. Use Playwright for E2E Validation
+```
+❌ WRONG: Manually describe expected UI behavior
+✅ CORRECT: Use playwright MCP to test actual behavior
+
+Example:
+"Use playwright to click login button and verify redirect"
+→ Tests real browser behavior
+```
+
+#### 5. Use Sentry for Error Analysis
+```
+❌ WRONG: Guess at error causes from logs
+✅ CORRECT: Use sentry MCP to analyze error patterns
+
+Example:
+"Use sentry to find errors in DHG calculation this week"
+→ Gets actual error data with stack traces
+```
+
+### MCP Server Quick Reference
+
+| Task | MCP Server | Example Command |
+|------|------------|-----------------|
+| Look up React 19 docs | context7 | "Look up React 19 useOptimistic hook" |
+| Store project decision | memory | "Remember: all API routes use /v1 prefix" |
+| Query database | postgres | "SELECT * FROM budget_versions LIMIT 5" |
+| Check Supabase tables | supabase | "List all tables in public schema" |
+| Run E2E test | playwright | "Navigate to /login and fill email field" |
+| Check errors | sentry | "Show unresolved errors from last 24 hours" |
+| Search web | brave-search | "AEFE PRRD cost calculation 2024" |
+| Complex planning | sequential-thinking | "Plan implementation of 5-year budget module" |
+| Check GitHub PR | github | "Show PR #42 review comments" |
+| Read local file | filesystem | "Read /docs/MODULES/MODULE_08.md" |
+
+---
+
+**Version**: 1.1.0
+**Last Updated**: 2025-12-10
 **Maintained By**: EFIR Master Agent
 **Total Agents**: 14
+**MCP Servers**: 10

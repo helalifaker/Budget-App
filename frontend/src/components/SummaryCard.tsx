@@ -74,7 +74,7 @@ export function SummaryCard({
       className={cn(
         // Base styles
         'relative bg-paper rounded-xl overflow-hidden',
-        'border border-[#E8E6E1]',
+        'border border-border-light',
         'transition-all duration-300 ease-out',
         // Warm shadow
         'shadow-efir-sm',

@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { chartColors } from '@/lib/theme.constants'
 
 interface WaterfallData {
   name: string
@@ -33,11 +34,11 @@ interface CustomTooltipProps {
   payload?: TooltipPayload[]
 }
 
-const COLORS = {
-  budget: '#3B82F6',
-  favorable: '#10B981',
-  unfavorable: '#EF4444',
-  actual: '#8B5CF6',
+const VARIANCE_COLORS = {
+  budget: chartColors.budget,
+  favorable: chartColors.favorable,
+  unfavorable: chartColors.unfavorable,
+  actual: chartColors.actual,
 }
 
 export function WaterfallChart({
@@ -57,10 +58,10 @@ export function WaterfallChart({
   const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length && payload[0].value !== undefined) {
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900">{payload[0].payload?.name}</p>
+        <div className="bg-paper border border-border-light rounded-lg shadow-lg p-3">
+          <p className="font-medium text-text-primary">{payload[0].payload?.name}</p>
           <p className="text-lg font-bold">{formatCurrency(Math.abs(payload[0].value))}</p>
-          <p className="text-xs text-gray-500 capitalize">{payload[0].payload?.type}</p>
+          <p className="text-xs text-text-tertiary capitalize">{payload[0].payload?.type}</p>
         </div>
       )
     }
@@ -94,9 +95,9 @@ export function WaterfallChart({
             <YAxis tickFormatter={(value) => formatCurrency(value)} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="value" stackId="a" fill="#8884d8">
+            <Bar dataKey="value" stackId="a" fill={chartColors.neutral}>
               {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[entry.type]} />
+                <Cell key={`cell-${index}`} fill={VARIANCE_COLORS[entry.type]} />
               ))}
             </Bar>
           </BarChart>

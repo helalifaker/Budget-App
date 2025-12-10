@@ -417,6 +417,81 @@ Every feature must have:
 - API contract tests for new endpoints
 - Regression tests for bug fixes
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **playwright** | Run E2E tests, capture screenshots, test user flows | "Navigate to /budget and click Submit" |
+| **sentry** | Check for errors, analyze error patterns | "Show errors from last 24 hours" |
+| **postgres** | Verify test data, check database state | "SELECT COUNT(*) FROM budget_versions WHERE status = 'Draft'" |
+| **context7** | Look up Vitest, Playwright, pytest docs | "Look up Playwright locator strategies" |
+
+### Usage Examples
+
+#### Creating E2E Test for Budget Workflow
+```
+1. Use `playwright` MCP: "Navigate to /login"
+2. Use `playwright` MCP: "Fill email with admin@test.com and password"
+3. Use `playwright` MCP: "Click login button"
+4. Use `playwright` MCP: "Wait for /dashboard URL"
+5. Use `playwright` MCP: "Navigate to /budget/new"
+6. Use `playwright` MCP: "Fill budget name with 'Test Budget 2024'"
+7. Use `playwright` MCP: "Click Save button"
+8. Use `postgres` MCP: "SELECT * FROM budget_versions WHERE name = 'Test Budget 2024'"
+9. Use `sentry` MCP: "Check for any errors in last 5 minutes"
+```
+
+#### Verifying No Errors After Deployment
+```
+1. Use `sentry` MCP: "Show unresolved errors from last hour"
+2. Use `sentry` MCP: "Show errors with message containing 'DHG'"
+3. Use `sentry` MCP: "Get error rate trend for last 24 hours"
+```
+
+#### Database State Verification
+```
+1. Use `postgres` MCP: "SELECT COUNT(*) FROM enrollment_data WHERE academic_year = 2024"
+2. Use `postgres` MCP: "SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 10"
+3. Use `postgres` MCP: "EXPLAIN ANALYZE SELECT * FROM dhg_allocations WHERE site_id = 'test'"
+```
+
+#### Looking Up Testing Best Practices
+```
+Use `context7` MCP: "Look up Playwright page.waitForSelector"
+Use `context7` MCP: "Look up Vitest vi.mock for module mocking"
+Use `context7` MCP: "Look up pytest fixtures scope"
+```
+
+### E2E Test Workflow with Playwright MCP
+```typescript
+// Example test flow using Playwright MCP
+test('complete enrollment workflow', async () => {
+  // Step 1: Navigate and login
+  // Use playwright MCP: "Navigate to /login"
+  // Use playwright MCP: "Fill email with user@test.com"
+  // Use playwright MCP: "Click submit button"
+
+  // Step 2: Create enrollment
+  // Use playwright MCP: "Navigate to /enrollment/new"
+  // Use playwright MCP: "Select level 'CE1' from dropdown"
+  // Use playwright MCP: "Fill student count with 25"
+  // Use playwright MCP: "Click Save"
+
+  // Step 3: Verify
+  // Use playwright MCP: "Take screenshot"
+  // Use postgres MCP: Verify database row created
+  // Use sentry MCP: Verify no errors logged
+})
+```
+
+### Best Practices
+- Use `playwright` MCP for interactive E2E testing and visual verification
+- Use `sentry` MCP to monitor for errors after running tests
+- Use `postgres` MCP to verify database state matches expected results
+- Use `context7` MCP for latest testing framework documentation
+
 ## Communication
 
 When reporting test results:

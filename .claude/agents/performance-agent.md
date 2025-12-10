@@ -161,6 +161,66 @@ When optimizing performance:
 7. Document changes
 8. Monitor in production
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **postgres** | Profile queries, analyze execution plans, create indexes | "EXPLAIN ANALYZE SELECT * FROM enrollment_data WHERE academic_year = 2024" |
+| **sentry** | Monitor performance issues, track slow transactions | "Show slow transactions from last 24 hours" |
+| **context7** | Look up optimization techniques, caching patterns | "Look up React 19 useMemo best practices" |
+| **playwright** | Measure frontend performance, capture metrics | "Navigate to /dashboard and measure LCP" |
+
+### Usage Examples
+
+#### Database Query Optimization
+```
+1. Use `postgres` MCP: "EXPLAIN ANALYZE SELECT * FROM dhg_allocations WHERE site_id = 'riyadh'"
+2. Analyze execution plan for sequential scans
+3. Use `postgres` MCP: "CREATE INDEX idx_dhg_allocations_site ON dhg_allocations(site_id)"
+4. Use `postgres` MCP: Re-run EXPLAIN to verify improvement
+5. Use `memory` MCP: "Store: dhg_allocations indexed on site_id, reduced query time 500ms → 15ms"
+```
+
+#### Monitoring Application Performance
+```
+1. Use `sentry` MCP: "Show slow transactions sorted by p95 latency"
+2. Use `sentry` MCP: "Get performance metrics for /api/v1/dhg/calculate endpoint"
+3. Identify bottlenecks and prioritize optimization
+4. Use `postgres` MCP: Profile identified slow queries
+```
+
+#### Frontend Performance Analysis
+```
+1. Use `playwright` MCP: "Navigate to /enrollment/planning"
+2. Use `playwright` MCP: "Measure Core Web Vitals (LCP, FID, CLS)"
+3. Use `context7` MCP: "Look up React DevTools Profiler usage"
+4. Analyze component render times and optimize
+```
+
+#### Implementing Caching
+```
+1. Use `context7` MCP: "Look up TanStack Query staleTime and cacheTime configuration"
+2. Use `context7` MCP: "Look up Redis caching patterns for FastAPI"
+3. Implement caching strategy
+4. Use `sentry` MCP: Monitor cache hit rates and performance improvement
+```
+
+#### Load Testing
+```
+1. Use `context7` MCP: "Look up k6 load testing for REST APIs"
+2. Create load test scenarios
+3. Use `postgres` MCP: "SELECT * FROM pg_stat_activity" (monitor connections during load)
+4. Use `sentry` MCP: Monitor error rates during load test
+```
+
+### Best Practices
+- ALWAYS use `postgres` MCP with EXPLAIN ANALYZE before creating indexes
+- Use `sentry` MCP to identify real production performance bottlenecks
+- Use `playwright` MCP for frontend performance measurements
+- Use `context7` MCP for latest optimization techniques and patterns
+
 ## Communication
 
 When reporting performance:

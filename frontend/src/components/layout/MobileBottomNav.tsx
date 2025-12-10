@@ -44,11 +44,11 @@ export function MobileBottomNav({ className }: MobileBottomNavProps) {
         // Height with safe area
         'h-16 pb-[env(safe-area-inset-bottom)]',
         // Background
-        'bg-white/95 backdrop-blur-lg',
+        'bg-paper/95 backdrop-blur-lg',
         // Border
-        'border-t border-[#E8E6E1]',
+        'border-t border-border-light',
         // Shadow
-        'shadow-[0_-2px_10px_rgba(0,0,0,0.05)]',
+        'shadow-sm',
         // Z-index above content
         'z-50',
         className
@@ -75,7 +75,7 @@ export function MobileBottomNav({ className }: MobileBottomNavProps) {
               // Transition
               'transition-all duration-150 ease-out',
               // Focus state
-              'focus:outline-none focus-visible:bg-[#F5F4F1]',
+              'focus:outline-none focus-visible:bg-subtle',
               // Active haptic feel
               'active:scale-95'
             )}
@@ -86,7 +86,7 @@ export function MobileBottomNav({ className }: MobileBottomNavProps) {
                 'flex items-center justify-center',
                 'w-8 h-8 rounded-lg',
                 'transition-all duration-150',
-                isActive ? cn(colorClasses.active, 'shadow-sm') : 'text-[#5C5A54]'
+                isActive ? cn(colorClasses.active, 'shadow-sm') : 'text-text-secondary'
               )}
             >
               <ModuleIcon className="w-5 h-5" />
@@ -97,7 +97,7 @@ export function MobileBottomNav({ className }: MobileBottomNavProps) {
               className={cn(
                 'text-[10px] font-medium mt-0.5',
                 'transition-colors duration-150',
-                isActive ? 'text-[#1A1917]' : 'text-[#8A877E]'
+                isActive ? 'text-text-primary' : 'text-text-tertiary'
               )}
             >
               {module.shortLabel}

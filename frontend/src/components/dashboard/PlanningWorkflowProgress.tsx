@@ -1,14 +1,17 @@
 /**
- * PlanningWorkflowProgress - Step progress indicators for module planning workflow
+ * PlanningWorkflowProgress - Minimal Stepper Design
  *
- * Displays the planning workflow as connected step cards with status indicators.
- * Each step shows: icon, title, metric value, and status (complete/in-progress/pending/warning)
+ * Clean horizontal stepper for module planning workflow:
+ * - Completed: Sage filled circle with white checkmark
+ * - Current: Gold filled circle (solid, no spinner)
+ * - Pending: Light gray border circle
+ * - Thin 2px connector lines between circles
  *
- * Used in module dashboards to visualize planning progress.
+ * UI Redesign: Simplified from card-based to minimal stepper
  */
 
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Circle, AlertTriangle, Clock, type LucideIcon } from 'lucide-react'
+import { Check, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export type WorkflowStepStatus = 'complete' | 'in-progress' | 'pending' | 'warning' | 'error'
@@ -29,101 +32,107 @@ interface PlanningWorkflowProgressProps {
 }
 
 /**
- * Get status styling and icon for a workflow step
+ * Get status styling for a workflow step
  */
-function getStepStatusInfo(status: WorkflowStepStatus) {
+function getStepStyles(status: WorkflowStepStatus) {
   switch (status) {
     case 'complete':
       return {
-        icon: CheckCircle2,
-        bgColor: 'bg-success-100',
-        borderColor: 'border-success-300',
-        iconColor: 'text-success-600',
-        textColor: 'text-success-700',
+        circle: 'bg-sage-500 border-sage-500',
+        icon: 'text-white',
+        label: 'text-sage-700',
+        metric: 'text-sage-600',
+        line: 'bg-sage-500',
       }
     case 'in-progress':
       return {
-        icon: Clock,
-        bgColor: 'bg-gold-100',
-        borderColor: 'border-gold-300',
-        iconColor: 'text-gold-600',
-        textColor: 'text-gold-700',
+        circle: 'bg-gold border-gold',
+        icon: 'text-white',
+        label: 'text-gold-700 font-semibold',
+        metric: 'text-gold-600 font-semibold',
+        line: 'bg-border-medium',
       }
     case 'warning':
       return {
-        icon: AlertTriangle,
-        bgColor: 'bg-warning-100',
-        borderColor: 'border-warning-300',
-        iconColor: 'text-warning-600',
-        textColor: 'text-warning-700',
+        circle: 'bg-terracotta-500 border-terracotta-500',
+        icon: 'text-white',
+        label: 'text-terracotta-700',
+        metric: 'text-terracotta-600',
+        line: 'bg-terracotta-200',
       }
     case 'error':
       return {
-        icon: AlertTriangle,
-        bgColor: 'bg-error-100',
-        borderColor: 'border-error-300',
-        iconColor: 'text-error-600',
-        textColor: 'text-error-700',
+        circle: 'bg-wine-500 border-wine-500',
+        icon: 'text-white',
+        label: 'text-wine-700',
+        metric: 'text-wine-600',
+        line: 'bg-wine-200',
       }
-    default:
+    default: // pending
       return {
-        icon: Circle,
-        bgColor: 'bg-subtle',
-        borderColor: 'border-border-light',
-        iconColor: 'text-text-muted',
-        textColor: 'text-text-tertiary',
+        circle: 'bg-transparent border-border-medium',
+        icon: 'text-text-muted',
+        label: 'text-text-tertiary',
+        metric: 'text-text-muted',
+        line: 'bg-border-light',
       }
   }
 }
 
 /**
- * Individual workflow step card
+ * Individual step indicator
  */
-function WorkflowStepCard({ step, isLast }: { step: WorkflowStep; isLast: boolean }) {
-  const statusInfo = getStepStatusInfo(step.status)
-  const StatusIcon = statusInfo.icon
-  const StepIcon = step.icon
+function StepIndicator({ step, isLast }: { step: WorkflowStep; isLast: boolean }) {
+  const styles = getStepStyles(step.status)
+  const isComplete = step.status === 'complete'
+  const isCurrent = step.status === 'in-progress'
 
   return (
-    <div className="flex items-center">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.2 }}
-        className={cn(
-          'relative flex flex-col items-center justify-center',
-          'min-w-[100px] p-3 rounded-xl',
-          'border-2 transition-all duration-200',
-          statusInfo.bgColor,
-          statusInfo.borderColor
-        )}
-      >
-        {/* Status icon in top-right corner */}
-        <div className="absolute -top-2 -right-2">
-          <StatusIcon className={cn('w-5 h-5', statusInfo.iconColor)} />
-        </div>
+    <div className="flex items-center flex-1 last:flex-none">
+      {/* Step content */}
+      <div className="flex flex-col items-center min-w-[80px]">
+        {/* Circle indicator */}
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className={cn(
+            'w-8 h-8 rounded-full border-2 flex items-center justify-center',
+            'transition-all duration-200',
+            styles.circle,
+            isCurrent && 'ring-4 ring-gold/20'
+          )}
+        >
+          {isComplete ? (
+            <Check className={cn('w-4 h-4', styles.icon)} strokeWidth={3} />
+          ) : isCurrent ? (
+            <div className="w-2.5 h-2.5 bg-white rounded-full" />
+          ) : (
+            <div className="w-2 h-2 bg-border-medium rounded-full" />
+          )}
+        </motion.div>
 
-        {/* Step icon */}
-        {StepIcon && <StepIcon className={cn('w-6 h-6 mb-1.5', statusInfo.iconColor)} />}
+        {/* Label */}
+        <span className={cn('text-xs mt-2 text-center', styles.label)}>{step.title}</span>
 
-        {/* Title */}
-        <span className={cn('text-xs font-medium text-center', statusInfo.textColor)}>
-          {step.title}
-        </span>
-
-        {/* Metric value */}
+        {/* Metric (if provided) */}
         {step.metric && (
-          <span className={cn('text-sm font-bold font-mono mt-0.5', statusInfo.textColor)}>
-            {step.metric}
-          </span>
+          <span className={cn('text-sm font-mono', styles.metric)}>{step.metric}</span>
         )}
-      </motion.div>
+      </div>
 
-      {/* Connector arrow */}
+      {/* Connector line */}
       {!isLast && (
-        <div className="flex items-center px-2">
-          <div className="w-4 h-0.5 bg-subtle" />
-          <div className="w-0 h-0 border-t-4 border-b-4 border-l-4 border-t-transparent border-b-transparent border-l-border-medium" />
+        <div className="flex-1 h-0.5 mx-2 mt-[-24px]">
+          <motion.div
+            initial={{ scaleX: 0 }}
+            animate={{ scaleX: 1 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className={cn(
+              'h-full origin-left',
+              step.status === 'complete' ? styles.line : 'bg-border-light'
+            )}
+          />
         </div>
       )}
     </div>
@@ -142,19 +151,20 @@ export function PlanningWorkflowProgress({
     Math.round((steps.filter((s) => s.status === 'complete').length / steps.length) * 100)
 
   return (
-    <div className={cn('bg-white rounded-xl border border-border-light p-4', className)}>
-      {/* Header with title and progress */}
-      <div className="flex items-center justify-between mb-4">
+    <div className={cn('bg-paper rounded-xl border border-border-light p-5', className)}>
+      {/* Header with title and progress percentage */}
+      <div className="flex items-center justify-between mb-6">
         <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-24 bg-subtle rounded-full overflow-hidden">
+        <div className="flex items-center gap-3">
+          {/* Progress bar */}
+          <div className="h-1.5 w-20 bg-subtle rounded-full overflow-hidden">
             <motion.div
               className={cn(
                 'h-full rounded-full',
                 calculatedProgress >= 100
-                  ? 'bg-success-500'
+                  ? 'bg-sage-500'
                   : calculatedProgress >= 50
-                    ? 'bg-gold-500'
+                    ? 'bg-gold'
                     : 'bg-slate-400'
               )}
               initial={{ width: 0 }}
@@ -162,16 +172,16 @@ export function PlanningWorkflowProgress({
               transition={{ duration: 0.5, ease: 'easeOut' }}
             />
           </div>
-          <span className="text-sm font-bold text-text-primary font-mono">
+          <span className="text-sm font-semibold text-text-primary tabular-nums">
             {calculatedProgress}%
           </span>
         </div>
       </div>
 
-      {/* Workflow steps */}
-      <div className="flex items-center justify-center flex-wrap gap-y-3">
+      {/* Steps - horizontal layout */}
+      <div className="flex items-start justify-between">
         {steps.map((step, index) => (
-          <WorkflowStepCard key={step.id} step={step} isLast={index === steps.length - 1} />
+          <StepIndicator key={step.id} step={step} isLast={index === steps.length - 1} />
         ))}
       </div>
     </div>

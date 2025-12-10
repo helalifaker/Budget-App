@@ -58,45 +58,46 @@ const config: Config = {
         },
 
         // =====================================================================
-        // BACKGROUND COLORS
+        // BACKGROUND COLORS (CSS variable references for theme support)
         // =====================================================================
         /** Main page background - warm off-white */
-        canvas: '#FAF9F7',
+        canvas: 'var(--color-canvas)',
         /** Card/surface background - pure white */
-        paper: '#FFFFFF',
+        paper: 'var(--color-paper)',
         /** Subtle backgrounds, hover states */
-        subtle: '#F5F4F1',
+        subtle: 'var(--color-subtle)',
         /** Warm tinted backgrounds */
-        warm: '#FBF9F6',
+        warm: 'var(--color-warm)',
         /** Muted background for disabled states */
-        'bg-muted': '#F0EFEC',
+        'bg-muted': 'var(--color-muted)',
 
         // =====================================================================
-        // BORDER COLORS
+        // BORDER COLORS (CSS variable references for theme support)
         // =====================================================================
-        'border-light': '#E8E6E1',
-        'border-medium': '#D4D1C9',
-        'border-strong': '#C5C2B8',
+        'border-light': 'var(--color-border-light)',
+        'border-medium': 'var(--color-border-medium)',
+        'border-strong': 'var(--color-border-strong)',
 
         // =====================================================================
-        // TEXT COLORS (Semantic)
+        // TEXT COLORS (CSS variable references for theme support)
         // =====================================================================
         /** Primary text - warm black */
-        'text-primary': '#1A1917',
+        'text-primary': 'var(--color-text-primary)',
         /** Secondary text - body text */
-        'text-secondary': '#5C5A54',
+        'text-secondary': 'var(--color-text-secondary)',
         /** Tertiary text - labels */
-        'text-tertiary': '#8A877E',
+        'text-tertiary': 'var(--color-text-tertiary)',
         /** Muted text - placeholders */
-        'text-muted': '#B5B2A9',
+        'text-muted': 'var(--color-text-muted)',
         /** Disabled text */
-        'text-disabled': '#D4D1C9',
+        'text-disabled': 'var(--color-text-disabled)',
 
         // =====================================================================
         // GOLD - Finance module, primary accent, calls-to-action
+        // DEFAULT uses CSS variable for theme support, scale values are fixed
         // =====================================================================
         gold: {
-          DEFAULT: '#A68B5B',
+          DEFAULT: 'var(--color-gold)',
           50: '#FBF8F3', // Light warm tint (opaque)
           100: '#F5EFE3', // Lighter gold (opaque)
           200: '#EBE0CC', // Light gold (opaque)
@@ -111,9 +112,10 @@ const config: Config = {
 
         // =====================================================================
         // SAGE - Enrollment module, success states
+        // DEFAULT uses CSS variable for theme support, scale values are fixed
         // =====================================================================
         sage: {
-          DEFAULT: '#7D9082',
+          DEFAULT: 'var(--color-sage)',
           50: '#F2F5F3', // Light sage tint (opaque)
           100: '#E5EBE7', // Lighter sage (opaque)
           200: '#C9D5CD', // Light sage (opaque)
@@ -128,9 +130,10 @@ const config: Config = {
 
         // =====================================================================
         // TERRACOTTA - Warnings, attention, deficits
+        // DEFAULT uses CSS variable for theme support, scale values are fixed
         // =====================================================================
         terracotta: {
-          DEFAULT: '#C4785D',
+          DEFAULT: 'var(--color-terracotta)',
           50: '#FDF6F3', // Light terracotta tint (opaque)
           100: '#FAE9E3', // Lighter terracotta (opaque)
           200: '#F2D4C8', // Light terracotta (opaque)
@@ -145,9 +148,10 @@ const config: Config = {
 
         // =====================================================================
         // SLATE - Analysis module, neutral accent
+        // DEFAULT uses CSS variable for theme support, scale values are fixed
         // =====================================================================
         slate: {
-          DEFAULT: '#64748B',
+          DEFAULT: 'var(--color-slate)',
           50: '#F8FAFC', // Light slate tint (opaque)
           100: '#F1F5F9', // Lighter slate (opaque)
           200: '#E2E8F0', // Light slate (opaque)
@@ -162,9 +166,10 @@ const config: Config = {
 
         // =====================================================================
         // WINE - Workforce module, secondary accent
+        // DEFAULT uses CSS variable for theme support, scale values are fixed
         // =====================================================================
         wine: {
-          DEFAULT: '#8B5C6B',
+          DEFAULT: 'var(--color-wine)',
           50: '#FBF5F7', // Light wine tint (opaque)
           100: '#F5E8EC', // Lighter wine (opaque)
           200: '#EBCFD8', // Light wine (opaque)
@@ -608,6 +613,39 @@ const config: Config = {
         'kpi-lg': ['1.75rem', { lineHeight: '1', letterSpacing: '-0.3px' }], // 28px
         'kpi-md': ['1.25rem', { lineHeight: '1' }], // 20px
         'kpi-sm': ['1rem', { lineHeight: '1' }], // 16px
+
+        // =====================================================================
+        // UI REDESIGN TYPOGRAPHY (Phase 1)
+        // Semantic font sizes for the new modular layout system
+        // =====================================================================
+        /** Module titles - 20px, semibold */
+        'module-title': ['1.25rem', { lineHeight: '1.3', fontWeight: '600' }],
+        /** Workflow tab labels - 14px, medium */
+        'tab-label': ['0.875rem', { lineHeight: '1.5', fontWeight: '500' }],
+        /** Task descriptions - 14px, regular, muted */
+        description: ['0.875rem', { lineHeight: '1.5', fontWeight: '400' }],
+        /** Table/grid headers - 13px, medium, uppercase */
+        'table-header': ['0.8125rem', { lineHeight: '1.4', fontWeight: '500' }],
+        /** Table/grid content - 14px, regular */
+        'table-content': ['0.875rem', { lineHeight: '1.4', fontWeight: '400' }],
+        /** Button text - 14px, medium */
+        button: ['0.875rem', { lineHeight: '1', fontWeight: '500' }],
+        /** Small button text - 13px, medium */
+        'button-small': ['0.8125rem', { lineHeight: '1', fontWeight: '500' }],
+        /** Form labels - 13px, medium */
+        label: ['0.8125rem', { lineHeight: '1.4', fontWeight: '500' }],
+        /** Input field text - 14px, regular */
+        input: ['0.875rem', { lineHeight: '1.5', fontWeight: '400' }],
+        /** Caption/helper text - 12px, regular */
+        caption: ['0.75rem', { lineHeight: '1.4', fontWeight: '400' }],
+        /** Sidebar navigation labels - 12px, medium */
+        'sidebar-label': ['0.75rem', { lineHeight: '1.3', fontWeight: '500' }],
+        /** Badge/status text - 11px, semibold, uppercase */
+        badge: ['0.6875rem', { lineHeight: '1', fontWeight: '600' }],
+        /** KPI display value - 28px, semibold */
+        'kpi-value': ['1.75rem', { lineHeight: '1', fontWeight: '600', letterSpacing: '-0.5px' }],
+        /** KPI label - 12px, medium, uppercase */
+        'kpi-label': ['0.75rem', { lineHeight: '1.3', fontWeight: '500' }],
       },
 
       letterSpacing: {

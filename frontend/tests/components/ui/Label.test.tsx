@@ -16,7 +16,7 @@ describe('Label', () => {
       const label = screen.getByTestId('label')
       expect(label.className).toMatch(/text-sm/)
       expect(label.className).toMatch(/font-medium/)
-      expect(label.className).toMatch(/text-twilight-700/)
+      expect(label.className).toMatch(/text-text-secondary/)
       expect(label.className).toMatch(/leading-none/)
     })
 

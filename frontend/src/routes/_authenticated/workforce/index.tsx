@@ -160,9 +160,6 @@ function WorkforceDashboard() {
   return (
     <div className="p-6" style={{ background: 'var(--efir-bg-canvas)' }}>
       <ModuleDashboard
-        title="Workforce"
-        description="Employee management, salaries, DHG planning"
-        icon={Users}
         workflowProgress={
           <PlanningWorkflowProgress
             steps={workflowSteps}

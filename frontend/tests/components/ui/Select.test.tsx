@@ -313,7 +313,7 @@ describe('Select', () => {
       expect(separator.className).toMatch(/-mx-1/)
       expect(separator.className).toMatch(/my-1/)
       expect(separator.className).toMatch(/h-px/)
-      expect(separator.className).toMatch(/bg-sand-200/)
+      expect(separator.className).toMatch(/bg-border-light/)
     })
   })
 

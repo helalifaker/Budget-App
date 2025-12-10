@@ -7,8 +7,11 @@ import { Toaster } from 'sonner'
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
 import { AuthProvider } from './contexts/AuthProvider'
 import { BudgetVersionProvider } from './contexts/BudgetVersionProvider'
+import { BackendConnectionProvider } from './contexts/BackendConnectionProvider'
 import { queryClient } from './lib/query-client'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { ConnectionStatusIndicator } from './components/ConnectionStatusIndicator'
+import { ConnectionErrorBanner } from './components/ConnectionErrorBanner'
 import App from './App'
 import './index.css'
 
@@ -51,25 +54,32 @@ ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          {/* BudgetVersionProvider must be inside AuthProvider (uses auth for API calls) */}
-          <BudgetVersionProvider>
-            <App />
-            <Toaster
-              position="top-right"
-              richColors
-              closeButton
-              duration={4000}
-              toastOptions={{
-                style: {
-                  fontFamily: 'Inter, system-ui, sans-serif',
-                },
-              }}
-            />
-            {/* React Query DevTools - only in development */}
-            {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
-          </BudgetVersionProvider>
-        </AuthProvider>
+        {/* BackendConnectionProvider: Checks if backend is reachable */}
+        <BackendConnectionProvider>
+          {/* Connection status UI - shows banner on first failure, indicator always */}
+          <ConnectionErrorBanner />
+          <ConnectionStatusIndicator />
+
+          <AuthProvider>
+            {/* BudgetVersionProvider must be inside AuthProvider (uses auth for API calls) */}
+            <BudgetVersionProvider>
+              <App />
+              <Toaster
+                position="top-right"
+                richColors
+                closeButton
+                duration={4000}
+                toastOptions={{
+                  style: {
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                  },
+                }}
+              />
+              {/* React Query DevTools - only in development */}
+              {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+            </BudgetVersionProvider>
+          </AuthProvider>
+        </BackendConnectionProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   </React.StrictMode>

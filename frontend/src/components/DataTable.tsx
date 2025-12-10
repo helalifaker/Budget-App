@@ -16,8 +16,22 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { themeQuartz } from 'ag-grid-community'
 import type { GridReadyEvent, SelectionChangedEvent } from 'ag-grid-community'
 import { AccessibleGridWrapper, type AccessibleGridWrapperRef } from './grid/AccessibleGridWrapper'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertTriangle, WifiOff, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+/**
+ * Check if an error is a network error (backend unreachable).
+ */
+function isNetworkError(error: Error): boolean {
+  const message = error.message.toLowerCase()
+  return (
+    message.includes('network error') ||
+    message.includes('network request failed') ||
+    message.includes('failed to fetch') ||
+    message.includes('econnrefused') ||
+    message.includes('connection refused')
+  )
+}
 
 interface DataTableProps<TData = unknown> extends AgGridReactProps<TData> {
   /**
@@ -46,6 +60,11 @@ interface DataTableProps<TData = unknown> extends AgGridReactProps<TData> {
   error?: Error | null
 
   /**
+   * Callback to retry loading data
+   */
+  onRetry?: () => void
+
+  /**
    * Show keyboard help tooltip
    */
   showKeyboardHelp?: boolean
@@ -57,6 +76,7 @@ export function DataTable<TData = unknown>({
   gridDescription,
   loading = false,
   error = null,
+  onRetry,
   rowData,
   showKeyboardHelp = true,
   ...props
@@ -105,6 +125,8 @@ export function DataTable<TData = unknown>({
   )
 
   if (error) {
+    const networkError = isNetworkError(error)
+
     return (
       <div
         role="alert"
@@ -112,13 +134,51 @@ export function DataTable<TData = unknown>({
         className={cn(
           'flex items-center justify-center h-64',
           'bg-paper rounded-xl',
-          'border border-[#E8E6E1]',
+          'border border-border-light',
           'shadow-efir-sm'
         )}
       >
-        <div className="text-center">
-          <p className="text-terracotta-600 font-body font-medium">Error loading data</p>
-          <p className="text-sm font-body text-text-secondary mt-1">{error.message}</p>
+        <div className="text-center max-w-md px-4">
+          {/* Icon */}
+          <div className="flex justify-center mb-3">
+            {networkError ? (
+              <div className="p-3 bg-red-100 rounded-full">
+                <WifiOff className="h-6 w-6 text-red-500" />
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-100 rounded-full">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
+              </div>
+            )}
+          </div>
+
+          {/* Title */}
+          <p className="text-terracotta-600 font-body font-semibold text-lg">
+            {networkError ? 'Cannot connect to server' : 'Error loading data'}
+          </p>
+
+          {/* Description */}
+          <p className="text-sm font-body text-text-secondary mt-2">
+            {networkError
+              ? 'The backend server is not responding. Check the status indicator at the bottom-right for details.'
+              : error.message}
+          </p>
+
+          {/* Retry button */}
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className={cn(
+                'mt-4 inline-flex items-center gap-2 px-4 py-2',
+                'bg-gold-100 hover:bg-gold-200 text-gold-800',
+                'rounded-md font-medium text-sm',
+                'transition-colors duration-150'
+              )}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry
+            </button>
+          )}
         </div>
       </div>
     )
@@ -140,7 +200,7 @@ export function DataTable<TData = unknown>({
         className={cn(
           'h-[600px] relative',
           'rounded-xl overflow-hidden',
-          'border border-[#E8E6E1]',
+          'border border-border-light',
           'shadow-efir-sm'
         )}
       >

@@ -133,7 +133,7 @@ describe('BudgetVersionSelector', () => {
       renderComponent()
 
       expect(screen.getByText('Budget Version')).toBeInTheDocument()
-      expect(screen.getByText('Select budget version')).toBeInTheDocument()
+      expect(screen.getByText('No budget versions available')).toBeInTheDocument()
     })
 
     it('should render versions list', () => {
@@ -381,8 +381,8 @@ describe('BudgetVersionSelector', () => {
       // Component should still render without crashing
       expect(screen.getByText('Budget Version')).toBeInTheDocument()
 
-      // Should show placeholder when error
-      expect(screen.getByText('Select budget version')).toBeInTheDocument()
+      // Should show "no versions" placeholder when error (undefined data)
+      expect(screen.getByText('No budget versions available')).toBeInTheDocument()
     })
 
     it('should display versions in correct order', async () => {
@@ -492,7 +492,7 @@ describe('BudgetVersionSelector', () => {
 
       renderComponent()
 
-      expect(screen.getByText('Select budget version')).toBeInTheDocument()
+      expect(screen.getByText('No budget versions available')).toBeInTheDocument()
     })
 
     it('should handle null data gracefully', () => {

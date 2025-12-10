@@ -368,6 +368,65 @@ Before completing any import task, verify:
 - [ ] No TODO comments or debugging statements
 - [ ] 80%+ test coverage achieved
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **postgres** | Verify target schema, check data integrity, run import queries | "DESCRIBE enrollment_data" or "SELECT COUNT(*) FROM dhg_allocations" |
+| **supabase** | Manage storage for uploaded files, verify table permissions | "List files in migration-uploads bucket" |
+| **filesystem** | Read/write local migration files, access Excel parsers | "Read /tools/importers/dhg_parser.py" |
+| **context7** | Look up pandas, openpyxl, data validation patterns | "Look up pandas read_excel with merged cells handling" |
+| **memory** | Store field mappings, recall import patterns | "Recall DHG Excel column mapping from last import" |
+
+### Usage Examples
+
+#### Importing DHG Excel File
+```
+1. Use `filesystem` MCP: Read uploaded DHG Excel file structure
+2. Use `context7` MCP: "Look up openpyxl handling merged cells and formulas"
+3. Use `memory` MCP: "Recall DHG field mapping: Column A = Subject Code, Column B = Level"
+4. Implement parser following retrieved patterns
+5. Use `postgres` MCP: "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'dhg_allocations'"
+6. Validate data and perform import
+7. Use `postgres` MCP: "SELECT COUNT(*), SUM(hours_allocated) FROM dhg_allocations WHERE import_batch_id = 'latest'"
+```
+
+#### Migrating Odoo Financial Data
+```
+1. Use `context7` MCP: "Look up Odoo XML-RPC API for accounting exports"
+2. Use `postgres` MCP: "SELECT * FROM chart_of_accounts WHERE account_type = 'expense'"
+3. Create account code mapping (Odoo → PCG format)
+4. Use `memory` MCP: "Store: Odoo account 6010 maps to PCG 60100"
+5. Import and validate totals match source
+```
+
+#### Processing Skolengo Student Export
+```
+1. Use `filesystem` MCP: Read Skolengo export file
+2. Use `context7` MCP: "Look up pandas CSV encoding handling for French characters"
+3. Use `postgres` MCP: "SELECT DISTINCT level, division FROM enrollment_data" (verify target structure)
+4. Transform and load data
+5. Use `postgres` MCP: "SELECT level, COUNT(*) FROM enrollment_data GROUP BY level" (validate import)
+```
+
+#### Historical Data Migration
+```
+1. Use `postgres` MCP: "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+2. Use `filesystem` MCP: Read legacy data files
+3. Use `memory` MCP: "Recall academic year format conversion: '2023-24' → '2023-2024'"
+4. Transform and validate data
+5. Use `postgres` MCP: Verify referential integrity after import
+```
+
+### Best Practices
+- ALWAYS use `postgres` MCP to verify target schema before importing
+- Use `filesystem` MCP to read source files and parsers
+- Use `context7` MCP for pandas/openpyxl best practices (especially for complex Excel files)
+- Use `memory` MCP to maintain consistent field mappings across imports
+- Always validate import totals using `postgres` MCP queries
+
 ## Emergency Handling
 
 If you encounter:

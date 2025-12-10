@@ -151,6 +151,57 @@ When implementing security:
 8. Document security model
 9. Coordinate with qa_validation_agent for security tests
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **supabase** | Manage RLS policies, auth settings, storage permissions | "List all RLS policies on budget_versions table" |
+| **postgres** | Test RLS policies, verify permission queries | "SELECT * FROM budget_versions" (as different roles) |
+| **context7** | Look up Supabase Auth, JWT, RLS best practices | "Look up Supabase RLS policy patterns" |
+| **memory** | Recall security patterns, RLS decisions | "Recall role-based permission matrix" |
+
+### Usage Examples
+
+#### Creating RLS Policies
+```
+1. Use `context7` MCP: "Look up Supabase RLS best practices for multi-tenant apps"
+2. Use `postgres` MCP: "SELECT * FROM pg_policies WHERE tablename = 'budgets'"
+3. Implement RLS policy following retrieved patterns
+4. Use `postgres` MCP: Test policy with different user contexts
+5. Use `supabase` MCP: Verify policy is active
+```
+
+#### Implementing JWT Authentication
+```
+1. Use `context7` MCP: "Look up Supabase Auth JWT verification Python"
+2. Use `context7` MCP: "Look up FastAPI authentication middleware patterns"
+3. Implement authentication middleware
+4. Use `memory` MCP: "Store: All protected endpoints use verify_jwt dependency"
+```
+
+#### Auditing Security Events
+```
+1. Use `postgres` MCP: "SELECT * FROM audit_log WHERE event_type = 'AUTH_FAILURE' ORDER BY created_at DESC LIMIT 20"
+2. Use `sentry` MCP: "Show security-related errors from last 24 hours"
+3. Analyze patterns and implement fixes
+```
+
+#### Verifying Role Permissions
+```
+1. Use `postgres` MCP: "SELECT role, permissions FROM user_roles WHERE user_id = 'test-user'"
+2. Use `postgres` MCP: "SET LOCAL role TO 'budget_manager'; SELECT * FROM budgets"
+3. Verify RLS policy enforces correct access
+4. Use `memory` MCP: "Store: Budget Manager can only edit Draft status budgets"
+```
+
+### Best Practices
+- ALWAYS use `context7` MCP for latest Supabase Auth/RLS documentation
+- Use `postgres` MCP to test RLS policies before deployment
+- Use `supabase` MCP to manage auth settings and verify configurations
+- Use `memory` MCP to maintain consistent security patterns across the application
+
 ## Communication
 
 When implementing security:

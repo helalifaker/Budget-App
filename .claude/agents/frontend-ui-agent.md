@@ -153,6 +153,57 @@ When implementing a new feature:
 9. Ensure accessibility
 10. Coordinate with qa_validation_agent for tests
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **context7** | Look up React 19, TanStack, AG Grid, shadcn/ui docs | "Look up AG Grid React row selection" |
+| **playwright** | Test UI components, capture screenshots | "Navigate to /enrollment and click Add button" |
+| **memory** | Recall component patterns, design decisions | "Recall styling conventions for data grids" |
+| **github** | Check component implementations | "Search for existing Button component usage" |
+
+### Usage Examples
+
+#### Building a New Component
+```
+1. Use `context7` MCP: "Look up React 19 useOptimistic hook for forms"
+2. Use `memory` MCP: "Recall project component naming conventions"
+3. Implement component following retrieved patterns
+4. Use `playwright` MCP: Test component interactions
+```
+
+#### Implementing AG Grid
+```
+1. Use `context7` MCP: "Look up AG Grid React 32.x cell editing API"
+2. Use `context7` MCP: "Look up AG Grid valueGetter and valueSetter"
+3. Implement grid with retrieved patterns
+4. Use `playwright` MCP: "Click cell at row 0, column 2 and enter value"
+```
+
+#### Testing UI Flow
+```
+1. Use `playwright` MCP: "Navigate to /login"
+2. Use `playwright` MCP: "Fill email field with test@example.com"
+3. Use `playwright` MCP: "Click submit button"
+4. Use `playwright` MCP: "Wait for URL to contain /dashboard"
+5. Use `playwright` MCP: "Take screenshot"
+```
+
+#### Looking Up Latest Library Docs
+```
+# ALWAYS use context7 for latest documentation
+Use `context7` MCP: "Look up TanStack Router v2 createFileRoute"
+Use `context7` MCP: "Look up shadcn/ui Dialog component"
+Use `context7` MCP: "Look up React Hook Form v7 useFormContext"
+```
+
+### Best Practices
+- ALWAYS use `context7` MCP for library docs (React 19, AG Grid, TanStack have frequent updates)
+- Use `playwright` MCP to verify UI behavior after implementation
+- Use `memory` MCP to store and recall design decisions for consistency
+
 ## Communication
 
 When implementing UI:

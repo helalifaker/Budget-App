@@ -63,7 +63,7 @@ describe('Input', () => {
       const input = screen.getByTestId('input')
       expect(input.className).toMatch(/rounded-button/)
       expect(input.className).toMatch(/border/)
-      expect(input.className).toMatch(/border-sand-300/)
+      expect(input.className).toMatch(/border-border-medium/)
       expect(input.className).toMatch(/bg-white/)
       expect(input.className).toMatch(/h-10/)
       expect(input.className).toMatch(/w-full/)
@@ -83,7 +83,7 @@ describe('Input', () => {
       render(<Input data-testid="input" />)
 
       const input = screen.getByTestId('input')
-      expect(input.className).toMatch(/placeholder:text-twilight-400/)
+      expect(input.className).toMatch(/placeholder:text-text-muted/)
     })
 
     it('applies custom className', () => {

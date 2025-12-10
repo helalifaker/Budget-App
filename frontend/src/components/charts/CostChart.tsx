@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { chartColors } from '@/lib/theme.constants'
 
 interface CostData {
   period: string
@@ -50,15 +51,15 @@ export function CostChart({ data, title = 'Cost Breakdown by Period', className 
     if (active && payload && payload.length) {
       const totalCost = payload.reduce((sum: number, p: TooltipPayload) => sum + (p.value || 0), 0)
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 mb-2">{label}</p>
+        <div className="bg-paper border border-border-light rounded-lg shadow-lg p-3">
+          <p className="font-medium text-text-primary mb-2">{label}</p>
           {payload.map((p: TooltipPayload, index: number) => (
             <div key={index} className="flex justify-between gap-4 text-sm">
               <span style={{ color: p.color }}>{p.name}:</span>
               <span className="font-medium">{formatCurrency(p.value)}</span>
             </div>
           ))}
-          <div className="border-t mt-2 pt-2 flex justify-between gap-4 text-sm font-bold">
+          <div className="border-t border-border-light mt-2 pt-2 flex justify-between gap-4 text-sm font-bold">
             <span>Total:</span>
             <span>{formatCurrency(totalCost)}</span>
           </div>
@@ -78,18 +79,20 @@ export function CostChart({ data, title = 'Cost Breakdown by Period', className 
         <CardTitle>{title}</CardTitle>
         <div className="flex gap-6 mt-2">
           <div>
-            <div className="text-xs text-gray-500">Personnel</div>
-            <div className="text-lg font-bold text-orange-600">
+            <div className="text-xs text-text-tertiary">Personnel</div>
+            <div className="text-lg font-bold text-terracotta">
               {formatCurrency(totalPersonnel)}
             </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Operating</div>
-            <div className="text-lg font-bold text-blue-600">{formatCurrency(totalOperating)}</div>
+            <div className="text-xs text-text-tertiary">Operating</div>
+            <div className="text-lg font-bold text-efir-slate">
+              {formatCurrency(totalOperating)}
+            </div>
           </div>
           <div>
-            <div className="text-xs text-gray-500">Total</div>
-            <div className="text-lg font-bold text-gray-900">{formatCurrency(grandTotal)}</div>
+            <div className="text-xs text-text-tertiary">Total</div>
+            <div className="text-lg font-bold text-text-primary">{formatCurrency(grandTotal)}</div>
           </div>
         </div>
       </CardHeader>
@@ -101,8 +104,8 @@ export function CostChart({ data, title = 'Cost Breakdown by Period', className 
             <YAxis tickFormatter={(value) => formatCurrency(value)} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Bar dataKey="personnel" name="Personnel Costs" fill="#F97316" />
-            <Bar dataKey="operating" name="Operating Costs" fill="#3B82F6" />
+            <Bar dataKey="personnel" name="Personnel Costs" fill={chartColors.personnel} />
+            <Bar dataKey="operating" name="Operating Costs" fill={chartColors.operating} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

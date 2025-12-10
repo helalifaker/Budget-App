@@ -461,6 +461,45 @@ export const progressTheme: Record<ProgressType, { color: string }> = {
 }
 
 // ============================================================================
+// CHART COLORS
+// For use in Recharts components that require inline hex colors
+// ============================================================================
+
+export const chartColors = {
+  // Cost categories
+  personnel: colors.accent.terracotta.DEFAULT, // Terracotta for personnel/staffing costs
+  operating: colors.accent.slate.DEFAULT, // Slate for operating/general costs
+
+  // Revenue/Budget
+  revenue: colors.accent.sage.DEFAULT, // Sage for revenue (positive)
+  budget: colors.accent.gold.DEFAULT, // Gold for budget/primary
+
+  // Scenarios (5-year planning)
+  conservative: colors.accent.terracotta.DEFAULT, // Terracotta (pessimistic)
+  base: colors.accent.gold.DEFAULT, // Gold (base case)
+  optimistic: colors.accent.sage.DEFAULT, // Sage (optimistic)
+
+  // Variance analysis
+  favorable: colors.accent.sage.DEFAULT, // Sage for positive variance
+  unfavorable: colors.accent.terracotta.DEFAULT, // Terracotta for negative variance
+  neutral: colors.accent.slate.DEFAULT, // Slate for neutral
+  actual: colors.accent.wine.DEFAULT, // Wine for actuals
+
+  // Multi-series charts (5 distinct colors)
+  series: [
+    colors.accent.gold.DEFAULT, // #A68B5B
+    colors.accent.sage.DEFAULT, // #7D9082
+    colors.accent.terracotta.DEFAULT, // #C4785D
+    colors.accent.slate.DEFAULT, // #64748B
+    colors.accent.wine.DEFAULT, // #8B5C6B
+  ],
+
+  // Primary/secondary for simple 2-value charts
+  primary: colors.accent.gold.DEFAULT,
+  secondary: colors.accent.sage.DEFAULT,
+} as const
+
+// ============================================================================
 // COMBINED THEME EXPORT
 // ============================================================================
 
@@ -477,6 +516,7 @@ export const theme = {
   statusTheme,
   kpiTheme,
   progressTheme,
+  chartColors,
 } as const
 
 export type Theme = typeof theme

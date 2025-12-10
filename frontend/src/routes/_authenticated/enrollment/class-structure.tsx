@@ -2,16 +2,15 @@
  * Class Structure Page - /enrollment/class-structure
  *
  * Manages number of classes per level with average class sizes.
- * Navigation (SmartHeader + ModuleDock) provided by _authenticated.tsx layout.
+ * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
  *
- * Migrated from /planning/classes
+ * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
 import { useEffect, useMemo, useCallback, useState } from 'react'
 import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
-import { PlanningPageWrapper } from '@/components/planning/PlanningPageWrapper'
 import { DataTableLazy } from '@/components/DataTableLazy'
 import { Button } from '@/components/ui/button'
 import { Calculator } from 'lucide-react'
@@ -183,46 +182,43 @@ function ClassStructurePage() {
   }
 
   return (
-    <PlanningPageWrapper
-      stepId="class_structure"
-      actions={
-        <>
-          <HistoricalToggle
-            showHistorical={showHistorical}
-            onToggle={setShowHistorical}
-            disabled={!selectedVersionId}
-            isLoading={historicalLoading}
-            currentFiscalYear={currentFiscalYear}
-          />
-          <Button
-            data-testid="calculate-button"
-            variant="outline"
-            onClick={handleCalculateFromEnrollment}
-            disabled={!selectedVersionId || calculateMutation.isPending}
-          >
-            <Calculator className="h-4 w-4 mr-2" />
-            Calculate from Enrollment
-          </Button>
-        </>
-      }
-    >
-      <div className="p-6">
-        {selectedVersionId ? (
-          <DataTableLazy
-            rowData={mergedRowData}
-            columnDefs={columnDefs}
-            loading={classStructuresLoading || (showHistorical && historicalLoading)}
-            error={classStructuresError}
-            pagination={true}
-            paginationPageSize={50}
-            onCellValueChanged={onCellValueChanged}
-          />
-        ) : (
-          <div className="text-center py-12 text-text-secondary">
-            Please select a budget version to view class structure data
-          </div>
-        )}
+    <div className="p-6 space-y-4">
+      {/* Page Actions */}
+      <div className="flex items-center justify-end gap-3">
+        <HistoricalToggle
+          showHistorical={showHistorical}
+          onToggle={setShowHistorical}
+          disabled={!selectedVersionId}
+          isLoading={historicalLoading}
+          currentFiscalYear={currentFiscalYear}
+        />
+        <Button
+          data-testid="calculate-button"
+          variant="outline"
+          onClick={handleCalculateFromEnrollment}
+          disabled={!selectedVersionId || calculateMutation.isPending}
+        >
+          <Calculator className="h-4 w-4 mr-2" />
+          Calculate from Enrollment
+        </Button>
       </div>
-    </PlanningPageWrapper>
+
+      {/* Content */}
+      {selectedVersionId ? (
+        <DataTableLazy
+          rowData={mergedRowData}
+          columnDefs={columnDefs}
+          loading={classStructuresLoading || (showHistorical && historicalLoading)}
+          error={classStructuresError}
+          pagination={true}
+          paginationPageSize={50}
+          onCellValueChanged={onCellValueChanged}
+        />
+      ) : (
+        <div className="text-center py-12 text-text-secondary">
+          Please select a budget version to view class structure data
+        </div>
+      )}
+    </div>
   )
 }

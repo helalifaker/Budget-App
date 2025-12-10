@@ -2,10 +2,11 @@
  * ModuleDashboard - Base container component for module dashboards
  *
  * Provides the standard layout structure for all module dashboards:
- * - Header with module title and description
  * - Planning workflow progress (optional)
  * - Two-column layout for metrics and attention panels
  * - Quick actions bar at the bottom
+ *
+ * UI Redesign: Removed duplicate header - ModuleHeader now handles titles
  *
  * This is a composition component - pass in the individual dashboard components.
  */
@@ -16,13 +17,13 @@ import { motion } from 'framer-motion'
 import { PageContainer } from '@/components/layout/PageContainer'
 
 interface ModuleDashboardProps {
-  /** Module title */
-  title: string
-  /** Module description */
+  /** @deprecated Title now shown in ModuleHeader */
+  title?: string
+  /** @deprecated Description now shown in TaskDescription */
   description?: string
-  /** Module icon */
+  /** @deprecated Icon now shown in ModuleHeader */
   icon?: LucideIcon
-  /** Module accent color */
+  /** @deprecated No longer used */
   color?: string
   /** Workflow progress component */
   workflowProgress?: ReactNode
@@ -39,9 +40,6 @@ interface ModuleDashboardProps {
 }
 
 export function ModuleDashboard({
-  title,
-  description,
-  icon: Icon,
   workflowProgress,
   metricsPanel,
   attentionPanel,
@@ -50,28 +48,13 @@ export function ModuleDashboard({
   className,
 }: ModuleDashboardProps) {
   return (
-    <PageContainer title={title} description={description} className={className}>
+    <PageContainer className={className}>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
         className="space-y-4"
       >
-        {/* Module header with icon */}
-        {Icon && (
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-gold-100 to-gold-200 shadow-sm">
-              <Icon className="w-6 h-6 text-gold-700" />
-            </div>
-            <div>
-              <h1 className="text-xl font-display font-semibold text-text-primary">
-                {title} Dashboard
-              </h1>
-              {description && <p className="text-sm text-text-secondary">{description}</p>}
-            </div>
-          </div>
-        )}
-
         {/* Planning workflow progress */}
         {workflowProgress && (
           <motion.div

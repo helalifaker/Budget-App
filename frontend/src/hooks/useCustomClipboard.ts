@@ -1,19 +1,22 @@
 import { useCallback } from 'react'
 import type { GridApi, Column, EditableCallbackParams } from 'ag-grid-community'
 
-interface CellUpdate {
+export interface CellUpdate<TData = Record<string, unknown>> {
   rowId: string
   field: string
   newValue: string
-  originalData: Record<string, unknown>
+  originalData: TData
 }
 
-interface UseCustomClipboardProps {
+interface UseCustomClipboardProps<TData> {
   gridApi: GridApi | null
-  onPasteCells: (updates: CellUpdate[]) => Promise<void>
+  onPasteCells: (updates: CellUpdate<TData>[]) => Promise<void>
 }
 
-export function useCustomClipboard({ gridApi, onPasteCells }: UseCustomClipboardProps) {
+export function useCustomClipboard<TData extends { id: string }>({
+  gridApi,
+  onPasteCells,
+}: UseCustomClipboardProps<TData>) {
   const handlePaste = useCallback(
     async (event: React.ClipboardEvent) => {
       if (!gridApi) return
@@ -50,7 +53,7 @@ export function useCustomClipboard({ gridApi, onPasteCells }: UseCustomClipboard
       const data = rows.map((r) => r.split('\t'))
 
       // 3. Prepare updates
-      const updates: CellUpdate[] = []
+      const updates: CellUpdate<TData>[] = []
 
       // Loop through pasted data
       for (let i = 0; i < data.length; i++) {
@@ -62,7 +65,7 @@ export function useCustomClipboard({ gridApi, onPasteCells }: UseCustomClipboard
         // If we ran out of rows in the grid, stop
         if (!rowNode) break
 
-        const rowData = rowNode.data
+        const rowData = rowNode.data as TData | undefined
         if (!rowData || !rowData.id) continue
 
         for (let j = 0; j < data[i].length; j++) {

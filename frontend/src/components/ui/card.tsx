@@ -50,12 +50,16 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
         className={cn(
           // Base styles
           'relative bg-paper rounded-xl overflow-hidden',
-          'border border-[#E8E6E1]',
+          'border border-border-light',
           'transition-all duration-300 ease-out',
           // Shadow
           elevated ? 'shadow-efir-lg' : 'shadow-efir-sm',
           // Hover effects (unless static)
-          !isStatic && ['hover:shadow-efir-md', 'hover:border-[#D4D1C9]', 'hover:-translate-y-0.5'],
+          !isStatic && [
+            'hover:shadow-efir-md',
+            'hover:border-border-medium',
+            'hover:-translate-y-0.5',
+          ],
           // Compact padding
           compact && '[&_.card-content]:p-4 [&_.card-header]:px-4 [&_.card-header]:py-3',
           // Left padding for accent bar
@@ -87,7 +91,7 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
       ref={ref}
       className={cn(
         'card-header flex flex-col space-y-1.5 px-5 py-4',
-        'border-b border-[#E8E6E1]',
+        'border-b border-border-light',
         'bg-gradient-to-r from-subtle/80 to-transparent',
         className
       )}
@@ -133,7 +137,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
       ref={ref}
       className={cn(
         'flex items-center px-5 py-4',
-        'border-t border-[#E8E6E1]',
+        'border-t border-border-light',
         'bg-subtle/50',
         className
       )}

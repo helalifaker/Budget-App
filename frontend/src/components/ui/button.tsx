@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Premium Button Components - EFIR Luxury Warm Theme
  *
@@ -49,18 +50,18 @@ const buttonVariants = cva(
         ],
         // Outline - Bordered with hover fill
         outline: [
-          'border border-[#D4D1C9] bg-paper',
+          'border border-border-medium bg-paper',
           'text-text-primary',
           'shadow-xs',
-          'hover:bg-subtle hover:border-[#C5C2B8]',
+          'hover:bg-subtle hover:border-border-strong',
           'hover:shadow-efir-sm',
         ],
         // Secondary - Paper background, medium border
         secondary: [
-          'bg-paper border border-[#D4D1C9]',
+          'bg-paper border border-border-medium',
           'text-text-primary',
           'shadow-xs',
-          'hover:bg-subtle hover:border-[#C5C2B8]',
+          'hover:bg-subtle hover:border-border-strong',
         ],
         // Ghost - Transparent, hover subtle background
         ghost: ['text-text-secondary', 'hover:bg-subtle', 'hover:text-text-primary'],

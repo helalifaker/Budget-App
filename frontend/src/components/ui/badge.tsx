@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Premium Badge Component - EFIR Luxury Warm Theme
  *
@@ -33,14 +34,14 @@ const badgeVariants = cva(
           'hover:bg-efir-gold-100',
         ],
         // Secondary - Subtle background, secondary text
-        secondary: ['border-[#D4D1C9] bg-subtle text-text-secondary', 'hover:bg-[#F0EFEC]'],
+        secondary: ['border-border-medium bg-subtle text-text-secondary', 'hover:bg-bg-muted'],
         // Destructive - Terracotta error state
         destructive: [
           'border-terracotta-200 bg-terracotta-50 text-terracotta-800',
           'hover:bg-terracotta-100',
         ],
         // Outline - Bordered only
-        outline: ['border-[#D4D1C9] bg-transparent text-text-primary', 'hover:bg-subtle'],
+        outline: ['border-border-medium bg-transparent text-text-primary', 'hover:bg-subtle'],
         // Success - Sage green (#7D9082)
         success: ['border-sage-200 bg-sage-50 text-sage-800', 'hover:bg-sage-100'],
         // Warning - Terracotta (#C4785D)
@@ -54,7 +55,7 @@ const badgeVariants = cva(
           'hover:bg-efir-slate-100',
         ],
         // Neutral - Subtle background, secondary text
-        neutral: ['border-[#E8E6E1] bg-subtle text-text-secondary', 'hover:bg-[#F0EFEC]'],
+        neutral: ['border-border-light bg-subtle text-text-secondary', 'hover:bg-bg-muted'],
         // Premium - Gold with glow effect
         premium: [
           'border-efir-gold-300 bg-gradient-to-r from-efir-gold-100 to-efir-gold-50 text-efir-gold-900',

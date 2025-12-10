@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * ModuleContext - Executive Cockpit Module State Management
  *
@@ -63,6 +64,8 @@ export interface ModuleDefinition {
   color: 'gold' | 'sage' | 'wine' | 'slate' | 'neutral'
   description: string
   subpages: SubpageDefinition[]
+  /** Whether this module has a separate settings tab */
+  hasSettings: boolean
 }
 
 /**
@@ -122,6 +125,14 @@ export const MODULE_COLORS: Record<
 
 /**
  * Module definitions with metadata and subpages
+ *
+ * Phase 3 restructuring (UI Redesign):
+ * - Enrollment: Planning → Class Structure → Validation + Settings
+ * - Workforce: Employees → DHG → Requirements → Gap Analysis + Settings
+ * - Finance: Revenue → Costs → CapEx → Statements + Settings
+ * - Analysis: KPIs → Dashboards → Variance (no settings)
+ * - Strategic: 5-Year Plan (no settings)
+ * - Configuration: Versions → Uploads → System (no settings)
  */
 export const MODULES: Record<ModuleId, ModuleDefinition> = {
   'command-center': {
@@ -133,6 +144,7 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
     color: 'gold',
     description: 'Global overview and quick actions',
     subpages: [],
+    hasSettings: false,
   },
   enrollment: {
     id: 'enrollment',
@@ -145,7 +157,9 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
     subpages: [
       { id: 'planning', label: 'Planning', path: '/enrollment/planning' },
       { id: 'class-structure', label: 'Class Structure', path: '/enrollment/class-structure' },
+      { id: 'validation', label: 'Validation', path: '/enrollment/validation' },
     ],
+    hasSettings: true,
   },
   workforce: {
     id: 'workforce',
@@ -154,15 +168,14 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
     icon: Users,
     basePath: '/workforce',
     color: 'wine',
-    description: 'Employee management, salaries, DHG planning',
+    description: 'Employee management and DHG planning',
     subpages: [
       { id: 'employees', label: 'Employees', path: '/workforce/employees' },
-      { id: 'salaries', label: 'Salaries', path: '/workforce/salaries' },
-      { id: 'aefe-positions', label: 'AEFE Positions', path: '/workforce/aefe-positions' },
-      { id: 'dhg-planning', label: 'DHG Planning', path: '/workforce/dhg/planning' },
-      { id: 'dhg-fte', label: 'FTE', path: '/workforce/dhg/requirements' },
-      { id: 'dhg-gap', label: 'Gap Analysis', path: '/workforce/dhg/gap-analysis' },
+      { id: 'dhg', label: 'DHG', path: '/workforce/dhg' },
+      { id: 'requirements', label: 'Requirements', path: '/workforce/dhg/requirements' },
+      { id: 'gap-analysis', label: 'Gap Analysis', path: '/workforce/dhg/gap-analysis' },
     ],
+    hasSettings: true,
   },
   finance: {
     id: 'finance',
@@ -171,14 +184,14 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
     icon: Wallet,
     basePath: '/finance',
     color: 'gold',
-    description: 'Revenue, costs, and budget consolidation',
+    description: 'Revenue, costs, and financial statements',
     subpages: [
       { id: 'revenue', label: 'Revenue', path: '/finance/revenue' },
       { id: 'costs', label: 'Costs', path: '/finance/costs' },
       { id: 'capex', label: 'CapEx', path: '/finance/capex' },
-      { id: 'consolidation', label: 'Consolidation', path: '/finance/consolidation' },
       { id: 'statements', label: 'Statements', path: '/finance/statements' },
     ],
+    hasSettings: true,
   },
   analysis: {
     id: 'analysis',
@@ -193,6 +206,7 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
       { id: 'dashboards', label: 'Dashboards', path: '/analysis/dashboards' },
       { id: 'variance', label: 'Variance', path: '/analysis/variance' },
     ],
+    hasSettings: false,
   },
   strategic: {
     id: 'strategic',
@@ -203,6 +217,7 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
     color: 'neutral',
     description: '5-year planning and projections',
     subpages: [{ id: 'five-year-plan', label: '5-Year Plan', path: '/strategic' }],
+    hasSettings: false,
   },
   configuration: {
     id: 'configuration',
@@ -211,14 +226,13 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
     icon: Settings,
     basePath: '/configuration',
     color: 'neutral',
-    description: 'System settings and parameters',
+    description: 'System settings, versions, and data imports',
     subpages: [
       { id: 'versions', label: 'Versions', path: '/configuration/versions' },
-      { id: 'class-sizes', label: 'Class Sizes', path: '/configuration/class-sizes' },
-      { id: 'subject-hours', label: 'Subject Hours', path: '/configuration/subject-hours' },
-      { id: 'fees', label: 'Fees', path: '/configuration/fees' },
-      { id: 'teacher-costs', label: 'Teacher Costs', path: '/configuration/teacher-costs' },
+      { id: 'uploads', label: 'Uploads', path: '/configuration/uploads' },
+      { id: 'system', label: 'System', path: '/configuration/system' },
     ],
+    hasSettings: false,
   },
 }
 
@@ -403,6 +417,29 @@ export function useActiveSubpages() {
     activeSubpage,
     isSubpageActive,
     hasSubpages: (activeModuleDefinition?.subpages.length || 0) > 0,
+    hasSettings: activeModuleDefinition?.hasSettings ?? false,
     moduleColor: activeModuleDefinition?.color || 'neutral',
   }
+}
+
+/**
+ * Re-export TAB_DESCRIPTIONS from TaskDescription component
+ * for centralized access to route descriptions
+ */
+export { TAB_DESCRIPTIONS } from '@/components/layout/TaskDescription'
+
+/**
+ * Settings route helper - generates the settings path for a module
+ */
+export function getModuleSettingsPath(moduleId: ModuleId): string | null {
+  const module = MODULES[moduleId]
+  if (!module?.hasSettings) return null
+  return `${module.basePath}/settings`
+}
+
+/**
+ * Check if a module has settings
+ */
+export function moduleHasSettings(moduleId: ModuleId): boolean {
+  return MODULES[moduleId]?.hasSettings ?? false
 }

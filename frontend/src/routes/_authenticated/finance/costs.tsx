@@ -2,16 +2,15 @@
  * Cost Planning Page - /finance/costs
  *
  * Manages personnel and operating costs planning.
- * Navigation (SmartHeader + ModuleDock) provided by _authenticated.tsx layout.
+ * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
  *
- * Migrated from /planning/costs
+ * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { ColDef, themeQuartz } from 'ag-grid-community'
-import { PlanningPageWrapper } from '@/components/planning/PlanningPageWrapper'
 import { SummaryCard } from '@/components/SummaryCard'
 import { CostChart } from '@/components/charts/CostChart'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -109,164 +108,160 @@ function CostsPage() {
   }
 
   return (
-    <PlanningPageWrapper
-      stepId="costs"
-      actions={
+    <div className="p-6 space-y-6">
+      {/* Page Actions */}
+      <div className="flex items-center justify-end gap-3">
+        <HistoricalToggle
+          showHistorical={showHistorical}
+          onToggle={setShowHistorical}
+          disabled={!selectedVersionId}
+          isLoading={historicalLoading}
+          currentFiscalYear={currentFiscalYear}
+        />
+        <Button
+          data-testid="calculate-button"
+          onClick={handleCalculatePersonnel}
+          disabled={!selectedVersionId || calculatePersonnel.isPending}
+        >
+          <Calculator className="w-4 h-4 mr-2" />
+          Recalculate Personnel Costs
+        </Button>
+        <Button data-testid="export-button" variant="outline">
+          <Download className="w-4 h-4 mr-2" />
+          Export
+        </Button>
+      </div>
+
+      {/* Content */}
+      {selectedVersionId ? (
         <>
-          <HistoricalToggle
-            showHistorical={showHistorical}
-            onToggle={setShowHistorical}
-            disabled={!selectedVersionId}
-            isLoading={historicalLoading}
-            currentFiscalYear={currentFiscalYear}
-          />
-          <Button
-            data-testid="calculate-button"
-            onClick={handleCalculatePersonnel}
-            disabled={!selectedVersionId || calculatePersonnel.isPending}
-          >
-            <Calculator className="w-4 h-4 mr-2" />
-            Recalculate Personnel Costs
-          </Button>
-          <Button data-testid="export-button" variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </>
-      }
-    >
-      <div className="p-6 space-y-6">
-        {selectedVersionId ? (
-          <>
-            {/* Historical Summary for Costs */}
-            {showHistorical && historicalData?.totals && (
-              <div className="flex gap-4 mb-4">
+          {/* Historical Summary for Costs */}
+          {showHistorical && historicalData?.totals && (
+            <div className="flex gap-4 mb-4">
+              <HistoricalSummary
+                currentValue={totalCosts}
+                priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
+                changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
+                label="Total Costs vs Prior Year"
+                isCurrency={true}
+              />
+              {historicalData.personnel_totals && (
                 <HistoricalSummary
-                  currentValue={totalCosts}
-                  priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
-                  changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
-                  label="Total Costs vs Prior Year"
+                  currentValue={totalPersonnel}
+                  priorYearValue={historicalData.personnel_totals.n_minus_1?.value ?? null}
+                  changePercent={historicalData.personnel_totals.vs_n_minus_1_pct ?? null}
+                  label="Personnel vs Prior Year"
                   isCurrency={true}
                 />
-                {historicalData.personnel_totals && (
-                  <HistoricalSummary
-                    currentValue={totalPersonnel}
-                    priorYearValue={historicalData.personnel_totals.n_minus_1?.value ?? null}
-                    changePercent={historicalData.personnel_totals.vs_n_minus_1_pct ?? null}
-                    label="Personnel vs Prior Year"
-                    isCurrency={true}
-                  />
-                )}
-                {historicalData.operating_totals && (
-                  <HistoricalSummary
-                    currentValue={totalOperating}
-                    priorYearValue={historicalData.operating_totals.n_minus_1?.value ?? null}
-                    changePercent={historicalData.operating_totals.vs_n_minus_1_pct ?? null}
-                    label="Operating vs Prior Year"
-                    isCurrency={true}
-                  />
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <SummaryCard
-                title="Total Costs"
-                value={formatCurrency(totalCosts)}
-                subtitle="Annual total"
-                icon={<DollarSign className="w-5 h-5" />}
-                valueClassName="text-red-600"
-              />
-              <SummaryCard
-                title="Personnel Costs"
-                value={formatCurrency(totalPersonnel)}
-                subtitle={`${((totalPersonnel / totalCosts) * 100).toFixed(1)}% of total`}
-                icon={<Users className="w-5 h-5" />}
-              />
-              <SummaryCard
-                title="Operating Costs"
-                value={formatCurrency(totalOperating)}
-                subtitle={`${((totalOperating / totalCosts) * 100).toFixed(1)}% of total`}
-                icon={<ShoppingCart className="w-5 h-5" />}
-              />
-              <SummaryCard
-                title="Personnel %"
-                value={`${((totalPersonnel / totalCosts) * 100).toFixed(1)}%`}
-                subtitle="Typical: 60-70%"
-                icon={<Users className="w-5 h-5" />}
-              />
+              )}
+              {historicalData.operating_totals && (
+                <HistoricalSummary
+                  currentValue={totalOperating}
+                  priorYearValue={historicalData.operating_totals.n_minus_1?.value ?? null}
+                  changePercent={historicalData.operating_totals.vs_n_minus_1_pct ?? null}
+                  label="Operating vs Prior Year"
+                  isCurrency={true}
+                />
+              )}
             </div>
+          )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger data-testid="personnel-tab" value="personnel">
-                      Personnel Costs
-                    </TabsTrigger>
-                    <TabsTrigger data-testid="operating-tab" value="operating">
-                      Operating Costs
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="personnel" className="mt-6">
-                    <PersonnelCostsTab data={personnelItems} isLoading={loadingPersonnel} />
-                  </TabsContent>
-
-                  <TabsContent value="operating" className="mt-6">
-                    <OperatingCostsTab data={operatingItems} isLoading={loadingOperating} />
-                  </TabsContent>
-                </Tabs>
-              </div>
-
-              <div>
-                <CostChart data={chartData} title="Cost Breakdown by Period" />
-
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Cost Planning Notes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4 text-sm">
-                      <div>
-                        <h4 className="font-medium mb-1">Personnel Costs (641xx, 645xx)</h4>
-                        <p className="text-gray-600">
-                          Auto-calculated from DHG FTE. Includes teacher salaries, social charges
-                          (42%), and benefits.
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">AEFE Contributions</h4>
-                        <p className="text-gray-600">
-                          PRRD: ~41,863 EUR per teacher. Converted to SAR at current rate.
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Operating Costs (606xx-625xx)</h4>
-                        <p className="text-gray-600">
-                          Supplies, utilities, maintenance, insurance, and other operating expenses.
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Period Allocation</h4>
-                        <p className="text-gray-600">
-                          P1 (Jan-Jun), Summer (Jul-Aug), P2 (Sep-Dec). Summer costs typically
-                          lower.
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-12 text-text-secondary">
-            Please select a budget version to view cost planning
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard
+              title="Total Costs"
+              value={formatCurrency(totalCosts)}
+              subtitle="Annual total"
+              icon={<DollarSign className="w-5 h-5" />}
+              valueClassName="text-red-600"
+            />
+            <SummaryCard
+              title="Personnel Costs"
+              value={formatCurrency(totalPersonnel)}
+              subtitle={`${((totalPersonnel / totalCosts) * 100).toFixed(1)}% of total`}
+              icon={<Users className="w-5 h-5" />}
+            />
+            <SummaryCard
+              title="Operating Costs"
+              value={formatCurrency(totalOperating)}
+              subtitle={`${((totalOperating / totalCosts) * 100).toFixed(1)}% of total`}
+              icon={<ShoppingCart className="w-5 h-5" />}
+            />
+            <SummaryCard
+              title="Personnel %"
+              value={`${((totalPersonnel / totalCosts) * 100).toFixed(1)}%`}
+              subtitle="Typical: 60-70%"
+              icon={<Users className="w-5 h-5" />}
+            />
           </div>
-        )}
-      </div>
-    </PlanningPageWrapper>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger data-testid="personnel-tab" value="personnel">
+                    Personnel Costs
+                  </TabsTrigger>
+                  <TabsTrigger data-testid="operating-tab" value="operating">
+                    Operating Costs
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="personnel" className="mt-6">
+                  <PersonnelCostsTab data={personnelItems} isLoading={loadingPersonnel} />
+                </TabsContent>
+
+                <TabsContent value="operating" className="mt-6">
+                  <OperatingCostsTab data={operatingItems} isLoading={loadingOperating} />
+                </TabsContent>
+              </Tabs>
+            </div>
+
+            <div>
+              <CostChart data={chartData} title="Cost Breakdown by Period" />
+
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Cost Planning Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-1">Personnel Costs (641xx, 645xx)</h4>
+                      <p className="text-gray-600">
+                        Auto-calculated from DHG FTE. Includes teacher salaries, social charges
+                        (42%), and benefits.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">AEFE Contributions</h4>
+                      <p className="text-gray-600">
+                        PRRD: ~41,863 EUR per teacher. Converted to SAR at current rate.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Operating Costs (606xx-625xx)</h4>
+                      <p className="text-gray-600">
+                        Supplies, utilities, maintenance, insurance, and other operating expenses.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Period Allocation</h4>
+                      <p className="text-gray-600">
+                        P1 (Jan-Jun), Summer (Jul-Aug), P2 (Sep-Dec). Summer costs typically lower.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-12 text-text-secondary">
+          Please select a budget version to view cost planning
+        </div>
+      )}
+    </div>
   )
 }
 

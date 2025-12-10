@@ -1,24 +1,19 @@
 /**
  * Authenticated Layout Route
  *
- * This layout route wraps all authenticated pages with the Executive Cockpit layout.
- * The CockpitLayout replaces the traditional MainLayout:
- * - SmartHeader (48px) instead of full header
- * - ModuleDock (horizontal tabs) instead of sidebar
- * - More content space for AG Grid and data-heavy pages
+ * This layout route wraps all authenticated pages with the ModuleLayout.
+ * The ModuleLayout (Phase 2 UI Redesign) provides:
+ * - AppSidebar (64px collapsed, 240px expanded)
+ * - ModuleHeader (48px) with search, version selector, user avatar
+ * - WorkflowTabs (40px) with automatic settings tab detection
+ * - TaskDescription (32px) contextual help
+ * - Total Chrome: 120px
  *
  * TanStack Router convention: files starting with `_` are layout routes
  */
 
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
-import { CockpitLayout } from '@/components/layout/CockpitLayout'
-// import { MainLayout } from '@/components/layout/MainLayout' // Legacy layout
-
-/**
- * Feature flag to toggle between layouts during transition
- * Set to false to use the legacy MainLayout
- */
-const USE_COCKPIT_LAYOUT = true
+import { ModuleLayout } from '@/components/layout/ModuleLayout'
 
 export const Route = createFileRoute('/_authenticated')({
   // Optional: Add authentication check here
@@ -40,26 +35,9 @@ export const Route = createFileRoute('/_authenticated')({
 })
 
 function AuthenticatedLayout() {
-  // Use Executive Cockpit layout (new) or legacy MainLayout
-  if (USE_COCKPIT_LAYOUT) {
-    return (
-      <CockpitLayout>
-        <Outlet />
-      </CockpitLayout>
-    )
-  }
-
-  // Legacy layout (kept for reference)
-  // return (
-  //   <MainLayout>
-  //     <Outlet />
-  //   </MainLayout>
-  // )
-
-  // Default to CockpitLayout
   return (
-    <CockpitLayout>
+    <ModuleLayout>
       <Outlet />
-    </CockpitLayout>
+    </ModuleLayout>
   )
 }

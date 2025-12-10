@@ -24,8 +24,8 @@ describe('Card', () => {
     const card = screen.getByTestId('card')
     expect(card.className).toMatch(/rounded-xl/)
     expect(card.className).toMatch(/border/)
-    expect(card.className).toMatch(/bg-white/)
-    expect(card.className).toMatch(/shadow-luxe-card/)
+    expect(card.className).toMatch(/bg-paper/)
+    expect(card.className).toMatch(/shadow-efir-sm/)
   })
 
   it('applies custom className', () => {
@@ -92,11 +92,11 @@ describe('CardTitle', () => {
 
     const title = screen.getByTestId('title')
     expect(title.className).toMatch(/text-lg/)
-    expect(title.className).toMatch(/font-serif/)
+    expect(title.className).toMatch(/font-display/)
     expect(title.className).toMatch(/font-semibold/)
     expect(title.className).toMatch(/leading-none/)
     expect(title.className).toMatch(/tracking-tight/)
-    expect(title.className).toMatch(/text-brown-900/)
+    expect(title.className).toMatch(/text-text-primary/)
   })
 
   it('applies custom className', () => {
@@ -124,7 +124,7 @@ describe('CardDescription', () => {
 
     const description = screen.getByTestId('description')
     expect(description.className).toMatch(/text-sm/)
-    expect(description.className).toMatch(/text-twilight-700/)
+    expect(description.className).toMatch(/text-text-secondary/)
   })
 
   it('applies custom className', () => {

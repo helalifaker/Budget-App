@@ -10,7 +10,6 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import {
-  Wallet,
   TrendingUp,
   Users,
   Building,
@@ -171,16 +170,13 @@ const quickActions: QuickAction[] = [
 
 /**
  * FinanceDashboard renders module content only.
- * Navigation (SmartHeader + ModuleDock) is provided by _authenticated.tsx layout.
- * NO CockpitLayout wrapper here to avoid double navigation.
+ * Navigation (ModuleHeader + WorkflowTabs) is provided by ModuleLayout.
+ * Title/description shown in ModuleHeader, not here.
  */
 function FinanceDashboard() {
   return (
     <div className="p-6" style={{ background: 'var(--efir-bg-canvas)' }}>
       <ModuleDashboard
-        title="Finance"
-        description="Revenue, costs, and budget consolidation"
-        icon={Wallet}
         workflowProgress={
           <PlanningWorkflowProgress
             steps={workflowSteps}

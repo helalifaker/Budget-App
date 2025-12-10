@@ -7,87 +7,60 @@ vi.mock('@/components/layout/Breadcrumbs', () => ({
   Breadcrumbs: () => <div data-testid="breadcrumbs">Breadcrumbs</div>,
 }))
 
+/**
+ * PageContainer Tests
+ *
+ * NOTE: PageContainer was refactored (2024-12-11) to be a simple content wrapper.
+ * - Title/description are now shown in ModuleHeader (from ModuleLayout)
+ * - Breadcrumbs are deprecated (use TaskDescription instead)
+ * - The component only renders children, actions bar, and optional viewport-fit layout
+ */
 describe('PageContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('renders with title and children', () => {
-    render(
-      <PageContainer title="Test Page">
-        <div>Page content</div>
-      </PageContainer>
-    )
-
-    expect(screen.getByText('Test Page')).toBeInTheDocument()
-    expect(screen.getByText('Page content')).toBeInTheDocument()
-  })
-
-  describe('Title and description', () => {
-    it('renders title as h1 element', () => {
+  describe('Basic rendering', () => {
+    it('renders children content', () => {
       render(
-        <PageContainer title="Enrollment Planning">
-          <div>Content</div>
+        <PageContainer>
+          <div data-testid="test-content">Page content</div>
         </PageContainer>
       )
 
-      const heading = screen.getByRole('heading', { level: 1 })
-      expect(heading).toHaveTextContent('Enrollment Planning')
+      expect(screen.getByTestId('test-content')).toBeInTheDocument()
+      expect(screen.getByText('Page content')).toBeInTheDocument()
     })
 
-    it('renders description when provided', () => {
+    it('accepts deprecated title prop without error', () => {
       render(
-        <PageContainer title="DHG Workforce" description="Manage teacher allocation and hours">
+        <PageContainer title="Test Page">
           <div>Content</div>
         </PageContainer>
       )
 
-      expect(screen.getByText('Manage teacher allocation and hours')).toBeInTheDocument()
+      // Title is no longer rendered - just verify no error occurs
+      expect(screen.getByText('Content')).toBeInTheDocument()
+      // Title should NOT appear in the DOM (deprecated)
+      expect(screen.queryByText('Test Page')).not.toBeInTheDocument()
     })
 
-    it('does not render description when not provided', () => {
-      const { container } = render(
-        <PageContainer title="Budget Review">
-          <div>Content</div>
-        </PageContainer>
-      )
-
-      const descriptions = container.querySelectorAll('p')
-      expect(descriptions).toHaveLength(0)
-    })
-
-    it('title has correct styling', () => {
+    it('accepts deprecated description prop without error', () => {
       render(
-        <PageContainer title="Test Title">
+        <PageContainer title="DHG" description="Manage teacher allocation">
           <div>Content</div>
         </PageContainer>
       )
 
-      const heading = screen.getByRole('heading', { level: 1 })
-      // Sahara Luxe Theme: serif font with brown color
-      expect(heading.className).toMatch(/text-2xl/)
-      expect(heading.className).toMatch(/font-bold/)
-      expect(heading.className).toMatch(/text-brown-900/)
-      expect(heading.className).toMatch(/font-serif/)
-    })
-
-    it('description has correct styling', () => {
-      render(
-        <PageContainer title="Test Title" description="Test description">
-          <div>Content</div>
-        </PageContainer>
-      )
-
-      const description = screen.getByText('Test description')
-      expect(description.className).toMatch(/text-sm/)
-      expect(description.className).toMatch(/text-twilight-700/)
+      // Description is no longer rendered
+      expect(screen.queryByText('Manage teacher allocation')).not.toBeInTheDocument()
     })
   })
 
   describe('Actions', () => {
     it('renders action buttons when provided', () => {
       render(
-        <PageContainer title="Budget Versions" actions={<button>Create New Version</button>}>
+        <PageContainer actions={<button>Create New Version</button>}>
           <div>Content</div>
         </PageContainer>
       )
@@ -98,7 +71,6 @@ describe('PageContainer', () => {
     it('renders multiple actions', () => {
       render(
         <PageContainer
-          title="Enrollment"
           actions={
             <>
               <button>Export</button>
@@ -116,63 +88,84 @@ describe('PageContainer', () => {
       expect(screen.getByText('Save')).toBeInTheDocument()
     })
 
-    it('does not render actions div when actions not provided', () => {
-      render(
-        <PageContainer title="Test">
+    it('does not render actions bar when actions not provided', () => {
+      const { container } = render(
+        <PageContainer>
           <div>Content</div>
         </PageContainer>
       )
 
-      // Check that there's no extra div for actions
-      const heading = screen.getByRole('heading', { level: 1 })
-      const parent = heading.parentElement?.parentElement
-      const divs = parent?.querySelectorAll('div')
-      // Should only have the div containing heading/description
-      expect(divs?.length).toBe(1)
+      // No actions bar with border-b class
+      expect(container.querySelector('.border-b')).not.toBeInTheDocument()
     })
   })
 
-  describe('Breadcrumbs', () => {
-    it('renders Breadcrumbs component by default', () => {
+  describe('Breadcrumbs (deprecated)', () => {
+    it('does not render Breadcrumbs component', () => {
       render(
-        <PageContainer title="Test Page">
-          <div>Content</div>
-        </PageContainer>
-      )
-
-      expect(screen.getByTestId('breadcrumbs')).toBeInTheDocument()
-    })
-
-    it('does not render Breadcrumbs when breadcrumbs prop provided', () => {
-      render(
-        <PageContainer title="Test Page" breadcrumbs={[]}>
+        <PageContainer>
           <div>Content</div>
         </PageContainer>
       )
 
       expect(screen.queryByTestId('breadcrumbs')).not.toBeInTheDocument()
     })
-  })
 
-  describe('Content container', () => {
-    it('renders children in white card container', () => {
+    it('accepts breadcrumbs prop without error', () => {
       render(
-        <PageContainer title="Test Page">
-          <div data-testid="test-content">Page content here</div>
+        <PageContainer breadcrumbs={[{ label: 'Home', href: '/' }]}>
+          <div>Content</div>
         </PageContainer>
       )
 
-      const content = screen.getByTestId('test-content')
-      const contentContainer = content.parentElement
+      // Should render without errors
+      expect(screen.getByText('Content')).toBeInTheDocument()
+    })
+  })
 
-      expect(contentContainer?.className).toMatch(/bg-white/)
-      expect(contentContainer?.className).toMatch(/rounded-lg/)
-      expect(contentContainer?.className).toMatch(/shadow/)
+  describe('Layout structure', () => {
+    it('has correct container sizing classes', () => {
+      const { container } = render(
+        <PageContainer>
+          <div>Content</div>
+        </PageContainer>
+      )
+
+      // Main container has centered layout
+      const mainDiv = container.firstChild as HTMLElement
+      expect(mainDiv.className).toMatch(/mx-auto/)
+      expect(mainDiv.className).toMatch(/w-full/)
+      expect(mainDiv.className).toMatch(/xl:max-w-\[85%\]/)
+      expect(mainDiv.className).toMatch(/2xl:max-w-\[80%\]/)
     })
 
+    it('applies viewportFit class when enabled', () => {
+      const { container } = render(
+        <PageContainer viewportFit>
+          <div>Content</div>
+        </PageContainer>
+      )
+
+      const mainDiv = container.firstChild as HTMLElement
+      expect(mainDiv.className).toMatch(/page-viewport-fit/)
+    })
+
+    it('applies custom className', () => {
+      const { container } = render(
+        <PageContainer className="custom-class">
+          <div>Content</div>
+        </PageContainer>
+      )
+
+      const mainDiv = container.firstChild as HTMLElement
+      expect(mainDiv.className).toMatch(/custom-class/)
+    })
+  })
+
+  describe('Content container', () => {
     it('renders complex children content', () => {
       render(
-        <PageContainer title="Budget Dashboard">
+        <PageContainer>
           <div>
             <h2>Revenue</h2>
             <p>Total: 2,500,000 SAR</p>
@@ -190,11 +183,9 @@ describe('PageContainer', () => {
   })
 
   describe('Real-world use cases', () => {
-    it('renders enrollment planning page', () => {
+    it('renders enrollment planning page with actions', () => {
       render(
         <PageContainer
-          title="Enrollment Planning"
-          description="Project student enrollment for 2025-2026"
           actions={
             <>
               <button>Import from Skolengo</button>
@@ -219,8 +210,6 @@ describe('PageContainer', () => {
         </PageContainer>
       )
 
-      expect(screen.getByText('Enrollment Planning')).toBeInTheDocument()
-      expect(screen.getByText('Project student enrollment for 2025-2026')).toBeInTheDocument()
       expect(screen.getByText('Import from Skolengo')).toBeInTheDocument()
       expect(screen.getByText('Save Changes')).toBeInTheDocument()
       expect(screen.getByText('PS')).toBeInTheDocument()
@@ -228,11 +217,7 @@ describe('PageContainer', () => {
 
     it('renders DHG workforce page', () => {
       render(
-        <PageContainer
-          title="DHG Workforce Planning"
-          description="Configure teacher allocation and hours"
-          actions={<button>Calculate FTE</button>}
-        >
+        <PageContainer actions={<button>Calculate FTE</button>}>
           <div>
             <p>Total Hours: 1,250 hours/week</p>
             <p>Required FTE: 69.4 teachers</p>
@@ -240,7 +225,6 @@ describe('PageContainer', () => {
         </PageContainer>
       )
 
-      expect(screen.getByText('DHG Workforce Planning')).toBeInTheDocument()
       expect(screen.getByText('Total Hours: 1,250 hours/week')).toBeInTheDocument()
       expect(screen.getByText('Calculate FTE')).toBeInTheDocument()
     })
@@ -248,8 +232,6 @@ describe('PageContainer', () => {
     it('renders budget consolidation page', () => {
       render(
         <PageContainer
-          title="Budget Consolidation"
-          description="Review and approve 2025-2026 budget"
           actions={
             <>
               <button>Export to Excel</button>
@@ -266,18 +248,13 @@ describe('PageContainer', () => {
         </PageContainer>
       )
 
-      expect(screen.getByText('Budget Consolidation')).toBeInTheDocument()
-      expect(screen.getByText('Review and approve 2025-2026 budget')).toBeInTheDocument()
       expect(screen.getByText('Export to Excel')).toBeInTheDocument()
       expect(screen.getByText('Total Revenue: 42,500,000 SAR')).toBeInTheDocument()
     })
 
     it('renders KPI dashboard page', () => {
       render(
-        <PageContainer
-          title="Key Performance Indicators"
-          description="Monitor EFIR operational and financial metrics"
-        >
+        <PageContainer>
           <div className="grid grid-cols-3 gap-4">
             <div>H/E Ratio: 1.52</div>
             <div>E/D Ratio: 23.5</div>
@@ -286,17 +263,13 @@ describe('PageContainer', () => {
         </PageContainer>
       )
 
-      expect(screen.getByText('Key Performance Indicators')).toBeInTheDocument()
       expect(screen.getByText('H/E Ratio: 1.52')).toBeInTheDocument()
       expect(screen.getByText('E/D Ratio: 23.5')).toBeInTheDocument()
     })
 
-    it('renders configuration page without breadcrumbs', () => {
+    it('renders configuration page', () => {
       render(
-        <PageContainer
-          title="System Configuration"
-          breadcrumbs={[{ label: 'Home', href: '/dashboard' }, { label: 'Configuration' }]}
-        >
+        <PageContainer>
           <form>
             <label>Fiscal Year</label>
             <select>
@@ -306,40 +279,7 @@ describe('PageContainer', () => {
         </PageContainer>
       )
 
-      expect(screen.getByText('System Configuration')).toBeInTheDocument()
-      expect(screen.queryByTestId('breadcrumbs')).not.toBeInTheDocument()
       expect(screen.getByText('Fiscal Year')).toBeInTheDocument()
-    })
-  })
-
-  describe('Layout structure', () => {
-    it('has correct container spacing', () => {
-      render(
-        <PageContainer title="Test">
-          <div>Content</div>
-        </PageContainer>
-      )
-
-      // The mb-6 class is on the div containing the flex container
-      const heading = screen.getByText('Test')
-      const flexContainer = heading.parentElement?.parentElement // div with flex
-      const headerSection = flexContainer?.parentElement // div with mb-6
-      expect(headerSection?.className).toMatch(/mb-6/)
-    })
-
-    it('title and actions are in flex layout', () => {
-      render(
-        <PageContainer title="Test" actions={<button>Action</button>}>
-          <div>Content</div>
-        </PageContainer>
-      )
-
-      const heading = screen.getByRole('heading', { level: 1 })
-      const flexContainer = heading.parentElement?.parentElement
-
-      expect(flexContainer?.className).toMatch(/flex/)
-      expect(flexContainer?.className).toMatch(/items-center/)
-      expect(flexContainer?.className).toMatch(/justify-between/)
     })
   })
 })

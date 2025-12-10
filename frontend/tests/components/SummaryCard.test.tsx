@@ -45,7 +45,7 @@ describe('SummaryCard', () => {
     )
 
     expect(screen.getByText('+5.2%')).toBeInTheDocument()
-    const trendElement = container.querySelector('.text-green-600')
+    const trendElement = container.querySelector('.text-sage-600')
     expect(trendElement).toBeInTheDocument()
   })
 
@@ -55,7 +55,7 @@ describe('SummaryCard', () => {
     )
 
     expect(screen.getByText('-3.1%')).toBeInTheDocument()
-    const trendElement = container.querySelector('.text-red-600')
+    const trendElement = container.querySelector('.text-terracotta-600')
     expect(trendElement).toBeInTheDocument()
   })
 
@@ -63,7 +63,7 @@ describe('SummaryCard', () => {
     render(<SummaryCard title="Test" value={100} trend="up" />)
 
     // Trend section should not be visible if trendValue is not provided
-    expect(screen.queryByText(/text-green-600/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/text-sage-600/)).not.toBeInTheDocument()
   })
 
   it('renders both trend and subtitle together', () => {
@@ -91,10 +91,10 @@ describe('SummaryCard', () => {
   })
 
   it('applies custom valueClassName to value', () => {
-    render(<SummaryCard title="Net Income" value="-50,000" valueClassName="text-red-600" />)
+    render(<SummaryCard title="Net Income" value="-50,000" valueClassName="text-terracotta-600" />)
 
     const valueElement = screen.getByText('-50,000')
-    expect(valueElement.className).toMatch(/text-red-600/)
+    expect(valueElement.className).toMatch(/text-terracotta-600/)
   })
 
   it('renders without optional props', () => {
@@ -157,7 +157,7 @@ describe('SummaryCard', () => {
     const { container } = render(<SummaryCard title="Test" value={100} />)
 
     const card = container.firstChild
-    expect(card).toHaveClass('hover:shadow-md')
-    expect(card).toHaveClass('transition-shadow')
+    expect(card).toHaveClass('hover:shadow-efir-md')
+    expect(card).toHaveClass('transition-all')
   })
 })

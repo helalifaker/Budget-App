@@ -24,10 +24,9 @@ from app.schemas.historical import (
     HistoricalComparison,
     HistoricalDataPoint,
 )
-from app.services.base import BaseService
 
 
-class HistoricalComparisonService(BaseService):
+class HistoricalComparisonService:
     """
     Service for retrieving and comparing historical actuals data.
 
@@ -42,7 +41,7 @@ class HistoricalComparisonService(BaseService):
 
     def __init__(self, session: AsyncSession) -> None:
         """Initialize service with database session."""
-        super().__init__(session)
+        self.session = session
 
     async def get_historical_for_module(
         self,
@@ -239,7 +238,7 @@ class HistoricalComparisonService(BaseService):
         total_current = 0
 
         for enrollment, level in enrollments:
-            student_count = enrollment.total_students or 0
+            student_count = enrollment.student_count or 0
             total_current += student_count
 
             row = {

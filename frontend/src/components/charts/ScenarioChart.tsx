@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { chartColors } from '@/lib/theme.constants'
 
 interface ScenarioData {
   year: number
@@ -44,10 +45,10 @@ interface CustomTooltipProps {
   payload?: TooltipPayload[]
 }
 
-const COLORS = {
-  conservative: '#EF4444',
-  base: '#3B82F6',
-  optimistic: '#10B981',
+const SCENARIO_COLORS = {
+  conservative: chartColors.conservative,
+  base: chartColors.base,
+  optimistic: chartColors.optimistic,
 }
 
 export function ScenarioChart({
@@ -75,8 +76,8 @@ export function ScenarioChart({
   const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-medium text-gray-900 mb-2">Year {payload[0].payload?.year}</p>
+        <div className="bg-paper border border-border-light rounded-lg shadow-lg p-3">
+          <p className="font-medium text-text-primary mb-2">Year {payload[0].payload?.year}</p>
           {payload.map((entry: TooltipPayload, idx: number) => {
             const value = entry.value
             if (value !== undefined) {
@@ -126,7 +127,7 @@ export function ScenarioChart({
             <Line
               type="monotone"
               dataKey="conservative"
-              stroke={COLORS.conservative}
+              stroke={SCENARIO_COLORS.conservative}
               strokeWidth={2}
               name="Conservative"
               dot={{ r: 4 }}
@@ -135,7 +136,7 @@ export function ScenarioChart({
             <Line
               type="monotone"
               dataKey="base"
-              stroke={COLORS.base}
+              stroke={SCENARIO_COLORS.base}
               strokeWidth={2}
               name="Base Case"
               dot={{ r: 4 }}
@@ -144,7 +145,7 @@ export function ScenarioChart({
             <Line
               type="monotone"
               dataKey="optimistic"
-              stroke={COLORS.optimistic}
+              stroke={SCENARIO_COLORS.optimistic}
               strokeWidth={2}
               name="Optimistic"
               dot={{ r: 4 }}

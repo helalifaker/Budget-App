@@ -48,8 +48,11 @@ describe('requireAuth', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      // In E2E mode, auth-guard checks localStorage
-      localStorage.setItem(E2E_SESSION_KEY, JSON.stringify(mockSession))
+      // Mock Supabase getSession to return the session
+      mockGetSession.mockResolvedValue({
+        data: { session: mockSession },
+        error: null,
+      })
 
       const result = await requireAuth()
 
@@ -68,8 +71,11 @@ describe('requireAuth', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      // In E2E mode, auth-guard checks localStorage
-      localStorage.setItem(E2E_SESSION_KEY, JSON.stringify(mockSession))
+      // Mock Supabase getSession to return the session
+      mockGetSession.mockResolvedValue({
+        data: { session: mockSession },
+        error: null,
+      })
 
       const result = await requireAuth()
 
@@ -87,8 +93,11 @@ describe('requireAuth', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      // In E2E mode, auth-guard checks localStorage
-      localStorage.setItem(E2E_SESSION_KEY, JSON.stringify(mockSession))
+      // Mock Supabase getSession to return the session
+      mockGetSession.mockResolvedValue({
+        data: { session: mockSession },
+        error: null,
+      })
 
       const result = await requireAuth()
 
@@ -186,8 +195,11 @@ describe('requireAuth', () => {
         expires_at: Date.now() / 1000 + 3600,
       }
 
-      // In E2E mode, auth-guard checks localStorage
-      localStorage.setItem(E2E_SESSION_KEY, JSON.stringify(mockSession))
+      // Mock Supabase getSession to return the session
+      mockGetSession.mockResolvedValue({
+        data: { session: mockSession },
+        error: null,
+      })
 
       const result = await requireAuth()
 

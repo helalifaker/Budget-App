@@ -19,6 +19,7 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL: 'https://test-project.supabase.co',
       VITE_SUPABASE_ANON_KEY: 'test-anon-key-for-testing',
+      VITE_E2E_TEST_MODE: 'false', // Disable E2E mode for unit tests (use Supabase mocks instead)
     },
     coverage: {
       provider: 'v8',

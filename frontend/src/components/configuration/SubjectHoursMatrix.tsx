@@ -32,7 +32,7 @@ function SplitCheckboxRenderer(params: ICellRendererParams<SubjectHoursMatrixRow
   const data = params.data
 
   if (!data || !data.isApplicable) {
-    return <span className="text-gray-300">-</span>
+    return <span className="text-text-disabled">-</span>
   }
 
   const isChecked = data.splitFlags[levelId] ?? false
@@ -55,7 +55,7 @@ function SplitCheckboxRenderer(params: ICellRendererParams<SubjectHoursMatrixRow
           window.dispatchEvent(event)
         }
       }}
-      className="h-4 w-4 rounded border-gray-300 text-text-secondary focus:ring-twilight-500"
+      className="h-4 w-4 rounded border-border-light text-text-secondary focus:ring-gold/50"
       disabled={!data.isApplicable}
     />
   )
@@ -72,9 +72,9 @@ function getCellStyle(
   const data = params.data
   if (!data) return null
 
-  // Non-applicable subjects: gray background
+  // Non-applicable subjects: subtle background with muted text
   if (!data.isApplicable) {
-    return { backgroundColor: '#F3F4F6', color: '#9CA3AF' }
+    return { backgroundColor: 'var(--color-subtle)', color: 'var(--color-text-disabled)' }
   }
 
   // For hours columns, check validity
@@ -82,13 +82,13 @@ function getCellStyle(
     const levelId = params.colDef?.field?.replace('hours_', '') ?? ''
     const value = data.hours[levelId]
     if (!validateHoursValue(value)) {
-      return { backgroundColor: '#FEE2E2' } // Red for invalid
+      return { backgroundColor: 'var(--color-terracotta-100)' } // Terracotta for invalid
     }
   }
 
-  // Dirty rows: yellow background
+  // Dirty rows: warning background
   if (data.isDirty) {
-    return { backgroundColor: '#FEF3C7' }
+    return { backgroundColor: 'var(--color-warning-100)' }
   }
 
   return null
@@ -171,7 +171,7 @@ export function SubjectHoursMatrix({
     [rowData, onDataChange]
   )
 
-  const { handlePaste } = useCustomClipboard({
+  const { handlePaste } = useCustomClipboard<SubjectHoursMatrixRow>({
     gridApi: gridApiRef.current,
     onPasteCells: handlePasteCells,
   })
@@ -340,20 +340,20 @@ export function SubjectHoursMatrix({
       />
 
       {/* Legend */}
-      <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+      <div className="mt-3 flex items-center gap-4 text-xs text-text-tertiary">
         <div className="flex items-center gap-1">
-          <div className="w-4 h-4 bg-amber-100 rounded border" />
+          <div className="w-4 h-4 bg-warning-100 rounded border border-border-light" />
           <span>Unsaved changes</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-4 h-4 bg-red-100 rounded border" />
+          <div className="w-4 h-4 bg-terracotta-100 rounded border border-border-light" />
           <span>Invalid value (0-12 range)</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-4 h-4 bg-gray-100 rounded border" />
+          <div className="w-4 h-4 bg-subtle rounded border border-border-light" />
           <span>Not applicable</span>
         </div>
-        <div className="ml-auto text-muted-foreground">
+        <div className="ml-auto text-text-tertiary">
           Tip: Paste from Excel (Ctrl+V / Cmd+V) to bulk-fill hours
         </div>
       </div>

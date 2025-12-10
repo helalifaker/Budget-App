@@ -18,7 +18,7 @@ describe('Textarea', () => {
       const textarea = screen.getByTestId('textarea')
       expect(textarea.className).toMatch(/rounded-button/)
       expect(textarea.className).toMatch(/border/)
-      expect(textarea.className).toMatch(/border-sand-300/)
+      expect(textarea.className).toMatch(/border-border-medium/)
       expect(textarea.className).toMatch(/bg-white/)
       expect(textarea.className).toMatch(/min-h-\[80px\]/)
       expect(textarea.className).toMatch(/w-full/)
@@ -46,7 +46,7 @@ describe('Textarea', () => {
       render(<Textarea data-testid="textarea" />)
 
       const textarea = screen.getByTestId('textarea')
-      expect(textarea.className).toMatch(/placeholder:text-twilight-400/)
+      expect(textarea.className).toMatch(/placeholder:text-text-muted/)
     })
 
     it('applies custom className', () => {

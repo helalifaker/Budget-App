@@ -151,6 +151,45 @@ When implementing a new feature:
 7. Test migration and rollback
 8. Document schema changes
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **supabase** | Manage tables, RLS policies, storage | "List all tables with their RLS policies" |
+| **postgres** | Execute SQL, inspect schema, run queries | "EXPLAIN ANALYZE SELECT * FROM enrollment_data" |
+| **context7** | Look up Supabase/PostgreSQL docs | "Look up Supabase RLS best practices" |
+
+### Usage Examples
+
+#### Creating a New Table with RLS
+```
+1. Use `context7` MCP: "Look up Supabase table creation best practices"
+2. Use `postgres` MCP: Execute CREATE TABLE SQL
+3. Use `postgres` MCP: Execute CREATE POLICY SQL
+4. Use `supabase` MCP: Verify table and policy exist
+```
+
+#### Optimizing a Slow Query
+```
+1. Use `postgres` MCP: "EXPLAIN ANALYZE SELECT * FROM budget_versions WHERE status = 'Draft'"
+2. Use `postgres` MCP: "CREATE INDEX idx_budget_versions_status ON budget_versions(status)"
+3. Use `postgres` MCP: Re-run EXPLAIN to verify improvement
+```
+
+#### Checking Schema Structure
+```
+1. Use `supabase` MCP: "List all tables in public schema"
+2. Use `postgres` MCP: "\\d enrollment_data" to see column details
+3. Use `postgres` MCP: "SELECT * FROM information_schema.table_constraints WHERE table_name = 'enrollment_data'"
+```
+
+### Best Practices
+- Always use `postgres` MCP for EXPLAIN ANALYZE before creating indexes
+- Use `supabase` MCP to verify RLS policies are active after creation
+- Use `context7` MCP when implementing new Supabase features
+
 ## Communication
 
 When working with other agents:

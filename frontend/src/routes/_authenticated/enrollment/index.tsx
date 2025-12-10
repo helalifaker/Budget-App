@@ -9,7 +9,7 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router'
-import { GraduationCap, LayoutGrid, TrendingUp, FileText, Settings } from 'lucide-react'
+import { LayoutGrid, TrendingUp, FileText, Settings } from 'lucide-react'
 import {
   ModuleDashboard,
   PlanningWorkflowProgress,
@@ -143,9 +143,6 @@ function EnrollmentDashboard() {
   return (
     <div className="p-6" style={{ background: 'var(--efir-bg-canvas)' }}>
       <ModuleDashboard
-        title="Enrollment"
-        description="Student enrollment and class structure"
-        icon={GraduationCap}
         workflowProgress={
           <PlanningWorkflowProgress steps={workflowSteps} title="Enrollment Planning Progress" />
         }

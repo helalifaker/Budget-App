@@ -2,16 +2,15 @@
  * Revenue Planning Page - /finance/revenue
  *
  * Manages revenue projections including tuition, fees, and other income.
- * Navigation (SmartHeader + ModuleDock) provided by _authenticated.tsx layout.
+ * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
  *
- * Migrated from /planning/revenue
+ * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
 import { AgGridReact } from 'ag-grid-react'
 import { ColDef, themeQuartz } from 'ag-grid-community'
-import { PlanningPageWrapper } from '@/components/planning/PlanningPageWrapper'
 import { SummaryCard } from '@/components/SummaryCard'
 import { RevenueChart } from '@/components/charts/RevenueChart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -162,152 +161,149 @@ function RevenuePage() {
   }
 
   return (
-    <PlanningPageWrapper
-      stepId="revenue"
-      actions={
-        <>
-          <HistoricalToggle
-            showHistorical={showHistorical}
-            onToggle={setShowHistorical}
-            disabled={!selectedVersionId}
-            isLoading={historicalLoading}
-            currentFiscalYear={currentFiscalYear}
-          />
-          <Button
-            data-testid="calculate-revenue"
-            onClick={handleCalculateRevenue}
-            disabled={!selectedVersionId || calculateRevenue.isPending}
-          >
-            <Calculator className="w-4 h-4 mr-2" />
-            Recalculate Revenue
-          </Button>
-          <Button data-testid="export-button" variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </>
-      }
-    >
-      <div className="p-6 space-y-6">
-        {selectedVersionId ? (
-          <>
-            {/* Historical Summary for Revenue */}
-            {showHistorical && historicalData?.totals && (
-              <HistoricalSummary
-                currentValue={totalRevenue}
-                priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
-                changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
-                label="Total Revenue vs Prior Year"
-                isCurrency={true}
-                className="mb-4"
-              />
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <SummaryCard
-                title="Total Revenue"
-                value={formatCurrency(totalRevenue)}
-                subtitle="Annual total"
-                icon={<DollarSign className="w-5 h-5" />}
-                valueClassName="text-green-600"
-              />
-              <SummaryCard
-                title="Tuition Revenue"
-                value={formatCurrency(tuitionRevenue)}
-                subtitle={`${((tuitionRevenue / totalRevenue) * 100).toFixed(1)}% of total`}
-                icon={<TrendingUp className="w-5 h-5" />}
-              />
-              <SummaryCard
-                title="Enrollment Fees"
-                value={formatCurrency(enrollmentFees)}
-                subtitle={`${((enrollmentFees / totalRevenue) * 100).toFixed(1)}% of total`}
-                icon={<TrendingUp className="w-5 h-5" />}
-              />
-              <SummaryCard
-                title="Other Revenue"
-                value={formatCurrency(otherRevenue)}
-                subtitle={`${((otherRevenue / totalRevenue) * 100).toFixed(1)}% of total`}
-                icon={<TrendingUp className="w-5 h-5" />}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Revenue Line Items</CardTitle>
-                    <p className="text-sm text-gray-600">
-                      Gray cells are auto-calculated from enrollment. Edit trimester amounts for
-                      manual entries.
-                    </p>
-                  </CardHeader>
-                  <CardContent>
-                    <div style={{ height: 600 }}>
-                      <AgGridReact
-                        rowData={revenueItems}
-                        columnDefs={columnDefs}
-                        defaultColDef={{
-                          sortable: true,
-                          filter: true,
-                          resizable: true,
-                        }}
-                        loading={isLoading}
-                        groupDisplayType="groupRows"
-                        groupDefaultExpanded={-1}
-                        theme={themeQuartz}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div>
-                <RevenueChart data={chartData} title="Revenue Breakdown" />
-
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Revenue Notes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4 text-sm">
-                      <div>
-                        <h4 className="font-medium mb-1">Tuition (70110-70130)</h4>
-                        <p className="text-gray-600">
-                          Auto-calculated from enrollment × fee structure. Includes sibling
-                          discounts (25% for 3rd+ child).
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Enrollment Fees (70200-70299)</h4>
-                        <p className="text-gray-600">
-                          Registration fees and DAI (annual enrollment fee). DAI is annual only, not
-                          split by trimester.
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Other Revenue (75xxx-77xxx)</h4>
-                        <p className="text-gray-600">
-                          Transportation, cafeteria, after-school activities, and other services.
-                        </p>
-                      </div>
-                      <div>
-                        <h4 className="font-medium mb-1">Trimester Split</h4>
-                        <p className="text-gray-600">
-                          T1: 40% (Jan-Apr), T2: 30% (May-Aug), T3: 30% (Sep-Dec)
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-12 text-text-secondary">
-            Please select a budget version to view revenue planning
-          </div>
-        )}
+    <div className="p-6 space-y-6">
+      {/* Page Actions */}
+      <div className="flex items-center justify-end gap-3">
+        <HistoricalToggle
+          showHistorical={showHistorical}
+          onToggle={setShowHistorical}
+          disabled={!selectedVersionId}
+          isLoading={historicalLoading}
+          currentFiscalYear={currentFiscalYear}
+        />
+        <Button
+          data-testid="calculate-revenue"
+          onClick={handleCalculateRevenue}
+          disabled={!selectedVersionId || calculateRevenue.isPending}
+        >
+          <Calculator className="w-4 h-4 mr-2" />
+          Recalculate Revenue
+        </Button>
+        <Button data-testid="export-button" variant="outline">
+          <Download className="w-4 h-4 mr-2" />
+          Export
+        </Button>
       </div>
-    </PlanningPageWrapper>
+
+      {/* Content */}
+      {selectedVersionId ? (
+        <>
+          {/* Historical Summary for Revenue */}
+          {showHistorical && historicalData?.totals && (
+            <HistoricalSummary
+              currentValue={totalRevenue}
+              priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
+              changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
+              label="Total Revenue vs Prior Year"
+              isCurrency={true}
+              className="mb-4"
+            />
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard
+              title="Total Revenue"
+              value={formatCurrency(totalRevenue)}
+              subtitle="Annual total"
+              icon={<DollarSign className="w-5 h-5" />}
+              valueClassName="text-green-600"
+            />
+            <SummaryCard
+              title="Tuition Revenue"
+              value={formatCurrency(tuitionRevenue)}
+              subtitle={`${((tuitionRevenue / totalRevenue) * 100).toFixed(1)}% of total`}
+              icon={<TrendingUp className="w-5 h-5" />}
+            />
+            <SummaryCard
+              title="Enrollment Fees"
+              value={formatCurrency(enrollmentFees)}
+              subtitle={`${((enrollmentFees / totalRevenue) * 100).toFixed(1)}% of total`}
+              icon={<TrendingUp className="w-5 h-5" />}
+            />
+            <SummaryCard
+              title="Other Revenue"
+              value={formatCurrency(otherRevenue)}
+              subtitle={`${((otherRevenue / totalRevenue) * 100).toFixed(1)}% of total`}
+              icon={<TrendingUp className="w-5 h-5" />}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue Line Items</CardTitle>
+                  <p className="text-sm text-gray-600">
+                    Gray cells are auto-calculated from enrollment. Edit trimester amounts for
+                    manual entries.
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div style={{ height: 600 }}>
+                    <AgGridReact
+                      rowData={revenueItems}
+                      columnDefs={columnDefs}
+                      defaultColDef={{
+                        sortable: true,
+                        filter: true,
+                        resizable: true,
+                      }}
+                      loading={isLoading}
+                      groupDisplayType="groupRows"
+                      groupDefaultExpanded={-1}
+                      theme={themeQuartz}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div>
+              <RevenueChart data={chartData} title="Revenue Breakdown" />
+
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Revenue Notes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-1">Tuition (70110-70130)</h4>
+                      <p className="text-gray-600">
+                        Auto-calculated from enrollment × fee structure. Includes sibling discounts
+                        (25% for 3rd+ child).
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Enrollment Fees (70200-70299)</h4>
+                      <p className="text-gray-600">
+                        Registration fees and DAI (annual enrollment fee). DAI is annual only, not
+                        split by trimester.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Other Revenue (75xxx-77xxx)</h4>
+                      <p className="text-gray-600">
+                        Transportation, cafeteria, after-school activities, and other services.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-1">Trimester Split</h4>
+                      <p className="text-gray-600">
+                        T1: 40% (Jan-Apr), T2: 30% (May-Aug), T3: 30% (Sep-Dec)
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-12 text-text-secondary">
+          Please select a budget version to view revenue planning
+        </div>
+      )}
+    </div>
   )
 }

@@ -10,7 +10,7 @@ describe('Button', () => {
     const button = screen.getByRole('button', { name: /click me/i })
     expect(button).toBeInTheDocument()
     // Uses gradient-based styling
-    expect(button.className).toMatch(/from-gold-500/)
+    expect(button.className).toMatch(/bg-efir-gold-500/)
     expect(button.className).toMatch(/h-10/)
   })
 
@@ -19,21 +19,20 @@ describe('Button', () => {
       render(<Button variant="default">Default</Button>)
 
       const button = screen.getByRole('button')
-      // Uses gradient-based styling
-      expect(button.className).toMatch(/from-gold-500/)
-      expect(button.className).toMatch(/to-gold-600/)
+      // Uses solid gold styling
+      expect(button.className).toMatch(/bg-efir-gold-500/)
       expect(button.className).toMatch(/text-white/)
-      expect(button.className).toMatch(/hover:from-gold-600/)
+      expect(button.className).toMatch(/hover:bg-efir-gold-600/)
     })
 
     it('renders destructive variant with error background', () => {
       render(<Button variant="destructive">Delete</Button>)
 
       const button = screen.getByRole('button')
-      // Uses gradient-based styling
-      expect(button.className).toMatch(/from-error-500/)
-      expect(button.className).toMatch(/to-error-600/)
+      // Uses solid terracotta styling
+      expect(button.className).toMatch(/bg-terracotta-500/)
       expect(button.className).toMatch(/text-white/)
+      expect(button.className).toMatch(/hover:bg-terracotta-600/)
     })
 
     it('renders outline variant with border', () => {
@@ -41,31 +40,31 @@ describe('Button', () => {
 
       const button = screen.getByRole('button')
       expect(button.className).toMatch(/border/)
-      expect(button.className).toMatch(/border-sand-300/)
-      expect(button.className).toMatch(/bg-white/)
+      expect(button.className).toMatch(/border-border-medium/)
+      expect(button.className).toMatch(/bg-paper/)
     })
 
     it('renders secondary variant with sand background', () => {
       render(<Button variant="secondary">Secondary</Button>)
 
       const button = screen.getByRole('button')
-      expect(button.className).toMatch(/bg-sand-100/)
-      expect(button.className).toMatch(/text-brown-800/)
+      expect(button.className).toMatch(/bg-subtle/)
+      expect(button.className).toMatch(/text-text-primary/)
     })
 
     it('renders ghost variant with hover background only', () => {
       render(<Button variant="ghost">Ghost</Button>)
 
       const button = screen.getByRole('button')
-      expect(button.className).toMatch(/hover:bg-sand-100/)
-      expect(button.className).toMatch(/text-brown-700/)
+      expect(button.className).toMatch(/hover:bg-subtle/)
+      expect(button.className).toMatch(/text-text-secondary/)
     })
 
     it('renders link variant with underline', () => {
       render(<Button variant="link">Link</Button>)
 
       const button = screen.getByRole('button')
-      expect(button.className).toMatch(/text-gold-600/)
+      expect(button.className).toMatch(/text-efir-gold-500/)
       expect(button.className).toMatch(/underline-offset-4/)
       expect(button.className).toMatch(/hover:underline/)
     })
@@ -156,7 +155,7 @@ describe('Button', () => {
       const button = screen.getByRole('button')
       expect(button.className).toMatch(/custom-class/)
       // Still has default variant (gradient-based)
-      expect(button.className).toMatch(/from-gold-500/)
+      expect(button.className).toMatch(/bg-efir-gold-500/)
     })
   })
 
@@ -172,7 +171,7 @@ describe('Button', () => {
       expect(link).toBeInTheDocument()
       expect(link).toHaveAttribute('href', '/test')
       // Button styles (gradient-based) applied to <a>
-      expect(link.className).toMatch(/from-gold-500/)
+      expect(link.className).toMatch(/bg-efir-gold-500/)
     })
   })
 
@@ -194,7 +193,7 @@ describe('Button', () => {
       const button = screen.getByRole('button')
       expect(button.className).toMatch(/focus-visible:outline-none/)
       expect(button.className).toMatch(/focus-visible:ring-2/)
-      expect(button.className).toMatch(/focus-visible:ring-gold-500/)
+      expect(button.className).toMatch(/focus-visible:ring-efir-gold/)
     })
   })
 
@@ -208,7 +207,7 @@ describe('Button', () => {
 
       const button = screen.getByRole('button')
       // Uses gradient-based styling
-      expect(button.className).toMatch(/from-error-500/)
+      expect(button.className).toMatch(/bg-terracotta-500/)
       expect(button.className).toMatch(/h-10/) // WCAG touch target minimum
     })
 

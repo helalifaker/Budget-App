@@ -49,8 +49,8 @@ describe('Tabs', () => {
       expect(tablist.className).toMatch(/inline-flex/)
       expect(tablist.className).toMatch(/items-center/)
       expect(tablist.className).toMatch(/justify-center/)
-      expect(tablist.className).toMatch(/rounded-md/)
-      expect(tablist.className).toMatch(/bg-gray-100/)
+      expect(tablist.className).toMatch(/rounded-xl/)
+      expect(tablist.className).toMatch(/bg-subtle/)
     })
 
     it('applies custom className', () => {
@@ -174,8 +174,8 @@ describe('Tabs', () => {
       )
 
       const content = screen.getByTestId('content')
-      expect(content.className).toMatch(/mt-2/)
-      expect(content.className).toMatch(/ring-offset-white/)
+      expect(content.className).toMatch(/mt-4/)
+      expect(content.className).toMatch(/ring-offset-paper/)
     })
 
     it('applies custom className to content', () => {

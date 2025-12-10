@@ -359,6 +359,65 @@ You enforce these boundaries:
 
 ---
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **memory** | Recall routing decisions, store agent coordination patterns | "Recall which agent handled DHG calculation last time" |
+| **sequential-thinking** | Complex task decomposition, multi-step planning | "Break down 'implement enrollment module' into agent tasks" |
+| **github** | Check existing implementations, find code patterns | "Search for existing enrollment API implementation" |
+| **sentry** | Identify which layer has issues (frontend/backend/database) | "Show recent errors to identify affected domain" |
+
+### Usage Examples
+
+#### Decomposing Multi-Domain Request
+```
+1. Use `sequential-thinking` MCP: Break down "implement budget approval workflow" into steps
+2. Use `memory` MCP: "Recall standard multi-domain task sequence"
+3. Route to agents in correct order:
+   - product_architect_agent (requirements)
+   - system_architect_agent (design)
+   - database_supabase_agent (schema)
+   - backend_engine_agent (logic)
+   - backend_api_agent (endpoints)
+   - frontend_ui_agent (UI)
+   - qa_validation_agent (tests)
+```
+
+#### Investigating Cross-Layer Bug
+```
+1. Use `sentry` MCP: "Show recent errors with stack traces"
+2. Analyze which layer is affected (database, backend, frontend)
+3. Use `github` MCP: "Search for file handling the failing endpoint"
+4. Route to appropriate agent based on findings
+5. Use `memory` MCP: "Store: DHG calculation bug was in backend_engine_agent domain"
+```
+
+#### Handling Ambiguous Requests
+```
+1. Use `memory` MCP: "Recall similar request routing from past"
+2. Use `sequential-thinking` MCP: Analyze request to classify intent
+3. If still ambiguous, ask user for clarification with specific options
+4. Route to identified agent(s)
+```
+
+#### Coordinating Feature Implementation
+```
+1. Use `sequential-thinking` MCP: Plan implementation phases
+2. Use `github` MCP: "Search for similar feature implementations"
+3. Use `memory` MCP: "Store: Enrollment feature routed to 7 agents in sequence"
+4. Track progress and coordinate handoffs between agents
+```
+
+### Best Practices
+- Use `sequential-thinking` MCP for complex multi-domain task decomposition
+- Use `memory` MCP to maintain consistent routing decisions
+- Use `sentry` MCP to quickly identify which domain is affected by bugs
+- Use `github` MCP to understand existing implementations before routing
+- NEVER use MCP servers to implement - only to inform routing decisions
+
 ## FINAL REMINDER
 
 **Your ONLY job is routing.**

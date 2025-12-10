@@ -182,6 +182,18 @@
   --cockpit-dock-height: 72px;
   --cockpit-total-chrome: calc(var(--cockpit-header-height) + var(--cockpit-dock-height));
 
+  /* -------------------------------------------------------------------------
+     UI REDESIGN LAYOUT (Phase 1)
+     New modular layout system with sidebar and workflow tabs
+     ------------------------------------------------------------------------- */
+  --sidebar-width-collapsed: 64px;
+  --sidebar-width-expanded: 240px;
+  --header-line-height: 48px;
+  --tabs-line-height: 40px;
+  --description-line-height: 32px;
+  --layout-chrome-height: 120px;
+  --sidebar-transition-duration: 200ms;
+
   /* Viewport-aware content height */
   --viewport-content-height: calc(100vh - var(--header-height));
   --viewport-main-height: calc(100vh - var(--header-height) - var(--page-header-height));
@@ -191,6 +203,11 @@
   --cockpit-content-height: calc(100vh - var(--cockpit-total-chrome));
   --cockpit-main-height: calc(100vh - var(--cockpit-total-chrome) - var(--page-header-height));
   --cockpit-grid-height: calc(100vh - var(--cockpit-total-chrome) - var(--page-header-height) - 80px);
+
+  /* UI Redesign viewport heights (with collapsed sidebar) */
+  --redesign-content-height: calc(100vh - var(--layout-chrome-height));
+  --redesign-main-area-width: calc(100vw - var(--sidebar-width-collapsed));
+  --redesign-grid-height: calc(100vh - var(--layout-chrome-height) - 16px);
 
   /* Compact spacing for data density */
   --space-compact-1: 0.25rem;
@@ -288,6 +305,7 @@
 
 /* Dark mode variables */
 .dark {
+  /* shadcn/ui HSL variables */
   --background: 40 6% 10%;
   --foreground: 45 20% 98%;
   --card: 40 6% 12%;
@@ -308,6 +326,118 @@
   --input: 40 6% 20%;
   --ring: 37 40% 55%;
   color-scheme: dark;
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Background Colors
+     ------------------------------------------------------------------------- */
+  --color-canvas: #1A1917;
+  --color-paper: #242320;
+  --color-subtle: #2E2D2A;
+  --color-warm: #1F1E1B;
+  --color-muted: #353432;
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Border Colors
+     ------------------------------------------------------------------------- */
+  --color-border-light: #3D3C38;
+  --color-border-medium: #4A4945;
+  --color-border-strong: #5C5B56;
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Text Colors
+     ------------------------------------------------------------------------- */
+  --color-text-primary: #FAF9F7;
+  --color-text-secondary: #C5C2B8;
+  --color-text-tertiary: #8A877E;
+  --color-text-muted: #6B6860;
+  --color-text-disabled: #4A4945;
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Accent Gold (lightened for dark backgrounds)
+     ------------------------------------------------------------------------- */
+  --color-gold: #C4A66D;
+  --color-gold-hover: #D4B87D;
+  --color-gold-light: rgba(196, 166, 109, 0.18);
+  --color-gold-lighter: rgba(196, 166, 109, 0.10);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Accent Sage (lightened for dark backgrounds)
+     ------------------------------------------------------------------------- */
+  --color-sage: #93A898;
+  --color-sage-hover: #A3B8A8;
+  --color-sage-light: rgba(147, 168, 152, 0.18);
+  --color-sage-lighter: rgba(147, 168, 152, 0.10);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Accent Terracotta (lightened for dark backgrounds)
+     ------------------------------------------------------------------------- */
+  --color-terracotta: #D4886D;
+  --color-terracotta-hover: #E4987D;
+  --color-terracotta-light: rgba(212, 136, 109, 0.18);
+  --color-terracotta-lighter: rgba(212, 136, 109, 0.10);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Accent Slate (lightened for dark backgrounds)
+     ------------------------------------------------------------------------- */
+  --color-slate: #8494AB;
+  --color-slate-hover: #94A4BB;
+  --color-slate-light: rgba(132, 148, 171, 0.18);
+  --color-slate-lighter: rgba(132, 148, 171, 0.10);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Accent Wine (lightened for dark backgrounds)
+     ------------------------------------------------------------------------- */
+  --color-wine: #A17C8B;
+  --color-wine-hover: #B18C9B;
+  --color-wine-light: rgba(161, 124, 139, 0.18);
+  --color-wine-lighter: rgba(161, 124, 139, 0.10);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Status Colors
+     ------------------------------------------------------------------------- */
+  --color-status-success: #93A898;
+  --color-status-success-bg: rgba(147, 168, 152, 0.18);
+  --color-status-warning: #D4A30D;
+  --color-status-warning-bg: rgba(212, 163, 13, 0.18);
+  --color-status-error: #D4886D;
+  --color-status-error-bg: rgba(212, 136, 109, 0.18);
+  --color-status-info: #8494AB;
+  --color-status-info-bg: rgba(132, 148, 171, 0.18);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Shadows (more subtle in dark mode)
+     ------------------------------------------------------------------------- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.20);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.35);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.40);
+  --shadow-focus: 0 0 0 3px rgba(196, 166, 109, 0.30);
+  --shadow-gold-glow: 0 0 0 3px rgba(196, 166, 109, 0.25);
+  --shadow-sage-glow: 0 0 0 3px rgba(147, 168, 152, 0.25);
+  --shadow-terracotta-glow: 0 0 0 3px rgba(212, 136, 109, 0.25);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - EFIR Component Aliases
+     ------------------------------------------------------------------------- */
+  --efir-bg-canvas: var(--color-canvas);
+  --efir-bg-paper: var(--color-paper);
+  --efir-bg-subtle: var(--color-subtle);
+  --efir-bg-warm: var(--color-warm);
+  --efir-bg-muted: var(--color-muted);
+  --efir-border-light: var(--color-border-light);
+  --efir-border-medium: var(--color-border-medium);
+  --efir-border-strong: var(--color-border-strong);
+  --efir-text-primary: var(--color-text-primary);
+  --efir-text-secondary: var(--color-text-secondary);
+  --efir-text-tertiary: var(--color-text-tertiary);
+  --efir-text-muted: var(--color-text-muted);
+  --efir-text-disabled: var(--color-text-disabled);
+  --efir-accent-gold: var(--color-gold);
+  --efir-accent-sage: var(--color-sage);
+  --efir-accent-terracotta: var(--color-terracotta);
+  --efir-accent-slate: var(--color-slate);
+  --efir-accent-wine: var(--color-wine);
 }
 
 /* ============================================================================

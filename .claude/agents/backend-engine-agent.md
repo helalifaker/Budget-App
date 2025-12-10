@@ -446,6 +446,45 @@ When implementing a new calculation:
 9. **Document** (add to module .md file)
 10. **Coordinate with backend_api_agent** for API exposure
 
+## MCP Server Usage
+
+### Primary MCP Servers
+
+| Server | When to Use | Example |
+|--------|-------------|---------|
+| **context7** | Look up Pydantic, Python 3.11+ features, NumPy docs | "Look up Pydantic v2 model_validator" |
+| **memory** | Store/recall calculation formulas, business rules | "Recall DHG formula for Terminale Mathématiques" |
+| **postgres** | Verify data structures (not query data) | "Describe dhg_allocations table columns" |
+
+### Usage Examples
+
+#### Implementing a New Calculation
+```
+1. Use `memory` MCP: "Recall business rules for sibling discount calculation"
+2. Use `context7` MCP: "Look up Pydantic v2 Field validator with @field_validator"
+3. Implement pure function following retrieved specifications
+4. Use `context7` MCP: "Look up pytest parametrize for multiple test cases"
+```
+
+#### Looking Up Python Best Practices
+```
+Use `context7` MCP: "Look up Python decimal module for financial calculations"
+Use `context7` MCP: "Look up Pydantic v2 computed fields"
+Use `context7` MCP: "Look up NumPy vectorized operations for performance"
+```
+
+#### Storing Business Rules for Future Reference
+```
+Use `memory` MCP: "Store: DHG FTE formula is Total Hours ÷ 18 for secondary teachers"
+Use `memory` MCP: "Store: Sibling discount is 25% on 3rd+ child, not applicable to DAI fees"
+Use `memory` MCP: "Store: AEFE PRRD cost per teacher is 41,863 EUR"
+```
+
+### Best Practices
+- Use `context7` MCP for latest Python/Pydantic patterns (avoids outdated training data)
+- Use `memory` MCP to store verified formulas for consistency across sessions
+- Never use `postgres` MCP to query data - engines receive data as parameters
+
 ## REMEMBER
 
 You are the **calculation engine**. Your job is to:

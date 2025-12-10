@@ -7,7 +7,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
 import { EnhancedDataTable } from '@/components/EnhancedDataTable'
+
+// Register AG Grid modules for testing
+ModuleRegistry.registerModules([AllCommunityModule])
 
 // Mock hooks
 vi.mock('@/hooks/api/usePlanningWriteback', () => ({
@@ -98,8 +102,9 @@ describe('EnhancedDataTable', () => {
       </QueryClientProvider>
     )
 
-    // AG Grid should render
-    expect(document.querySelector('.ag-theme-quartz')).toBeInTheDocument()
+    // AG Grid v33+ uses programmatic theme API (theme={themeQuartz}), not CSS classes
+    // Check for the grid container wrapper instead
+    expect(document.querySelector('.rounded-card')).toBeInTheDocument()
   })
 
   it('displays active users', () => {
@@ -166,8 +171,8 @@ describe('EnhancedDataTable', () => {
       </QueryClientProvider>
     )
 
-    // Check that cells are not editable
-    const grid = container.querySelector('.ag-theme-quartz')
+    // AG Grid v33+ uses programmatic theme API, check for the container wrapper
+    const grid = container.querySelector('.rounded-card')
     expect(grid).toBeInTheDocument()
   })
 })

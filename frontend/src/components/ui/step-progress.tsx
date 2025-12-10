@@ -60,14 +60,14 @@ const statusConfig: Record<
     iconBg: 'bg-efir-gold-500',
     iconColor: 'text-white',
     textColor: 'text-efir-gold-700',
-    lineColor: 'bg-[#E8E6E1]',
+    lineColor: 'bg-border-light',
     icon: Loader2,
   },
   pending: {
     iconBg: 'bg-subtle',
     iconColor: 'text-text-muted',
     textColor: 'text-text-tertiary',
-    lineColor: 'bg-[#E8E6E1]',
+    lineColor: 'bg-border-light',
     icon: Circle,
   },
   blocked: {
@@ -193,7 +193,7 @@ export function StepProgress({
                 className={cn(
                   'flex-1 h-[2px] mt-3 sm:mt-4 mx-2',
                   'transition-colors duration-300',
-                  step.status === 'completed' ? config.lineColor : 'bg-[#E8E6E1]'
+                  step.status === 'completed' ? config.lineColor : 'bg-border-light'
                 )}
                 aria-hidden="true"
               />
