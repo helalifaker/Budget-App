@@ -24,12 +24,12 @@ from fastapi.testclient import TestClient
 
 
 @pytest.fixture(scope="module")
-def client():
+def client(engine):
     """
-    Create test client with proper lifespan handling and auth override.
+    Create test client with auth overrides.
 
-    Uses context manager to trigger startup event (init_db) and sets up
-    auth dependency overrides for testing protected endpoints.
+    Depends on engine fixture to ensure database tables exist before tests run.
+    Sets up auth dependency overrides for testing protected endpoints.
     """
     # Override auth dependencies to bypass authentication
     from app.dependencies.auth import get_current_user, require_manager

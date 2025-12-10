@@ -23,7 +23,7 @@ from app.schemas.historical import (
 )
 from app.services.historical_comparison_service import HistoricalComparisonService
 
-router = APIRouter(prefix="/historical", tags=["Historical Comparison"])
+router = APIRouter(prefix="/api/v1/historical", tags=["Historical Comparison"])
 
 
 # =============================================================================

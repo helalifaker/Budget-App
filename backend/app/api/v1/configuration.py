@@ -742,11 +742,14 @@ async def get_subject_hours_matrix_by_cycle(
         HTTPException: 404 if budget version or cycle not found
     """
     try:
-        matrix = await config_service.get_subject_hours_matrix_by_cycle(
+        matrix_list = await config_service.get_subject_hours_matrix_by_cycle(
             version_id=version_id,
             cycle_code=cycle_code,
         )
-        return matrix
+        # Service returns a list, but with cycle_code filter it should have exactly one item
+        if not matrix_list:
+            raise NotFoundError(f"Cycle with code '{cycle_code}' not found")
+        return matrix_list[0]
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 

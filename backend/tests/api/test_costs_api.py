@@ -18,15 +18,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.main import app
-from fastapi.testclient import TestClient
 
-
-@pytest.fixture(scope="module")
-def client():
-    """Create test client with proper lifespan handling."""
-    with TestClient(app) as test_client:
-        yield test_client
+# Note: `client` fixture is defined in conftest.py with proper engine dependency
 
 
 @pytest.fixture

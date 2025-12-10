@@ -17,19 +17,12 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from app.main import app
 from app.schemas.dhg import DHGCalculationResponse
 from app.schemas.enrollment import EnrollmentProjectionResponse
 from app.schemas.kpi import KPICalculationResponse
 from app.schemas.revenue import RevenueCalculationResponse
-from fastapi.testclient import TestClient
 
-
-@pytest.fixture(scope="module")
-def client():
-    """Create test client with proper lifespan handling."""
-    with TestClient(app) as test_client:
-        yield test_client
+# Note: `client` fixture is defined in conftest.py with proper engine dependency
 
 
 class TestEnrollmentCalculation:

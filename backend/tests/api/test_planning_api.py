@@ -13,8 +13,6 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.main import app
-from fastapi.testclient import TestClient
 
 
 # Mock user for authentication
@@ -28,16 +26,7 @@ def mock_user():
     return user
 
 
-@pytest.fixture(scope="module")
-def client():
-    """
-    Create test client with proper lifespan handling.
-
-    Uses context manager to trigger startup event (init_db) which creates
-    SQLite tables before tests run.
-    """
-    with TestClient(app) as test_client:
-        yield test_client
+# Note: `client` fixture is defined in conftest.py with proper engine dependency
 
 
 @pytest.fixture

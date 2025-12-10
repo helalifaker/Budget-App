@@ -19,16 +19,9 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.main import app
 from app.models.configuration import BudgetVersionStatus
-from fastapi.testclient import TestClient
 
-
-@pytest.fixture(scope="module")
-def client():
-    """Create test client with proper lifespan handling."""
-    with TestClient(app) as test_client:
-        yield test_client
+# Note: `client` fixture is defined in conftest.py with proper engine dependency
 
 
 @pytest.fixture
@@ -229,7 +222,7 @@ class TestBudgetVersionEndpoints:
 
             mock_service = AsyncMock()
             mock_service.get_budget_version.side_effect = NotFoundError(
-                "BudgetVersion", version_id
+                "BudgetVersion", str(version_id)
             )
             mock_svc.return_value = mock_service
 

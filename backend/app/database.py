@@ -27,9 +27,18 @@ if env_file.exists():
 else:
     load_dotenv(override=False)  # Load from .env if .env.local doesn't exist
 
-# Prefer lightweight in-memory SQLite during test runs to avoid external DBs
+# Database URL configuration
+# Priority order:
+# 1. TEST_DATABASE_URL (for pytest-xdist worker isolation with file-based SQLite)
+# 2. In-memory SQLite (default for tests when no TEST_DATABASE_URL is set)
+# 3. DATABASE_URL from environment (production/development)
 if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("PYTEST_RUNNING"):
-    _raw_database_url = "sqlite+aiosqlite:///:memory:"
+    # Allow tests to specify a file-based SQLite for worker isolation
+    # This is set by conftest.py's pytest_configure hook
+    _raw_database_url = os.getenv(
+        "TEST_DATABASE_URL",
+        "sqlite+aiosqlite:///:memory:",  # Fallback to in-memory if not specified
+    )
 else:
     # Get database URL from environment
     _raw_database_url = os.getenv(
@@ -218,20 +227,41 @@ async def init_db() -> None:
 
     For SQLite: Only creates tables (schemas not supported).
     For PostgreSQL: Creates efir_budget schema first, then tables.
+
+    NOTE: During pytest runs, conftest.py handles database initialization with
+    worker-isolated SQLite databases. This function is skipped to prevent
+    duplicate index creation errors.
     """
+    # Skip during pytest runs - conftest.py handles test database setup
+    # This prevents "index already exists" errors since SQLAlchemy's checkfirst
+    # doesn't work for indices, only for tables
+    pytest_running = os.getenv("PYTEST_RUNNING")
+    pytest_current_test = os.getenv("PYTEST_CURRENT_TEST")
+
+    if pytest_running or pytest_current_test:
+        print(f"🔵 init_db SKIPPED (PYTEST_RUNNING={pytest_running})")
+        return
+
+    print(f"🟢 init_db RUNNING (PYTEST_RUNNING={pytest_running})")
+
     # CRITICAL: Import from app.models (not app.models.base) to ensure ALL model
     # classes are imported and registered with Base.metadata before create_all().
     # Without this, tables won't be created because they're not in the metadata.
     from app.models import Base
 
     async with engine.begin() as conn:
-        # Create efir_budget schema if it doesn't exist (PostgreSQL only)
-        # SQLite doesn't support schemas, so skip this step
-        if not DATABASE_URL.startswith("sqlite"):
-            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS efir_budget"))
+        if DATABASE_URL.startswith("sqlite"):
+            # For SQLite: strip schemas from metadata before creating tables
+            # SQLite doesn't support PostgreSQL-style schemas
+            for table in Base.metadata.tables.values():
+                table.schema = None
 
-        # Create all tables
-        await conn.run_sync(Base.metadata.create_all)
+            # Create tables
+            await conn.run_sync(Base.metadata.create_all, checkfirst=True)
+        else:
+            # PostgreSQL: Create schema first, then tables
+            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS efir_budget"))
+            await conn.run_sync(Base.metadata.create_all, checkfirst=True)
 
 
 async def close_db() -> None:

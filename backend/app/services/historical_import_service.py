@@ -624,18 +624,22 @@ class HistoricalImportService:
             if not level_code or not count_str:
                 return None
 
+            level_name = self._get_column_value(row, ENROLLMENT_COLUMNS["level_name"])
             return HistoricalActuals(
                 fiscal_year=fiscal_year,
                 module_code=module.value,
                 dimension_type="level",
                 dimension_code=level_code,
+                dimension_name=level_name,
                 annual_count=int(count_str),
-                data_source="manual_import",
+                data_source="manual_upload",
             )
 
         elif module == ImportModule.DHG:
             subject_code = self._get_column_value(row, DHG_COLUMNS["subject_code"])
+            subject_name = self._get_column_value(row, DHG_COLUMNS["subject_name"])
             fte_str = self._get_column_value(row, DHG_COLUMNS["fte_count"])
+            hours_str = self._get_column_value(row, DHG_COLUMNS["hours"])
 
             if not subject_code or not fte_str:
                 return None
@@ -645,12 +649,15 @@ class HistoricalImportService:
                 module_code=module.value,
                 dimension_type="subject",
                 dimension_code=subject_code,
-                annual_amount_sar=Decimal(fte_str),  # Store FTE as amount
-                data_source="manual_import",
+                dimension_name=subject_name,
+                annual_fte=Decimal(fte_str),
+                annual_hours=Decimal(hours_str) if hours_str else None,
+                data_source="manual_upload",
             )
 
         else:  # Revenue or Costs
             account_code = self._get_column_value(row, FINANCIAL_COLUMNS["account_code"])
+            account_name = self._get_column_value(row, FINANCIAL_COLUMNS["account_name"])
             amount_str = self._get_column_value(row, FINANCIAL_COLUMNS["annual_amount"])
 
             if not account_code or not amount_str:
@@ -661,8 +668,9 @@ class HistoricalImportService:
                 module_code=module.value,
                 dimension_type="account_code",
                 dimension_code=account_code,
+                dimension_name=account_name,
                 annual_amount_sar=Decimal(amount_str.replace(",", "")),
-                data_source="manual_import",
+                data_source="manual_upload",
             )
 
     async def _delete_existing(

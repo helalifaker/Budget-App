@@ -17,9 +17,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from app.services.historical_import_service import (
     ImportPreviewResult,
-    ImportRecordResult,
     ImportResult,
-    ImportStatus,
 )
 
 
@@ -64,20 +62,16 @@ class TestPreviewImportEndpoint:
     ):
         """Test successful CSV preview."""
         mock_import_service.preview_import.return_value = ImportPreviewResult(
-            total_records=2,
-            valid_records=2,
-            warning_records=0,
-            error_records=0,
-            records_by_module={"enrollment": 2},
-            records=[
-                ImportRecordResult(
-                    row_number=2,
-                    status=ImportStatus.VALID,
-                    module="enrollment",
-                    dimension_type="level",
-                    dimension_code="6EME",
-                    value=120,
-                )
+            fiscal_year=2024,
+            detected_module="enrollment",
+            total_rows=2,
+            valid_rows=2,
+            invalid_rows=0,
+            warnings=[],
+            errors=[],
+            sample_data=[
+                {"fiscal_year": 2024, "level_code": "6EME", "student_count": 120},
+                {"fiscal_year": 2024, "level_code": "5EME", "student_count": 115},
             ],
             can_import=True,
         )
@@ -96,7 +90,10 @@ class TestPreviewImportEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["total_records"] == 2
+        assert data["fiscal_year"] == 2024
+        assert data["detected_module"] == "enrollment"
+        assert data["total_rows"] == 2
+        assert data["valid_rows"] == 2
         assert data["can_import"] is True
 
     @pytest.mark.asyncio
@@ -105,12 +102,14 @@ class TestPreviewImportEndpoint:
     ):
         """Test successful XLSX preview."""
         mock_import_service.preview_import.return_value = ImportPreviewResult(
-            total_records=2,
-            valid_records=2,
-            warning_records=0,
-            error_records=0,
-            records_by_module={"enrollment": 2},
-            records=[],
+            fiscal_year=2024,
+            detected_module="enrollment",
+            total_rows=2,
+            valid_rows=2,
+            invalid_rows=0,
+            warnings=[],
+            errors=[],
+            sample_data=[],
             can_import=True,
         )
 
@@ -140,12 +139,14 @@ class TestPreviewImportEndpoint:
     ):
         """Test preview with explicit module specification."""
         mock_import_service.preview_import.return_value = ImportPreviewResult(
-            total_records=2,
-            valid_records=2,
-            warning_records=0,
-            error_records=0,
-            records_by_module={"enrollment": 2},
-            records=[],
+            fiscal_year=2024,
+            detected_module="enrollment",
+            total_rows=2,
+            valid_rows=2,
+            invalid_rows=0,
+            warnings=[],
+            errors=[],
+            sample_data=[],
             can_import=True,
         )
 
@@ -205,9 +206,14 @@ class TestImportEndpoint:
     @pytest.mark.asyncio
     async def test_import_success(self, mock_import_service, sample_csv_content):
         """Test successful import."""
+        from app.services.historical_import_service import ImportResultStatus
+
         mock_import_service.import_data.return_value = ImportResult(
-            success=True,
+            fiscal_year=2024,
+            module="enrollment",
+            status=ImportResultStatus.SUCCESS,
             imported_count=2,
+            updated_count=0,
             skipped_count=0,
             error_count=0,
             message="Import successful",
@@ -228,7 +234,9 @@ class TestImportEndpoint:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["success"] is True
+        assert data["fiscal_year"] == 2024
+        assert data["module"] == "enrollment"
+        assert data["status"] == "success"
         assert data["imported_count"] == 2
 
     @pytest.mark.asyncio
@@ -236,9 +244,14 @@ class TestImportEndpoint:
         self, mock_import_service, sample_csv_content
     ):
         """Test import with overwrite flag."""
+        from app.services.historical_import_service import ImportResultStatus
+
         mock_import_service.import_data.return_value = ImportResult(
-            success=True,
+            fiscal_year=2024,
+            module="enrollment",
+            status=ImportResultStatus.SUCCESS,
             imported_count=2,
+            updated_count=0,
             skipped_count=0,
             error_count=0,
             message="Import successful",
@@ -267,9 +280,14 @@ class TestImportEndpoint:
         self, mock_import_service, sample_csv_content
     ):
         """Test import with partial success."""
+        from app.services.historical_import_service import ImportResultStatus
+
         mock_import_service.import_data.return_value = ImportResult(
-            success=True,
+            fiscal_year=2024,
+            module="enrollment",
+            status=ImportResultStatus.PARTIAL,
             imported_count=1,
+            updated_count=0,
             skipped_count=1,
             error_count=1,
             message="Import completed with errors",
