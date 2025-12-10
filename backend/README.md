@@ -139,18 +139,19 @@ backend/
 
 ### Prerequisites
 
-- Python 3.14.0 (required for type syntax)
+- Python 3.11+ (3.12 recommended)
 - PostgreSQL 17.x or Supabase account
-- Poetry or pip
+- [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
 ### Installation
 
 ```bash
-# Create virtual environment
-python3.14 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# With uv (recommended - 10-100x faster)
+uv sync --all-extras                  # Creates .venv and installs all deps
 
-# Install dependencies
+# With pip (alternative)
+python3 -m venv .venv
+source .venv/bin/activate             # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
 # Set environment variables

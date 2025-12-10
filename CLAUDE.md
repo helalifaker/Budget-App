@@ -32,32 +32,36 @@ pnpm lint:fix             # ESLint with auto-fix
 pnpm format               # Prettier formatting
 pnpm typecheck            # TypeScript check (tsc --noEmit)
 pnpm generate:types       # Generate TS types from OpenAPI (backend must be running)
+pnpm generate:types:file  # Generate TS types from local openapi.json file
 ```
 
 ### Backend (from `backend/`)
 
-**Prerequisites**: Python 3.11+ (3.14 recommended for latest features)
+**Prerequisites**: Python 3.11+, [uv](https://docs.astral.sh/uv/) (recommended) or pip
 
 ```bash
-# Setup
-python3 -m venv .venv                        # Create virtual environment
-source .venv/bin/activate                    # Activate venv (required first)
-pip install -e .[dev]                        # Install with dev dependencies (ruff, mypy, pytest)
+# Setup with uv (recommended - 10-100x faster)
+uv sync --all-extras                         # Install all deps (creates .venv automatically)
+
+# Setup with pip (alternative)
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .[dev]
 
 # Development
-uvicorn app.main:app --reload                # Start API (http://localhost:8000)
-alembic upgrade head                         # Apply migrations
-alembic revision --autogenerate -m "desc"    # Create migration
+uv run uvicorn app.main:app --reload         # Start API (http://localhost:8000)
+uv run alembic upgrade head                  # Apply migrations
+uv run alembic revision --autogenerate -m "desc"  # Create migration
 
 # Testing
-.venv/bin/pytest tests/ -v --tb=short        # Run tests verbose
-.venv/bin/pytest tests/engine/ -v            # Test specific directory
-.venv/bin/pytest -k test_dhg                 # Tests matching pattern
-.venv/bin/pytest tests/ --cov=app --cov-report=term-missing -v  # With coverage
+uv run pytest tests/ -v --tb=short           # Run tests verbose
+uv run pytest tests/engine/ -v               # Test specific directory
+uv run pytest -k test_dhg                    # Tests matching pattern
+uv run pytest tests/ --cov=app --cov-report=term-missing -v  # With coverage
 
 # Code Quality
-.venv/bin/ruff check . --fix                 # Lint with auto-fix
-.venv/bin/mypy app                           # Type check
+uv run ruff check . --fix                    # Lint with auto-fix
+uv run ruff format app                       # Format code (used by pre-commit)
+uv run mypy app                              # Type check
 ```
 
 ### Running Single Tests
@@ -66,8 +70,8 @@ alembic revision --autogenerate -m "desc"    # Create migration
 pnpm test -- tests/components/ui/Button.test.tsx --run
 
 # Backend - single test file or function
-.venv/bin/pytest tests/engine/test_dhg.py -v
-.venv/bin/pytest tests/api/test_planning_api.py::test_specific_function -v
+uv run pytest tests/engine/test_dhg.py -v
+uv run pytest tests/api/test_planning_api.py::test_specific_function -v
 ```
 
 ---
@@ -90,6 +94,39 @@ pnpm test -- tests/components/ui/Button.test.tsx --run
    - `DIRECT_URL` - Direct PostgreSQL connection (for migrations)
 
 3. **Critical**: Use `DIRECT_URL` for Alembic migrations (bypasses connection pooler), `DATABASE_URL` for application runtime.
+
+### ⚠️ JWT Authentication (Required for API)
+
+The `SUPABASE_JWT_SECRET` is **required** for the backend to verify JWT tokens. Without it, all API calls return `401 Unauthorized` even after successful login.
+
+**How to get your JWT Secret:**
+1. Supabase Dashboard → Your Project → Settings → API
+2. Scroll to **JWT Settings** section
+3. Copy the **JWT Secret** (not the anon key or service role key)
+4. Add to `backend/.env.local`: `SUPABASE_JWT_SECRET=your-secret-here`
+
+See `backend/SETUP_JWT_AUTH.md` for detailed setup and troubleshooting.
+
+### Redis Caching (Optional, Recommended for Production)
+
+Redis 8.4+ provides TTL-based caching for expensive calculations:
+
+```bash
+# macOS installation
+brew install redis && brew services start redis
+
+# Verify Redis is running
+redis-cli ping  # Expected: PONG
+```
+
+**Configuration** in `backend/.env.local`:
+```env
+REDIS_ENABLED="true"           # Enable caching
+REDIS_REQUIRED="false"         # Graceful degradation if unavailable
+REDIS_URL="redis://localhost:6379/0"
+```
+
+**Cache follows the calculation dependency graph**: Enrollment → Class Structure → DHG → Personnel Costs. Changing enrollment data automatically invalidates all dependent caches.
 
 ### Pre-commit Hooks
 
@@ -174,6 +211,42 @@ frontend/src/
 ├── hooks/                   # Custom hooks (api/, useExcelKeyboard, useImpactCalculation)
 ├── services/                # API client functions
 └── types/                   # TypeScript types and API contracts
+```
+
+### UI Layout System (ModuleLayout Pattern)
+
+The application uses a modern, responsive layout with fixed chrome height (120px):
+
+```
+┌────────┬────────────────────────────────────────────────────────────────────┐
+│        │ ModuleHeader (48px) - Title + Search + Version + User              │
+│ App    ├────────────────────────────────────────────────────────────────────┤
+│ Side   │ WorkflowTabs (40px) - Horizontal tab navigation                    │
+│ bar    ├────────────────────────────────────────────────────────────────────┤
+│ (64px) │ TaskDescription (32px) - Contextual help text                      │
+│        ├────────────────────────────────────────────────────────────────────┤
+│        │ Content Area (flexible) - AG Grid / Forms / Tables                 │
+└────────┴────────────────────────────────────────────────────────────────────┘
+Mobile: MobileBottomNav (fixed) + MobileDrawer (slide-out)
+```
+
+**Key Layout Components** (`frontend/src/components/layout/`):
+| Component | Purpose |
+|-----------|---------|
+| `ModuleLayout` | Main wrapper with all providers and responsive handling |
+| `AppSidebar` | Collapsible sidebar (64px collapsed → 240px on hover) |
+| `ModuleHeader` | Module title, global search, budget version selector |
+| `WorkflowTabs` | Horizontal workflow step navigation |
+| `TaskDescription` | Contextual help text based on current route |
+| `MobileDrawer` | Slide-out navigation for mobile |
+| `MobileBottomNav` | Bottom tab navigation for mobile |
+
+**CSS Variables** (defined in `frontend/src/index.css`):
+```css
+--sidebar-width-collapsed: 64px;
+--sidebar-width-expanded: 240px;
+--layout-chrome-height: 120px;  /* 48 + 40 + 32 */
+--redesign-content-height: calc(100vh - var(--layout-chrome-height));
 ```
 
 ---
@@ -276,20 +349,20 @@ Teacher FTE Required = Total Subject Hours ÷ Standard Hours (18h/week secondary
 ### 4. Quality Gates
 All must pass before commit:
 - `pnpm lint && pnpm typecheck` (frontend)
-- `.venv/bin/ruff check . && .venv/bin/mypy app` (backend)
+- `uv run ruff check . && uv run mypy app` (backend)
 
 ---
 
 ## Database Migrations
 
-Linear migration chain in `backend/alembic/versions/` (15 migrations):
+Linear migration chain in `backend/alembic/versions/` (16 migrations):
 ```
 001_initial_configuration → 002_planning_layer → 003_consolidation_layer →
 004_fix_critical_issues → 005_analysis_layer → 006_class_structure_validation →
 007_strategic_layer → 008_performance_indexes → 009_materialized_views_kpi →
 010_planning_cells_writeback → 011_audit_columns_nationality →
 012_seed_subjects → 013_historical_comparison → 014_workforce_personnel →
-015_seed_reference_data_distributions
+015_seed_reference_data_distributions → 016_fix_function_security_rls_performance
 ```
 
 ---
@@ -322,6 +395,44 @@ def calculate_dhg(inputs: DHGInput) -> DHGOutput:
 
 ---
 
+## Frontend-Backend Schema Alignment
+
+Frontend Zod schemas (`frontend/src/types/api.ts`) must match backend Pydantic schemas. Drift causes runtime validation errors.
+
+### OpenAPI Type Generation
+
+```bash
+# Start backend server first
+cd backend && uv run uvicorn app.main:app --reload
+
+# Generate TypeScript types (from another terminal)
+cd frontend
+pnpm generate:types       # From running server at localhost:8000
+pnpm generate:types:file  # From saved openapi.json file
+```
+
+Generated types saved to `frontend/src/types/generated-api.ts`. Compare with hand-written Zod schemas to detect drift.
+
+### Critical Schema Patterns
+
+| Pattern | Backend (Pydantic) | Frontend (Zod/TypeScript) |
+|---------|-------------------|---------------------------|
+| **Bilingual names** | `name_fr`, `name_en` | Use `entity.name_en` (not `entity.name`) |
+| **Status enums** | lowercase: `working`, `approved` | Use lowercase: `'working'` (not `'WORKING'`) |
+| **Sort order field** | `sort_order` | Use `sort_order` (not `display_order`) |
+| **Boolean flags** | `is_secondary`, `requires_atsem` | Must include all required booleans |
+
+### Schema Validation Tests
+
+```bash
+# Run schema validation tests
+cd frontend && pnpm test -- tests/schemas/api-schemas.test.ts --run
+```
+
+These tests catch drift early by validating enum values, field names, and required fields.
+
+---
+
 ## Key Documentation
 
 | Document | Purpose |
@@ -342,111 +453,33 @@ def calculate_dhg(inputs: DHGInput) -> DHGOutput:
 
 ## Documentation System
 
-### Overview
+**Master Navigation**: [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) - Complete navigation for all documentation files.
 
-All 146 documentation files are organized in a clean, discoverable structure with clear governance standards.
+### Key Documentation by Purpose
 
-**Master Navigation**: See [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) for complete documentation navigation.
+| Need | Document |
+|------|----------|
+| Business rules & formulas | `docs/MODULES/MODULE_08_*.md` (DHG), `docs/MODULES/MODULE_07_*.md` (Enrollment) |
+| Development setup | `docs/developer-guides/DEVELOPER_GUIDE.md`, `backend/README.md`, `frontend/README.md` |
+| API reference | `docs/developer-guides/API_DOCUMENTATION.md` |
+| Testing | `docs/testing/TEST_COVERAGE_STRATEGY.md`, `docs/developer-guides/E2E_TESTING_GUIDE.md` |
+| Current status | `docs/status/CURRENT_STATUS.md`, `docs/status/REMAINING_WORK.md` |
+| Agent documentation rules | `docs/AGENT_DOCUMENTATION_STANDARDS.md` |
 
-### Directory Structure
+### Living Documents (Update in Place)
 
-```
-/
-├── foundation/              # Core specifications (PRD, TSD, requirements)
-├── docs/
-│   ├── MODULES/             # 18 module specifications (SOURCE OF TRUTH for business rules)
-│   ├── user-guides/         # User documentation
-│   ├── developer-guides/    # Developer documentation (API, integration, E2E testing)
-│   ├── status/              # Living status docs (updated frequently)
-│   ├── testing/             # Test coverage strategy and E2E guides
-│   ├── agent-work/          # Recent agent reports (<30 days)
-│   ├── technical-decisions/ # Architecture Decision Records (ADRs)
-│   ├── roadmaps/            # Future planning documents
-│   ├── database/            # Database schema and setup
-│   ├── archive/             # Historical documents (phases, implementations, status)
-│   └── templates/           # Document templates for agents
-├── backend/docs/            # Backend-specific technical docs
-└── frontend/                # Frontend-specific docs (bundle analysis, etc.)
-```
+These files are updated frequently with timestamp headers:
+- `docs/status/CURRENT_STATUS.md` - Current work
+- `docs/status/REMAINING_WORK.md` - Outstanding tasks
+- `docs/status/CODEBASE_REVIEW.md` - Code quality tracking
+- `docs/status/PRODUCTION_READINESS.md` - Production checklist
 
-### Where to Find Documentation
+### Agent Documentation Locations
 
-**For Business Rules & Formulas**:
-- [docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md](docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md) - DHG calculations ⭐
-- [docs/MODULES/MODULE_07_ENROLLMENT_PLANNING.md](docs/MODULES/MODULE_07_ENROLLMENT_PLANNING.md) - Enrollment rules
-- [docs/MODULES/MODULE_10_REVENUE_PLANNING.md](docs/MODULES/MODULE_10_REVENUE_PLANNING.md) - Revenue calculations
-- [foundation/EFIR_Workforce_Planning_Logic.md](foundation/EFIR_Workforce_Planning_Logic.md) - DHG methodology
+| Agent | Location | Naming |
+|-------|----------|--------|
+| All agents (reports) | `docs/agent-work/` | `YYYY-MM-DD_{agent}_{purpose}.md` |
+| System architect (ADRs) | `docs/technical-decisions/` | `{DECISION}_ADR.md` |
+| Product architect | `docs/MODULES/` | `MODULE_{NN}_{NAME}.md` |
 
-**For Development**:
-- [docs/developer-guides/DEVELOPER_GUIDE.md](docs/developer-guides/DEVELOPER_GUIDE.md) - Developer setup
-- [docs/developer-guides/API_DOCUMENTATION.md](docs/developer-guides/API_DOCUMENTATION.md) - API reference
-- [backend/README.md](backend/README.md) - Backend architecture
-- [frontend/README.md](frontend/README.md) - Frontend architecture
-
-**For Testing**:
-- [docs/testing/TEST_COVERAGE_STRATEGY.md](docs/testing/TEST_COVERAGE_STRATEGY.md) - Coverage goals & plan
-- [docs/developer-guides/E2E_TESTING_GUIDE.md](docs/developer-guides/E2E_TESTING_GUIDE.md) - E2E testing
-- [backend/docs/TESTING.md](backend/docs/TESTING.md) - Backend testing
-
-**For Current Status**:
-- [docs/status/CURRENT_STATUS.md](docs/status/CURRENT_STATUS.md) - Current work (living doc, updated hourly)
-- [docs/status/REMAINING_WORK.md](docs/status/REMAINING_WORK.md) - Outstanding tasks
-- [docs/status/PRODUCTION_READINESS.md](docs/status/PRODUCTION_READINESS.md) - Production checklist
-
-### Where Agents Create Documentation
-
-**CRITICAL**: All agents MUST follow [docs/AGENT_DOCUMENTATION_STANDARDS.md](docs/AGENT_DOCUMENTATION_STANDARDS.md).
-
-**Quick Reference**:
-
-| Agent | Document Type | Location | Naming |
-|-------|---------------|----------|--------|
-| `qa-validation-agent` | Coverage reports | `docs/agent-work/` | `YYYY-MM-DD_agent-{N}_coverage-{scope}.md` |
-| `efir-master-agent` | Coordination reports | `docs/agent-work/` | `YYYY-MM-DD_master-agent_{purpose}.md` |
-| `backend-*-agent` | Implementation reports | `docs/agent-work/` | `YYYY-MM-DD_{agent}_{implementation}.md` |
-| `system-architect-agent` | ADRs | `docs/technical-decisions/` | `{DECISION}_ADR.md` |
-| `documentation-training-agent` | User/Dev guides | `docs/user-guides/` or `docs/developer-guides/` | `{NAME}_GUIDE.md` |
-| `product-architect-agent` | Module specs | `docs/MODULES/` | `MODULE_{NN}_{NAME}.md` |
-
-**Living Documents** (update in place with timestamp headers):
-- `docs/status/CURRENT_STATUS.md`
-- `docs/status/REMAINING_WORK.md`
-- `docs/status/CODEBASE_REVIEW.md`
-- `docs/status/PRODUCTION_READINESS.md`
-
-### Document Naming Conventions
-
-| Type | Format | Example |
-|------|--------|---------|
-| Living docs | `{NAME}.md` | `CURRENT_STATUS.md` |
-| Agent reports | `YYYY-MM-DD_agent-{N}_{purpose}.md` | `2025-12-05_agent-13_coverage.md` |
-| Phase summaries | `YYYY-MM-DD_phase-{N}-{desc}.md` | `2025-12-05_phase-1-completion.md` |
-| Implementation | `YYYY-MM-DD_{name}.md` | `2025-12-03_database-schema-fix.md` |
-| Guides | `{NAME}_GUIDE.md` | `USER_GUIDE.md` |
-| Versioned | `{NAME}_v{major}_{minor}.md` | `EFIR_Budget_App_PRD_v1.2.md` |
-
-### Document Lifecycle
-
-**Living Documents** (no dates in filenames):
-- Updated frequently with timestamp headers
-- Never archived
-- Examples: `CURRENT_STATUS.md`, `REMAINING_WORK.md`
-
-**Snapshot Documents** (dated with YYYY-MM-DD prefix):
-- Created once, never modified
-- Archived after 30-90 days depending on type
-- Examples: Agent reports, phase summaries, implementation reports
-
-**Reference Documents** (versioned or unversioned):
-- Updated when business rules change
-- Versioned using semantic versioning (v1.2 → v1.3)
-- Examples: Module specs, PRD, TSD
-
-### Maintenance Schedule
-
-- **Daily**: Update living status docs in `docs/status/`
-- **Weekly**: Review agent reports, archive old work (>30 days)
-- **Monthly**: Archive completed work, update cross-references
-- **Quarterly**: Full documentation audit, consolidation review
-
-See [docs/DOCUMENTATION_GUIDE.md](docs/DOCUMENTATION_GUIDE.md) for complete governance and maintenance processes.
+See [docs/DOCUMENTATION_GUIDE.md](docs/DOCUMENTATION_GUIDE.md) for complete governance and naming conventions.

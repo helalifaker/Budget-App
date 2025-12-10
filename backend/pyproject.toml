@@ -26,7 +26,8 @@ dependencies = [
   "orjson>=3.10.0",
   "redis==7.1.0",
   "hiredis==3.0.0",
-  "cashews[redis]==7.3.2"
+  "cashews[redis]==7.3.2",
+  "prometheus-client>=0.23.1",
 ]
 
 [project.optional-dependencies]
@@ -61,6 +62,7 @@ ignore = [
 "alembic/versions/*" = ["E501"]  # Allow long lines in migration files (auto-generated)
 "tests/test_models.py" = ["F406"]  # Allow star import in test function
 "tests/**/*.py" = ["E501", "RUF043", "B017", "E741", "ASYNC109"]  # Allow long lines, regex patterns, blind exceptions, ambiguous names in tests
+"tests/conftest.py" = ["E402"]  # Imports after env var setup is required for pytest-xdist worker isolation
 "app/services/*.py" = ["E501"]  # Allow longer lines for descriptive error messages
 "app/api/**/*.py" = ["E501"]  # Allow longer lines in API schemas
 "app/schemas/*.py" = ["E501"]  # Allow longer lines for Field descriptions
