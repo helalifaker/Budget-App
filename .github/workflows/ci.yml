@@ -30,13 +30,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run ESLint
-        run: pnpm --filter frontend lint
+        run: pnpm --filter efir-budget-frontend lint
 
       - name: Type check
-        run: pnpm --filter frontend typecheck
+        run: pnpm --filter efir-budget-frontend typecheck
 
       - name: Run tests
-        run: pnpm --filter frontend test -- --run
+        run: pnpm --filter efir-budget-frontend test -- --run
 
   backend:
     name: Backend Lint, Type Check & Test
