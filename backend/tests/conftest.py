@@ -612,113 +612,50 @@ async def nationality_types(db_session: AsyncSession) -> dict[str, NationalityTy
 
 @pytest.fixture
 async def subjects(db_session: AsyncSession) -> dict[str, Subject]:
-    """Create subjects for testing."""
-    subjects_data = {
-        "FRENCH": Subject(
-            id=uuid4(),
-            code="FRENCH",
-            name_en="French Language",
-            name_fr="Français",
-            category="core",
-            is_active=True,
-        ),
-        "MATH": Subject(
-            id=uuid4(),
-            code="MATH",
-            name_en="Mathematics",
-            name_fr="Mathématiques",
-            category="core",
-            is_active=True,
-        ),
-        "HISTORY": Subject(
-            id=uuid4(),
-            code="HISTORY",
-            name_en="History-Geography",
-            name_fr="Histoire-Géographie",
-            category="core",
-            is_active=True,
-        ),
-        "ENGLISH": Subject(
-            id=uuid4(),
-            code="ENGLISH",
-            name_en="English",
-            name_fr="Anglais",
-            category="core",
-            is_active=True,
-        ),
-        # Science subjects
-        "SVT": Subject(
-            id=uuid4(),
-            code="SVT",
-            name_en="Life and Earth Sciences",
-            name_fr="Sciences de la Vie et de la Terre",
-            category="specialty",
-            is_active=True,
-        ),
-        "PHYS": Subject(
-            id=uuid4(),
-            code="PHYS",
-            name_en="Physics-Chemistry",
-            name_fr="Physique-Chimie",
-            category="core",
-            is_active=True,
-        ),
-        # Language subjects
-        "LV2": Subject(
-            id=uuid4(),
-            code="LV2",
-            name_en="Second Foreign Language",
-            name_fr="Langue Vivante 2",
-            category="core",
-            is_active=True,
-        ),
-        # Humanities and Social Sciences
-        "PHILO": Subject(
-            id=uuid4(),
-            code="PHILO",
-            name_en="Philosophy",
-            name_fr="Philosophie",
-            category="core",
-            is_active=True,
-        ),
-        "ECO": Subject(
-            id=uuid4(),
-            code="ECO",
-            name_en="Economics",
-            name_fr="Sciences Économiques",
-            category="specialty",
-            is_active=True,
-        ),
-        # Arts and Physical Education
-        "ART": Subject(
-            id=uuid4(),
-            code="ART",
-            name_en="Visual Arts",
-            name_fr="Arts Plastiques",
-            category="elective",
-            is_active=True,
-        ),
-        "EPS": Subject(
-            id=uuid4(),
-            code="EPS",
-            name_en="Physical Education",
-            name_fr="Éducation Physique et Sportive",
-            category="core",
-            is_active=True,
-        ),
-        "MUS": Subject(
-            id=uuid4(),
-            code="MUS",
-            name_en="Music Education",
-            name_fr="Éducation Musicale",
-            category="elective",
-            is_active=True,
-        ),
-    }
+    """Create subjects for testing, using existing subjects if they already exist."""
+    from sqlalchemy import select
 
-    db_session.add_all(subjects_data.values())
+    # Define subject data to create
+    subjects_to_create = [
+        ("FRENCH", "French Language", "Français", "core"),
+        ("MATH", "Mathematics", "Mathématiques", "core"),
+        ("HISTORY", "History-Geography", "Histoire-Géographie", "core"),
+        ("ENGLISH", "English", "Anglais", "core"),
+        ("SVT", "Life and Earth Sciences", "Sciences de la Vie et de la Terre", "specialty"),
+        ("PHYS", "Physics-Chemistry", "Physique-Chimie", "core"),
+        ("LV2", "Second Foreign Language", "Langue Vivante 2", "core"),
+        ("PHILO", "Philosophy", "Philosophie", "core"),
+        ("ECO", "Economics", "Sciences Économiques", "specialty"),
+        ("ART", "Visual Arts", "Arts Plastiques", "elective"),
+        ("EPS", "Physical Education", "Éducation Physique et Sportive", "core"),
+        ("MUS", "Music Education", "Éducation Musicale", "elective"),
+    ]
+
+    # Get existing subjects first
+    codes = [s[0] for s in subjects_to_create]
+    result = await db_session.execute(
+        select(Subject).where(Subject.code.in_(codes))
+    )
+    existing_subjects = {s.code: s for s in result.scalars().all()}
+
+    # Create missing subjects
+    subjects_data = {}
+    for code, name_en, name_fr, category in subjects_to_create:
+        if code in existing_subjects:
+            subjects_data[code] = existing_subjects[code]
+        else:
+            subject = Subject(
+                id=uuid4(),
+                code=code,
+                name_en=name_en,
+                name_fr=name_fr,
+                category=category,
+                is_active=True,
+            )
+            db_session.add(subject)
+            subjects_data[code] = subject
+
     await db_session.flush()
-
     return subjects_data
 
 

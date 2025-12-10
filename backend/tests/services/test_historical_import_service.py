@@ -375,7 +375,7 @@ class TestHistoricalImportService:
         assert record.module_code == "dhg"
         assert record.dimension_type == "subject"
         assert record.dimension_code == "MATH"
-        assert record.annual_amount_sar == Decimal("2.5")
+        assert record.annual_fte == Decimal("2.5")
 
     def test_create_revenue_record(self, service):
         """Test creating revenue record."""
