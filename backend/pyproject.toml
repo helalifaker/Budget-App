@@ -40,7 +40,8 @@ dev = [
   "pytest-xdist==3.8.0",
   "aiosqlite==0.20.0",
   "pytest-cov==6.0.0",
-  "greenlet>=3.0.0"
+  "greenlet>=3.0.0",
+  "pip-audit>=2.7.0",  # Security vulnerability scanning
 ]
 
 [tool.ruff]
@@ -54,12 +55,13 @@ ignore = [
     "RUF012",  # Pydantic Config class uses mutable defaults intentionally
     "B008",  # Depends() in defaults is standard FastAPI pattern
     "B904",  # Don't chain HTTPExceptions to avoid exposing internal errors
-    # UP046 and UP047 removed - not available in the pinned Ruff version
+    "UP037",  # Quoted type annotations needed for SQLAlchemy forward references
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "alembic/env.py" = ["E402"]  # Imports after sys.path manipulation is standard Alembic pattern
 "alembic/versions/*" = ["E501"]  # Allow long lines in migration files (auto-generated)
+"app/models/__init__.py" = ["RUF022"]  # __all__ has section comments, can't be auto-sorted
 "tests/test_models.py" = ["F406"]  # Allow star import in test function
 "tests/**/*.py" = ["E501", "RUF043", "B017", "E741", "ASYNC109"]  # Allow long lines, regex patterns, blind exceptions, ambiguous names in tests
 "tests/conftest.py" = ["E402"]  # Imports after env var setup is required for pytest-xdist worker isolation

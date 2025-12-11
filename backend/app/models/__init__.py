@@ -67,6 +67,15 @@ from app.models.consolidation import (
     StatementFormat,
     StatementType,
 )
+from app.models.enrollment_projection import (
+    EnrollmentGlobalOverride,
+    EnrollmentGradeOverride,
+    EnrollmentLateralEntryDefault,
+    EnrollmentLevelOverride,
+    EnrollmentProjection,
+    EnrollmentProjectionConfig,
+    EnrollmentScenario,
+)
 from app.models.personnel import (
     # Models
     AEFEPosition,
@@ -138,6 +147,14 @@ __all__ = [
     "EmployeeSalary",
     # Planning Layer (Modules 7-12)
     "EnrollmentPlan",
+    # Enrollment Projection (Module 7 upgrade)
+    "EnrollmentScenario",
+    "EnrollmentLateralEntryDefault",
+    "EnrollmentProjectionConfig",
+    "EnrollmentGlobalOverride",
+    "EnrollmentLevelOverride",
+    "EnrollmentGradeOverride",
+    "EnrollmentProjection",
     "FeeCategory",
     "FeeStructure",
     "FinancialStatement",
