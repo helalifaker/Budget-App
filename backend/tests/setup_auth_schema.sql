@@ -2,6 +2,33 @@
 -- This mimics Supabase's auth schema structure (minimal version)
 -- Used only in test environments where Supabase is not available
 
+-- =============================================================================
+-- Create Supabase roles (authenticated, anon, service_role)
+-- These roles are used by Supabase for RLS policies and permission grants
+-- In production Supabase, these roles exist by default
+-- =============================================================================
+DO $$
+BEGIN
+    -- Create 'authenticated' role (for logged-in users)
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'authenticated') THEN
+        CREATE ROLE authenticated NOLOGIN NOINHERIT;
+    END IF;
+
+    -- Create 'anon' role (for anonymous/public access)
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'anon') THEN
+        CREATE ROLE anon NOLOGIN NOINHERIT;
+    END IF;
+
+    -- Create 'service_role' (for backend service access, bypasses RLS)
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN
+        CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
+    END IF;
+END
+$$;
+
+-- Grant usage on public schema to Supabase roles
+GRANT USAGE ON SCHEMA public TO authenticated, anon, service_role;
+
 -- Create auth schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS auth;
 
