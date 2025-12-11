@@ -56,7 +56,7 @@ print(f"\n🔧 Worker {_worker_id} (PID {_pid}): Using database at {_WORKER_DB_P
 # ==============================================================================
 
 import asyncio
-from collections.abc import AsyncGenerator, Generator, Callable
+from collections.abc import AsyncGenerator, Callable, Generator
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -145,11 +145,13 @@ def get_worker_database_url() -> str:
     """
     return _worker_db_url
 
+
 # ==============================================================================
 # CRITICAL: Strip schemas IMMEDIATELY after models are imported
 # ==============================================================================
 # This must run at module import time, BEFORE any ORM mappers are configured.
 # If we wait until a fixture, the mappers will already have cached the schema refs.
+
 
 def _strip_all_schemas_from_metadata():
     """
@@ -165,12 +167,12 @@ def _strip_all_schemas_from_metadata():
     # Step 2: Strip schema from all ForeignKey constraints
     for table in Base.metadata.tables.values():
         for constraint in table.constraints:
-            if hasattr(constraint, 'elements'):
+            if hasattr(constraint, "elements"):
                 for fk_element in constraint.elements:
-                    if hasattr(fk_element, '_colspec'):
+                    if hasattr(fk_element, "_colspec"):
                         original_colspec = fk_element._colspec
-                        if '.' in original_colspec:
-                            parts = original_colspec.split('.')
+                        if "." in original_colspec:
+                            parts = original_colspec.split(".")
                             if len(parts) == 3:  # schema.table.column
                                 fk_element._colspec = f"{parts[1]}.{parts[2]}"
 
@@ -178,12 +180,13 @@ def _strip_all_schemas_from_metadata():
     for table in Base.metadata.tables.values():
         for column in table.columns:
             for fk in column.foreign_keys:
-                if hasattr(fk, '_colspec'):
+                if hasattr(fk, "_colspec"):
                     original_colspec = fk._colspec
-                    if '.' in original_colspec:
-                        parts = original_colspec.split('.')
+                    if "." in original_colspec:
+                        parts = original_colspec.split(".")
                         if len(parts) == 3:  # schema.table.column
                             fk._colspec = f"{parts[1]}.{parts[2]}"
+
 
 # Run immediately at import time for SQLite tests
 if os.environ.get("USE_SQLITE_FOR_TESTS", "").lower() == "true":
@@ -210,8 +213,8 @@ def strip_schema_from_sql(sql_str: str) -> str:
 
     # Replace schema.table patterns with just table
     # Match efir_budget.table_name or auth.table_name
-    sql_str = re.sub(r'\befir_budget\.', '', sql_str)
-    sql_str = re.sub(r'\bauth\.', '', sql_str)
+    sql_str = re.sub(r"\befir_budget\.", "", sql_str)
+    sql_str = re.sub(r"\bauth\.", "", sql_str)
 
     return sql_str
 
@@ -287,7 +290,9 @@ async def engine(test_database_url: str):
 
             # Get all indexes and drop them first
             index_result = await conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'")
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%'"
+                )
             )
             indexes = [row[0] for row in index_result.fetchall()]
             for idx_name in indexes:
@@ -298,7 +303,9 @@ async def engine(test_database_url: str):
 
             # Get all tables and drop them
             table_result = await conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+                )
             )
             tables = [row[0] for row in table_result.fetchall()]
             for table_name in tables:
@@ -312,11 +319,15 @@ async def engine(test_database_url: str):
 
             # Verify database is now empty
             verify_result = await conn.execute(
-                text("SELECT type, name FROM sqlite_master WHERE type IN ('table', 'index') AND name NOT LIKE 'sqlite_%'")
+                text(
+                    "SELECT type, name FROM sqlite_master WHERE type IN ('table', 'index') AND name NOT LIKE 'sqlite_%'"
+                )
             )
             remaining = [(row[0], row[1]) for row in verify_result.fetchall()]
             if remaining:
-                print(f"⚠️ Worker {worker_id}: Still have {len(remaining)} objects after cleanup: {remaining[:5]}...")
+                print(
+                    f"⚠️ Worker {worker_id}: Still have {len(remaining)} objects after cleanup: {remaining[:5]}..."
+                )
             else:
                 print(f"✅ Worker {worker_id}: Database is clean")
 
@@ -345,9 +356,7 @@ async def db_session(engine) -> AsyncGenerator[AsyncSession, None]:
 
     Each test gets a fresh session that's rolled back after the test.
     """
-    async_session_maker = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session_maker() as session:
         yield session
@@ -634,9 +643,7 @@ async def subjects(db_session: AsyncSession) -> dict[str, Subject]:
 
     # Get existing subjects first
     codes = [s[0] for s in subjects_to_create]
-    result = await db_session.execute(
-        select(Subject).where(Subject.code.in_(codes))
-    )
+    result = await db_session.execute(select(Subject).where(Subject.code.in_(codes)))
     existing_subjects = {s.code: s for s in result.scalars().all()}
 
     # Create missing subjects
@@ -733,6 +740,7 @@ async def fee_categories(db_session: AsyncSession) -> dict[str, FeeCategory]:
 # Budget Version Fixtures
 # ==============================================================================
 
+
 # Worker-aware fiscal year counter to prevent collisions in parallel test execution
 # Each pytest-xdist worker gets a unique 10-year range within valid bounds (2000-2100):
 #   master (single-process): 2025, 2026, ...
@@ -772,7 +780,7 @@ async def test_budget_version(
         id=uuid4(),
         name=f"FY{fiscal_year} Budget v1",
         fiscal_year=fiscal_year,
-        academic_year=f"{fiscal_year-1}-{fiscal_year}",
+        academic_year=f"{fiscal_year - 1}-{fiscal_year}",
         status=BudgetVersionStatus.WORKING,
         is_baseline=False,
         notes="Test budget version",
@@ -1138,9 +1146,7 @@ async def test_dhg_data(
 
 
 @pytest.fixture
-async def test_system_config(
-    db_session: AsyncSession, test_user_id: UUID
-) -> SystemConfig:
+async def test_system_config(db_session: AsyncSession, test_user_id: UUID) -> SystemConfig:
     """Create a test system configuration."""
     config = SystemConfig(
         id=uuid4(),
@@ -1159,9 +1165,7 @@ async def test_system_config(
 
 
 @pytest.fixture
-async def system_configs(
-    db_session: AsyncSession, test_user_id: UUID
-) -> dict[str, SystemConfig]:
+async def system_configs(db_session: AsyncSession, test_user_id: UUID) -> dict[str, SystemConfig]:
     """Create comprehensive system configurations for integration tests."""
     configs = {
         "EUR_TO_SAR_RATE": SystemConfig(
