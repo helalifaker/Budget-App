@@ -39,7 +39,9 @@ export default defineConfig({
     // Explicitly pass VITE_E2E_TEST_MODE to bypass Supabase auth in E2E tests
     command: 'VITE_E2E_TEST_MODE=true pnpm dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: !process.env.CI, // Reuse if not in CI, start fresh in CI
+    // In CI, the server is started manually in the workflow, so reuse it.
+    // Locally, reuse if already running (developer convenience).
+    reuseExistingServer: true,
     timeout: 60000, // 60 second timeout for server startup
   },
 })
