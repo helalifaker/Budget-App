@@ -54,7 +54,14 @@ VALUES (
 
 -- Create Supabase Realtime publication (needed for migrations referencing it)
 -- In real Supabase, this publication enables real-time subscriptions
-CREATE PUBLICATION IF NOT EXISTS supabase_realtime;
+-- Note: PostgreSQL doesn't support IF NOT EXISTS for publications, so we use DO block
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        CREATE PUBLICATION supabase_realtime;
+    END IF;
+END
+$$;
 
 -- Grant necessary permissions (if needed)
 -- This ensures the test database can access the auth schema
