@@ -12,6 +12,7 @@ NOTE: This configuration supports pytest-xdist parallel execution by using
 unique IN-MEMORY SQLite databases per worker with distinct connection URIs.
 """
 
+import itertools
 import os
 import tempfile
 from pathlib import Path
@@ -55,7 +56,7 @@ print(f"\n🔧 Worker {_worker_id} (PID {_pid}): Using database at {_WORKER_DB_P
 # ==============================================================================
 
 import asyncio
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Generator, Callable
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -732,17 +733,46 @@ async def fee_categories(db_session: AsyncSession) -> dict[str, FeeCategory]:
 # Budget Version Fixtures
 # ==============================================================================
 
+# Worker-aware fiscal year counter to prevent collisions in parallel test execution
+# Each pytest-xdist worker gets a unique 10-year range within valid bounds (2000-2100):
+#   master (single-process): 2025, 2026, ...
+#   gw0: 2030, 2031, ...
+#   gw1: 2040, 2041, ...
+#   gw2: 2050, 2051, ...
+# This ensures fiscal years stay within StrategicPlan's CHECK constraint (2000-2100)
+def _get_worker_fiscal_year_base() -> int:
+    """Calculate base fiscal year based on pytest-xdist worker ID."""
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", "master")
+    if worker_id == "master":
+        return 2025
+    try:
+        worker_num = int(worker_id.replace("gw", ""))
+        # Use 10-year gaps: gw0=2030, gw1=2040, gw2=2050, etc.
+        return 2030 + (worker_num * 10)
+    except ValueError:
+        return 2025
+
+
+_fiscal_year_counter = itertools.count(_get_worker_fiscal_year_base())
+
+
+@pytest.fixture
+def fiscal_year_factory() -> Callable[[], int]:
+    """Return a callable that generates unique fiscal years per worker."""
+    return lambda: next(_fiscal_year_counter)
+
 
 @pytest.fixture
 async def test_budget_version(
-    db_session: AsyncSession, test_user_id: UUID
+    db_session: AsyncSession, test_user_id: UUID, fiscal_year_factory
 ) -> BudgetVersion:
     """Create a test budget version."""
+    fiscal_year = fiscal_year_factory()
     version = BudgetVersion(
         id=uuid4(),
-        name="FY2025 Budget v1",
-        fiscal_year=2025,
-        academic_year="2024-2025",
+        name=f"FY{fiscal_year} Budget v1",
+        fiscal_year=fiscal_year,
+        academic_year=f"{fiscal_year-1}-{fiscal_year}",
         status=BudgetVersionStatus.WORKING,
         is_baseline=False,
         notes="Test budget version",

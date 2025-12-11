@@ -149,22 +149,24 @@ class TestBudgetVersionOperations:
 
     @pytest.mark.asyncio
     async def test_get_all_budget_versions(
-        self, db_session: AsyncSession, test_user_id
+        self, db_session: AsyncSession, test_user_id, fiscal_year_factory
     ):
         """Test retrieving all budget versions."""
         service = ConfigurationService(db_session)
+        fy1 = fiscal_year_factory()
+        fy2 = fiscal_year_factory()
 
         # Create multiple versions
         await service.create_budget_version(
             name="Budget 2025",
-            fiscal_year=2025,
-            academic_year="2024-2025",
+            fiscal_year=fy1,
+            academic_year=f"{fy1-1}-{fy1}",
             user_id=test_user_id,
         )
         await service.create_budget_version(
             name="Budget 2026",
-            fiscal_year=2026,
-            academic_year="2025-2026",
+            fiscal_year=fy2,
+            academic_year=f"{fy2-1}-{fy2}",
             user_id=test_user_id,
         )
 
@@ -173,22 +175,23 @@ class TestBudgetVersionOperations:
 
     @pytest.mark.asyncio
     async def test_get_budget_versions_by_fiscal_year(
-        self, db_session: AsyncSession, test_user_id
+        self, db_session: AsyncSession, test_user_id, fiscal_year_factory
     ):
         """Test filtering budget versions by fiscal year."""
         service = ConfigurationService(db_session)
+        target_year = fiscal_year_factory()
 
         # Create versions for different years
         await service.create_budget_version(
             name="Budget 2025",
-            fiscal_year=2025,
-            academic_year="2024-2025",
+            fiscal_year=target_year,
+            academic_year=f"{target_year-1}-{target_year}",
             user_id=test_user_id,
         )
 
-        versions = await service.get_all_budget_versions(fiscal_year=2025)
+        versions = await service.get_all_budget_versions(fiscal_year=target_year)
         assert len(versions) >= 1
-        assert all(v.fiscal_year == 2025 for v in versions)
+        assert all(v.fiscal_year == target_year for v in versions)
 
     @pytest.mark.asyncio
     async def test_get_budget_versions_by_status(
@@ -205,36 +208,38 @@ class TestBudgetVersionOperations:
 
     @pytest.mark.asyncio
     async def test_create_budget_version_success(
-        self, db_session: AsyncSession, test_user_id
+        self, db_session: AsyncSession, test_user_id, fiscal_year_factory
     ):
         """Test creating a new budget version."""
         service = ConfigurationService(db_session)
+        fiscal_year = fiscal_year_factory()
 
         version = await service.create_budget_version(
             name="Test Budget 2025",
-            fiscal_year=2025,
-            academic_year="2024-2025",
+            fiscal_year=fiscal_year,
+            academic_year=f"{fiscal_year-1}-{fiscal_year}",
             notes="Test notes",
             user_id=test_user_id,
         )
 
         assert version is not None
         assert version.name == "Test Budget 2025"
-        assert version.fiscal_year == 2025
+        assert version.fiscal_year == fiscal_year
         assert version.status == BudgetVersionStatus.WORKING
 
     @pytest.mark.asyncio
     async def test_create_budget_version_duplicate_working_fails(
-        self, db_session: AsyncSession, test_user_id
+        self, db_session: AsyncSession, test_user_id, fiscal_year_factory
     ):
         """Test creating duplicate working version fails."""
         service = ConfigurationService(db_session)
+        fiscal_year = fiscal_year_factory()
 
         # Create first version
         await service.create_budget_version(
             name="Budget 2025 V1",
-            fiscal_year=2025,
-            academic_year="2024-2025",
+            fiscal_year=fiscal_year,
+            academic_year=f"{fiscal_year-1}-{fiscal_year}",
             user_id=test_user_id,
         )
 
@@ -242,8 +247,8 @@ class TestBudgetVersionOperations:
         with pytest.raises(ConflictError, match="working budget version already exists"):
             await service.create_budget_version(
                 name="Budget 2025 V2",
-                fiscal_year=2025,
-                academic_year="2024-2025",
+                fiscal_year=fiscal_year,
+                academic_year=f"{fiscal_year-1}-{fiscal_year}",
                 user_id=test_user_id,
             )
 
@@ -264,16 +269,17 @@ class TestBudgetVersionOperations:
 
     @pytest.mark.asyncio
     async def test_submit_budget_version_invalid_status_fails(
-        self, db_session: AsyncSession, test_user_id
+        self, db_session: AsyncSession, test_user_id, fiscal_year_factory
     ):
         """Test submitting non-working version fails."""
         service = ConfigurationService(db_session)
+        fiscal_year = fiscal_year_factory()
 
         # Create and submit a version
         version = await service.create_budget_version(
             name="Test Version",
-            fiscal_year=2025,
-            academic_year="2024-2025",
+            fiscal_year=fiscal_year,
+            academic_year=f"{fiscal_year-1}-{fiscal_year}",
             user_id=test_user_id,
         )
         await service.submit_budget_version(version.id, test_user_id)
