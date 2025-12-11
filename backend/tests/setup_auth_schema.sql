@@ -20,6 +20,27 @@ CREATE TABLE IF NOT EXISTS auth.users (
     aud VARCHAR(255)
 );
 
+-- Create auth.uid() function (mimics Supabase's built-in function)
+-- In real Supabase, this extracts the user ID from JWT claims.
+-- For E2E tests, we return the test user's ID (allows RLS policies to work).
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS UUID
+LANGUAGE SQL
+STABLE
+AS $$
+    SELECT 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid;
+$$;
+
+-- Create auth.role() function (mimics Supabase's built-in function)
+-- Returns the current user's role (authenticated/anon)
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS TEXT
+LANGUAGE SQL
+STABLE
+AS $$
+    SELECT 'authenticated'::text;
+$$;
+
 -- Create a test user for E2E tests
 INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, role, aud)
 VALUES (
