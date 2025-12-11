@@ -268,148 +268,76 @@ jobs:
           retention-days: 30
 
   # ===============================
-  # Build Docker Images (Optional - requires DOCKER_USERNAME and DOCKER_PASSWORD secrets)
-  # To enable: Add DOCKER_USERNAME and DOCKER_PASSWORD secrets in GitHub repository settings
-  # ===============================
-  build:
-    name: Build Docker Images
-    runs-on: ubuntu-latest
-    needs: [frontend-test, backend-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Check Docker credentials
-        id: check-docker
-        run: |
-          if [[ -n "${{ secrets.DOCKER_USERNAME }}" && -n "${{ secrets.DOCKER_PASSWORD }}" ]]; then
-            echo "has_credentials=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_credentials=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Docker credentials not configured. Skipping Docker build."
-            echo "To enable Docker builds, add DOCKER_USERNAME and DOCKER_PASSWORD secrets."
-          fi
-
-      - name: Checkout code
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Docker Hub
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and push backend image
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/efir-budget-backend:latest
-            ${{ secrets.DOCKER_USERNAME }}/efir-budget-backend:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/efir-budget-backend:latest
-          cache-to: type=inline
-
-      - name: Build and push frontend image
-        if: steps.check-docker.outputs.has_credentials == 'true'
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/efir-budget-frontend:latest
-            ${{ secrets.DOCKER_USERNAME }}/efir-budget-frontend:${{ github.sha }}
-          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/efir-budget-frontend:latest
-          cache-to: type=inline
-          build-args: |
-            VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
-            VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
-            VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-  # ===============================
-  # Deploy to Production (Optional - requires deployment secrets)
-  # To enable: Add DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY secrets
+  # Deploy to Fly.io (Optional - requires FLY_API_TOKEN secret)
+  # To enable:
+  #   1. Create Fly.io account at https://fly.io
+  #   2. Run 'fly auth token' to get your token
+  #   3. Add FLY_API_TOKEN secret in GitHub repository settings
   # ===============================
   deploy:
-    name: Deploy to Production
+    name: Deploy to Fly.io
     runs-on: ubuntu-latest
-    needs: [build, e2e-test]
-    # Only deploy if this is main branch push AND all deployment secrets are configured
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && always() && needs.e2e-test.result == 'success'
+    needs: [frontend-test, backend-test, e2e-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: production
-      url: https://budget.efir-school.com
+      url: https://efir-budget-app.fly.dev
 
     steps:
-      - name: Check deployment credentials
-        id: check-deploy
+      - name: Check Fly.io credentials
+        id: check-fly
         run: |
-          if [[ -n "${{ secrets.DEPLOY_HOST }}" && -n "${{ secrets.DEPLOY_USER }}" && -n "${{ secrets.DEPLOY_SSH_KEY }}" ]]; then
+          if [[ -n "${{ secrets.FLY_API_TOKEN }}" ]]; then
             echo "has_credentials=true" >> $GITHUB_OUTPUT
           else
             echo "has_credentials=false" >> $GITHUB_OUTPUT
-            echo "⚠️ Deployment credentials not configured. Skipping deployment."
-            echo "To enable deployment, add DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY secrets."
+            echo "⚠️ Fly.io credentials not configured. Skipping deployment."
+            echo "To enable deployment:"
+            echo "  1. Create account at https://fly.io"
+            echo "  2. Install flyctl and run 'fly auth token'"
+            echo "  3. Add FLY_API_TOKEN secret in GitHub settings"
           fi
 
       - name: Checkout code
-        if: steps.check-deploy.outputs.has_credentials == 'true'
+        if: steps.check-fly.outputs.has_credentials == 'true'
         uses: actions/checkout@v4
 
-      - name: Deploy to server
-        if: steps.check-deploy.outputs.has_credentials == 'true'
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            cd /opt/efir-budget
-            git pull origin main
-            docker-compose pull
-            docker-compose up -d --no-deps --build
-            docker-compose exec -T backend alembic upgrade head
+      - name: Setup Fly.io CLI
+        if: steps.check-fly.outputs.has_credentials == 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy Backend to Fly.io
+        if: steps.check-fly.outputs.has_credentials == 'true'
+        working-directory: ./backend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy --remote-only
+
+      - name: Deploy Frontend to Fly.io
+        if: steps.check-fly.outputs.has_credentials == 'true'
+        working-directory: ./frontend
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          # Build args for Vite
+          VITE_API_BASE_URL: https://efir-budget-api.fly.dev/api/v1
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          flyctl deploy --remote-only \
+            --build-arg VITE_API_BASE_URL=$VITE_API_BASE_URL \
+            --build-arg VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+            --build-arg VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 
       - name: Run smoke tests
-        if: steps.check-deploy.outputs.has_credentials == 'true'
+        if: steps.check-fly.outputs.has_credentials == 'true'
         run: |
-          sleep 30
-          curl -f ${{ secrets.PRODUCTION_URL }}/health || exit 1
-          curl -f ${{ secrets.PRODUCTION_URL }}/api/v1/health || exit 1
-
-      - name: Notify deployment success
-        if: success() && steps.check-deploy.outputs.has_credentials == 'true'
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          slack-message: |
-            Deployment to production successful!
-            Commit: ${{ github.sha }}
-            Author: ${{ github.actor }}
-            URL: https://budget.efir-school.com
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        continue-on-error: true  # Don't fail if Slack isn't configured
-
-      - name: Notify deployment failure
-        if: failure() && steps.check-deploy.outputs.has_credentials == 'true'
-        uses: slackapi/slack-github-action@v1.24.0
-        with:
-          channel-id: ${{ secrets.SLACK_CHANNEL_ID }}
-          slack-message: |
-            Deployment to production FAILED!
-            Commit: ${{ github.sha }}
-            Author: ${{ github.actor }}
-            Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        continue-on-error: true  # Don't fail if Slack isn't configured
+          echo "Waiting for deployment to stabilize..."
+          sleep 15
+          echo "Testing backend health..."
+          curl -f https://efir-budget-api.fly.dev/health || exit 1
+          echo "Testing frontend..."
+          curl -f https://efir-budget-app.fly.dev/ || exit 1
+          echo "✅ Smoke tests passed!"
 
   # ===============================
   # Security Scan

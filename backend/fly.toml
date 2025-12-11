@@ -1,0 +1,45 @@
+# Fly.io configuration for EFIR Budget Backend (FastAPI)
+# See https://fly.io/docs/reference/configuration/
+
+app = 'efir-budget-api'
+primary_region = 'fra'  # Frankfurt - closest to Saudi Arabia with good connectivity
+
+[build]
+  # Use Dockerfile for build
+  dockerfile = "Dockerfile"
+
+[env]
+  # Non-sensitive environment variables
+  PORT = "8000"
+  PYTHONUNBUFFERED = "1"
+  # Database URLs come from secrets (fly secrets set ...)
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"      # Stop when no traffic (cost saving)
+  auto_start_machines = true       # Start on incoming request
+  min_machines_running = 0         # Allow scaling to zero
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/health"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+# Uncomment to add Redis for caching
+# [mounts]
+#   source = "efir_data"
+#   destination = "/data"
