@@ -208,6 +208,14 @@ jobs:
           uv python install ${{ env.PYTHON_VERSION }}
           uv sync --frozen --all-extras
 
+      - name: Setup auth schema for testing
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://efir:efir_test@localhost:5432/efir_budget_test
+        run: |
+          # Create mock auth schema (mimics Supabase auth for E2E tests)
+          PGPASSWORD=efir_test psql -h localhost -U efir -d efir_budget_test -f tests/setup_auth_schema.sql
+
       - name: Start backend server
         working-directory: ./backend
         env:
