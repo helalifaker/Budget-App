@@ -52,6 +52,10 @@ VALUES (
     'authenticated'
 ) ON CONFLICT (email) DO NOTHING;
 
+-- Create Supabase Realtime publication (needed for migrations referencing it)
+-- In real Supabase, this publication enables real-time subscriptions
+CREATE PUBLICATION IF NOT EXISTS supabase_realtime;
+
 -- Grant necessary permissions (if needed)
 -- This ensures the test database can access the auth schema
 COMMENT ON SCHEMA auth IS 'Mock auth schema for E2E/CI testing (mimics Supabase auth)';
