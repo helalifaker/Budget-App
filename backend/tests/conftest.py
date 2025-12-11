@@ -741,33 +741,52 @@ async def fee_categories(db_session: AsyncSession) -> dict[str, FeeCategory]:
 # ==============================================================================
 
 
-# Worker-aware fiscal year counter to prevent collisions in parallel test execution
-# Each pytest-xdist worker gets a unique 10-year range within valid bounds (2000-2100):
-#   master (single-process): 2025, 2026, ...
-#   gw0: 2030, 2031, ...
-#   gw1: 2040, 2041, ...
-#   gw2: 2050, 2051, ...
-# This ensures fiscal years stay within StrategicPlan's CHECK constraint (2000-2100)
-def _get_worker_fiscal_year_base() -> int:
-    """Calculate base fiscal year based on pytest-xdist worker ID."""
+# Worker-aware fiscal year counter with MODULAR WRAPPING to prevent overflow
+# Each pytest-xdist worker gets a unique range within valid bounds (2000-2099):
+#   master (single-process): 2020-2029 (10 years, wraps)
+#   gw0: 2030-2044 (15 years, wraps)
+#   gw1: 2045-2059 (15 years, wraps)
+#   gw2: 2060-2074 (15 years, wraps)
+#   gw3: 2075-2089 (15 years, wraps)
+# Uses modular arithmetic to ensure fiscal years NEVER exceed 2099,
+# satisfying StrategicPlan's CHECK constraint (base_year >= 2000 AND base_year <= 2100)
+_FISCAL_YEAR_WORKER_RANGE = 15  # Each worker gets 15 unique years before wrapping
+
+
+def _get_worker_fiscal_year_config() -> tuple[int, int]:
+    """Calculate base fiscal year and range size based on pytest-xdist worker ID.
+
+    Returns:
+        tuple[int, int]: (base_year, range_size) for modular wrapping
+    """
     worker_id = os.environ.get("PYTEST_XDIST_WORKER", "master")
     if worker_id == "master":
-        return 2025
+        # Single-process mode: smaller range starting at 2020
+        return 2020, 10
     try:
         worker_num = int(worker_id.replace("gw", ""))
-        # Use 10-year gaps: gw0=2030, gw1=2040, gw2=2050, etc.
-        return 2030 + (worker_num * 10)
+        # Workers get 15-year ranges: gw0=2030-2044, gw1=2045-2059, etc.
+        base = 2030 + (worker_num * _FISCAL_YEAR_WORKER_RANGE)
+        return base, _FISCAL_YEAR_WORKER_RANGE
     except ValueError:
-        return 2025
+        return 2020, 10
 
 
-_fiscal_year_counter = itertools.count(_get_worker_fiscal_year_base())
+_fiscal_year_base, _fiscal_year_range = _get_worker_fiscal_year_config()
+_fiscal_year_counter = itertools.count(0)  # Start from 0, use modulo for wrapping
 
 
 @pytest.fixture
 def fiscal_year_factory() -> Callable[[], int]:
-    """Return a callable that generates unique fiscal years per worker."""
-    return lambda: next(_fiscal_year_counter)
+    """Return a callable that generates unique fiscal years per worker.
+
+    Uses modular arithmetic to wrap within the worker's allocated range,
+    ensuring fiscal years never exceed 2099 (StrategicPlan constraint: 2000-2100).
+
+    Example:
+        gw0 with base=2030, range=15: generates 2030, 2031, ..., 2044, 2030, 2031, ...
+    """
+    return lambda: _fiscal_year_base + (next(_fiscal_year_counter) % _fiscal_year_range)
 
 
 @pytest.fixture
