@@ -125,32 +125,41 @@ async def mock_college_levels(
 
 @pytest.fixture
 async def mock_subjects(db_session: AsyncSession) -> list[Subject]:
-    """Create test subjects."""
-    subjects = [
-        Subject(
-            id=uuid.uuid4(),
-            code="MATH",
-            name_fr="Mathématiques",
-            name_en="Mathematics",
-            category="CORE",
-        ),
-        Subject(
-            id=uuid.uuid4(),
-            code="FR",
-            name_fr="Français",
-            name_en="French",
-            category="CORE",
-        ),
-        Subject(
-            id=uuid.uuid4(),
-            code="HIST",
-            name_fr="Histoire-Géographie",
-            name_en="History-Geography",
-            category="CORE",
-        ),
+    """Create test subjects, reusing existing ones to avoid UNIQUE constraint errors.
+
+    This fixture is idempotent - if subjects with these codes already exist
+    (from previous tests on the same worker), they are reused instead of
+    attempting to create duplicates.
+    """
+    from sqlalchemy import select
+
+    # Define subjects to create
+    subjects_data = [
+        ("MATH", "Mathématiques", "Mathematics", "CORE"),
+        ("FR", "Français", "French", "CORE"),
+        ("HIST", "Histoire-Géographie", "History-Geography", "CORE"),
     ]
-    for subject in subjects:
-        db_session.add(subject)
+
+    # Check for existing subjects first
+    codes = [s[0] for s in subjects_data]
+    result = await db_session.execute(select(Subject).where(Subject.code.in_(codes)))
+    existing = {s.code: s for s in result.scalars().all()}
+
+    subjects = []
+    for code, name_fr, name_en, category in subjects_data:
+        if code in existing:
+            subjects.append(existing[code])
+        else:
+            subject = Subject(
+                id=uuid.uuid4(),
+                code=code,
+                name_fr=name_fr,
+                name_en=name_en,
+                category=category,
+            )
+            db_session.add(subject)
+            subjects.append(subject)
+
     await db_session.flush()
     return subjects
 
@@ -281,11 +290,7 @@ class TestDHGSubjectHoursCalculation:
 
         # Find Math in 6ème
         math_6eme = next(
-            (
-                r
-                for r in result
-                if r.subject.code == "MATH" and r.level.code == "6EME"
-            ),
+            (r for r in result if r.subject.code == "MATH" and r.level.code == "6EME"),
             None,
         )
 
@@ -518,9 +523,7 @@ class TestTeacherRequirementCalculation:
 
         # Find Math requirement
         math_subject = next(s for s in mock_subjects if s.code == "MATH")
-        math_req = next(
-            r for r in requirements if r.subject_id == math_subject.id
-        )
+        math_req = next(r for r in requirements if r.subject_id == math_subject.id)
 
         # Expected calculation for Math:
         # 6ème: 6 classes × 4.5h = 27h
@@ -718,9 +721,7 @@ class TestTeacherAllocationManagement:
     ):
         """Test retrieving teacher allocations for a budget version."""
         # Initially empty
-        allocations = await dhg_service.get_teacher_allocations(
-            version_id=mock_budget_version.id
-        )
+        allocations = await dhg_service.get_teacher_allocations(version_id=mock_budget_version.id)
         assert allocations == []
 
     @pytest.mark.asyncio
@@ -935,9 +936,7 @@ class TestTeacherAllocationManagement:
         assert result is True
 
         # Verify it's deleted
-        allocations = await dhg_service.get_teacher_allocations(
-            version_id=mock_budget_version.id
-        )
+        allocations = await dhg_service.get_teacher_allocations(version_id=mock_budget_version.id)
         assert len(allocations) == 0
 
     @pytest.mark.asyncio
@@ -1112,9 +1111,7 @@ class TestGapAnalysis:
         )
 
         # Perform gap analysis
-        gap_analysis = await dhg_service.get_trmd_gap_analysis(
-            version_id=mock_budget_version.id
-        )
+        gap_analysis = await dhg_service.get_trmd_gap_analysis(version_id=mock_budget_version.id)
 
         # Verify structure
         assert gap_analysis["budget_version_id"] == mock_budget_version.id
@@ -1124,10 +1121,7 @@ class TestGapAnalysis:
         assert len(gap_analysis["by_subject"]) == 3  # Math, French, History
 
         # Find Math subject analysis
-        math_analysis = next(
-            s for s in gap_analysis["by_subject"]
-            if s["subject_code"] == "MATH"
-        )
+        math_analysis = next(s for s in gap_analysis["by_subject"] if s["subject_code"] == "MATH")
         assert math_analysis["besoins_fte"] == 5  # Rounded FTE for Math
         assert math_analysis["moyens_fte"] == Decimal("2.0")
         assert math_analysis["deficit_fte"] == 3  # 5 - 2
@@ -1180,15 +1174,10 @@ class TestGapAnalysis:
         )
 
         # Perform gap analysis
-        gap_analysis = await dhg_service.get_trmd_gap_analysis(
-            version_id=mock_budget_version.id
-        )
+        gap_analysis = await dhg_service.get_trmd_gap_analysis(version_id=mock_budget_version.id)
 
         # Find Math subject analysis
-        math_analysis = next(
-            s for s in gap_analysis["by_subject"]
-            if s["subject_code"] == "MATH"
-        )
+        math_analysis = next(s for s in gap_analysis["by_subject"] if s["subject_code"] == "MATH")
         assert math_analysis["besoins_fte"] == 5
         assert math_analysis["moyens_fte"] == Decimal("8.0")
         assert math_analysis["deficit_fte"] == -3  # 5 - 8 = -3 (surplus)
@@ -1207,9 +1196,7 @@ class TestGapAnalysis:
             BusinessRuleError,
             match="Cannot perform TRMD analysis without teacher requirements",
         ):
-            await dhg_service.get_trmd_gap_analysis(
-                version_id=mock_budget_version.id
-            )
+            await dhg_service.get_trmd_gap_analysis(version_id=mock_budget_version.id)
 
 
 # ==============================================================================
@@ -1259,9 +1246,7 @@ class TestDHGServiceErrorHandling:
         mock_budget_version,
     ):
         """Test retrieving DHG hours for version with no calculations."""
-        result = await dhg_service.get_dhg_subject_hours(
-            version_id=mock_budget_version.id
-        )
+        result = await dhg_service.get_dhg_subject_hours(version_id=mock_budget_version.id)
 
         assert isinstance(result, list)
         assert len(result) == 0
