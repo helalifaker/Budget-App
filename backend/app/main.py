@@ -9,6 +9,7 @@ import errno
 import os
 import sys
 import traceback
+from typing import Any
 
 import httpx
 import sentry_sdk
@@ -26,8 +27,10 @@ from app.api.v1 import (
     configuration_router,
     consolidation_router,
     costs_router,
+    enrollment_settings_router,
     export_router,
     historical_router,
+    organization_router,
     planning_router,
     strategic_router,
     workforce_router,
@@ -40,6 +43,61 @@ from app.middleware.auth import AuthenticationMiddleware
 from app.middleware.metrics import RequestMetricsMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.routes import health
+
+# =============================================================================
+# Sentry Error Filtering
+# =============================================================================
+# These errors are transient/expected and should not be reported to Sentry:
+# - CancelledError: Client disconnected before response (normal browser behavior)
+# - BrokenPipeError: Client closed connection (errno 32)
+# - ConnectionResetError: Connection reset by peer
+# - ConnectionAbortedError: Connection aborted by client
+# - TimeoutError from asyncio: Request cancelled due to client disconnect
+
+SENTRY_IGNORED_EXCEPTIONS = (
+    "CancelledError",
+    "BrokenPipeError",
+    "ConnectionResetError",
+    "ConnectionAbortedError",
+)
+
+
+def sentry_before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] | None:
+    """
+    Filter out transient errors before sending to Sentry.
+
+    These errors are expected behavior and not actionable:
+    - Client disconnects (CancelledError, BrokenPipe, ConnectionReset)
+    - These create noise in Sentry without providing debugging value
+
+    Returns:
+        event dict to send, or None to drop the event
+    """
+    if "exc_info" in hint:
+        exc_type, exc_value, _ = hint["exc_info"]
+        exc_name = exc_type.__name__
+
+        # Filter out known transient exceptions
+        if exc_name in SENTRY_IGNORED_EXCEPTIONS:
+            return None
+
+        # Also filter asyncio.CancelledError (different module path)
+        if exc_name == "CancelledError":
+            return None
+
+        # Filter OSError with errno 32 (EPIPE - Broken pipe)
+        if isinstance(exc_value, OSError) and getattr(exc_value, "errno", None) == errno.EPIPE:
+            return None
+
+        # Filter "connection was closed" errors from asyncpg
+        exc_message = str(exc_value).lower()
+        if "connection was closed" in exc_message:
+            return None
+        if "cancelled" in exc_message and "cancel scope" in exc_message:
+            return None
+
+    return event
+
 
 # Initialize Sentry before FastAPI app creation
 if os.getenv("SENTRY_DSN_BACKEND"):
@@ -57,6 +115,8 @@ if os.getenv("SENTRY_DSN_BACKEND"):
         enable_tracing=True,
         # Send default PII (Personally Identifiable Information)
         send_default_pii=False,
+        # Filter out transient/expected errors
+        before_send=sentry_before_send,  # type: ignore[arg-type]
     )
 
 
@@ -151,6 +211,8 @@ def create_app() -> FastAPI:
     app.include_router(writeback_router)
     app.include_router(export_router)
     app.include_router(historical_router)
+    app.include_router(enrollment_settings_router)
+    app.include_router(organization_router)
 
     return app
 
