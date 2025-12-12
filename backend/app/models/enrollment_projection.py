@@ -28,6 +28,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import (
     BaseModel,
+    PortableJSON,
     ReferenceDataModel,
     VersionedMixin,
     get_fk_target,
@@ -35,8 +36,9 @@ from app.models.base import (
 )
 
 if TYPE_CHECKING:
-    from app.models.auth import User
-    from app.models.configuration import AcademicCycle, AcademicLevel, BudgetVersion
+    from app.models.configuration import AcademicCycle, AcademicLevel
+    # Note: BudgetVersion is inherited from VersionedMixin
+    # Note: User model not imported - query auth.users directly when needed
 
 
 class EnrollmentScenario(ReferenceDataModel):
@@ -121,10 +123,12 @@ class EnrollmentProjectionConfig(BaseModel, VersionedMixin):
         DateTime(timezone=True),
         nullable=True,
     )
+    # Note: No ForeignKey constraint at ORM level because auth.users is managed
+    # by Supabase. The database FK constraint is managed via migrations.
     validated_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey(get_fk_target("efir_budget", "users", "id")),
         nullable=True,
+        comment="User who validated this projection config",
     )
 
     scenario: Mapped[EnrollmentScenario] = relationship("EnrollmentScenario")
@@ -150,10 +154,8 @@ class EnrollmentProjectionConfig(BaseModel, VersionedMixin):
         cascade="all, delete-orphan",
     )
 
-    budget_version: Mapped[BudgetVersion] = relationship("BudgetVersion")
-    validated_by_user: Mapped["User | None"] = relationship(
-        "User", foreign_keys=[validated_by]
-    )
+    # Note: budget_version relationship is inherited from VersionedMixin
+    # Note: No relationship to User model - query auth.users directly when needed
 
 
 class EnrollmentGlobalOverride(BaseModel):
@@ -370,3 +372,157 @@ class EnrollmentProjection(BaseModel):
         "EnrollmentProjectionConfig", back_populates="projections"
     )
     level: Mapped[AcademicLevel] = relationship("AcademicLevel")
+
+
+# =============================================================================
+# NEW: Enrollment Derived Parameters & Settings Tables
+# =============================================================================
+
+
+class EnrollmentDerivedParameter(BaseModel):
+    """Auto-calculated enrollment parameters from rolling 4-year historical window."""
+
+    __tablename__ = "enrollment_derived_parameters"
+    __table_args__ = get_table_args(
+        UniqueConstraint("organization_id", "grade_code", name="uk_derived_params_org_grade"),
+        CheckConstraint("confidence IN ('high', 'medium', 'low')", name="ck_derived_params_confidence"),
+        CheckConstraint(
+            "progression_rate >= 0 AND progression_rate <= 3",
+            name="ck_derived_params_progression_range",
+        ),
+        CheckConstraint(
+            "lateral_entry_rate >= 0 AND lateral_entry_rate <= 1",
+            name="ck_derived_params_lateral_range",
+        ),
+        CheckConstraint(
+            "retention_rate >= 0 AND retention_rate <= 1",
+            name="ck_derived_params_retention_range",
+        ),
+        CheckConstraint("years_used >= 0", name="ck_derived_params_years_non_negative"),
+        comment=__doc__,
+    )
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(get_fk_target("efir_budget", "organizations", "id"), ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    grade_code: Mapped[str] = mapped_column(String(10), nullable=False)
+
+    # Derived values
+    progression_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(6, 4), nullable=True
+    )  # e.g., 1.1410 = 114.10%
+    lateral_entry_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(6, 4), nullable=True
+    )  # e.g., 0.1410 = 14.10%
+    retention_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(6, 4), nullable=True
+    )  # e.g., 0.9600 = 96.00%
+
+    # Quality indicators
+    confidence: Mapped[str] = mapped_column(String(10), nullable=False, default="low")
+    std_deviation: Mapped[Decimal | None] = mapped_column(Numeric(6, 4), nullable=True)
+    years_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Metadata
+    calculated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    source_years: Mapped[list[str]] = mapped_column(
+        PortableJSON,
+        nullable=False,
+        default=list,
+    )
+
+    # Note: organization relationship omitted since Organization model not defined in SQLAlchemy
+    # Database FK constraint exists via migration
+
+
+class EnrollmentParameterOverride(BaseModel):
+    """User overrides for enrollment parameters (lateral entry and retention rates)."""
+
+    __tablename__ = "enrollment_parameter_overrides"
+    __table_args__ = get_table_args(
+        UniqueConstraint("organization_id", "grade_code", name="uk_param_overrides_org_grade"),
+        CheckConstraint(
+            "manual_lateral_rate IS NULL OR (manual_lateral_rate >= 0 AND manual_lateral_rate <= 1)",
+            name="ck_param_overrides_lateral_range",
+        ),
+        CheckConstraint(
+            "manual_retention_rate IS NULL OR (manual_retention_rate >= 0.5 AND manual_retention_rate <= 1)",
+            name="ck_param_overrides_retention_range",
+        ),
+        CheckConstraint(
+            "manual_fixed_lateral IS NULL OR (manual_fixed_lateral >= 0 AND manual_fixed_lateral <= 100)",
+            name="ck_param_overrides_fixed_lateral_range",
+        ),
+        comment=__doc__,
+    )
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(get_fk_target("efir_budget", "organizations", "id"), ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    grade_code: Mapped[str] = mapped_column(String(10), nullable=False)
+
+    # Override flags and values
+    override_lateral_rate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    manual_lateral_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(6, 4), nullable=True
+    )  # 0.0000 to 1.0000
+
+    override_retention_rate: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    manual_retention_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(6, 4), nullable=True
+    )  # 0.5000 to 1.0000
+
+    override_fixed_lateral: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    manual_fixed_lateral: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # 0 to 100
+
+    # Metadata
+    # Note: No ForeignKey constraint at ORM level because auth.users is managed
+    # by Supabase. The database FK constraint is managed via migrations.
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        comment="User who last updated this override",
+    )
+    override_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Note: No relationship to User model - query auth.users directly when needed
+    # This follows the pattern established in base.py AuditMixin
+
+
+class EnrollmentScenarioMultiplier(BaseModel):
+    """Scenario-specific lateral entry multipliers."""
+
+    __tablename__ = "enrollment_scenario_multipliers"
+    __table_args__ = get_table_args(
+        UniqueConstraint("organization_id", "scenario_code", name="uk_scenario_mult_org_scenario"),
+        CheckConstraint(
+            "lateral_multiplier >= 0.1 AND lateral_multiplier <= 3.0",
+            name="ck_scenario_mult_range",
+        ),
+        comment=__doc__,
+    )
+
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(get_fk_target("efir_budget", "organizations", "id"), ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    scenario_code: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    # Single multiplier per scenario
+    lateral_multiplier: Mapped[Decimal] = mapped_column(
+        Numeric(4, 2), nullable=False, default=Decimal("1.00")
+    )
+
+    # Note: organization relationship omitted since Organization model not defined in SQLAlchemy
