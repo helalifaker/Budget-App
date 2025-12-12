@@ -190,33 +190,44 @@ export type HistoricalModuleCode =
  */
 export type PercentageChangeVariant = 'positive' | 'negative' | 'neutral'
 
+type NumericLike = number | string | null | undefined
+
+const toNumber = (value: NumericLike): number | null => {
+  if (value === null || value === undefined) return null
+  const num = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(num) ? num : null
+}
+
 /**
  * Get color variant based on percentage change
  */
-export function getPercentageVariant(pct: number | null): PercentageChangeVariant {
-  if (pct === null) return 'neutral'
-  if (pct > 0) return 'positive'
-  if (pct < 0) return 'negative'
+export function getPercentageVariant(pct: NumericLike): PercentageChangeVariant {
+  const numeric = toNumber(pct)
+  if (numeric === null) return 'neutral'
+  if (numeric > 0) return 'positive'
+  if (numeric < 0) return 'negative'
   return 'neutral'
 }
 
 /**
  * Format percentage change with sign
  */
-export function formatPercentageChange(pct: number | null): string {
-  if (pct === null) return 'N/A'
-  const sign = pct > 0 ? '+' : ''
-  return `${sign}${pct.toFixed(1)}%`
+export function formatPercentageChange(pct: NumericLike): string {
+  const numeric = toNumber(pct)
+  if (numeric === null) return 'N/A'
+  const sign = numeric > 0 ? '+' : ''
+  return `${sign}${numeric.toFixed(1)}%`
 }
 
 /**
  * Format absolute change with sign
  */
-export function formatAbsoluteChange(abs: number | null, isCurrency = false): string {
-  if (abs === null) return 'N/A'
-  const sign = abs > 0 ? '+' : ''
+export function formatAbsoluteChange(abs: NumericLike, isCurrency = false): string {
+  const numeric = toNumber(abs)
+  if (numeric === null) return 'N/A'
+  const sign = numeric > 0 ? '+' : ''
   if (isCurrency) {
-    return `${sign}${abs.toLocaleString('en-SA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} SAR`
+    return `${sign}${numeric.toLocaleString('en-SA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} SAR`
   }
-  return `${sign}${abs.toLocaleString()}`
+  return `${sign}${numeric.toLocaleString()}`
 }

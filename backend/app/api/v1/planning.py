@@ -13,6 +13,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.enrollment_projection import router as enrollment_projection_router
 from app.database import get_db
 from app.dependencies.auth import UserDep
 from app.schemas.planning import (
@@ -61,6 +62,7 @@ from app.services.impact_calculator_service import (
 from app.services.planning_progress_service import PlanningProgressService
 
 router = APIRouter(prefix="/api/v1/planning", tags=["planning"])
+router.include_router(enrollment_projection_router)
 
 
 def get_enrollment_service(db: AsyncSession = Depends(get_db)) -> EnrollmentService:

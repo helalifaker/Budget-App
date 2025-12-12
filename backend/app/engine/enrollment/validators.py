@@ -6,7 +6,7 @@ All validators are pure functions that raise exceptions on validation failure.
 
 Business Rules:
 --------------
-1. Total school capacity: 1,875 students maximum
+1. Total school capacity: 1,850 students default (configurable per version)
 2. Growth rates: Conservative (0-2%), Base (3-5%), Optimistic (6-8%)
 3. Custom growth rates: -50% to +100% allowed
 4. Attrition rates: 0% to 50% allowed
@@ -20,8 +20,8 @@ from app.engine.enrollment.models import (
     EnrollmentProjectionResult,
 )
 
-# EFIR School Capacity (from specifications)
-EFIR_MAX_CAPACITY = 1875  # Maximum total enrollment
+# Default EFIR School Capacity (configurable via enrollment_projection_configs)
+EFIR_MAX_CAPACITY = 1850
 
 
 class CapacityExceededError(Exception):
@@ -43,11 +43,11 @@ def validate_capacity(
     """
     Validate that projected enrollment does not exceed school capacity.
 
-    Business Rule: EFIR has a maximum capacity of ~1,875 students.
+    Business Rule: EFIR has a default maximum capacity of ~1,850 students.
 
     Args:
         projected_enrollment: Total projected student count
-        capacity_limit: Maximum capacity (default: 1,875)
+        capacity_limit: Maximum capacity (default: 1,850)
 
     Raises:
         CapacityExceededError: If projected enrollment exceeds capacity
@@ -57,7 +57,7 @@ def validate_capacity(
         >>> validate_capacity(1900)  # Raises CapacityExceededError
         Traceback (most recent call last):
         ...
-        CapacityExceededError: Projected enrollment 1900 exceeds capacity 1875
+        CapacityExceededError: Projected enrollment 1900 exceeds capacity 1850
     """
     if projected_enrollment > capacity_limit:
         raise CapacityExceededError(
@@ -76,7 +76,7 @@ def validate_total_capacity(
 
     Args:
         projection_results: List of projection results for all levels
-        capacity_limit: Maximum capacity (default: 1,875)
+        capacity_limit: Maximum capacity (default: 1,850)
 
     Returns:
         Tuple of (capacity_exceeded, year_exceeded, total_enrollment)

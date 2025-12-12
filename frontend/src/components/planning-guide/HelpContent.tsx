@@ -113,7 +113,8 @@ function getHelpContentForStep(stepId: StepProgress['step_id']) {
         {
           icon: '🎯',
           title: 'Capacity Limit',
-          description: 'Total enrollment must not exceed 1,875 students (school maximum capacity)',
+          description:
+            'Total enrollment must not exceed the configured school capacity (default 1,850 students)',
         },
         {
           icon: '📊',
@@ -142,7 +143,7 @@ function getHelpContentForStep(stepId: StepProgress['step_id']) {
         {
           question: 'Why does it say "Over capacity"?',
           answer:
-            "Your total enrollment exceeds the school's maximum capacity of 1,875 students. You need to reduce enrollment figures or contact your administrator to adjust capacity parameters.",
+            "Your total enrollment exceeds the school's configured maximum capacity (default 1,850 students). Reduce enrollment figures or adjust capacity parameters in projections.",
         },
         {
           question: 'Can I skip nationality types?',

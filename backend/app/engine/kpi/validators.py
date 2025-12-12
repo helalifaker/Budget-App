@@ -52,7 +52,7 @@ def validate_kpi_input(kpi_input: KPIInput) -> None:
         >>> valid_input = KPIInput(
         ...     total_students=1850,
         ...     secondary_students=650,
-        ...     max_capacity=1875,
+        ...     max_capacity=1850,
         ...     total_teacher_fte=Decimal("154.2"),
         ...     total_revenue=Decimal("83272500"),
         ...     total_costs=Decimal("74945250"),
@@ -62,7 +62,7 @@ def validate_kpi_input(kpi_input: KPIInput) -> None:
         >>> invalid_input = KPIInput(
         ...     total_students=1850,
         ...     secondary_students=2000,  # More than total!
-        ...     max_capacity=1875,
+        ...     max_capacity=1850,
         ...     total_teacher_fte=Decimal("154.2"),
         ...     total_revenue=Decimal("83272500"),
         ...     total_costs=Decimal("74945250"),

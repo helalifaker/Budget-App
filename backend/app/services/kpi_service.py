@@ -28,6 +28,7 @@ from app.models.planning import (
     EnrollmentPlan,
 )
 from app.services.base import BaseService
+from app.services.enrollment_capacity import get_effective_capacity
 from app.services.exceptions import NotFoundError, ValidationError
 
 
@@ -617,6 +618,7 @@ class KPIService:
         )
         personnel_costs_sar = _to_decimal((await self.session.execute(personnel_query)).scalar())
 
+        effective_capacity = await get_effective_capacity(self.session, budget_version_id)
         return {
             "total_students": int(total_students),
             "primary_students": int(primary_students),
@@ -637,7 +639,7 @@ class KPIService:
             "total_revenue_sar": total_revenue_sar,
             "total_costs_sar": total_costs_sar,
             "personnel_costs_sar": personnel_costs_sar,
-            "max_capacity": 1875,
+            "max_capacity": effective_capacity,
         }
 
     async def _calculate_single_kpi(

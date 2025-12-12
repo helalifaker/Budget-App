@@ -21,6 +21,7 @@ from app.core.logging import logger
 from app.models.configuration import AcademicLevel, BudgetVersion, BudgetVersionStatus
 from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
 from app.models.planning import ClassStructure, DHGTeacherRequirement, EnrollmentPlan
+from app.services.enrollment_capacity import get_effective_capacity
 from app.services.exceptions import NotFoundError, ServiceException
 
 
@@ -46,7 +47,6 @@ class DashboardService:
             session: Async database session
         """
         self.session = session
-        self.MAX_CAPACITY = Decimal("1875")
 
     async def get_dashboard_summary(
         self,
@@ -139,8 +139,13 @@ class DashboardService:
             student_teacher_ratio = float(
                 (Decimal(str(total_students)) / total_teachers_fte) if total_teachers_fte else 0
             )
+            effective_capacity = Decimal(
+                str(await get_effective_capacity(self.session, budget_version_id))
+            )
             capacity_utilization_pct = float(
-                (Decimal(str(total_students)) / self.MAX_CAPACITY * 100) if self.MAX_CAPACITY else 0
+                (Decimal(str(total_students)) / effective_capacity * 100)
+                if effective_capacity
+                else 0
             )
 
             summary = {

@@ -96,7 +96,7 @@ async def calculate_kpis(
         {
             "total_students": 1850,
             "secondary_students": 650,
-            "max_capacity": 1875,
+            "max_capacity": 1850,
             "total_teacher_fte": 154.17,
             "dhg_hours_total": 877.5,
             "total_revenue": 83272500,

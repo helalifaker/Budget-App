@@ -426,13 +426,16 @@ class CacheInvalidator:
     """
 
     @classmethod
-    async def invalidate(cls, budget_version_id: str, entity: str) -> int:
+    async def invalidate(
+        cls, budget_version_id: str, entity: str, _visited: set[str] | None = None
+    ) -> int:
         """
         Invalidate entity cache and all dependent caches recursively.
 
         Args:
             budget_version_id: UUID of budget version
             entity: Entity type (e.g., 'enrollment', 'dhg_calculations')
+            _visited: Internal tracking set to prevent duplicate processing
 
         Returns:
             Total number of cache keys deleted
@@ -444,6 +447,22 @@ class CacheInvalidator:
             )
             # Returns: 15 (deleted 15 cache keys across all dependents)
         """
+        # FIX Issue #2: Deduplication - prevent processing same entity multiple times
+        # Before: enrollment → revenue → kpi_dashboard processed 3-4x (11+ SCAN ops)
+        # After: Each entity processed exactly once (6 SCAN ops)
+        if _visited is None:
+            _visited = set()
+
+        if entity in _visited:
+            logger.debug(
+                "cache_invalidation_skipped_duplicate",
+                entity=entity,
+                budget_version_id=budget_version_id,
+            )
+            return 0
+
+        _visited.add(entity)
+
         if not REDIS_ENABLED:
             logger.debug("cache_invalidation_skipped", reason="redis_disabled", entity=entity)
             return 0
@@ -488,13 +507,71 @@ class CacheInvalidator:
             deleted_keys=deleted_count,
         )
 
-        # Recursively invalidate dependents
+        # Recursively invalidate dependents (passing _visited to prevent duplicates)
         dependents = CACHE_DEPENDENCY_GRAPH.get(entity, [])
         for dependent in dependents:
-            dependent_deleted = await cls.invalidate(budget_version_id, dependent)
+            dependent_deleted = await cls.invalidate(budget_version_id, dependent, _visited)
             deleted_count += dependent_deleted
 
         return deleted_count
+
+    @classmethod
+    def invalidate_background(cls, budget_version_id: str, entity: str) -> None:
+        """
+        Fire-and-forget cache invalidation.
+
+        Schedules cache invalidation as a background task without blocking the caller.
+        This is the RECOMMENDED method for use in API endpoints to avoid blocking
+        the response while Redis SCAN operations complete (which can take 2-3s).
+
+        The invalidation will complete asynchronously. If it fails, the cache keys
+        will eventually expire via TTL (graceful degradation).
+
+        Args:
+            budget_version_id: UUID of budget version
+            entity: Entity type to invalidate (e.g., 'enrollment')
+
+        Example:
+            # In API endpoint - returns immediately, invalidation happens in background
+            CacheInvalidator.invalidate_background(str(version_id), "enrollment")
+            return config  # Response sent before invalidation completes
+        """
+        import asyncio
+
+        async def _background_invalidate() -> None:
+            """Wrapper to handle exceptions in background task."""
+            try:
+                deleted = await cls.invalidate(budget_version_id, entity)
+                logger.debug(
+                    "cache_invalidation_background_complete",
+                    budget_version_id=budget_version_id,
+                    entity=entity,
+                    deleted_keys=deleted,
+                )
+            except Exception as exc:
+                # Log but don't raise - cache will expire via TTL
+                logger.warning(
+                    "cache_invalidation_background_failed",
+                    budget_version_id=budget_version_id,
+                    entity=entity,
+                    error=str(exc),
+                )
+
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(_background_invalidate())
+            logger.debug(
+                "cache_invalidation_background_scheduled",
+                budget_version_id=budget_version_id,
+                entity=entity,
+            )
+        except RuntimeError:
+            # No event loop running - skip invalidation (graceful degradation)
+            logger.warning(
+                "cache_invalidation_skipped_no_loop",
+                budget_version_id=budget_version_id,
+                entity=entity,
+            )
 
     @classmethod
     async def invalidate_all(cls, budget_version_id: str) -> int:

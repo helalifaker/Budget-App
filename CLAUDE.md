@@ -483,3 +483,20 @@ These files are updated frequently with timestamp headers:
 | Product architect | `docs/MODULES/` | `MODULE_{NN}_{NAME}.md` |
 
 See [docs/DOCUMENTATION_GUIDE.md](docs/DOCUMENTATION_GUIDE.md) for complete governance and naming conventions.
+
+---
+
+## MCP Setup (Codex CLI)
+
+This repo uses MCP servers via Codex CLI for agent tooling. MCP servers are configured globally in `~/.codex/config.toml`.
+
+### Supabase MCP
+
+1. Ensure your Supabase access token is available as an environment variable:
+   - Add `SUPABASE_ACCESS_TOKEN=...` to `.env.local` (root), or export it in your shell before launching Codex.
+2. Add the Supabase MCP server:
+   ```bash
+   codex mcp add supabase --url "https://mcp.supabase.com/mcp?project_ref=<your_project_ref>"
+   ```
+3. Verify it was added (if `codex mcp list` errors on macOS, inspect `~/.codex/config.toml` instead):
+   - Look for `mcp_servers.supabase.url` pointing to your project.

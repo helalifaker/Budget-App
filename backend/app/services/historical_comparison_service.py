@@ -233,12 +233,24 @@ class HistoricalComparisonService:
             history_years=history_years,
         )
 
-        # Build response rows
+        # AGGREGATE enrollment by level (sum across all nationalities)
+        # EnrollmentPlan has one row per (level, nationality), so we must aggregate
+        level_totals: dict[UUID, tuple[AcademicLevel, int]] = {}
+        for enrollment, level in enrollments:
+            student_count = enrollment.student_count or 0
+            if level.id in level_totals:
+                # Add to existing level total
+                existing_level, existing_count = level_totals[level.id]
+                level_totals[level.id] = (existing_level, existing_count + student_count)
+            else:
+                # First record for this level
+                level_totals[level.id] = (level, student_count)
+
+        # Build response rows from aggregated totals
         rows = []
         total_current = 0
 
-        for enrollment, level in enrollments:
-            student_count = enrollment.student_count or 0
+        for _level_id, (level, student_count) in level_totals.items():
             total_current += student_count
 
             row = {

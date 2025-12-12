@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { useEnrollmentWithDistribution } from '@/hooks/api/useEnrollment'
 import { useClassSizeParams, useLevels } from '@/hooks/api/useConfiguration'
+import { useEnrollmentProjectionConfig } from '@/hooks/api/useEnrollmentProjection'
 import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { Link } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
@@ -68,6 +69,7 @@ function EnrollmentValidationPage() {
   } = useEnrollmentWithDistribution(selectedVersionId)
   const { data: classSizeParams, isLoading: paramsLoading } = useClassSizeParams(selectedVersionId)
   const { data: levels } = useLevels()
+  const { data: projectionConfig } = useEnrollmentProjectionConfig(selectedVersionId)
 
   // Calculate validation checks
   const validationChecks = useMemo((): ValidationCheck[] => {
@@ -121,7 +123,7 @@ function EnrollmentValidationPage() {
     })
 
     // 3. Capacity Check
-    const SCHOOL_CAPACITY = 1875
+    const SCHOOL_CAPACITY = projectionConfig?.school_max_capacity ?? 1850
     const totalStudents = enrollmentData?.summary?.total_students ?? 0
     const capacityPercent = (totalStudents / SCHOOL_CAPACITY) * 100
     const isOverCapacity = capacityPercent > 100
@@ -181,7 +183,7 @@ function EnrollmentValidationPage() {
     })
 
     return checks
-  }, [selectedVersionId, enrollmentData, classSizeParams, levels])
+  }, [selectedVersionId, enrollmentData, classSizeParams, levels, projectionConfig])
 
   // Calculate overall status
   const overallStatus = useMemo(() => {

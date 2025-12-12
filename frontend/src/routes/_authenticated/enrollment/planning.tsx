@@ -1,767 +1,419 @@
 /**
  * Enrollment Planning Page - /enrollment/planning
  *
- * Manages student enrollment by level with nationality distribution.
- * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
- *
- * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
+ * Projection-driven enrollment planner (Retention + Lateral Entry).
+ * Features:
+ * - Step-by-step workflow with numbered tabs
+ * - Contextual explanations via StepIntroCard
+ * - Help tooltips on all fields
+ * - Clear navigation between steps
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { ColDef, CellValueChangedEvent, ValueFormatterParams } from 'ag-grid-community'
-import { DataTableLazy } from '@/components/DataTableLazy'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
-import { Button } from '@/components/ui/button'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Save, Users, TrendingUp, Globe, AlertCircle, CheckCircle } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useCycles, useLevels } from '@/hooks/api/useConfiguration'
 import {
-  useEnrollmentWithDistribution,
-  useBulkUpsertEnrollmentTotals,
-  useBulkUpsertDistributions,
-} from '@/hooks/api/useEnrollment'
-import { useLevels } from '@/hooks/api/useConfiguration'
-import { useBudgetVersions } from '@/hooks/api/useBudgetVersions'
-import { EnrollmentBreakdown } from '@/types/api'
+  useCalculateProjections,
+  useEnrollmentProjectionConfig,
+  useEnrollmentProjectionResults,
+  useEnrollmentScenarios,
+  useUnvalidateProjections,
+  useUpdateGlobalOverrides,
+  useUpdateGradeOverrides,
+  useUpdateLevelOverrides,
+  useUpdateProjectionConfig,
+  useValidateProjections,
+} from '@/hooks/api/useEnrollmentProjection'
 import { toastMessages } from '@/lib/toast-messages'
-import { Badge } from '@/components/ui/badge'
-import { HistoricalToggle, HistoricalSummary } from '@/components/planning/HistoricalToggle'
-import { createHistoricalColumns } from '@/components/grid/HistoricalColumns'
-import { useEnrollmentWithHistory } from '@/hooks/api/useHistorical'
+import { ScenarioSelector } from '@/components/enrollment/ScenarioSelector'
+import {
+  BasicOverridesPanel,
+  AdvancedOverridesPanel,
+} from '@/components/enrollment/GlobalOverridesPanel'
+import { LevelOverridesPanel } from '@/components/enrollment/LevelOverridesPanel'
+import { GradeOverridesGrid } from '@/components/enrollment/GradeOverridesGrid'
+import { ProjectionResultsGrid } from '@/components/enrollment/ProjectionResultsGrid'
+import { NationalityDistributionPanel } from '@/components/enrollment/NationalityDistributionPanel'
+import { CapacityWarningBanner } from '@/components/enrollment/CapacityWarningBanner'
+import { ValidationConfirmDialog } from '@/components/enrollment/ValidationConfirmDialog'
+import { StepIntroCard } from '@/components/enrollment/StepIntroCard'
+import { AdvancedFeaturesSection } from '@/components/enrollment/AdvancedFeaturesSection'
+import { WelcomeDialog } from '@/components/enrollment/WelcomeDialog'
+import { WhatsNextCard } from '@/components/enrollment/WhatsNextCard'
+import { ProjectionSummaryCard } from '@/components/enrollment/ProjectionSummaryCard'
+import { ContextualTip } from '@/components/ui/ContextualTip'
+import { STEP_INTRO_CONTENT } from '@/constants/enrollment-field-definitions'
+import type { GlobalOverrides, GradeOverride, LevelOverride } from '@/types/enrollmentProjection'
+
+interface LevelLike {
+  id: string
+  code: string
+  name_fr?: string | null
+  name_en?: string | null
+  sort_order?: number | null
+  cycle_id?: string | null
+  cycle?: { code: string } | null
+}
+
+interface CycleLike {
+  id: string
+  code: string
+  name_fr?: string | null
+  name_en?: string | null
+}
 
 export const Route = createFileRoute('/_authenticated/enrollment/planning')({
   beforeLoad: requireAuth,
   component: EnrollmentPlanningPage,
 })
 
-// School capacity constant
-const SCHOOL_CAPACITY = 1875
-const LEVEL_CAPACITY = 125
-
-// ============================================================================
-// Types for local state
-// ============================================================================
-
-interface LocalTotal {
-  level_id: string
-  level_code: string
-  level_name: string
-  cycle_code: string
-  total_students: number
-  capacity: number
-}
-
-interface LocalDistribution {
-  level_id: string
-  level_code: string
-  level_name: string
-  cycle_code: string
-  french_pct: number
-  saudi_pct: number
-  other_pct: number
-  sum: number
-  isValid: boolean
-}
-
-// ============================================================================
-// Main Page Component
-// ============================================================================
-
 function EnrollmentPlanningPage() {
   const { selectedVersionId } = useBudgetVersion()
-  const [activeTab, setActiveTab] = useState('totals')
-  const [showHistorical, setShowHistorical] = useState(false)
-
-  // Local state for editing
-  const [localTotals, setLocalTotals] = useState<LocalTotal[]>([])
-  const [localDistributions, setLocalDistributions] = useState<LocalDistribution[]>([])
-  const [hasUnsavedTotals, setHasUnsavedTotals] = useState(false)
-  const [hasUnsavedDistributions, setHasUnsavedDistributions] = useState(false)
-
-  // Queries
-  const {
-    data: enrollmentData,
-    isLoading,
-    error,
-  } = useEnrollmentWithDistribution(selectedVersionId)
-  const { data: levelsData } = useLevels()
-  const { data: budgetVersions } = useBudgetVersions()
-
-  // Historical data query - only enabled when toggle is ON
-  const { data: historicalData, isLoading: historicalLoading } = useEnrollmentWithHistory(
-    selectedVersionId,
-    {
-      enabled: showHistorical,
-    }
+  const [activeTab, setActiveTab] = useState<'projections' | 'distribution' | 'validation'>(
+    'projections'
   )
+  const resultsRef = useRef<HTMLDivElement>(null)
 
-  // Get current fiscal year from selected budget version
-  const currentFiscalYear = useMemo(() => {
-    if (!selectedVersionId || !budgetVersions?.items) return new Date().getFullYear()
-    const version = budgetVersions.items.find((v) => v.id === selectedVersionId)
-    return version?.fiscal_year ?? new Date().getFullYear()
-  }, [selectedVersionId, budgetVersions])
+  const { data: scenarios = [] } = useEnrollmentScenarios()
+  const { data: config, isLoading: configLoading } =
+    useEnrollmentProjectionConfig(selectedVersionId)
+  const { data: results, isLoading: resultsLoading } =
+    useEnrollmentProjectionResults(selectedVersionId)
 
-  // Mutations
-  const saveTotalsMutation = useBulkUpsertEnrollmentTotals()
-  const saveDistributionsMutation = useBulkUpsertDistributions()
+  const { data: levels = [] } = useLevels()
+  const { data: cycles = [] } = useCycles()
 
-  // Get cycle code from level's cycle_id
-  const getCycleCode = useCallback((cycleId: string) => {
-    // Map cycle_id to code based on known cycles
-    const cycleMap: Record<string, string> = {
-      MAT: 'MAT',
-      ELEM: 'ELEM',
-      COLL: 'COLL',
-      LYC: 'LYC',
-    }
-    // For now, derive from level code patterns
-    return cycleMap[cycleId] ?? ''
-  }, [])
+  const updateConfig = useUpdateProjectionConfig()
+  const updateGlobal = useUpdateGlobalOverrides()
+  const updateLevel = useUpdateLevelOverrides()
+  const updateGrade = useUpdateGradeOverrides()
+  const calculate = useCalculateProjections()
+  const validate = useValidateProjections()
+  const unvalidate = useUnvalidateProjections()
 
-  // Initialize local state from API data
-  useEffect(() => {
-    if (enrollmentData && levelsData) {
-      // Build totals with level info
-      const totals = levelsData.map((level) => {
-        const existingTotal = enrollmentData.totals.find((t) => t.level_id === level.id)
-        return {
-          level_id: level.id,
-          level_code: level.code,
-          level_name: level.name_fr || level.name_en,
-          cycle_code: level.cycle_id ? getCycleCode(level.cycle_id) : '',
-          total_students: existingTotal?.total_students ?? 0,
-          capacity: LEVEL_CAPACITY,
-        }
-      })
-      setLocalTotals(totals)
+  const disabled = config?.status === 'validated'
 
-      // Build distributions with level info
-      const distributions = levelsData.map((level) => {
-        const existingDist = enrollmentData.distributions.find((d) => d.level_id === level.id)
-        const french = existingDist?.french_pct ?? 0
-        const saudi = existingDist?.saudi_pct ?? 0
-        const other = existingDist?.other_pct ?? 0
-        const sum = french + saudi + other
-        return {
-          level_id: level.id,
-          level_code: level.code,
-          level_name: level.name_fr || level.name_en,
-          cycle_code: level.cycle_id ? getCycleCode(level.cycle_id) : '',
-          french_pct: french,
-          saudi_pct: saudi,
-          other_pct: other,
-          sum,
-          isValid: Math.abs(sum - 100) < 0.01 || sum === 0,
-        }
-      })
-      setLocalDistributions(distributions)
+  const selectedScenarioId = config?.scenario_id ?? null
 
-      setHasUnsavedTotals(false)
-      setHasUnsavedDistributions(false)
-    }
-  }, [enrollmentData, levelsData, getCycleCode])
-
-  // Calculate summary statistics
-  const statistics = useMemo(() => {
-    if (!enrollmentData?.summary) {
-      return {
-        totalStudents: localTotals.reduce((sum, t) => sum + t.total_students, 0),
-        capacityUtilization: 0,
-        byNationality: {} as Record<string, number>,
-        byCycle: {} as Record<string, number>,
+  // PERFORMANCE FIX: Memoize handlers with useCallback to prevent child re-renders
+  const onSelectScenario = useCallback(
+    (scenarioId: string) => {
+      if (!selectedVersionId) {
+        toastMessages.warning.selectVersion()
+        return
       }
-    }
-
-    const total = localTotals.reduce((sum, t) => sum + t.total_students, 0)
-    return {
-      totalStudents: total,
-      capacityUtilization: Math.round((total / SCHOOL_CAPACITY) * 1000) / 10,
-      byNationality: enrollmentData.summary.by_nationality,
-      byCycle: enrollmentData.summary.by_cycle,
-    }
-  }, [enrollmentData?.summary, localTotals])
-
-  // Check if all distributions are valid
-  const allDistributionsValid = useMemo(() => {
-    return localDistributions.every((d) => d.isValid || d.sum === 0)
-  }, [localDistributions])
-
-  // Save totals handler
-  const handleSaveTotals = async () => {
-    if (!selectedVersionId) {
-      toastMessages.warning.selectVersion()
-      return
-    }
-
-    try {
-      await saveTotalsMutation.mutateAsync({
+      updateConfig.mutate({
         versionId: selectedVersionId,
-        totals: localTotals.map((t) => ({
-          level_id: t.level_id,
-          total_students: t.total_students,
-        })),
+        updates: { scenario_id: scenarioId },
       })
-      setHasUnsavedTotals(false)
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  // Save distributions handler
-  const handleSaveDistributions = async () => {
-    if (!selectedVersionId) {
-      toastMessages.warning.selectVersion()
-      return
-    }
-
-    if (!allDistributionsValid) {
-      toastMessages.error.validation('All percentages must sum to 100%')
-      return
-    }
-
-    try {
-      // Filter out empty distributions (sum = 0)
-      const nonEmptyDistributions = localDistributions.filter((d) => d.sum > 0)
-
-      await saveDistributionsMutation.mutateAsync({
-        versionId: selectedVersionId,
-        distributions: nonEmptyDistributions.map((d) => ({
-          level_id: d.level_id,
-          french_pct: d.french_pct,
-          saudi_pct: d.saudi_pct,
-          other_pct: d.other_pct,
-        })),
-      })
-      setHasUnsavedDistributions(false)
-    } catch {
-      // Error handled by mutation
-    }
-  }
-
-  // ============================================================================
-  // Merge local totals with historical data
-  // ============================================================================
-
-  const mergedTotals = useMemo(() => {
-    if (!showHistorical || !historicalData?.rows) {
-      return localTotals
-    }
-    return localTotals.map((row) => {
-      const histRow = historicalData.rows.find((h) => h.level_id === row.level_id)
-      return {
-        ...row,
-        history: histRow?.history ?? null,
-      }
-    })
-  }, [localTotals, showHistorical, historicalData])
-
-  // Historical columns for enrollment comparison
-  const historicalColumns = useMemo(() => {
-    if (!showHistorical) return []
-    return createHistoricalColumns({
-      historyField: 'history',
-      currentFiscalYear,
-      isCurrency: false,
-      columnWidth: 110,
-    })
-  }, [showHistorical, currentFiscalYear])
-
-  // ============================================================================
-  // Column Definitions for Totals Grid
-  // ============================================================================
-
-  const totalsColumnDefs: ColDef<LocalTotal>[] = useMemo(
-    () => [
-      {
-        field: 'cycle_code',
-        headerName: 'Cycle',
-        width: 100,
-        rowGroup: true,
-        hide: true,
-      },
-      {
-        field: 'level_code',
-        headerName: 'Level',
-        width: 100,
-      },
-      {
-        field: 'level_name',
-        headerName: 'Name',
-        flex: 1,
-      },
-      {
-        field: 'total_students',
-        headerName: 'Total Students',
-        width: 150,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 500,
-        },
-        cellClass: (params) => {
-          const capacity = params.data?.capacity ?? LEVEL_CAPACITY
-          if (params.value > capacity) {
-            return 'bg-red-100 text-red-800'
-          }
-          if (params.value > capacity * 0.8) {
-            return 'bg-yellow-100 text-yellow-800'
-          }
-          return ''
-        },
-      },
-      // Spread historical columns when enabled
-      ...(showHistorical ? historicalColumns : []),
-      {
-        field: 'capacity',
-        headerName: 'Capacity',
-        width: 100,
-        valueFormatter: (params: ValueFormatterParams) => `${params.value}`,
-      },
-      {
-        headerName: 'Utilization',
-        width: 120,
-        valueGetter: (params) => {
-          const total = params.data?.total_students ?? 0
-          const capacity = params.data?.capacity ?? 1
-          return Math.round((total / capacity) * 100)
-        },
-        cellRenderer: (params: { value: number }) => {
-          const pct = params.value
-          let color = 'bg-green-500'
-          if (pct > 100) color = 'bg-red-500'
-          else if (pct > 80) color = 'bg-yellow-500'
-
-          return (
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-2 bg-gray-200 rounded">
-                <div
-                  className={`h-2 rounded ${color}`}
-                  style={{ width: `${Math.min(pct, 100)}%` }}
-                />
-              </div>
-              <span className="text-xs w-10">{pct}%</span>
-            </div>
-          )
-        },
-      },
-    ],
-    [showHistorical, historicalColumns]
-  )
-
-  // ============================================================================
-  // Column Definitions for Distribution Grid
-  // ============================================================================
-
-  const distributionColumnDefs: ColDef<LocalDistribution>[] = useMemo(
-    () => [
-      {
-        field: 'cycle_code',
-        headerName: 'Cycle',
-        width: 100,
-        rowGroup: true,
-        hide: true,
-      },
-      {
-        field: 'level_code',
-        headerName: 'Level',
-        width: 100,
-      },
-      {
-        field: 'level_name',
-        headerName: 'Name',
-        flex: 1,
-      },
-      {
-        field: 'french_pct',
-        headerName: 'French %',
-        width: 120,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 100,
-          precision: 2,
-        },
-      },
-      {
-        field: 'saudi_pct',
-        headerName: 'Saudi %',
-        width: 120,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 100,
-          precision: 2,
-        },
-      },
-      {
-        field: 'other_pct',
-        headerName: 'Other %',
-        width: 120,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 0,
-          max: 100,
-          precision: 2,
-        },
-      },
-      {
-        field: 'sum',
-        headerName: 'Total',
-        width: 100,
-        cellRenderer: (params: { data: LocalDistribution }) => {
-          const sum = params.data?.sum ?? 0
-          const isValid = params.data?.isValid
-          if (sum === 0) return <span className="text-gray-400">-</span>
-          return (
-            <span className={isValid ? 'text-green-600' : 'text-red-600'}>
-              {sum.toFixed(1)}%
-              {isValid ? (
-                <CheckCircle className="inline h-3 w-3 ml-1" />
-              ) : (
-                <AlertCircle className="inline h-3 w-3 ml-1" />
-              )}
-            </span>
-          )
-        },
-      },
-    ],
-    []
-  )
-
-  // ============================================================================
-  // Column Definitions for Breakdown Grid (Read-only)
-  // ============================================================================
-
-  const breakdownColumnDefs: ColDef<EnrollmentBreakdown>[] = useMemo(
-    () => [
-      {
-        field: 'cycle_code',
-        headerName: 'Cycle',
-        width: 100,
-        rowGroup: true,
-        hide: true,
-      },
-      {
-        field: 'level_code',
-        headerName: 'Level',
-        width: 100,
-      },
-      {
-        field: 'level_name',
-        headerName: 'Name',
-        flex: 1,
-      },
-      {
-        field: 'french_count',
-        headerName: 'French',
-        width: 100,
-        type: 'numericColumn',
-      },
-      {
-        field: 'saudi_count',
-        headerName: 'Saudi',
-        width: 100,
-        type: 'numericColumn',
-      },
-      {
-        field: 'other_count',
-        headerName: 'Other',
-        width: 100,
-        type: 'numericColumn',
-      },
-      {
-        field: 'total_students',
-        headerName: 'Total',
-        width: 100,
-        type: 'numericColumn',
-        cellClass: 'font-bold',
-      },
-    ],
-    []
-  )
-
-  // ============================================================================
-  // Cell Value Changed Handlers
-  // ============================================================================
-
-  const onTotalsCellValueChanged = useCallback((event: CellValueChangedEvent<LocalTotal>) => {
-    const { data, newValue, colDef } = event
-    if (!data || colDef.field !== 'total_students') return
-
-    setLocalTotals((prev) =>
-      prev.map((t) =>
-        t.level_id === data.level_id ? { ...t, total_students: Number(newValue) || 0 } : t
-      )
-    )
-    setHasUnsavedTotals(true)
-  }, [])
-
-  const onDistributionCellValueChanged = useCallback(
-    (event: CellValueChangedEvent<LocalDistribution>) => {
-      const { data, newValue, colDef } = event
-      if (!data) return
-
-      const field = colDef.field as 'french_pct' | 'saudi_pct' | 'other_pct'
-      if (!['french_pct', 'saudi_pct', 'other_pct'].includes(field)) return
-
-      setLocalDistributions((prev) =>
-        prev.map((d) => {
-          if (d.level_id !== data.level_id) return d
-
-          const updated = { ...d, [field]: Number(newValue) || 0 }
-          const sum = updated.french_pct + updated.saudi_pct + updated.other_pct
-          return {
-            ...updated,
-            sum,
-            isValid: Math.abs(sum - 100) < 0.01 || sum === 0,
-          }
-        })
-      )
-      setHasUnsavedDistributions(true)
     },
-    []
+    [selectedVersionId, updateConfig]
   )
 
-  // ============================================================================
-  // Render
-  // ============================================================================
+  const onGlobalChange = useCallback(
+    (patch: Partial<GlobalOverrides>) => {
+      if (!selectedVersionId) return
+      const current = config?.global_overrides ?? {
+        ps_entry_adjustment: null,
+        retention_adjustment: null,
+        lateral_multiplier_override: null,
+        class_size_override: null,
+      }
+      updateGlobal.mutate({
+        versionId: selectedVersionId,
+        overrides: { ...current, ...patch },
+      })
+    },
+    [selectedVersionId, config?.global_overrides, updateGlobal]
+  )
+
+  const onLevelChange = useCallback(
+    (rows: LevelOverride[]) => {
+      if (!selectedVersionId) return
+      updateLevel.mutate({
+        versionId: selectedVersionId,
+        overrides: rows.map((r) => ({
+          cycle_id: r.cycle_id,
+          class_size_ceiling: r.class_size_ceiling,
+          max_divisions: r.max_divisions,
+        })),
+      })
+    },
+    [selectedVersionId, updateLevel]
+  )
+
+  const onGradeChange = useCallback(
+    (rows: GradeOverride[]) => {
+      if (!selectedVersionId) return
+      updateGrade.mutate({
+        versionId: selectedVersionId,
+        overrides: rows.map((r) => ({
+          level_id: r.level_id,
+          retention_rate: r.retention_rate,
+          lateral_entry: r.lateral_entry,
+          max_divisions: r.max_divisions,
+          class_size_ceiling: r.class_size_ceiling,
+        })),
+      })
+    },
+    [selectedVersionId, updateGrade]
+  )
+
+  const isLoading = configLoading || resultsLoading
+
+  const projections = results?.projections ?? []
+  const maxCapacity = results?.config.school_max_capacity ?? config?.school_max_capacity ?? 1850
+
+  const levelsSorted = useMemo(() => {
+    const copy = [...(levels as unknown as LevelLike[])]
+    copy.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    return copy
+  }, [levels])
+
+  const onTabChange = (value: string) => {
+    if (value === 'projections' || value === 'distribution' || value === 'validation') {
+      setActiveTab(value)
+    }
+  }
+
+  // Navigate to next tab
+  const goToNextTab = () => {
+    if (activeTab === 'projections') setActiveTab('distribution')
+    else if (activeTab === 'distribution') setActiveTab('validation')
+  }
+
+  // Navigate to previous tab
+  const goToPreviousTab = () => {
+    if (activeTab === 'validation') setActiveTab('distribution')
+    else if (activeTab === 'distribution') setActiveTab('projections')
+  }
+
+  // Scroll to results section
+  const scrollToResults = () => {
+    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  // Handle unlocking projections for editing
+  const handleUnlockForEdit = () => {
+    if (selectedVersionId) {
+      unvalidate.mutate(selectedVersionId)
+      setActiveTab('projections')
+    }
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Summary Cards */}
-      {selectedVersionId && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Total Students */}
-          <Card data-testid="total-students-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div data-testid="total-students" className="text-2xl font-bold">
-                {statistics.totalStudents.toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Across all 15 levels</p>
-            </CardContent>
-          </Card>
+    <div className="space-y-6">
+      {/* Welcome Dialog for first-time users */}
+      <WelcomeDialog />
 
-          {/* Capacity Utilization */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">School Capacity</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{statistics.capacityUtilization}%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {statistics.totalStudents.toLocaleString()} / {SCHOOL_CAPACITY.toLocaleString()} max
-              </p>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                <div
-                  className={`h-2 rounded-full ${
-                    statistics.capacityUtilization > 90
-                      ? 'bg-red-500'
-                      : statistics.capacityUtilization > 75
-                        ? 'bg-yellow-500'
-                        : 'bg-green-500'
-                  }`}
-                  style={{ width: `${Math.min(statistics.capacityUtilization, 100)}%` }}
-                />
-              </div>
-            </CardContent>
-          </Card>
+      <Tabs value={activeTab} onValueChange={onTabChange}>
+        {/* Numbered Tab List */}
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="projections" className="flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sage/20 text-xs font-bold text-sage">
+              1
+            </span>
+            Projections
+          </TabsTrigger>
+          <TabsTrigger value="distribution" className="flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sage/20 text-xs font-bold text-sage">
+              2
+            </span>
+            Distribution
+          </TabsTrigger>
+          <TabsTrigger value="validation" className="flex items-center gap-2">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-sage/20 text-xs font-bold text-sage">
+              3
+            </span>
+            Validation
+          </TabsTrigger>
+        </TabsList>
 
-          {/* By Nationality */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">By Nationality</CardTitle>
-              <Globe className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                {Object.entries(statistics.byNationality).map(([nationality, count]) => (
-                  <div key={nationality} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{nationality}</span>
-                    <span className="font-medium">{count}</span>
-                  </div>
-                ))}
-                {Object.keys(statistics.byNationality).length === 0 && (
-                  <p className="text-xs text-muted-foreground">No data yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* By Cycle */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">By Cycle</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                {Object.entries(statistics.byCycle).map(([cycle, count]) => (
-                  <div key={cycle} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{cycle}</span>
-                    <span className="font-medium">{count}</span>
-                  </div>
-                ))}
-                {Object.keys(statistics.byCycle).length === 0 && (
-                  <p className="text-xs text-muted-foreground">No data yet</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Historical Toggle and Summary */}
-      {selectedVersionId && (
-        <div className="flex items-center justify-between mb-4">
-          <HistoricalToggle
-            showHistorical={showHistorical}
-            onToggle={setShowHistorical}
-            disabled={!selectedVersionId}
-            isLoading={historicalLoading}
-            currentFiscalYear={currentFiscalYear}
+        {/* Tab 1: Projections */}
+        <TabsContent value="projections" className="space-y-6">
+          {/* Step Introduction Card */}
+          <StepIntroCard
+            stepNumber={STEP_INTRO_CONTENT.projections.stepNumber}
+            title={STEP_INTRO_CONTENT.projections.title}
+            why={STEP_INTRO_CONTENT.projections.why}
+            whatToDo={STEP_INTRO_CONTENT.projections.whatToDo}
+            tip={STEP_INTRO_CONTENT.projections.tip}
           />
-          {showHistorical && historicalData?.totals && (
-            <HistoricalSummary
-              currentValue={statistics.totalStudents}
-              priorYearValue={historicalData.totals.n_minus_1?.value ?? null}
-              changePercent={historicalData.totals.vs_n_minus_1_pct ?? null}
-              label="Total Students vs Prior Year"
-              isCurrency={false}
-            />
-          )}
-        </div>
-      )}
 
-      {/* Tabbed Interface */}
-      {selectedVersionId ? (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <div className="flex items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="totals">
-                Enrollment by Level
-                {hasUnsavedTotals && (
-                  <Badge variant="secondary" className="ml-2 bg-yellow-100">
-                    Unsaved
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="distribution">
-                Nationality Distribution
-                {hasUnsavedDistributions && (
-                  <Badge variant="secondary" className="ml-2 bg-yellow-100">
-                    Unsaved
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="breakdown">Calculated Breakdown</TabsTrigger>
-            </TabsList>
-
-            {/* Save Button based on active tab */}
-            {activeTab === 'totals' && (
-              <Button
-                onClick={handleSaveTotals}
-                disabled={!hasUnsavedTotals || saveTotalsMutation.isPending}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {saveTotalsMutation.isPending ? 'Saving...' : 'Save Totals'}
-              </Button>
-            )}
-            {activeTab === 'distribution' && (
-              <Button
-                onClick={handleSaveDistributions}
-                disabled={
-                  !hasUnsavedDistributions ||
-                  saveDistributionsMutation.isPending ||
-                  !allDistributionsValid
-                }
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {saveDistributionsMutation.isPending ? 'Saving...' : 'Save Distribution'}
-              </Button>
-            )}
+          {/* Action bar */}
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => selectedVersionId && calculate.mutate(selectedVersionId)}
+              disabled={!selectedVersionId || calculate.isPending}
+            >
+              {calculate.isPending ? 'Calculating...' : 'Calculate Projections'}
+            </Button>
           </div>
 
-          {/* Tab 1: Enrollment Totals by Level */}
-          <TabsContent value="totals" className="space-y-4">
-            <div className="text-sm text-muted-foreground mb-2">
-              Enter total student count per level. Changes are saved when you click "Save Totals".
-              {showHistorical && (
-                <span className="ml-2 text-text-secondary">
-                  Historical columns show actual enrollment from prior fiscal years.
-                </span>
-              )}
-            </div>
-            <DataTableLazy
-              rowData={mergedTotals}
-              columnDefs={totalsColumnDefs}
-              loading={isLoading || (showHistorical && historicalLoading)}
-              error={error}
-              pagination={false}
-              onCellValueChanged={onTotalsCellValueChanged}
-              groupDisplayType="groupRows"
-              suppressMovableColumns
-            />
-          </TabsContent>
+          {/* Contextual Tip for Scenario Selection */}
+          <ContextualTip tipId="scenario-selection-hint" variant="compact">
+            Most schools start with the "Base Case" scenario. Only adjust parameters if you have
+            specific information about changes expected next year.
+          </ContextualTip>
 
-          {/* Tab 2: Nationality Distribution */}
-          <TabsContent value="distribution" className="space-y-4">
-            <div className="text-sm text-muted-foreground mb-2">
-              Set nationality percentages per level (must sum to 100%). These percentages are
-              applied to calculate the breakdown.
-            </div>
-            {!allDistributionsValid && (
-              <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
-                <AlertCircle className="inline h-4 w-4 mr-2" />
-                Some rows have percentages that don't sum to 100%. Please correct them before
-                saving.
-              </div>
-            )}
-            <DataTableLazy
-              rowData={localDistributions}
-              columnDefs={distributionColumnDefs}
-              loading={isLoading}
-              error={error}
-              pagination={false}
-              onCellValueChanged={onDistributionCellValueChanged}
-              groupDisplayType="groupRows"
-              suppressMovableColumns
-            />
-          </TabsContent>
+          {/* Scenario Selection */}
+          <ScenarioSelector
+            scenarios={scenarios}
+            selectedScenarioId={selectedScenarioId}
+            onSelect={onSelectScenario}
+            disabled={disabled}
+          />
 
-          {/* Tab 3: Calculated Breakdown (Read-only) */}
-          <TabsContent value="breakdown" className="space-y-4">
-            <div className="text-sm text-muted-foreground mb-2">
-              This view shows the calculated student counts by level and nationality based on your
-              totals and distribution percentages.
-            </div>
-            <DataTableLazy
-              rowData={enrollmentData?.breakdown ?? []}
-              columnDefs={breakdownColumnDefs}
-              loading={isLoading}
-              error={error}
-              pagination={false}
-              groupDisplayType="groupRows"
-              suppressMovableColumns
+          {/* Basic Adjustments (always visible) */}
+          {config && (
+            <BasicOverridesPanel
+              overrides={config.global_overrides}
+              onChange={onGlobalChange}
+              disabled={disabled}
             />
-          </TabsContent>
-        </Tabs>
-      ) : (
-        <div className="text-center py-12 text-muted-foreground">
-          Please select a budget version to view enrollment data
-        </div>
-      )}
+          )}
+
+          {/* Advanced Features Section (checkbox-gated) */}
+          {config && (
+            <AdvancedFeaturesSection disabled={disabled}>
+              {/* Advanced Global Overrides */}
+              <AdvancedOverridesPanel
+                overrides={config.global_overrides}
+                onChange={onGlobalChange}
+                disabled={disabled}
+              />
+
+              {/* Cycle-Level Overrides */}
+              <LevelOverridesPanel
+                cycles={cycles as unknown as CycleLike[]}
+                overrides={config.level_overrides}
+                onChange={onLevelChange}
+                disabled={disabled}
+              />
+
+              {/* Grade-Level Overrides */}
+              <GradeOverridesGrid
+                levels={levelsSorted}
+                overrides={config.grade_overrides}
+                onChange={onGradeChange}
+                disabled={disabled}
+              />
+            </AdvancedFeaturesSection>
+          )}
+
+          {/* Projection Summary Card */}
+          {projections.length > 0 && (
+            <ProjectionSummaryCard
+              projections={projections}
+              maxCapacity={maxCapacity}
+              onViewDetails={scrollToResults}
+            />
+          )}
+
+          {/* Capacity Warning */}
+          {projections.length > 0 && (
+            <CapacityWarningBanner projections={projections} maxCapacity={maxCapacity} />
+          )}
+
+          {/* Results Grid */}
+          <div ref={resultsRef}>
+            {projections.length > 0 && <ProjectionResultsGrid projections={projections} />}
+          </div>
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center p-8">
+              <div className="text-sm text-text-secondary">Loading projection data...</div>
+            </div>
+          )}
+
+          {/* Continue Button */}
+          <div className="flex justify-end pt-4 border-t border-border-light">
+            <Button type="button" onClick={goToNextTab} className="gap-2">
+              Continue to Step 2: Distribution
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </TabsContent>
+
+        {/* Tab 2: Distribution */}
+        <TabsContent value="distribution" className="space-y-6">
+          {/* Step Introduction Card */}
+          <StepIntroCard
+            stepNumber={STEP_INTRO_CONTENT.distribution.stepNumber}
+            title={STEP_INTRO_CONTENT.distribution.title}
+            why={STEP_INTRO_CONTENT.distribution.why}
+            whatToDo={STEP_INTRO_CONTENT.distribution.whatToDo}
+            tip={STEP_INTRO_CONTENT.distribution.tip}
+          />
+
+          {/* Distribution Panel */}
+          <NationalityDistributionPanel versionId={selectedVersionId} disabled={disabled} />
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-4 border-t border-border-light">
+            <Button type="button" variant="outline" onClick={goToPreviousTab}>
+              Back to Projections
+            </Button>
+            <Button type="button" onClick={goToNextTab} className="gap-2">
+              Continue to Step 3: Validation
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </TabsContent>
+
+        {/* Tab 3: Validation */}
+        <TabsContent value="validation" className="space-y-6">
+          {/* Step Introduction Card */}
+          <StepIntroCard
+            stepNumber={STEP_INTRO_CONTENT.validation.stepNumber}
+            title={STEP_INTRO_CONTENT.validation.title}
+            why={STEP_INTRO_CONTENT.validation.why}
+            whatToDo={STEP_INTRO_CONTENT.validation.whatToDo}
+            tip={STEP_INTRO_CONTENT.validation.tip}
+          />
+
+          {/* Validation Dialog or WhatsNextCard based on status */}
+          {config && config.status === 'validated' ? (
+            <WhatsNextCard onEdit={handleUnlockForEdit} />
+          ) : (
+            config && (
+              <ValidationConfirmDialog
+                status={config.status}
+                onValidate={(confirmation) =>
+                  selectedVersionId &&
+                  validate.mutate({ versionId: selectedVersionId, confirmation })
+                }
+                onUnvalidate={() => selectedVersionId && unvalidate.mutate(selectedVersionId)}
+                disabled={!selectedVersionId}
+              />
+            )
+          )}
+
+          {/* Results Preview */}
+          {projections.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-text-secondary">Projection Summary</h4>
+              <ProjectionSummaryCard projections={projections} maxCapacity={maxCapacity} />
+              <ProjectionResultsGrid projections={projections} />
+            </div>
+          )}
+
+          {/* Navigation Button */}
+          <div className="flex justify-start pt-4 border-t border-border-light">
+            <Button type="button" variant="outline" onClick={goToPreviousTab}>
+              Back to Distribution
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

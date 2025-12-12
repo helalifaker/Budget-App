@@ -8,29 +8,132 @@ This document defines how the 14 specialized agents work together to build and m
 
 ### 1. Orchestrator
 - **efir-master-agent** - Routes complex multi-domain tasks to specialized agents
+  - **Recommended Model**: ⚡ Opus (complex orchestration reasoning)
 
 ### 2. Architecture & Requirements (3 agents)
 - **product-architect-agent** - Guardian of PRD/FRS/business rules, provides formulas
+  - **Recommended Model**: ⚡ Opus (complex business validation)
 - **system-architect-agent** - Owns architecture, API contracts, module boundaries
+  - **Recommended Model**: ⚡ Opus (architectural decision-making)
 - **documentation-training-agent** - Creates all documentation and training materials
+  - **Recommended Model**: 💨 Haiku/🎯 Sonnet (formatting/writing)
 
 ### 3. Backend Agents (3 agents)
 - **database-supabase-agent** - PostgreSQL schema, RLS policies, migrations
+  - **Recommended Model**: 🎯 Sonnet (schema design & migrations)
 - **backend-engine-agent** - Calculation engines (DHG, enrollment, revenue, costs)
+  - **Recommended Model**: 🎯 Sonnet (calculation logic implementation)
 - **backend-api-specialist** - FastAPI endpoints and API layer
+  - **Recommended Model**: 🎯 Sonnet (API endpoint implementation)
 
 ### 4. Frontend Agent (1 agent)
 - **frontend-ui-agent** - React UI, components, all 18 modules
+  - **Recommended Model**: 🎯 Sonnet (UI development)
 
 ### 5. Cross-Cutting Agents (6 agents)
 - **governance-versioning-agent** - Budget lifecycle and workflow management
+  - **Recommended Model**: 🎯 Sonnet (workflow logic)
 - **reporting-statements-agent** - PCG/IFRS statements and board reports
+  - **Recommended Model**: 🎯 Sonnet (report generation)
 - **security-rls-agent** - Authentication, MFA, RLS policies
+  - **Recommended Model**: 🎯 Sonnet (security implementation)
 - **data-migration-agent** - ETL and data import from legacy systems
+  - **Recommended Model**: 💨 Haiku/🎯 Sonnet (simple ETL scripts)
 - **performance-agent** - Profiling, optimization, load testing
+  - **Recommended Model**: ⚡ Opus (deep performance analysis)
 - **qa-validation-agent** - Test coverage and quality assurance
+  - **Recommended Model**: 💨 Haiku (running tests), 🎯 Sonnet (writing tests)
 
 **Total: 14 specialized agents**
+
+## Model Selection Per Agent (Cost Optimization)
+
+### ⚠️ Important: This is Guidance, Not Automatic Enforcement
+
+Claude Code CAN specify different models per agent but does NOT automatically enforce these recommendations. Think of this like coding guidelines - helpful but not guaranteed to be followed consistently.
+
+**For critical tasks**: Explicitly request the model in your instructions (e.g., "Use Opus for this architecture design")
+
+### Model Characteristics
+
+| Model | Best For | Speed | Cost | When to Use |
+|-------|----------|-------|------|-------------|
+| **Haiku** | Simple, well-defined tasks | Fastest | Lowest | Running tests, formatting docs, simple ETL |
+| **Sonnet** | Standard development work | Balanced | Medium | Implementation, APIs, components (default) |
+| **Opus** | Complex reasoning & architecture | Slower | Highest | Architecture design, complex validation |
+
+### Critical Model Rules (Follow Strictly for Cost/Quality)
+
+#### ⚡ Always Use OPUS For:
+- **product-architect-agent** - Complex business rule validation, formula verification
+- **system-architect-agent** - Major architectural decisions, API contract design
+- **efir-master-agent** - Complex multi-agent orchestration planning
+- **performance-agent** - Deep performance analysis requiring complex reasoning
+
+#### 💨 Always Use HAIKU For:
+- **qa-validation-agent** - Running existing tests (not writing new complex tests)
+- **documentation-training-agent** - Formatting existing docs, simple updates
+- **data-migration-agent** - Simple ETL scripts with clear schema
+- Simple CRUD operations in any agent
+
+#### 🎯 Default to SONNET For:
+- **backend-engine-agent** - Calculation logic implementation
+- **frontend-ui-agent** - React components, UI development
+- **database-supabase-agent** - Schema design, migrations, RLS policies
+- **backend-api-specialist** - API endpoint implementation
+- **security-rls-agent** - Security implementations
+- **governance-versioning-agent** - Workflow logic
+- **reporting-statements-agent** - Report generation
+- Most standard development tasks
+
+### Model Selection Examples
+
+```javascript
+// Use Haiku for simple test runs
+Task({
+  subagent_type: "qa-validation-agent",
+  model: "haiku",
+  prompt: "Run the existing DHG calculation tests",
+  description: "Run DHG tests"
+})
+
+// Use Sonnet (default) for implementation - can omit model parameter
+Task({
+  subagent_type: "backend-engine-agent",
+  prompt: "Implement the enrollment projection calculation engine",
+  description: "Implement enrollment engine"
+})
+
+// Use Opus for complex architecture
+Task({
+  subagent_type: "system-architect-agent",
+  model: "opus",
+  prompt: "Design the architecture for the 5-year strategic planning module with integration patterns",
+  description: "Design 5-year planning architecture"
+})
+```
+
+### Strategies for Better Model Selection
+
+**For Users:**
+1. **Explicit requests**: "Run tests using Haiku" or "Design architecture using Opus"
+2. **Spot-check**: Look for `<invoke name="Task">` blocks and verify model selection
+3. **Remind**: If you see expensive models used unnecessarily, point it out
+
+**For Claude Code:**
+1. **Check this section** before invoking agents for high-impact tasks
+2. **Default reasoning**: If unsure, Haiku for simple tasks, Opus for architecture/complex reasoning, Sonnet otherwise
+3. **Cost awareness**: Prefer cheaper models when task complexity doesn't justify premium models
+
+### Cost Impact Estimation
+
+Typical agent workflow (full-stack feature):
+- **Without model selection**: All agents use Sonnet (inherited) - 100% cost baseline
+- **With optimization**:
+  - Opus for architects (2 agents, complex) - 30% cost
+  - Sonnet for implementation (6 agents, standard) - 60% cost
+  - Haiku for QA/docs (2 agents, simple) - 10% cost
+  - **Potential savings**: ~30-40% while maintaining/improving quality on critical decisions
 
 ## Agent Dependencies & Orchestration Rules
 
@@ -464,6 +567,11 @@ An orchestrated workflow is successful when:
 
 ### Agent-MCP Mapping
 
+**Note on Model Selection**: Consider model selection when using MCP servers:
+- Complex queries requiring deep reasoning → ⚡ Opus
+- Standard data retrieval/manipulation → 🎯 Sonnet
+- Simple lookups or test execution → 💨 Haiku
+
 #### database-supabase-agent
 **Primary MCP Servers**: `supabase`, `postgres`
 
@@ -781,8 +889,8 @@ Example:
 
 ---
 
-**Version**: 1.1.0
-**Last Updated**: 2025-12-10
+**Version**: 1.2.0
+**Last Updated**: 2025-12-12
 **Maintained By**: EFIR Master Agent
 **Total Agents**: 14
 **MCP Servers**: 10

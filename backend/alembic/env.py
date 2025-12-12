@@ -24,15 +24,16 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Get database URL from environment variable
-# Falls back to .env.local for development
-database_url = os.getenv("DATABASE_URL")
+# Get database URL from environment variable.
+# Prefer DIRECT_URL for migrations (bypasses pgBouncer), fallback to DATABASE_URL.
+database_url = os.getenv("DIRECT_URL") or os.getenv("DATABASE_URL")
 if database_url:
+    database_url = database_url.strip().strip('"').strip("'")
     # Ensure we're using asyncpg driver for async support
-    if database_url.startswith("postgresql://"):
-        database_url = database_url.replace(
-            "postgresql://", "postgresql+asyncpg://", 1
-        )
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     config.set_main_option("sqlalchemy.url", database_url)
 
 # Import models for autogenerate support

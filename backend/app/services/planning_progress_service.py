@@ -26,6 +26,7 @@ from app.schemas.planning_progress import (
     StepProgress,
     StepValidation,
 )
+from app.services.enrollment_capacity import get_effective_capacity
 
 
 class PlanningProgressService:
@@ -36,8 +37,7 @@ class PlanningProgressService:
     of the 6 planning steps (enrollment, class_structure, dhg, revenue, costs, capex).
     """
 
-    # Constants
-    TOTAL_CAPACITY = 1875  # Maximum student capacity
+    # Constants (capacity is per-version via enrollment_projection_configs)
     MIN_RECOMMENDED_STUDENTS = 500  # Minimum recommended enrollment
     OPTIMAL_MIN = 1000  # Optimal range minimum
     OPTIMAL_MAX = 1700  # Optimal range maximum
@@ -143,6 +143,7 @@ class PlanningProgressService:
         )
         enrollment_count, total_students = result.one()
         total_students = int(total_students or 0)
+        effective_capacity = await get_effective_capacity(self.db, budget_version_id)
 
         # Check: enrollment exists
         if enrollment_count == 0:
@@ -165,13 +166,13 @@ class PlanningProgressService:
             )
 
             # Check: capacity limits
-            if total_students > self.TOTAL_CAPACITY:
+            if total_students > effective_capacity:
                 validation.append(
                     StepValidation(
                         check_id="capacity_check",
                         status="failed",
-                        message=f"Over capacity! Total enrollment {total_students} exceeds maximum {self.TOTAL_CAPACITY}.",
-                        details={"total_students": total_students, "capacity": self.TOTAL_CAPACITY},
+                        message=f"Over capacity! Total enrollment {total_students} exceeds maximum {effective_capacity}.",
+                        details={"total_students": total_students, "capacity": effective_capacity},
                     )
                 )
                 status = "error"
@@ -181,7 +182,7 @@ class PlanningProgressService:
                     StepValidation(
                         check_id="capacity_check",
                         status="passed",
-                        message=f"Enrollment within capacity ({total_students}/{self.TOTAL_CAPACITY}).",
+                        message=f"Enrollment within capacity ({total_students}/{effective_capacity}).",
                     )
                 )
 

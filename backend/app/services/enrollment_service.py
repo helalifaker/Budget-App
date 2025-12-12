@@ -23,6 +23,7 @@ from app.engine.enrollment import (
 from app.models.configuration import AcademicLevel, NationalityType
 from app.models.planning import EnrollmentPlan, NationalityDistribution
 from app.services.base import BaseService
+from app.services.enrollment_capacity import get_effective_capacity
 from app.services.exceptions import (
     BusinessRuleError,
     ServiceException,
@@ -37,8 +38,6 @@ class EnrollmentService:
     Provides business logic for enrollment management, projection calculations,
     and capacity validation.
     """
-
-    EFIR_MAX_CAPACITY = 1875
 
     def __init__(self, session: AsyncSession):
         """
@@ -287,9 +286,10 @@ class EnrollmentService:
                 by_nationality.get(nationality_code, 0) + enrollment.student_count
             )
 
+        effective_capacity = await get_effective_capacity(self.session, version_id)
         capacity_utilization = Decimal(
-            (total_students / self.EFIR_MAX_CAPACITY) * 100
-            if self.EFIR_MAX_CAPACITY > 0
+            (total_students / effective_capacity) * 100
+            if effective_capacity > 0
             else 0
         ).quantize(Decimal("0.01"))
 
@@ -299,6 +299,7 @@ class EnrollmentService:
             "by_cycle": by_cycle,
             "by_nationality": by_nationality,
             "capacity_utilization": capacity_utilization,
+            "max_capacity": effective_capacity,
         }
 
     async def project_enrollment(
@@ -347,6 +348,8 @@ class EnrollmentService:
                 "Cannot project enrollment without existing enrollment data",
             )
 
+        effective_capacity = await get_effective_capacity(self.session, version_id)
+
         projections = []
 
         for enrollment in enrollments:
@@ -370,7 +373,7 @@ class EnrollmentService:
             projection_result = calculate_enrollment_projection(enrollment_input)
 
             final_year_projection = projection_result.projections[-1]
-            if final_year_projection.projected_enrollment > self.EFIR_MAX_CAPACITY / 10:
+            if final_year_projection.projected_enrollment > effective_capacity / 10:
                 projection_result.capacity_exceeded = True
 
             projections.append(projection_result)
@@ -378,14 +381,14 @@ class EnrollmentService:
         total_final_year = sum(
             p.projections[-1].projected_enrollment for p in projections
         )
-        if total_final_year > self.EFIR_MAX_CAPACITY:
+        if total_final_year > effective_capacity:
             raise BusinessRuleError(
                 "CAPACITY_EXCEEDED",
                 f"Projected enrollment ({total_final_year}) exceeds school capacity "
-                f"({self.EFIR_MAX_CAPACITY}) in year {years_to_project}",
+                f"({effective_capacity}) in year {years_to_project}",
                 details={
                     "projected_total": total_final_year,
-                    "max_capacity": self.EFIR_MAX_CAPACITY,
+                    "max_capacity": effective_capacity,
                     "year": years_to_project,
                 },
             )
@@ -424,16 +427,17 @@ class EnrollmentService:
 
         new_total = current_total + additional_students
 
-        if new_total > self.EFIR_MAX_CAPACITY:
+        effective_capacity = await get_effective_capacity(self.session, version_id)
+        if new_total > effective_capacity:
             raise BusinessRuleError(
                 "CAPACITY_EXCEEDED",
                 f"Total enrollment ({new_total}) would exceed school capacity "
-                f"({self.EFIR_MAX_CAPACITY})",
+                f"({effective_capacity})",
                 details={
                     "current_total": current_total,
                     "additional_students": additional_students,
                     "new_total": new_total,
-                    "max_capacity": self.EFIR_MAX_CAPACITY,
+                    "max_capacity": effective_capacity,
                 },
             )
 
@@ -638,11 +642,12 @@ class EnrollmentService:
         """
         # Validate total capacity
         total_students = sum(t.get("total_students", 0) for t in totals)
-        if total_students > self.EFIR_MAX_CAPACITY:
+        effective_capacity = await get_effective_capacity(self.session, version_id)
+        if total_students > effective_capacity:
             raise BusinessRuleError(
                 "CAPACITY_EXCEEDED",
                 f"Total enrollment ({total_students}) exceeds capacity "
-                f"({self.EFIR_MAX_CAPACITY})",
+                f"({effective_capacity})",
             )
 
         # Get distributions for calculating breakdown

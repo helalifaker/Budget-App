@@ -5,7 +5,7 @@
  * that display historical comparison data.
  */
 
-import { ColDef, ColGroupDef, ValueFormatterParams } from 'ag-grid-community'
+import { ColDef, ColGroupDef, ValueFormatterParams, ICellRendererParams } from 'ag-grid-community'
 import type { HistoricalComparison } from '@/types/historical'
 import {
   formatPercentageChange,
@@ -40,10 +40,13 @@ export function getPercentageClass(pct: number | null): string {
 /**
  * Get arrow character for percentage change
  */
-export function getPercentageArrow(pct: number | null): string {
-  if (pct === null) return ''
-  if (pct > 0) return '↑ '
-  if (pct < 0) return '↓ '
+export function getPercentageArrow(pct: number | string | null | undefined): string {
+  const numeric =
+    pct === null || pct === undefined ? null : typeof pct === 'number' ? pct : Number(pct)
+
+  if (numeric === null || Number.isNaN(numeric)) return ''
+  if (numeric > 0) return '↑ '
+  if (numeric < 0) return '↓ '
   return ''
 }
 
@@ -132,13 +135,18 @@ export function createHistoricalColumns(options: HistoricalColumnOptions): ColDe
       width: COLUMN_WIDTHS.percentage,
       headerClass: 'ag-header-change',
       editable: false,
-      cellRenderer: (params: ValueFormatterParams) => {
+      cellRenderer: (params: ICellRendererParams) => {
         const history = params.data?.[historyField] as HistoricalComparison | undefined
         const pct = history?.vs_n_minus_1_pct ?? null
         const arrow = getPercentageArrow(pct)
         const formatted = formatPercentageChange(pct)
         const className = getPercentageClass(pct)
-        return `<span class="${className}">${arrow}${formatted}</span>`
+        return (
+          <span className={className}>
+            {arrow}
+            {formatted}
+          </span>
+        )
       },
     },
     // vs N-2 percentage column
@@ -148,13 +156,18 @@ export function createHistoricalColumns(options: HistoricalColumnOptions): ColDe
       width: COLUMN_WIDTHS.percentage,
       headerClass: 'ag-header-change',
       editable: false,
-      cellRenderer: (params: ValueFormatterParams) => {
+      cellRenderer: (params: ICellRendererParams) => {
         const history = params.data?.[historyField] as HistoricalComparison | undefined
         const pct = history?.vs_n_minus_2_pct ?? null
         const arrow = getPercentageArrow(pct)
         const formatted = formatPercentageChange(pct)
         const className = getPercentageClass(pct)
-        return `<span class="${className}">${arrow}${formatted}</span>`
+        return (
+          <span className={className}>
+            {arrow}
+            {formatted}
+          </span>
+        )
       },
     },
   ]
