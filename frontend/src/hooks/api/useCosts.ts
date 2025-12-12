@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { costsApi } from '@/services/costs'
+import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
+
+// PERFORMANCE: 10 minutes staleTime for costs data
+// Costs change rarely during a session
+const COSTS_STALE_TIME = 10 * 60 * 1000 // 10 minutes
 
 export const costsKeys = {
   all: ['costs'] as const,
@@ -14,6 +19,7 @@ export function usePersonnelCosts(versionId: string) {
     queryKey: costsKeys.personnel(versionId),
     queryFn: () => costsApi.getPersonnelCosts(versionId),
     enabled: !!versionId,
+    staleTime: COSTS_STALE_TIME,
   })
 }
 
@@ -26,7 +32,9 @@ export function useCalculatePersonnelCosts() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: costsKeys.personnel(variables.versionId) })
       queryClient.invalidateQueries({ queryKey: costsKeys.summary(variables.versionId) })
+      toastMessages.success.calculated()
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -54,7 +62,9 @@ export function useCreatePersonnelCost() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: costsKeys.personnel(variables.versionId) })
       queryClient.invalidateQueries({ queryKey: costsKeys.summary(variables.versionId) })
+      toastMessages.success.created(entityNames.cost)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -64,6 +74,7 @@ export function useOperatingCosts(versionId: string) {
     queryKey: costsKeys.operating(versionId),
     queryFn: () => costsApi.getOperatingCosts(versionId),
     enabled: !!versionId,
+    staleTime: COSTS_STALE_TIME,
   })
 }
 
@@ -81,7 +92,9 @@ export function useCalculateOperatingCosts() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: costsKeys.operating(variables.versionId) })
       queryClient.invalidateQueries({ queryKey: costsKeys.summary(variables.versionId) })
+      toastMessages.success.calculated()
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -107,7 +120,9 @@ export function useCreateOperatingCost() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: costsKeys.operating(variables.versionId) })
       queryClient.invalidateQueries({ queryKey: costsKeys.summary(variables.versionId) })
+      toastMessages.success.created(entityNames.cost)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -117,5 +132,6 @@ export function useCostSummary(versionId: string) {
     queryKey: costsKeys.summary(versionId),
     queryFn: () => costsApi.getCostSummary(versionId),
     enabled: !!versionId,
+    staleTime: COSTS_STALE_TIME,
   })
 }

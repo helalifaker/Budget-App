@@ -335,7 +335,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('generate income statement (compte de résultat)', async ({ page }) => {
-    await page.goto('/consolidation/statements')
+    await page.goto('/finance/statements')
 
     // Select version
     await selectVersion(page)
@@ -361,7 +361,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('generate balance sheet (bilan)', async ({ page }) => {
-    await page.goto('/consolidation/statements')
+    await page.goto('/finance/statements')
 
     // Select version
     await selectVersion(page)
@@ -387,7 +387,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('generate cash flow statement', async ({ page }) => {
-    await page.goto('/consolidation/statements')
+    await page.goto('/finance/statements')
 
     // Select version
     await selectVersion(page)
@@ -413,7 +413,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('French PCG account code structure', async ({ page }) => {
-    await page.goto('/consolidation/statements')
+    await page.goto('/finance/statements')
 
     // Select version
     await selectVersion(page)
@@ -428,12 +428,12 @@ test.describe('Financial Statements', () => {
       expect(count).toBeGreaterThan(0)
     } else {
       // If no account codes visible, verify we're at least on the right page
-      await expect(page).toHaveURL(/\/consolidation\/statements/)
+      await expect(page).toHaveURL(/\/finance\/statements/)
     }
   })
 
   test('toggle between French PCG and IFRS view', async ({ page }) => {
-    await page.goto('/consolidation/statements')
+    await page.goto('/finance/statements')
 
     // Select version
     await selectVersion(page)
@@ -462,7 +462,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('export financial statements to PDF', async ({ page }) => {
-    await page.goto('/consolidation/statements')
+    await page.goto('/finance/statements')
 
     // Select version
     await selectVersion(page)
@@ -517,7 +517,7 @@ test.describe('Consolidation Validation', () => {
   })
 
   test('verify balance sheet equation: Assets = Liabilities + Equity', async ({ page }) => {
-    await page.goto('/consolidation/statements')
+    await page.goto('/finance/statements')
 
     // Select version
     await selectVersion(page)

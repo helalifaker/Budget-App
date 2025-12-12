@@ -221,8 +221,8 @@ function BudgetConsolidationPage() {
                     <YAxis tickFormatter={(value) => formatCurrency(value)} />
                     <Tooltip formatter={(value) => formatCurrency(value as number)} />
                     <Legend />
-                    <Bar dataKey="Revenue" fill="#10B981" />
-                    <Bar dataKey="Costs" fill="#EF4444" />
+                    <Bar dataKey="Revenue" fill="var(--color-sage)" />
+                    <Bar dataKey="Costs" fill="var(--color-terracotta)" />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>

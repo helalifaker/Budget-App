@@ -35,6 +35,10 @@ export interface ExcelKeyboardOptions {
   onCellsFilled?: (filledCells: FilledCell[]) => void
   /** Container element ref for keyboard events */
   containerRef: React.RefObject<HTMLElement | null>
+  /** Callback when paste occurs (from Ctrl+V) */
+  onPaste?: (
+    updates: Array<{ rowId: string; field: string; newValue: string; originalData: unknown }>
+  ) => Promise<void>
 }
 
 export interface ClearedCell {
@@ -73,6 +77,7 @@ export function useExcelKeyboard({
   onCellsCleared,
   onCellsFilled,
   containerRef,
+  onPaste,
 }: ExcelKeyboardOptions) {
   const [selectionInfo, setSelectionInfo] = useState<SelectionInfo>({
     cellCount: 0,
@@ -227,6 +232,98 @@ export function useExcelKeyboard({
   }, [getSelectedCellsData])
 
   /**
+   * Paste from clipboard using Clipboard API (Ctrl+V)
+   * This uses the async Clipboard API to read text directly,
+   * bypassing React's onPaste event which may not fire correctly.
+   */
+  const pasteFromClipboard = useCallback(async () => {
+    if (!gridApi || !enableEditing || !onPaste) {
+      console.log('[useExcelKeyboard] Paste: missing gridApi, enableEditing, or onPaste callback')
+      return
+    }
+
+    // Get the starting cell (focused cell)
+    const focusedCell = gridApi.getFocusedCell()
+    if (!focusedCell) {
+      console.log('[useExcelKeyboard] Paste: no focused cell')
+      return
+    }
+
+    try {
+      // Read clipboard using Clipboard API
+      const clipboardText = await navigator.clipboard.readText()
+      console.log('[useExcelKeyboard] Paste: clipboard text:', clipboardText?.substring(0, 100))
+
+      if (!clipboardText) {
+        console.log('[useExcelKeyboard] Paste: no clipboard text')
+        return
+      }
+
+      const { rowIndex, column: resultColumn } = focusedCell
+      const startRowIndex = rowIndex
+
+      // Get all visible columns
+      const allColumns = gridApi.getColumns()
+      if (!allColumns) return
+
+      const startColIndex = allColumns.indexOf(resultColumn)
+      if (startColIndex === -1) return
+
+      // Parse clipboard data (Excel format: rows by newline, cols by tab)
+      const rows = clipboardText.replace(/\r\n/g, '\n').replace(/\n$/, '').split('\n')
+      const data = rows.map((r) => r.split('\t'))
+
+      // Prepare updates
+      const updates: Array<{
+        rowId: string
+        field: string
+        newValue: string
+        originalData: unknown
+      }> = []
+
+      for (let i = 0; i < data.length; i++) {
+        const currentRowIndex = startRowIndex + i
+        const rowNode = gridApi.getDisplayedRowAtIndex(currentRowIndex)
+        if (!rowNode) break
+
+        const rowData = rowNode.data
+        const rowId = rowNode.id
+        if (!rowData || !rowId) continue
+
+        for (let j = 0; j < data[i].length; j++) {
+          const currentColIndex = startColIndex + j
+          if (currentColIndex >= allColumns.length) break
+
+          const column = allColumns[currentColIndex]
+          const colDef = column.getColDef()
+          const field = colDef.field
+
+          // Skip if column is not editable or has no field
+          if (!colDef.editable || !field) continue
+
+          const newValue = data[i][j].trim()
+
+          updates.push({
+            rowId,
+            field,
+            newValue,
+            originalData: rowData,
+          })
+        }
+      }
+
+      console.log('[useExcelKeyboard] Paste: updates to apply:', updates.length)
+
+      if (updates.length > 0) {
+        await onPaste(updates)
+        console.log('[useExcelKeyboard] Paste: complete')
+      }
+    } catch (err) {
+      console.error('[useExcelKeyboard] Failed to paste from clipboard:', err)
+    }
+  }, [gridApi, enableEditing, onPaste])
+
+  /**
    * Clear selected cells (Delete/Backspace)
    */
   const clearSelectedCells = useCallback(() => {
@@ -241,14 +338,14 @@ export function useExcelKeyboard({
       const allColumns = gridApi.getColumns() || []
 
       selectedNodes.forEach((node) => {
-        if (!node.data) return
+        if (!node.data || !node.id) return
 
         allColumns.forEach((col) => {
           const colDef = col.getColDef()
           if (colDef.editable && colDef.field) {
             const oldValue = node.data[colDef.field]
             clearedCells.push({
-              rowId: node.data.id,
+              rowId: node.id!, // Use node.id from getRowId callback
               field: colDef.field,
               oldValue,
             })
@@ -261,10 +358,10 @@ export function useExcelKeyboard({
       const rowNode = gridApi.getDisplayedRowAtIndex(focusedCell.rowIndex)
       const colDef = focusedCell.column.getColDef()
 
-      if (rowNode?.data && colDef.editable && colDef.field) {
+      if (rowNode?.data && rowNode.id && colDef.editable && colDef.field) {
         const oldValue = rowNode.data[colDef.field]
         clearedCells.push({
-          rowId: rowNode.data.id,
+          rowId: rowNode.id, // Use node.id from getRowId callback
           field: colDef.field,
           oldValue,
         })
@@ -294,7 +391,7 @@ export function useExcelKeyboard({
 
     // Copy first row's values to all other selected rows
     selectedNodes.slice(1).forEach((node) => {
-      if (!node.data) return
+      if (!node.data || !node.id) return
 
       allColumns.forEach((col) => {
         const colDef = col.getColDef()
@@ -304,7 +401,7 @@ export function useExcelKeyboard({
 
           if (newValue !== oldValue) {
             filledCells.push({
-              rowId: node.data.id,
+              rowId: node.id!, // Use node.id from getRowId callback
               field: colDef.field,
               newValue,
               oldValue,
@@ -443,6 +540,14 @@ export function useExcelKeyboard({
         return
       }
 
+      // Ctrl/Cmd + V: Paste
+      if (isModKey && key === 'v') {
+        console.log('[useExcelKeyboard] Ctrl+V pressed, triggering pasteFromClipboard')
+        pasteFromClipboard()
+        event.preventDefault()
+        return
+      }
+
       // Ctrl/Cmd + A: Select all
       if (isModKey && key === 'a') {
         selectAll()
@@ -518,6 +623,7 @@ export function useExcelKeyboard({
     [
       gridApi,
       copyToClipboard,
+      pasteFromClipboard,
       selectAll,
       fillDown,
       clearSelectedCells,

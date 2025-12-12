@@ -157,10 +157,10 @@ function SystemConfigPage() {
         {/* Category Filter */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Label htmlFor="category-filter">Catégorie:</Label>
+            <Label htmlFor="category-filter">Category:</Label>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger id="category-filter" className="w-[200px]">
-                <SelectValue placeholder="Sélectionner une catégorie" />
+                <SelectValue placeholder="Select a category" />
               </SelectTrigger>
               <SelectContent>
                 {CATEGORIES.map((cat) => (
@@ -177,10 +177,10 @@ function SystemConfigPage() {
         <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
           <AlertCircle className="mt-0.5 h-4 w-4 text-blue-600" />
           <div>
-            <p className="font-medium text-blue-900">Édition de configuration</p>
+            <p className="font-medium text-blue-900">Configuration Editing</p>
             <p className="text-blue-700">
-              Cliquez sur une cellule pour modifier. Les valeurs JSON doivent être valides. Format:{' '}
-              {'{'}&#34;key&#34;: &#34;value&#34;{'}'}, [1, 2, 3], ou &#34;string&#34;
+              Click a cell to edit. JSON values must be valid. Format: {'{'}&#34;key&#34;:
+              &#34;value&#34;{'}'}, [1, 2, 3], or &#34;string&#34;
             </p>
           </div>
         </div>
@@ -188,7 +188,7 @@ function SystemConfigPage() {
         {/* Data Grid */}
         {error ? (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-900">
-            Erreur de chargement: {error.message}
+            Loading error: {error.message}
           </div>
         ) : (
           <DataTableLazy

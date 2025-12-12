@@ -325,7 +325,7 @@ function PersonnelCostsTab({ data, isLoading }: { data: PersonnelCostItem[]; isL
       cellDataType: 'number',
       valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
       cellStyle: (params) =>
-        params.data.is_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
+        params.data.is_calculated ? { backgroundColor: 'var(--color-subtle)' } : undefined,
     },
     {
       headerName: 'Unit Cost (SAR)',
@@ -335,7 +335,7 @@ function PersonnelCostsTab({ data, isLoading }: { data: PersonnelCostItem[]; isL
       cellDataType: 'number',
       cellRenderer: CurrencyRenderer,
       cellStyle: (params) =>
-        params.data.is_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
+        params.data.is_calculated ? { backgroundColor: 'var(--color-subtle)' } : undefined,
     },
     {
       headerName: 'Total Cost (SAR)',

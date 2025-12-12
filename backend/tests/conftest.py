@@ -383,6 +383,24 @@ async def test_user_id(db_session: AsyncSession) -> UUID:
     return user_id
 
 
+@pytest.fixture
+async def organization_id(db_session: AsyncSession) -> UUID:
+    """
+    Create a test organization and return the ID.
+
+    This ensures foreign key constraints to organizations.id are satisfied
+    for models like EnrollmentDerivedParameter, EnrollmentParameterOverride,
+    and EnrollmentScenarioMultiplier.
+    """
+    from app.models.auth import Organization
+
+    org_id = uuid4()
+    org = Organization(id=org_id, name="Test School Organization", is_active=True)
+    db_session.add(org)
+    await db_session.flush()
+    return org_id
+
+
 # ==============================================================================
 # Academic Structure Fixtures
 # ==============================================================================
@@ -791,7 +809,10 @@ def fiscal_year_factory() -> Callable[[], int]:
 
 @pytest.fixture
 async def test_budget_version(
-    db_session: AsyncSession, test_user_id: UUID, fiscal_year_factory
+    db_session: AsyncSession,
+    test_user_id: UUID,
+    fiscal_year_factory,
+    organization_id: UUID,
 ) -> BudgetVersion:
     """Create a test budget version."""
     fiscal_year = fiscal_year_factory()
@@ -803,6 +824,7 @@ async def test_budget_version(
         status=BudgetVersionStatus.WORKING,
         is_baseline=False,
         notes="Test budget version",
+        organization_id=organization_id,
         created_by_id=test_user_id,
         created_at=datetime.utcnow(),
     )

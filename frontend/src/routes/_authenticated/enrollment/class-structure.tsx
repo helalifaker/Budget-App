@@ -11,7 +11,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
 import { useEffect, useMemo, useCallback, useState } from 'react'
 import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
-import { DataTableLazy } from '@/components/DataTableLazy'
+import { ExcelDataTableLazy, type ClearedCell } from '@/components/ExcelDataTableLazy'
 import { Button } from '@/components/ui/button'
 import { Calculator } from 'lucide-react'
 import {
@@ -181,6 +181,50 @@ function ClassStructurePage() {
     }
   }
 
+  /**
+   * Handle paste from clipboard (Ctrl+V)
+   * Batch updates all pasted cells to the backend
+   */
+  const handlePaste = async (
+    updates: Array<{ rowId: string; field: string; newValue: string; originalData: unknown }>
+  ) => {
+    // Process updates sequentially to avoid race conditions
+    for (const update of updates) {
+      try {
+        const numericValue = parseFloat(update.newValue)
+        if (!isNaN(numericValue)) {
+          await updateMutation.mutateAsync({
+            id: update.rowId,
+            data: {
+              [update.field]: numericValue,
+            },
+          })
+        }
+      } catch {
+        // Error toast handled by mutation
+      }
+    }
+  }
+
+  /**
+   * Handle cell clear (Delete key)
+   * Resets cleared cells to null/0
+   */
+  const handleCellsCleared = async (cells: ClearedCell[]) => {
+    for (const cell of cells) {
+      try {
+        await updateMutation.mutateAsync({
+          id: cell.rowId,
+          data: {
+            [cell.field]: 0, // Reset to 0 for numeric fields
+          },
+        })
+      } catch {
+        // Error toast handled by mutation
+      }
+    }
+  }
+
   return (
     <div className="p-6 space-y-4">
       {/* Page Actions */}
@@ -205,7 +249,7 @@ function ClassStructurePage() {
 
       {/* Content */}
       {selectedVersionId ? (
-        <DataTableLazy
+        <ExcelDataTableLazy<ClassStructure>
           rowData={mergedRowData}
           columnDefs={columnDefs}
           loading={classStructuresLoading || (showHistorical && historicalLoading)}
@@ -213,6 +257,12 @@ function ClassStructurePage() {
           pagination={true}
           paginationPageSize={50}
           onCellValueChanged={onCellValueChanged}
+          // Excel-like clipboard support
+          onPaste={handlePaste}
+          onCellsCleared={handleCellsCleared}
+          rowIdGetter={(data) => data.id}
+          tableLabel="Class Structure Grid"
+          showStatusBar={true}
         />
       ) : (
         <div className="text-center py-12 text-text-secondary">

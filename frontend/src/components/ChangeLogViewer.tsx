@@ -76,7 +76,7 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
   if (sessionGroups.length === 0) {
     return (
       <div className="text-center p-8 text-text-secondary">
-        <p>Aucune modification enregistrée</p>
+        <p>No changes recorded</p>
       </div>
     )
   }
@@ -84,7 +84,7 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-text-primary">Historique des modifications</h3>
+        <h3 className="text-lg font-semibold text-text-primary">Change History</h3>
         <Badge variant="outline" className="text-text-secondary">
           {sessionGroups.length} session{sessionGroups.length > 1 ? 's' : ''}
         </Badge>
@@ -198,7 +198,7 @@ export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewer
                       className="gap-1 text-text-secondary hover:text-text-primary hover:bg-subtle"
                     >
                       <Undo2 className="h-4 w-4" />
-                      Annuler
+                      Undo
                     </Button>
                   )}
                 </div>

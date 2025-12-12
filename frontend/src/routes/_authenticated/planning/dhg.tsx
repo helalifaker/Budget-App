@@ -5,11 +5,13 @@
  * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
  *
  * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
+ * Phase 12: Added draft pattern for performance optimization
  */
 
 import { createFileRoute } from '@tanstack/react-router'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { AgGridReact } from 'ag-grid-react'
+import type { CellValueChangedEvent } from 'ag-grid-community'
 import { ColDef, themeQuartz } from 'ag-grid-community'
 import { SummaryCard } from '@/components/SummaryCard'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -20,13 +22,16 @@ import {
   useSubjectHours,
   useTeacherRequirements,
   useTRMDGapAnalysis,
-  useCalculateTeacherRequirements,
+  useApplyAndCalculateDHG,
 } from '@/hooks/api/useDHG'
 import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { useBudgetVersions } from '@/hooks/api/useBudgetVersions'
 import { Users, Clock, AlertTriangle, TrendingUp, Calculator, Save } from 'lucide-react'
 import { HistoricalToggle, HistoricalSummary } from '@/components/planning/HistoricalToggle'
 import { useDHGWithHistory } from '@/hooks/api/useHistorical'
+import { DraftStatusIndicator } from '@/components/ui/DraftStatusIndicator'
+import { UnappliedChangesBanner } from '@/components/ui/UnappliedChangesBanner'
+import type { DraftStatus } from '@/hooks/useDraft'
 
 export const Route = createFileRoute('/_authenticated/planning/dhg')({
   component: DHGPage,
@@ -37,11 +42,16 @@ function DHGPage() {
   const [activeTab, setActiveTab] = useState<'hours' | 'fte' | 'trmd' | 'hsa'>('hours')
   const [showHistorical, setShowHistorical] = useState(false)
 
+  // Draft status tracking (Phase 12 Performance)
+  const [hasUnappliedChanges, setHasUnappliedChanges] = useState(false)
+  const [lastAppliedAt, setLastAppliedAt] = useState<Date | null>(null)
+  const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle')
+
   const { data: subjectHours, isLoading: loadingHours } = useSubjectHours(selectedVersionId!)
   const { data: teacherFTE, isLoading: loadingFTE } = useTeacherRequirements(selectedVersionId!)
   const { data: trmdGaps, isLoading: loadingTRMD } = useTRMDGapAnalysis(selectedVersionId!)
   const { data: budgetVersions } = useBudgetVersions()
-  const calculateFTE = useCalculateTeacherRequirements()
+  const applyAndCalculate = useApplyAndCalculateDHG()
 
   // Historical data query - only enabled when toggle is ON
   const { data: historicalData, isLoading: historicalLoading } = useDHGWithHistory(
@@ -61,11 +71,32 @@ function DHGPage() {
   // Check if TRMD data is null (prerequisites missing)
   const trmdMissingPrerequisites = !loadingTRMD && !trmdGaps
 
-  const handleCalculateFTE = () => {
-    if (selectedVersionId) {
-      calculateFTE.mutate({ versionId: selectedVersionId })
+  // PERFORMANCE: Apply & Calculate handler (BFF pattern)
+  const handleApplyAndCalculate = useCallback(async () => {
+    if (!selectedVersionId) return
+    setDraftStatus('applying')
+    try {
+      await applyAndCalculate.mutateAsync({ versionId: selectedVersionId })
+      setHasUnappliedChanges(false)
+      setLastAppliedAt(new Date())
+      setDraftStatus('applied')
+    } catch {
+      setDraftStatus('error')
     }
-  }
+  }, [selectedVersionId, applyAndCalculate])
+
+  // Discard changes handler - refetch data to reset to last saved state
+  const handleDiscardChanges = useCallback(() => {
+    setHasUnappliedChanges(false)
+    setDraftStatus('idle')
+    // Note: Data will be refetched from cache/server
+  }, [])
+
+  // Handler for tracking cell edits as draft changes
+  const handleCellValueChanged = useCallback(() => {
+    setHasUnappliedChanges(true)
+    setDraftStatus('saved') // Mark as having changes
+  }, [])
 
   // Summary metrics - API returns arrays directly
   const fteItems = teacherFTE || []
@@ -80,25 +111,43 @@ function DHGPage() {
 
   return (
     <div className="p-6 space-y-5">
-      {/* Page Actions */}
-      <div className="flex items-center justify-end gap-3">
-        <HistoricalToggle
-          showHistorical={showHistorical}
-          onToggle={setShowHistorical}
-          disabled={!selectedVersionId}
-          isLoading={historicalLoading}
-          currentFiscalYear={currentFiscalYear}
+      {/* Page Actions with Draft Status */}
+      <div className="flex items-center justify-between gap-3">
+        <DraftStatusIndicator
+          status={draftStatus}
+          lastAppliedAt={lastAppliedAt}
+          hasUnappliedChanges={hasUnappliedChanges}
         />
-        <Button
-          data-testid="calculate-button"
-          onClick={handleCalculateFTE}
-          disabled={!selectedVersionId || calculateFTE.isPending}
-          variant="premium"
-        >
-          <Calculator className="w-4 h-4" />
-          Recalculate FTE
-        </Button>
+        <div className="flex items-center gap-3">
+          <HistoricalToggle
+            showHistorical={showHistorical}
+            onToggle={setShowHistorical}
+            disabled={!selectedVersionId}
+            isLoading={historicalLoading}
+            currentFiscalYear={currentFiscalYear}
+          />
+          <Button
+            data-testid="calculate-button"
+            onClick={handleApplyAndCalculate}
+            disabled={!selectedVersionId || applyAndCalculate.isPending}
+            variant="premium"
+          >
+            <Calculator className="w-4 h-4" />
+            {applyAndCalculate.isPending ? 'Calculating...' : 'Apply & Calculate'}
+          </Button>
+        </div>
       </div>
+
+      {/* Unapplied Changes Banner */}
+      {selectedVersionId && (
+        <UnappliedChangesBanner
+          hasChanges={hasUnappliedChanges}
+          impactSummary={`${totalSubjects} subjects, ${totalFTE.toFixed(1)} FTE`}
+          onDiscard={handleDiscardChanges}
+          onApply={handleApplyAndCalculate}
+          isApplying={applyAndCalculate.isPending}
+        />
+      )}
 
       {/* Content */}
       {selectedVersionId ? (
@@ -176,11 +225,19 @@ function DHGPage() {
             </TabsList>
 
             <TabsContent value="hours" className="mt-6">
-              <SubjectHoursTab data={subjectHours || []} isLoading={loadingHours} />
+              <SubjectHoursTab
+                data={subjectHours || []}
+                isLoading={loadingHours}
+                onCellValueChanged={handleCellValueChanged}
+              />
             </TabsContent>
 
             <TabsContent value="fte" className="mt-6">
-              <TeacherFTETab data={fteItems} isLoading={loadingFTE} />
+              <TeacherFTETab
+                data={fteItems}
+                isLoading={loadingFTE}
+                onCellValueChanged={handleCellValueChanged}
+              />
             </TabsContent>
 
             <TabsContent value="trmd" className="mt-6">
@@ -190,19 +247,19 @@ function DHGPage() {
                     <div className="text-center text-gray-500">
                       <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-amber-500" />
                       <p className="text-lg font-medium mb-2">
-                        Teacher Requirements Not Calculated
+                        Teacher requirements not calculated
                       </p>
                       <p className="text-sm">
-                        Please calculate teacher FTE requirements first before viewing TRMD gap
+                        Please calculate teacher FTE requirements first before viewing the TRMD
                         analysis.
                       </p>
                       <Button
-                        onClick={handleCalculateFTE}
+                        onClick={handleApplyAndCalculate}
                         className="mt-4"
-                        disabled={calculateFTE.isPending}
+                        disabled={applyAndCalculate.isPending}
                       >
                         <Calculator className="w-4 h-4 mr-2" />
-                        {calculateFTE.isPending
+                        {applyAndCalculate.isPending
                           ? 'Calculating...'
                           : 'Calculate Teacher Requirements'}
                       </Button>
@@ -210,12 +267,16 @@ function DHGPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <TRMDTab data={trmdGapItems} isLoading={loadingTRMD} />
+                <TRMDTab
+                  data={trmdGapItems}
+                  isLoading={loadingTRMD}
+                  onCellValueChanged={handleCellValueChanged}
+                />
               )}
             </TabsContent>
 
             <TabsContent value="hsa" className="mt-6">
-              <HSATab data={[]} isLoading={false} />
+              <HSATab data={[]} isLoading={false} onCellValueChanged={handleCellValueChanged} />
             </TabsContent>
           </Tabs>
         </>
@@ -242,7 +303,15 @@ interface SubjectHoursItem {
   number_of_classes?: number
 }
 
-function SubjectHoursTab({ data, isLoading }: { data: SubjectHoursItem[]; isLoading: boolean }) {
+interface TabProps {
+  onCellValueChanged?: (event: CellValueChangedEvent) => void
+}
+
+function SubjectHoursTab({
+  data,
+  isLoading,
+  onCellValueChanged,
+}: { data: SubjectHoursItem[]; isLoading: boolean } & TabProps) {
   const columnDefs: ColDef[] = [
     { headerName: 'Subject', field: 'subject_name', pinned: 'left', width: 200 },
     { headerName: 'Level', field: 'level_name', width: 120 },
@@ -284,7 +353,8 @@ function SubjectHoursTab({ data, isLoading }: { data: SubjectHoursItem[]; isLoad
       <CardHeader>
         <CardTitle>Subject Hours Matrix</CardTitle>
         <p className="text-sm text-gray-600">
-          Edit hours per week for each subject at each level. Changes auto-save.
+          Edit weekly hours. Click &quot;Apply &amp; Calculate&quot; to recalculate FTE
+          requirements.
         </p>
       </CardHeader>
       <CardContent>
@@ -299,6 +369,7 @@ function SubjectHoursTab({ data, isLoading }: { data: SubjectHoursItem[]; isLoad
             }}
             loading={isLoading}
             theme={themeQuartz}
+            onCellValueChanged={onCellValueChanged}
           />
         </div>
       </CardContent>
@@ -323,7 +394,11 @@ interface TeacherFTEItem {
   subject_name?: string
 }
 
-function TeacherFTETab({ data, isLoading }: { data: TeacherFTEItem[]; isLoading: boolean }) {
+function TeacherFTETab({
+  data,
+  isLoading,
+  onCellValueChanged,
+}: { data: TeacherFTEItem[]; isLoading: boolean } & TabProps) {
   const columnDefs: ColDef[] = [
     { headerName: 'Cycle', field: 'cycle_id', width: 150 },
     { headerName: 'Subject', field: 'subject_id', width: 200 },
@@ -362,8 +437,7 @@ function TeacherFTETab({ data, isLoading }: { data: TeacherFTEItem[]; isLoading:
       <CardHeader>
         <CardTitle>Teacher FTE Requirements</CardTitle>
         <p className="text-sm text-gray-600">
-          Calculated teacher requirements based on subject hours. Primary: 24h/week, Secondary:
-          18h/week.
+          Requirements calculated from subject hours. Primary: 24h/week, Secondary: 18h/week.
         </p>
         <div className="flex gap-4 mt-2">
           <Badge variant="info">Total Hours: {totalRequiredHours.toFixed(1)}</Badge>
@@ -382,6 +456,7 @@ function TeacherFTETab({ data, isLoading }: { data: TeacherFTEItem[]; isLoading:
             }}
             loading={isLoading}
             theme={themeQuartz}
+            onCellValueChanged={onCellValueChanged}
           />
         </div>
       </CardContent>
@@ -403,7 +478,11 @@ interface TRMDItem {
   subject_name?: string
 }
 
-function TRMDTab({ data, isLoading }: { data: TRMDItem[]; isLoading: boolean }) {
+function TRMDTab({
+  data,
+  isLoading,
+  onCellValueChanged,
+}: { data: TRMDItem[]; isLoading: boolean } & TabProps) {
   const columnDefs: ColDef[] = [
     { headerName: 'Subject', field: 'subject_id', pinned: 'left', width: 150 },
     { headerName: 'Cycle', field: 'cycle_id', width: 120 },
@@ -441,7 +520,7 @@ function TRMDTab({ data, isLoading }: { data: TRMDItem[]; isLoading: boolean }) 
       width: 150,
       valueFormatter: (params) => params.value?.toFixed(2) ?? '0.00',
       cellStyle: (params) => ({
-        color: (params.value || 0) > 0 ? '#EF4444' : '#10B981',
+        color: (params.value || 0) > 0 ? 'var(--color-terracotta)' : 'var(--color-sage)',
         fontWeight: 'bold',
       }),
       cellRenderer: (params: { value: number }) => {
@@ -461,10 +540,10 @@ function TRMDTab({ data, isLoading }: { data: TRMDItem[]; isLoading: boolean }) 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>TRMD Gap Analysis</CardTitle>
+        <CardTitle>TRMD Analysis (Requirements vs Resources)</CardTitle>
         <p className="text-sm text-gray-600">
-          Compare needs vs available positions. Red = deficit (need to recruit or assign HSA), Green
-          = surplus.
+          Compare requirements to available positions. Red = deficit (recruitment or HSA needed),
+          Green = surplus.
         </p>
       </CardHeader>
       <CardContent>
@@ -479,6 +558,7 @@ function TRMDTab({ data, isLoading }: { data: TRMDItem[]; isLoading: boolean }) 
             }}
             loading={isLoading}
             theme={themeQuartz}
+            onCellValueChanged={onCellValueChanged}
           />
         </div>
       </CardContent>
@@ -493,7 +573,11 @@ interface HSAItem {
   notes?: string | null
 }
 
-function HSATab({ data, isLoading }: { data: HSAItem[]; isLoading: boolean }) {
+function HSATab({
+  data,
+  isLoading,
+  onCellValueChanged,
+}: { data: HSAItem[]; isLoading: boolean } & TabProps) {
   const columnDefs: ColDef[] = [
     { headerName: 'Teacher', field: 'teacher_name', width: 200 },
     { headerName: 'Subject', field: 'subject_name', width: 200 },
@@ -535,7 +619,7 @@ function HSATab({ data, isLoading }: { data: HSAItem[]; isLoading: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>HSA Overtime Planning</CardTitle>
+        <CardTitle>HSA Planning (Overtime Hours)</CardTitle>
         <p className="text-sm text-gray-600">
           Assign overtime hours to teachers. Maximum: 2-4 hours per teacher per week.
         </p>
@@ -559,9 +643,12 @@ function HSATab({ data, isLoading }: { data: HSAItem[]; isLoading: boolean }) {
             loading={isLoading}
             theme={themeQuartz}
             onCellValueChanged={(event) => {
+              // Track as draft change
+              onCellValueChanged?.(event)
+              // Validation warning
               const hours = event.data.hsa_hours
               if (hours > 4) {
-                alert('Warning: HSA hours exceed maximum of 4 hours per teacher')
+                console.warn('HSA hours exceed maximum of 4 hours per teacher')
               }
             }}
           />

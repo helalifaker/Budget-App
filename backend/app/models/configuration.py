@@ -19,6 +19,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum as PyEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     UUID,
@@ -43,6 +44,9 @@ from app.models.base import (
     get_fk_target,
     get_schema,
 )
+
+if TYPE_CHECKING:
+    from app.models.auth import Organization
 
 # ==============================================================================
 # Module 1: System Configuration
@@ -180,6 +184,14 @@ class BudgetVersion(BaseModel):
         comment="Whether this is the baseline version for comparison",
     )
 
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(get_fk_target("efir_budget", "organizations", "id"), ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        comment="Organization this budget version belongs to",
+    )
+
     parent_version_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey(get_fk_target("efir_budget", "budget_versions", "id")),
@@ -208,6 +220,12 @@ class BudgetVersion(BaseModel):
         "BudgetVersion",
         back_populates="parent_version",
         foreign_keys="BudgetVersion.parent_version_id",
+    )
+
+    organization: Mapped["Organization"] = relationship(
+        "Organization",
+        foreign_keys=[organization_id],
+        lazy="select",
     )
 
 

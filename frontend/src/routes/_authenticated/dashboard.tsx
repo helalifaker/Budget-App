@@ -53,11 +53,11 @@ function DashboardPage() {
     { level: 'Lycée', students: 180, capacity: 200 },
   ]
 
-  // Premium color palette for charts
+  // Premium color palette for charts - using theme CSS variables
   const nationalityData = [
-    { category: 'French', amount: 450, color: '#d4af37' }, // Luxe gold
-    { category: 'Saudi', amount: 280, color: '#8b9d83' }, // Sage green
-    { category: 'Other', amount: 120, color: '#a9c6e6' }, // Pale sky
+    { category: 'French', amount: 450, color: 'var(--color-gold)' },
+    { category: 'Saudi', amount: 280, color: 'var(--color-sage)' },
+    { category: 'Other', amount: 120, color: 'var(--color-slate)' },
   ]
 
   const costData = [
@@ -72,17 +72,17 @@ function DashboardPage() {
     {
       category: 'Tuition',
       amount: summary?.total_revenue_sar ? summary.total_revenue_sar * 0.85 : 0,
-      color: '#8b9d83', // Sage
+      color: 'var(--color-sage)',
     },
     {
       category: 'DAI',
       amount: summary?.total_revenue_sar ? summary.total_revenue_sar * 0.1 : 0,
-      color: '#d4af37', // Gold
+      color: 'var(--color-gold)',
     },
     {
       category: 'Other',
       amount: summary?.total_revenue_sar ? summary.total_revenue_sar * 0.05 : 0,
-      color: '#a9c6e6', // Sky
+      color: 'var(--color-slate)',
     },
   ]
 
@@ -220,7 +220,7 @@ function DashboardPage() {
                           `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
                         }
                         outerRadius={80}
-                        fill="#8884d8"
+                        fill="var(--color-gold)"
                         dataKey="amount"
                       >
                         {nationalityData.map((entry, index) => (

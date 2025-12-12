@@ -60,16 +60,14 @@ function AnalysisDashboardPage() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {summaryLoading ? (
-                <div className="col-span-5 text-center py-6 text-sand-700">
-                  Chargement du résumé...
-                </div>
+                <div className="col-span-5 text-center py-6 text-sand-700">Loading summary...</div>
               ) : summary ? (
                 <>
                   <SummaryCard
-                    title="Étudiants"
+                    title="Students"
                     value={summary.total_students?.toLocaleString() || '0'}
                     icon={<Users className="w-5 h-5" />}
-                    subtitle="Effectifs consolidés"
+                    subtitle="Consolidated enrollment"
                   />
                   <SummaryCard
                     title="Classes"
@@ -84,13 +82,13 @@ function AnalysisDashboardPage() {
                     subtitle="FTE"
                   />
                   <SummaryCard
-                    title="Revenus"
+                    title="Revenue"
                     value={formatCurrency(summary.total_revenue_sar)}
                     icon={<DollarSign className="w-5 h-5" />}
                     valueClassName="text-green-700"
                   />
                   <SummaryCard
-                    title="Coûts"
+                    title="Costs"
                     value={formatCurrency(summary.total_costs_sar)}
                     icon={<DollarSign className="w-5 h-5" />}
                     valueClassName="text-red-600"
@@ -102,7 +100,7 @@ function AnalysisDashboardPage() {
             {alerts && alerts.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Alertes système</CardTitle>
+                  <CardTitle>System Alerts</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {alerts.map((alert) => (
@@ -130,7 +128,7 @@ function AnalysisDashboardPage() {
                 ) : (
                   <Card>
                     <CardContent className="py-8 text-center text-sand-700">
-                      Aucune activité récente.
+                      No recent activity.
                     </CardContent>
                   </Card>
                 )}
@@ -138,13 +136,13 @@ function AnalysisDashboardPage() {
               <Card>
                 <CardHeader className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-primary" />
-                  <CardTitle>Marges</CardTitle>
+                  <CardTitle>Margins</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {summary ? (
                     <>
                       <div className="flex items-center justify-between text-sm">
-                        <span>Résultat net</span>
+                        <span>Net Result</span>
                         <span
                           className={
                             summary.net_result_sar >= 0
@@ -156,7 +154,7 @@ function AnalysisDashboardPage() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span>Marge opérationnelle</span>
+                        <span>Operating Margin</span>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">
                             {summary.operating_margin_pct.toFixed(1)}%
@@ -164,12 +162,12 @@ function AnalysisDashboardPage() {
                           <Badge
                             variant={summary.operating_margin_pct >= 5 ? 'default' : 'destructive'}
                           >
-                            {summary.operating_margin_pct >= 5 ? 'Saine' : 'Sous cible'}
+                            {summary.operating_margin_pct >= 5 ? 'Healthy' : 'Below Target'}
                           </Badge>
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span>Coût par étudiant</span>
+                        <span>Cost per Student</span>
                         <span className="font-semibold">
                           {formatCurrency(
                             summary.total_students > 0
@@ -180,9 +178,7 @@ function AnalysisDashboardPage() {
                       </div>
                     </>
                   ) : (
-                    <p className="text-sm text-sand-700">
-                      Sélectionnez une version pour voir les marges.
-                    </p>
+                    <p className="text-sm text-sand-700">Select a version to see margins.</p>
                   )}
                 </CardContent>
               </Card>

@@ -13,9 +13,34 @@ import {
  * This makes tests independent of backend availability.
  */
 
+// Helper to dismiss any open modals/overlays/toasts
+async function dismissOverlays(page: Page): Promise<void> {
+  await page.waitForTimeout(500)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const overlay = page
+      .locator('[data-state="open"][aria-hidden="true"].fixed.inset-0, [data-sonner-toast]')
+      .first()
+    if (await overlay.isVisible({ timeout: 500 }).catch(() => false)) {
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(300)
+      if (await overlay.isVisible({ timeout: 300 }).catch(() => false)) {
+        await overlay.click({ force: true }).catch(() => {})
+        await page.waitForTimeout(300)
+      }
+    } else {
+      break
+    }
+  }
+  await page
+    .locator('[data-state="open"].fixed.inset-0')
+    .waitFor({ state: 'hidden', timeout: 2000 })
+    .catch(() => {})
+}
+
 // Helper to wait for page to stabilize
 async function waitForPageLoad(page: Page): Promise<void> {
-  await page.waitForTimeout(500)
+  await dismissOverlays(page)
+  await page.waitForTimeout(300)
 }
 
 test.describe('Revenue Planning', () => {
@@ -30,6 +55,8 @@ test.describe('Revenue Planning', () => {
     await page.fill('[name="password"]', 'password123')
     await page.click('button[type="submit"]')
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
+    await page.waitForLoadState('networkidle')
+    await dismissOverlays(page)
   })
 
   test('revenue planning page loads', async ({ page }) => {
@@ -47,10 +74,12 @@ test.describe('Revenue Planning', () => {
   })
 
   test('revenue page URL is correct', async ({ page }) => {
+    // /planning/revenue redirects to /finance/revenue
     await page.goto('/planning/revenue')
     await waitForPageLoad(page)
 
-    expect(page.url()).toContain('/planning/revenue')
+    // Should be at finance/revenue after redirect
+    expect(page.url()).toContain('/finance/revenue')
   })
 
   test('revenue page displays heading', async ({ page }) => {
@@ -164,10 +193,12 @@ test.describe('Revenue Planning', () => {
   })
 
   test('fee configuration page URL is correct', async ({ page }) => {
+    // /configuration/fees redirects to /finance/settings
     await page.goto('/configuration/fees')
     await waitForPageLoad(page)
 
-    expect(page.url()).toContain('/configuration/fees')
+    // Should be at finance/settings after redirect
+    expect(page.url()).toContain('/finance/settings')
   })
 
   test('fee configuration page displays heading', async ({ page }) => {
@@ -193,6 +224,8 @@ test.describe('Revenue Validation', () => {
     await page.fill('[name="password"]', 'password123')
     await page.click('button[type="submit"]')
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
+    await page.waitForLoadState('networkidle')
+    await dismissOverlays(page)
   })
 
   test('revenue page validates correctly', async ({ page }) => {

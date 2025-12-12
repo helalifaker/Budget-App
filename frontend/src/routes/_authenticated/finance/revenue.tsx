@@ -74,11 +74,11 @@ function RevenuePage() {
     .reduce((sum, item) => sum + item.annual_amount, 0)
   const totalRevenue = tuitionRevenue + enrollmentFees + otherRevenue
 
-  // Chart data
+  // Chart data - using theme colors: sage for revenue, slate for fees, wine for other
   const chartData = [
-    { category: 'Tuition', amount: tuitionRevenue, color: '#10B981' },
-    { category: 'Enrollment Fees', amount: enrollmentFees, color: '#3B82F6' },
-    { category: 'Other Revenue', amount: otherRevenue, color: '#8B5CF6' },
+    { category: 'Tuition', amount: tuitionRevenue, color: 'var(--color-sage)' },
+    { category: 'Enrollment Fees', amount: enrollmentFees, color: 'var(--color-slate)' },
+    { category: 'Other Revenue', amount: otherRevenue, color: 'var(--color-wine)' },
   ]
 
   const columnDefs: ColDef[] = [
@@ -108,7 +108,7 @@ function RevenuePage() {
       cellDataType: 'number',
       cellRenderer: CurrencyRenderer,
       cellStyle: (params) =>
-        params.data.is_auto_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
+        params.data.is_auto_calculated ? { backgroundColor: 'var(--color-subtle)' } : undefined,
     },
     {
       headerName: 'T2 (30%)',
@@ -118,7 +118,7 @@ function RevenuePage() {
       cellDataType: 'number',
       cellRenderer: CurrencyRenderer,
       cellStyle: (params) =>
-        params.data.is_auto_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
+        params.data.is_auto_calculated ? { backgroundColor: 'var(--color-subtle)' } : undefined,
     },
     {
       headerName: 'T3 (30%)',
@@ -128,7 +128,7 @@ function RevenuePage() {
       cellDataType: 'number',
       cellRenderer: CurrencyRenderer,
       cellStyle: (params) =>
-        params.data.is_auto_calculated ? { backgroundColor: '#F3F4F6' } : undefined,
+        params.data.is_auto_calculated ? { backgroundColor: 'var(--color-subtle)' } : undefined,
     },
     {
       headerName: 'Annual Total',

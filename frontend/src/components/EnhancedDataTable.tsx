@@ -277,15 +277,21 @@ export function EnhancedDataTable<TData = unknown>({
       const hasConflict = conflictCells.has(cellId)
 
       if (hasConflict) {
-        return { backgroundColor: '#fcc', border: '2px solid #f88' } as CellStyle
+        return {
+          backgroundColor: 'var(--color-terracotta-light)',
+          border: '2px solid var(--color-terracotta)',
+        } as CellStyle
       }
 
       if (isLocked) {
-        return { backgroundColor: '#fee', cursor: 'not-allowed' } as CellStyle
+        return {
+          backgroundColor: 'var(--color-status-error-bg)',
+          cursor: 'not-allowed',
+        } as CellStyle
       }
 
       if (isSaving) {
-        return { backgroundColor: '#ffe', opacity: 0.7 } as CellStyle
+        return { backgroundColor: 'var(--color-status-warning-bg)', opacity: 0.7 } as CellStyle
       }
 
       return null
@@ -328,7 +334,7 @@ export function EnhancedDataTable<TData = unknown>({
         'paste',
         'separator',
         {
-          name: 'Ajouter un commentaire',
+          name: 'Add comment',
           icon: '<span>💬</span>',
           action: () => {
             if (cellId) {
@@ -338,7 +344,7 @@ export function EnhancedDataTable<TData = unknown>({
           },
         },
         {
-          name: "Voir l'historique",
+          name: 'View history',
           icon: '<span>📋</span>',
           action: () => {
             if (cellId) {
@@ -349,7 +355,7 @@ export function EnhancedDataTable<TData = unknown>({
         },
         'separator',
         {
-          name: cellData?.is_locked ? 'Déverrouiller la cellule' : 'Verrouiller la cellule',
+          name: cellData?.is_locked ? 'Unlock cell' : 'Lock cell',
           icon: cellData?.is_locked ? '<span>🔓</span>' : '<span>🔒</span>',
           action: async () => {
             if (cellId) {
@@ -358,7 +364,7 @@ export function EnhancedDataTable<TData = unknown>({
                 await unlockCell({ cellId })
               } else {
                 // Lock the cell
-                await lockCell({ cellId, reason: 'Verrouillage manuel' })
+                await lockCell({ cellId, reason: 'Manual lock' })
               }
             }
           },
@@ -436,13 +442,7 @@ export function EnhancedDataTable<TData = unknown>({
           <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
             <div className="flex gap-2 items-center text-text-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>
-                {loading
-                  ? 'Chargement...'
-                  : isLocking
-                    ? 'Verrouillage en cours...'
-                    : 'Sauvegarde en cours...'}
-              </span>
+              <span>{loading ? 'Loading...' : isLocking ? 'Locking...' : 'Saving...'}</span>
             </div>
           </div>
         )}

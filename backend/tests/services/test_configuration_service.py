@@ -14,16 +14,27 @@ class TestConfigurationServiceInitialization:
     """Tests for ConfigurationService initialization."""
 
     def test_service_initialization(self):
-        """Test service initializes with session."""
+        """Test service initializes with session and delegate services."""
         session = MagicMock()
         service = ConfigurationService(session)
         assert service.session == session
+        # Base services (legacy, for internal use)
         assert service.system_config_service is not None
-        assert service.budget_version_service is not None
+        assert service.budget_version_base_service is not None
         assert service.class_size_param_service is not None
-        assert service.subject_hours_service is not None
-        assert service.teacher_cost_service is not None
-        assert service.fee_structure_service is not None
+        assert service.subject_hours_base_service is not None
+        # Delegate services (new, focused services)
+        assert service._subject_hours is not None
+        assert service.teacher_cost_base_service is not None
+        assert service.fee_structure_base_service is not None
+        assert service.timetable_constraint_base_service is not None
+        # Delegate services (new, focused services)
+        assert service._reference_data is not None
+        assert service._class_size is not None
+        assert service._fee_structure is not None
+        assert service._timetable_constraints is not None
+        assert service._teacher_cost is not None
+        assert service._budget_version is not None
 
 
 class TestBudgetVersionStatus:

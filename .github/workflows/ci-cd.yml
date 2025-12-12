@@ -121,13 +121,14 @@ jobs:
         working-directory: ./backend
         run: uv run mypy app
 
-      - name: Run pytest
+      - name: Run pytest with coverage
         working-directory: ./backend
         env:
           DATABASE_URL: postgresql://efir:efir_test@localhost:5432/efir_budget_test
           DIRECT_URL: postgresql://efir:efir_test@localhost:5432/efir_budget_test
-        # XML only - HTML reports are local dev only (reduces CI overhead)
-        run: uv run pytest --cov --cov-report=xml
+        # Coverage threshold enforced - build fails if coverage drops below 78%
+        # Note: Target is 80%+, increase gradually as test coverage improves
+        run: uv run pytest --cov=app --cov-report=xml --cov-fail-under=78
 
       - name: Upload backend coverage
         uses: codecov/codecov-action@v3

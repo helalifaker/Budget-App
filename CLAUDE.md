@@ -255,6 +255,27 @@ Mobile: MobileBottomNav (fixed) + MobileDrawer (slide-out)
 
 This codebase uses a 14-agent orchestration system. See `.claude/AGENT_ORCHESTRATION.md` for full details.
 
+### Model Selection for Agents
+
+⚠️ **Important**: Model selection is guidance, not automatic enforcement. For critical tasks, explicitly request the model: "Use Opus for this architecture design"
+
+| Model | Use For | Agents |
+|-------|---------|--------|
+| ⚡ **Opus** | Complex reasoning & architecture | product-architect, system-architect, efir-master, performance-agent |
+| 🎯 **Sonnet** | Standard development (default) | backend-engine, frontend-ui, database-supabase, backend-api-specialist, security-rls, governance-versioning, reporting-statements |
+| 💨 **Haiku** | Simple tasks (tests, formatting) | qa-validation (running tests), documentation-training (simple formatting), data-migration (simple ETL) |
+
+**Example invocation**:
+```javascript
+Task({
+  subagent_type: "qa-validation-agent",
+  model: "haiku",  // Cost-effective for running existing tests
+  prompt: "Run the existing DHG calculation tests"
+})
+```
+
+**Cost impact**: Proper model selection can save 30-40% while maintaining/improving quality on critical decisions.
+
 ### Key Agent Boundaries
 
 | Task Type | Agent | Cannot Do |
@@ -271,6 +292,7 @@ This codebase uses a 14-agent orchestration system. See `.claude/AGENT_ORCHESTRA
 1. Consult `product-architect-agent` for business rules (SOURCE OF TRUTH)
 2. Never cross agent boundaries
 3. Route multi-domain tasks through `efir-master-agent`
+4. Use appropriate models: Opus for architecture/complex reasoning, Haiku for simple tasks, Sonnet for standard development
 
 ---
 

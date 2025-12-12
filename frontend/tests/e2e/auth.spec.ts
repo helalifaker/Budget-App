@@ -24,11 +24,13 @@ test.describe('Authentication', () => {
     // Submit form
     await page.click('button[type="submit"]')
 
-    // Verify redirect to dashboard
+    // Verify redirect to dashboard (URL is /dashboard, page title is "Command Center")
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
 
-    // Verify dashboard heading is visible
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+    // Verify page content is visible (dashboard page uses "Command Center" as title)
+    await expect(
+      page.locator('h1, [role="heading"]').filter({ hasText: /Command Center|Dashboard/i })
+    ).toBeVisible({ timeout: 5000 })
   })
 
   test('login with invalid credentials shows error', async ({ page }) => {
@@ -57,7 +59,7 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 })
 
     // Wait for any toast notifications to disappear (they block the logout button)
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(1500)
     // Dismiss any visible toasts by clicking outside or waiting
     const toast = page.locator('[data-sonner-toast]')
     if (await toast.isVisible({ timeout: 500 }).catch(() => false)) {
@@ -65,8 +67,12 @@ test.describe('Authentication', () => {
       await toast.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
     }
 
-    // Click logout button (look for sign out, logout, or user menu)
-    const logoutButton = page.locator('[data-testid="logout-button"]').first()
+    // Click logout button - try multiple selectors for robustness
+    const logoutButton = page
+      .locator(
+        '[data-testid="logout-button"], [aria-label="Sign out"], button:has-text("Sign out"), button:has-text("Logout")'
+      )
+      .first()
 
     // Use force click to bypass any remaining overlays
     await logoutButton.click({ force: true })
@@ -109,9 +115,11 @@ test.describe('Authentication', () => {
     // Reload page
     await page.reload()
 
-    // Should still be on dashboard
+    // Should still be on dashboard (page title is "Command Center")
     await expect(page).toHaveURL(/\/dashboard/)
-    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
+    await expect(
+      page.locator('h1, [role="heading"]').filter({ hasText: /Command Center|Dashboard/i })
+    ).toBeVisible({ timeout: 5000 })
   })
 
   test('remember me functionality (if implemented)', async ({ page }) => {

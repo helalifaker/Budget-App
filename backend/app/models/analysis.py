@@ -19,7 +19,6 @@ import uuid
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -40,8 +39,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel, PortableJSON, VersionedMixin, get_fk_target, get_schema
 
-if TYPE_CHECKING:
-    from app.models.configuration import BudgetVersion
+# Note: BudgetVersion is inherited from VersionedMixin, no TYPE_CHECKING import needed
 
 
 # ============================================================================
@@ -382,10 +380,7 @@ class KPIValue(BaseModel, VersionedMixin):
         "KPIDefinition",
         lazy="selectin",
     )
-    budget_version: Mapped[BudgetVersion] = relationship(
-        "BudgetVersion",
-        lazy="selectin",
-    )
+    # Note: budget_version relationship is inherited from VersionedMixin
 
     def __repr__(self) -> str:
         """String representation."""
@@ -1141,11 +1136,7 @@ class BudgetVsActual(BaseModel, VersionedMixin):
         comment="Variance exceeds materiality threshold (5% or 100K SAR)",
     )
 
-    # Relationships
-    budget_version: Mapped[BudgetVersion] = relationship(
-        "BudgetVersion",
-        lazy="selectin",
-    )
+    # Note: budget_version relationship is inherited from VersionedMixin
 
     def __repr__(self) -> str:
         """String representation."""

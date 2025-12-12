@@ -639,6 +639,7 @@ class TestRevenueServiceEdgeCases:
         self,
         db_session: AsyncSession,
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test revenue entries are isolated by budget version."""
         service = RevenueService(db_session)
@@ -650,6 +651,7 @@ class TestRevenueServiceEdgeCases:
             name="Version 1",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.WORKING,
             created_by_id=test_user_id,
         )
@@ -658,6 +660,7 @@ class TestRevenueServiceEdgeCases:
             name="Version 2",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.WORKING,
             created_by_id=test_user_id,
         )

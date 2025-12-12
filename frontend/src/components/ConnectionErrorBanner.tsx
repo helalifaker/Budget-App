@@ -24,8 +24,11 @@ export function ConnectionErrorBanner() {
 
   const [copied, setCopied] = useState(false)
 
-  // Don't show if connected or dismissed
-  if (isConnected || bannerDismissed) {
+  // Don't show in E2E test mode (banner blocks UI interactions in Playwright tests)
+  const isE2ETestMode = import.meta.env.VITE_E2E_TEST_MODE === 'true'
+
+  // Don't show if connected, dismissed, or in E2E test mode
+  if (isConnected || bannerDismissed || isE2ETestMode) {
     return null
   }
 

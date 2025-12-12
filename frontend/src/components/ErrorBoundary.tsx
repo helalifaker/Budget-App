@@ -47,18 +47,18 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <div className="max-w-md rounded-lg border border-terracotta-200 bg-paper p-8 shadow-lg">
             <div className="flex items-center gap-3 text-terracotta">
               <AlertTriangle className="h-8 w-8" />
-              <h1 className="text-2xl font-bold">Une erreur est survenue</h1>
+              <h1 className="text-2xl font-bold">An error occurred</h1>
             </div>
 
             <p className="mt-4 text-text-secondary">
-              Nous sommes désolés, mais quelque chose s'est mal passé. Veuillez rafraîchir la page
-              ou contacter le support si le problème persiste.
+              We&apos;re sorry, but something went wrong. Please refresh the page or contact support
+              if the problem persists.
             </p>
 
             {this.state.error && (
               <details className="mt-4 rounded bg-bg-muted p-3">
                 <summary className="cursor-pointer text-sm font-medium text-text-secondary">
-                  Détails techniques
+                  Technical details
                 </summary>
                 <pre className="mt-2 overflow-auto text-xs text-text-secondary">
                   {this.state.error.message}

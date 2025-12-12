@@ -15,7 +15,7 @@ import { requireAuth } from '@/lib/auth-guard'
 import { useState, useMemo, useCallback } from 'react'
 import { ColDef, ValueFormatterParams, ICellRendererParams } from 'ag-grid-community'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { DataTableLazy } from '@/components/DataTableLazy'
+import { ExcelDataTableLazy } from '@/components/ExcelDataTableLazy'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -660,7 +660,7 @@ function EmployeesPage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="h-[500px] w-full">
-              <DataTableLazy<Employee>
+              <ExcelDataTableLazy<Employee>
                 rowData={employeesData?.employees || []}
                 columnDefs={columnDefs}
                 loading={isLoading}
@@ -670,10 +670,14 @@ function EmployeesPage() {
                   sortable: true,
                 }}
                 getRowId={(params) => params.data.id}
+                rowIdGetter={(data) => data.id}
                 rowSelection="single"
                 animateRows={true}
                 pagination={true}
                 paginationPageSize={20}
+                tableLabel="Employee Registry Grid"
+                showStatusBar={true}
+                height={500}
               />
             </div>
           </CardContent>

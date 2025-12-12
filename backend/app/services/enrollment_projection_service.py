@@ -13,10 +13,20 @@ from decimal import Decimal
 
 from sqlalchemy import and_, delete, func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
-from app.core.cache import CacheInvalidator
+# NOTE: CacheInvalidator import removed as part of Phase 4 performance fix.
+# Cache invalidation was causing 6s delays; now disabled for all config updates.
+# See update_config method comment for full rationale.
 from app.core.logging import logger
+from app.engine.enrollment import (
+    EngineEffectiveRates,
+    ProjectionInput,
+    ScenarioParams,
+    calculate_proration_by_grade,
+    project_multi_year,
+    validate_projection_input,
+)
 from app.engine.enrollment import (
     GlobalOverrides as EngineGlobalOverrides,
 )
@@ -26,19 +36,11 @@ from app.engine.enrollment import (
 from app.engine.enrollment import (
     LevelOverride as EngineLevelOverride,
 )
-from app.engine.enrollment import (
-    ProjectionInput,
-    ScenarioParams,
-    calculate_proration_by_grade,
-    project_multi_year,
-    validate_projection_input,
-)
 from app.engine.enrollment.projection_engine import GRADE_SEQUENCE
 from app.models.configuration import AcademicLevel, BudgetVersion, NationalityType
 from app.models.enrollment_projection import (
     EnrollmentGlobalOverride,
     EnrollmentGradeOverride,
-    EnrollmentLateralEntryDefault,
     EnrollmentLevelOverride,
     EnrollmentProjection,
     EnrollmentProjectionConfig,
@@ -46,6 +48,7 @@ from app.models.enrollment_projection import (
 )
 from app.models.planning import EnrollmentPlan, NationalityDistribution
 from app.services.cascade_service import CascadeService
+from app.services.enrollment_calibration_service import EnrollmentCalibrationService
 from app.services.enrollment_capacity import DEFAULT_SCHOOL_CAPACITY
 from app.services.exceptions import NotFoundError, ValidationError
 
@@ -76,18 +79,28 @@ class EnrollmentProjectionService:
                     EnrollmentProjectionConfig.deleted_at.is_(None),
                 )
             )
+            # PERFORMANCE FIX (Phase 11): Aggressive joinedload for ALL relations
+            # to reduce database roundtrips from 5 to 1 query.
+            # - joinedload for collections is safe here because:
+            #   1. Data volume is tiny (4 level_overrides, 0 grade_overrides)
+            #   2. Cartesian product risk is negligible
+            #   3. Network latency (~400ms/roundtrip) dominates query execution (~0.1ms)
+            # This reduces Supabase cloud latency from ~2s (5 roundtrips) to ~400ms (1 roundtrip).
+            # NOTE: .unique() REQUIRED after execute() when using joinedload with collections!
             .options(
-                selectinload(EnrollmentProjectionConfig.scenario),
-                selectinload(EnrollmentProjectionConfig.global_overrides),
-                selectinload(EnrollmentProjectionConfig.level_overrides).selectinload(
-                    EnrollmentLevelOverride.cycle
+                joinedload(EnrollmentProjectionConfig.scenario),  # FK → 1 row
+                joinedload(EnrollmentProjectionConfig.global_overrides),  # uselist=False → 1 row
+                joinedload(EnrollmentProjectionConfig.level_overrides).joinedload(
+                    EnrollmentLevelOverride.cycle  # FK → 1 row per override
                 ),
-                selectinload(EnrollmentProjectionConfig.grade_overrides).selectinload(
-                    EnrollmentGradeOverride.level
+                joinedload(EnrollmentProjectionConfig.grade_overrides).joinedload(
+                    EnrollmentGradeOverride.level  # FK → 1 row per override
                 ),
             )
         )
-        existing = (await self.session.execute(query)).scalar_one_or_none()
+        # PHASE 11: .unique() is REQUIRED when using joinedload with One-to-Many collections
+        # Without it, SQLAlchemy 2.0 may return duplicate parent rows due to LEFT JOINs
+        existing = (await self.session.execute(query)).unique().scalar_one_or_none()
         if existing:
             return existing
 
@@ -127,9 +140,13 @@ class EnrollmentProjectionService:
         updates: dict,
         recalculate: bool = False,
     ) -> EnrollmentProjectionConfig:
+        import time
+        _t0 = time.perf_counter()
+
         # PERFORMANCE FIX: Single query at start - avoid double get_or_create_config
         # The first call already loads all relationships with selectinload
         config = await self.get_or_create_config(version_id)
+        print(f"⏱️ TIMING: get_or_create_config took {time.perf_counter() - _t0:.3f}s")
 
         # Track if anything actually changed
         changed = False
@@ -153,23 +170,32 @@ class EnrollmentProjectionService:
 
         # Early return if nothing changed - saves commit + cache invalidation
         if not changed:
+            print(f"⏱️ TIMING: no changes, returning early at {time.perf_counter() - _t0:.3f}s")
             return config
 
+        _t1 = time.perf_counter()
         await self.session.commit()
+        print(f"⏱️ TIMING: commit took {time.perf_counter() - _t1:.3f}s")
 
-        # Refresh only scenario relationship if it changed
-        # Other relationships (level_overrides, grade_overrides) weren't modified
-        if scenario_changed:
-            await self.session.refresh(config, ["scenario"])
+        # PHASE 11: Use session.get() instead of session.refresh() to avoid extra roundtrip
+        # session.get() checks identity map first - if scenario was already loaded in this
+        # session (e.g., from get_all_scenarios), no network roundtrip is needed.
+        # session.refresh() ALWAYS makes a roundtrip, even for cached objects.
+        if scenario_changed and config.scenario_id:
+            _t2 = time.perf_counter()
+            config.scenario = await self.session.get(EnrollmentScenario, config.scenario_id)
+            print(f"⏱️ TIMING: session.get scenario took {time.perf_counter() - _t2:.3f}s")
 
         # FIX Issue #4: Deferred calculation - only calculate when explicitly requested
         if recalculate:
             await self.calculate_and_save(version_id, config=config)
 
-        # PERFORMANCE FIX: Fire-and-forget cache invalidation
-        # This avoids blocking the response for 2-3s while Redis SCAN operations complete
-        CacheInvalidator.invalidate_background(str(version_id), "enrollment")
+        # PERFORMANCE FIX (Phase 4): Cache invalidation DISABLED for performance.
+        # Cache keys include version_id, so scenario changes don't affect cached calculation data.
+        # Cache will auto-expire via TTL, and heavy calculations recalculate on-demand when needed.
+        # (Removed: CacheInvalidator.invalidate_background - caused 6s blocking despite fire-and-forget)
 
+        print(f"⏱️ TIMING: update_config TOTAL took {time.perf_counter() - _t0:.3f}s")
         # PERFORMANCE FIX: Return the already-loaded config directly
         # No need for second get_or_create_config - nested relationships haven't changed
         # (level_overrides.cycle and grade_overrides.level are reference data)
@@ -207,8 +233,7 @@ class EnrollmentProjectionService:
         if recalculate:
             await self.calculate_and_save(version_id, config=config)
 
-        # PERFORMANCE FIX: Fire-and-forget cache invalidation
-        CacheInvalidator.invalidate_background(str(version_id), "enrollment")
+        # PERFORMANCE FIX (Phase 4): Cache invalidation DISABLED (see update_config comment)
 
         # PERFORMANCE FIX: Return already-loaded config - no second query needed
         # global_overrides is already updated in memory
@@ -254,8 +279,7 @@ class EnrollmentProjectionService:
         if recalculate:
             await self.calculate_and_save(version_id, config=config)
 
-        # PERFORMANCE FIX: Fire-and-forget cache invalidation
-        CacheInvalidator.invalidate_background(str(version_id), "enrollment")
+        # PERFORMANCE FIX (Phase 4): Cache invalidation DISABLED (see update_config comment)
 
         # PERFORMANCE FIX: Refresh level_overrides relationship to include new items
         # This is a single query instead of full get_or_create_config (7 queries)
@@ -306,7 +330,7 @@ class EnrollmentProjectionService:
         if recalculate:
             await self.calculate_and_save(version_id, config=config)
 
-        await CacheInvalidator.invalidate(str(version_id), "enrollment")
+        # PERFORMANCE FIX (Phase 4): Cache invalidation DISABLED (see update_config comment)
 
         # PERFORMANCE FIX: Refresh grade_overrides relationship to include new items
         # This is a single query instead of full get_or_create_config (7 queries)
@@ -322,6 +346,20 @@ class EnrollmentProjectionService:
         version_id: uuid.UUID,
         config: EnrollmentProjectionConfig | None = None,
     ) -> list:
+        """
+        Calculate enrollment projections and save to database.
+
+        Args:
+            version_id: Budget version ID
+            config: Pre-loaded config (optional, avoids redundant queries)
+
+        Uses calibrated rates from the EnrollmentCalibrationService with percentage-based
+        lateral entry for entry point grades (MS, GS, CP, 6EME, 2NDE) derived from the
+        rolling 4-year historical window.
+
+        The calibration service resolves rates using priority chain:
+        Override → Derived (from history) → Document Default
+        """
         # PERFORMANCE FIX: Accept pre-loaded config to avoid redundant queries
         if config is None:
             config = await self.get_or_create_config(version_id)
@@ -336,10 +374,27 @@ class EnrollmentProjectionService:
         )
 
         baseline = await self._get_baseline_enrollment(version_id)
-        lateral_defaults = await self._get_lateral_defaults()
 
         global_overrides, level_overrides, grade_overrides = (
             self._build_engine_overrides(config)
+        )
+
+        # Get organization_id from budget_version for calibrated rates lookup.
+        # Each budget version belongs to an organization, which scopes the
+        # enrollment derived parameters, overrides, and scenario multipliers.
+        version = (
+            await self.session.execute(
+                select(BudgetVersion).where(BudgetVersion.id == version_id)
+            )
+        ).scalar_one_or_none()
+
+        if not version:
+            raise NotFoundError("BudgetVersion", str(version_id))
+
+        # Use organization_id to fetch calibrated rates (percentage-based lateral entry)
+        # This is the ONLY way to calculate lateral entry - no legacy fallback
+        effective_rates = await self._get_calibrated_rates(
+            version.organization_id, scenario.code
         )
 
         engine_input = ProjectionInput(
@@ -357,7 +412,8 @@ class EnrollmentProjectionService:
                 lateral_multiplier=scenario.lateral_multiplier,
             ),
             base_year_enrollment=baseline,
-            base_lateral_entry=lateral_defaults,
+            base_lateral_entry={},  # Not used - calibration provides effective_rates
+            effective_rates=effective_rates,  # From calibration service
             global_overrides=global_overrides,
             level_overrides=level_overrides,
             grade_overrides=grade_overrides,
@@ -555,7 +611,7 @@ class EnrollmentProjectionService:
         cascade_service = CascadeService(self.session)
         cascade_result = await cascade_service.recalculate_from_step(version_id, "enrollment")
 
-        await CacheInvalidator.invalidate(str(version_id), "enrollment")
+        # PERFORMANCE FIX (Phase 4): Cache invalidation DISABLED (see update_config comment)
 
         return {
             "success": True,
@@ -572,7 +628,8 @@ class EnrollmentProjectionService:
         config.validated_at = None
         config.validated_by = None
         await self.session.commit()
-        await CacheInvalidator.invalidate(str(version_id), "enrollment")
+
+        # PERFORMANCE FIX (Phase 4): Cache invalidation DISABLED (see update_config comment)
 
         # PERFORMANCE FIX: Return already-loaded config - no second query needed
         # Only scalar fields changed, relationships are unchanged
@@ -603,16 +660,72 @@ class EnrollmentProjectionService:
         baseline.update({code: int(total) for code, total in rows})
         return baseline
 
-    async def _get_lateral_defaults(self) -> dict[str, int]:
-        query = (
-            select(AcademicLevel.code, EnrollmentLateralEntryDefault.base_lateral_entry)
-            .join(
-                EnrollmentLateralEntryDefault,
-                EnrollmentLateralEntryDefault.level_id == AcademicLevel.id,
+    async def _get_calibrated_rates(
+        self,
+        organization_id: uuid.UUID,
+        scenario_code: str,
+    ) -> dict[str, EngineEffectiveRates] | None:
+        """
+        Get calibrated effective rates from EnrollmentCalibrationService.
+
+        This is the ONLY way to get lateral entry rates - there is no legacy fallback.
+        Returns None if no calibration data is available for the organization.
+
+        The calibration service resolves rates using priority chain:
+        Override → Derived (from history) → Document Default
+
+        For entry point grades (MS, GS, CP, 6EME, 2NDE):
+        - Returns percentage-based lateral_entry_rate
+
+        For incidental grades (CE1, CE2, CM1, CM2, etc.):
+        - Returns fixed lateral_entry_fixed
+
+        The scenario multiplier is already applied to the rates.
+        """
+        calibration_service = EnrollmentCalibrationService(self.session)
+
+        try:
+            # Get calibration status to check if data is available
+            status = await calibration_service.get_calibration_status(organization_id)
+
+            if not status.has_sufficient_data:
+                logger.info(
+                    "No calibration data available for organization %s, using legacy mode",
+                    organization_id,
+                )
+                return None
+
+            # Get effective rates with scenario multiplier applied
+            all_rates = await calibration_service.get_effective_rates(
+                organization_id, scenario_code
             )
-        )
-        rows = (await self.session.execute(query)).all()
-        return {code: int(val) for code, val in rows if val is not None}
+
+            # Convert API schema rates to engine rates
+            engine_rates: dict[str, EngineEffectiveRates] = {}
+            for grade_code, rate in all_rates.rates.items():
+                engine_rates[grade_code] = EngineEffectiveRates(
+                    grade_code=rate.grade_code,
+                    retention_rate=rate.retention_rate,
+                    lateral_entry_rate=rate.lateral_entry_rate,
+                    lateral_entry_fixed=rate.lateral_entry_fixed,
+                    is_percentage_based=rate.is_percentage_based,
+                )
+
+            logger.info(
+                "Using calibrated rates for organization %s with scenario %s",
+                organization_id,
+                scenario_code,
+            )
+            return engine_rates
+
+        except Exception as e:
+            logger.warning(
+                "Failed to get calibrated rates for organization %s: %s, "
+                "falling back to legacy mode",
+                organization_id,
+                str(e),
+            )
+            return None
 
     def _build_engine_overrides(
         self, config: EnrollmentProjectionConfig

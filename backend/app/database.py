@@ -21,11 +21,12 @@ from app.core.logging import logger
 
 # Load environment variables from .env.local (development) or .env (production)
 # Use override=True to ensure backend-specific values take precedence over root .env files
+# and any previously exported OS environment variables
 env_file = Path(__file__).parent.parent / ".env.local"
 if env_file.exists():
-    load_dotenv(env_file, override=False)
+    load_dotenv(env_file, override=True)
 else:
-    load_dotenv(override=False)  # Load from .env if .env.local doesn't exist
+    load_dotenv(override=True)  # Load from .env if .env.local doesn't exist
 
 # Database URL configuration
 # Priority order:
@@ -119,17 +120,45 @@ else:
         """Generate unique statement name to avoid conflicts with pgBouncer."""
         return f"stmt_{uuid_module.uuid4().hex[:8]}"
 
-    engine = create_async_engine(
-        DATABASE_URL,
-        echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
-        poolclass=NullPool,
-        pool_pre_ping=False,
-        connect_args={
-            "statement_cache_size": 0,
-            "prepared_statement_name_func": unique_stmt_name,
-            "server_settings": {"jit": "off"},
-        },
-    )
+    # PERFORMANCE FIX (Phase 6): Connection pooling option for development
+    # NullPool creates a new connection per request (slow for Supabase cloud: 200-500ms overhead)
+    # QueuePool reuses connections (0ms overhead after first connection)
+    #
+    # USE_CONNECTION_POOL=true: Use QueuePool for faster development
+    # USE_CONNECTION_POOL=false (default): Use NullPool for pgBouncer/Supavisor compatibility
+    use_connection_pool = os.getenv("USE_CONNECTION_POOL", "false").lower() == "true"
+
+    if use_connection_pool:
+        # Connection pooling mode (for development or direct connections)
+        # Keeps 5 connections ready, allows up to 15 total
+        print("🚀 Database: Using connection pooling (USE_CONNECTION_POOL=true)")
+        engine = create_async_engine(
+            DATABASE_URL,
+            echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True,
+            pool_recycle=300,  # Recycle connections after 5 minutes
+            connect_args={
+                "statement_cache_size": 0,
+                "prepared_statement_name_func": unique_stmt_name,
+                "server_settings": {"jit": "off"},
+            },
+        )
+    else:
+        # NullPool mode (default - for pgBouncer/Supavisor compatibility)
+        print("🐢 Database: Using NullPool (USE_CONNECTION_POOL=false or unset)")
+        engine = create_async_engine(
+            DATABASE_URL,
+            echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
+            poolclass=NullPool,
+            pool_pre_ping=False,
+            connect_args={
+                "statement_cache_size": 0,
+                "prepared_statement_name_func": unique_stmt_name,
+                "server_settings": {"jit": "off"},
+            },
+        )
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(

@@ -85,38 +85,38 @@ function KPIsPage() {
                         data={benchmarkData}
                         margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e8dcc8" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
                         <XAxis
                           dataKey="name"
                           angle={-45}
                           textAnchor="end"
                           height={100}
-                          stroke="#61707f"
+                          stroke="var(--color-text-tertiary)"
                         />
-                        <YAxis stroke="#61707f" />
+                        <YAxis stroke="var(--color-text-tertiary)" />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: '#fdfbf7',
-                            border: '1px solid #e8dcc8',
+                            backgroundColor: 'var(--color-paper)',
+                            border: '1px solid var(--color-border-light)',
                             borderRadius: '8px',
                           }}
                         />
                         <Legend />
                         <Bar
                           dataKey="value"
-                          fill="#d4af37"
+                          fill="var(--color-gold)"
                           name="Actual Value"
                           radius={[4, 4, 0, 0]}
                         />
                         <Bar
                           dataKey="min"
-                          fill="#8b9d83"
+                          fill="var(--color-sage)"
                           name="Min Benchmark"
                           radius={[4, 4, 0, 0]}
                         />
                         <Bar
                           dataKey="max"
-                          fill="#c75b39"
+                          fill="var(--color-terracotta)"
                           name="Max Benchmark"
                           radius={[4, 4, 0, 0]}
                         />

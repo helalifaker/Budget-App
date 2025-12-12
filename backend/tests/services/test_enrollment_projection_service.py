@@ -236,10 +236,13 @@ class TestGetOrCreateConfigMocked:
         mock_session = AsyncMock()
 
         # First query returns no existing config
+        # Note: Phase 11 added .unique() to the query chain, so mock must handle it
         mock_result1 = MagicMock()
-        mock_result1.scalar_one_or_none.return_value = None
+        mock_unique1 = MagicMock()
+        mock_unique1.scalar_one_or_none.return_value = None
+        mock_result1.unique.return_value = mock_unique1
 
-        # Second query returns no budget version
+        # Second query returns no budget version (no .unique() on this one)
         mock_result2 = MagicMock()
         mock_result2.scalar_one_or_none.return_value = None
 
@@ -262,8 +265,11 @@ class TestGetOrCreateConfigMocked:
         mock_config.budget_version_id = uuid.uuid4()
         mock_config.scenario = MagicMock(code="base")
 
+        # Phase 11 added .unique() to the query chain for joinedload deduplication
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_config
+        mock_unique = MagicMock()
+        mock_unique.scalar_one_or_none.return_value = mock_config
+        mock_result.unique.return_value = mock_unique
         mock_session.execute.return_value = mock_result
 
         service = EnrollmentProjectionService(mock_session)
@@ -331,11 +337,9 @@ class TestUnvalidateMocked:
             new_callable=AsyncMock,
             return_value=mock_config,
         ):
-            with patch(
-                "app.services.enrollment_projection_service.CacheInvalidator.invalidate"
-            ):
-                service = EnrollmentProjectionService(mock_session)
-                await service.unvalidate(uuid.uuid4(), uuid.uuid4())
+            # NOTE: CacheInvalidator patch removed - cache invalidation disabled for performance (Phase 4)
+            service = EnrollmentProjectionService(mock_session)
+            await service.unvalidate(uuid.uuid4(), uuid.uuid4())
 
         assert mock_config.status == "draft"
         assert mock_config.validated_at is None

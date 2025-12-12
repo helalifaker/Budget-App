@@ -83,15 +83,17 @@ End-user documentation and deployment guides.
 
 ---
 
-### Developer Guides (5 files)
+### Developer Guides (7 files)
 
 Developer documentation and technical guides.
 
 - [docs/developer-guides/DEVELOPER_GUIDE.md](docs/developer-guides/DEVELOPER_GUIDE.md) ⭐ - Development setup
 - [docs/developer-guides/API_DOCUMENTATION.md](docs/developer-guides/API_DOCUMENTATION.md) - API reference
+- [docs/developer-guides/TABLE_COMPONENT_SELECTION_GUIDE.md](docs/developer-guides/TABLE_COMPONENT_SELECTION_GUIDE.md) - **Table component selection** (shadcn vs AG Grid)
 - [docs/developer-guides/INTEGRATION_GUIDE.md](docs/developer-guides/INTEGRATION_GUIDE.md) - Odoo/Skolengo/AEFE integration
 - [docs/developer-guides/E2E_TESTING_GUIDE.md](docs/developer-guides/E2E_TESTING_GUIDE.md) - E2E testing with Playwright
 - [docs/developer-guides/PERFORMANCE_OPTIMIZATIONS.md](docs/developer-guides/PERFORMANCE_OPTIMIZATIONS.md) - Performance guide
+- [docs/BACKUP_DISASTER_RECOVERY.md](docs/BACKUP_DISASTER_RECOVERY.md) ⭐ - **Backup & Disaster Recovery** strategy
 
 ---
 

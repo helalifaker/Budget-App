@@ -268,8 +268,8 @@ class TestBudgetVersionEndpoints:
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
-            mock_service.budget_version_service = AsyncMock()
-            mock_service.budget_version_service.update.return_value = MagicMock(
+            mock_service.budget_version_base_service = AsyncMock()
+            mock_service.budget_version_base_service.update.return_value = MagicMock(
                 id=version_id,
                 name="Updated Budget 2024-2025",
                 fiscal_year=2024,

@@ -52,9 +52,7 @@ function TimetablePage() {
             : Number(row.total_hours_per_week)
 
         if (maxHours > totalHours) {
-          toastMessages.error.custom(
-            'Les heures max par jour ne peuvent pas dépasser le total hebdomadaire'
-          )
+          toastMessages.error.custom('Max hours per day cannot exceed total weekly hours')
           // Revert to old value
           if (colDef.field) {
             event.node.setDataValue(colDef.field, oldValue)
@@ -151,7 +149,7 @@ function TimetablePage() {
             ? ''
             : `${Number(params.value).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}h`,
         flex: 1,
-        cellStyle: { backgroundColor: '#f0f9ff', fontWeight: 'bold' },
+        cellStyle: { backgroundColor: 'var(--color-slate-lighter)', fontWeight: 'bold' },
       },
       {
         field: 'requires_lunch_break',
@@ -182,14 +180,14 @@ function TimetablePage() {
 
   return (
     <PageContainer
-      title="Contraintes Horaires"
-      description="Définir les limites hebdomadaires (heures/jour, heures/semaine, pauses) pour valider les emplois du temps DHG"
+      title="Timetable Constraints"
+      description="Define weekly limits (hours/day, hours/week, breaks) to validate DHG schedules"
     >
       <div className="space-y-4">
         {!selectedVersionId ? (
           <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-900">
             <AlertCircle className="mb-2 h-5 w-5" />
-            Veuillez sélectionner une version budgétaire pour afficher les contraintes horaires.
+            Please select a budget version to view timetable constraints.
           </div>
         ) : (
           <>
@@ -197,11 +195,11 @@ function TimetablePage() {
             <div className="flex items-start gap-2 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
               <AlertCircle className="mt-0.5 h-4 w-4 text-blue-600" />
               <div>
-                <p className="font-medium text-blue-900">Règles de validation</p>
+                <p className="font-medium text-blue-900">Validation Rules</p>
                 <ul className="list-inside list-disc text-blue-700">
-                  <li>Heures max/jour ≤ Total heures/semaine</li>
-                  <li>Capacité totale = Jours/semaine × Heures max/jour</li>
-                  <li>Pause minimale: 30-120 minutes</li>
+                  <li>Max hours/day ≤ Total hours/week</li>
+                  <li>Total capacity = Days/week × Max hours/day</li>
+                  <li>Minimum break: 30-120 minutes</li>
                 </ul>
               </div>
             </div>
@@ -209,7 +207,7 @@ function TimetablePage() {
             {/* Data Grid */}
             {error ? (
               <div className="rounded-md border border-red-200 bg-red-50 p-4 text-red-900">
-                Erreur de chargement: {error.message}
+                Loading error: {error.message}
               </div>
             ) : (
               <DataTableLazy

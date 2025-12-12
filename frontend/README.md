@@ -466,6 +466,8 @@ items.sort((a, b) => a.sort_order - b.sort_order)
 
 ## AG Grid Integration
 
+> **📖 See [Table Component Selection Guide](../docs/developer-guides/TABLE_COMPONENT_SELECTION_GUIDE.md)** for choosing between shadcn Table, DataTable, EnhancedDataTable, and ExcelDataTable.
+
 AG Grid Community 34.3.1 provides enterprise-grade spreadsheet functionality:
 
 ```tsx

@@ -79,7 +79,7 @@ export function CellCommentDialog({ cellId, open, onOpenChange }: CellCommentDia
                 <Loader2 className="h-6 w-6 animate-spin text-text-secondary" />
               </div>
             ) : comments.length === 0 ? (
-              <p className="text-center text-text-secondary p-4">Aucun commentaire</p>
+              <p className="text-center text-text-secondary p-4">No comments</p>
             ) : (
               <div className="space-y-3 pr-4">
                 {comments.map((comment) => (
@@ -127,7 +127,7 @@ export function CellCommentDialog({ cellId, open, onOpenChange }: CellCommentDia
             <Textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Ajouter un commentaire..."
+              placeholder="Add a comment..."
               className="flex-1"
               rows={2}
               disabled={isSubmitting}
@@ -140,10 +140,10 @@ export function CellCommentDialog({ cellId, open, onOpenChange }: CellCommentDia
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Envoi...
+                  Sending...
                 </>
               ) : (
-                'Ajouter'
+                'Add'
               )}
             </Button>
           </form>

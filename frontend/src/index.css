@@ -1066,7 +1066,7 @@
 
 .ag-theme-quartz {
   --ag-header-background-color: var(--color-subtle);
-  --ag-odd-row-background-color: #ffffff;
+  --ag-odd-row-background-color: var(--color-paper);
   --ag-row-hover-color: var(--color-warm);
   --ag-selected-row-background-color: var(--color-gold-lighter);
   --ag-border-color: var(--color-border-light);
@@ -1077,20 +1077,20 @@
 
 /* AG Grid Cell States */
 .ag-theme-quartz .cell-locked {
-  background-color: #fee !important;
+  background-color: var(--color-status-error-bg) !important;
   cursor: not-allowed !important;
   opacity: 0.8;
 }
 
 .ag-theme-quartz .cell-saving {
-  background-color: #ffe !important;
+  background-color: var(--color-status-warning-bg) !important;
   opacity: 0.7;
   transition: opacity 0.3s ease;
 }
 
 .ag-theme-quartz .cell-conflict {
-  background-color: #fcc !important;
-  border: 2px solid #f88 !important;
+  background-color: var(--color-terracotta-light) !important;
+  border: 2px solid var(--color-terracotta) !important;
 }
 
 .ag-theme-quartz .ag-cell-focus {
@@ -1099,28 +1099,28 @@
 }
 
 .ag-theme-quartz .ag-cell-inline-editing {
-  background-color: #fff !important;
+  background-color: var(--color-paper) !important;
   border: 2px solid var(--color-gold) !important;
   box-shadow: var(--shadow-focus);
 }
 
 /* Excel-like mode */
 .ag-theme-quartz.excel-mode {
-  --ag-row-border-color: #e5e5e5;
-  --ag-cell-horizontal-border: solid #e5e5e5;
+  --ag-row-border-color: var(--color-border-light);
+  --ag-cell-horizontal-border: solid var(--color-border-light);
 }
 
 .ag-theme-quartz.excel-mode .ag-header {
-  background: linear-gradient(180deg, #f8f8f8 0%, #e8e8e8 100%);
-  border-bottom: 2px solid #d0d0d0;
+  background: linear-gradient(180deg, var(--color-subtle) 0%, var(--color-muted) 100%);
+  border-bottom: 2px solid var(--color-border-medium);
 }
 
 .ag-theme-quartz.excel-mode .ag-row:hover {
-  background-color: #e8f0fe !important;
+  background-color: var(--color-gold-lighter) !important;
 }
 
 .ag-theme-quartz.excel-mode .ag-row-selected {
-  background-color: #cce5ff !important;
+  background-color: var(--color-gold-light) !important;
 }
 
 /* ============================================================================

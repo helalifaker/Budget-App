@@ -279,6 +279,7 @@ async def create_budget_version(
             name=version_data.name,
             fiscal_year=version_data.fiscal_year,
             academic_year=version_data.academic_year,
+            organization_id=version_data.organization_id,
             notes=version_data.notes,
             parent_version_id=version_data.parent_version_id,
             user_id=user_id,
@@ -315,7 +316,7 @@ async def update_budget_version(
         HTTPException: 404 if version not found
     """
     try:
-        version = await config_service.budget_version_service.update(
+        version = await config_service.budget_version_base_service.update(
             version_id,
             version_data.model_dump(exclude_unset=True),
             user_id=user.user_id,

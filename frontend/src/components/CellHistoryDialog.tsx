@@ -39,9 +39,9 @@ export function CellHistoryDialog({ cellId, open, onOpenChange }: CellHistoryDia
 
   const getChangeTypeLabel = (changeType: string) => {
     const labels: Record<string, string> = {
-      INSERT: 'Création',
-      UPDATE: 'Modification',
-      DELETE: 'Suppression',
+      INSERT: 'Created',
+      UPDATE: 'Modified',
+      DELETE: 'Deleted',
     }
     return labels[changeType] || changeType
   }
@@ -74,7 +74,7 @@ export function CellHistoryDialog({ cellId, open, onOpenChange }: CellHistoryDia
               <Loader2 className="h-6 w-6 animate-spin text-text-secondary" />
             </div>
           ) : changes.length === 0 ? (
-            <p className="text-center text-text-secondary p-4">Aucune modification enregistrée</p>
+            <p className="text-center text-text-secondary p-4">No changes recorded</p>
           ) : (
             <div className="space-y-2 pr-4">
               {changes.map((change) => (

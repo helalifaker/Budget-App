@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { revenueApi } from '@/services/revenue'
+import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
+
+// PERFORMANCE: 10 minutes staleTime for revenue data
+// Revenue changes rarely during a session
+const REVENUE_STALE_TIME = 10 * 60 * 1000 // 10 minutes
 
 export const revenueKeys = {
   all: ['revenue'] as const,
@@ -14,6 +19,7 @@ export function useRevenue(versionId: string) {
     queryKey: revenueKeys.list(versionId),
     queryFn: () => revenueApi.getAll(versionId),
     enabled: !!versionId,
+    staleTime: REVENUE_STALE_TIME,
   })
 }
 
@@ -22,6 +28,7 @@ export function useRevenueItem(id: string) {
     queryKey: revenueKeys.detail(id),
     queryFn: () => revenueApi.getById(id),
     enabled: !!id,
+    staleTime: REVENUE_STALE_TIME,
   })
 }
 
@@ -32,7 +39,9 @@ export function useCreateRevenueItem() {
     mutationFn: revenueApi.create,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: revenueKeys.list(data.budget_version_id) })
+      toastMessages.success.created(entityNames.revenue)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -56,7 +65,9 @@ export function useUpdateRevenueItem() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: revenueKeys.detail(data.id) })
       queryClient.invalidateQueries({ queryKey: revenueKeys.list(data.budget_version_id) })
+      toastMessages.success.updated(entityNames.revenue)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -67,7 +78,9 @@ export function useDeleteRevenueItem() {
     mutationFn: revenueApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: revenueKeys.lists() })
+      toastMessages.success.deleted(entityNames.revenue)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -78,7 +91,9 @@ export function useCalculateRevenue() {
     mutationFn: revenueApi.calculateRevenue,
     onSuccess: (_, versionId) => {
       queryClient.invalidateQueries({ queryKey: revenueKeys.list(versionId) })
+      toastMessages.success.calculated()
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -101,6 +116,8 @@ export function useBulkUpdateRevenue() {
     }) => revenueApi.bulkUpdate(versionId, updates),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: revenueKeys.list(variables.versionId) })
+      toastMessages.success.updated(entityNames.revenue)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }

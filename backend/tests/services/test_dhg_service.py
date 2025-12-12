@@ -39,7 +39,7 @@ async def dhg_service(db_session: AsyncSession) -> DHGService:
 
 
 @pytest.fixture
-async def mock_budget_version(db_session: AsyncSession, test_user_id):
+async def mock_budget_version(db_session: AsyncSession, test_user_id, organization_id):
     """Create test budget version."""
     from datetime import datetime
 
@@ -51,6 +51,7 @@ async def mock_budget_version(db_session: AsyncSession, test_user_id):
         fiscal_year=2024,
         academic_year="2024-2025",
         status=BudgetVersionStatus.WORKING,
+        organization_id=organization_id,
         created_by_id=test_user_id,
         created_at=datetime.utcnow(),
     )

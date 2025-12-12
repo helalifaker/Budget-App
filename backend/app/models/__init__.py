@@ -32,7 +32,7 @@ from app.models.analysis import (
     VarianceStatus,
     WidgetType,
 )
-from app.models.auth import User
+from app.models.auth import Organization, User
 from app.models.base import (
     AuditMixin,
     Base,
@@ -68,13 +68,16 @@ from app.models.consolidation import (
     StatementType,
 )
 from app.models.enrollment_projection import (
+    EnrollmentDerivedParameter,
     EnrollmentGlobalOverride,
     EnrollmentGradeOverride,
     EnrollmentLateralEntryDefault,
     EnrollmentLevelOverride,
+    EnrollmentParameterOverride,
     EnrollmentProjection,
     EnrollmentProjectionConfig,
     EnrollmentScenario,
+    EnrollmentScenarioMultiplier,
 )
 from app.models.personnel import (
     # Models
@@ -155,6 +158,10 @@ __all__ = [
     "EnrollmentLevelOverride",
     "EnrollmentGradeOverride",
     "EnrollmentProjection",
+    # Enrollment Settings (Dynamic Lateral Entry)
+    "EnrollmentDerivedParameter",
+    "EnrollmentParameterOverride",
+    "EnrollmentScenarioMultiplier",
     "FeeCategory",
     "FeeStructure",
     "FinancialStatement",
@@ -201,6 +208,7 @@ __all__ = [
     "TimestampMixin",
     "TimetableConstraint",
     # Auth models
+    "Organization",
     "User",
     "UserPreferences",
     "VarianceExplanation",

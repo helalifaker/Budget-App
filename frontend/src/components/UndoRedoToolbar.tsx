@@ -44,10 +44,10 @@ export function UndoRedoToolbar({ budgetVersionId, moduleCode, className }: Undo
         onClick={() => void undo()}
         disabled={!canUndo || isLoading}
         className="gap-2"
-        title="Annuler la dernière modification (Ctrl+Z)"
+        title="Undo last change (Ctrl+Z)"
       >
         <Undo2 className="h-4 w-4" />
-        <span className="hidden sm:inline">Annuler</span>
+        <span className="hidden sm:inline">Undo</span>
         {undoCount > 0 && (
           <Badge variant="secondary" className="ml-1">
             {undoCount}
@@ -62,10 +62,10 @@ export function UndoRedoToolbar({ budgetVersionId, moduleCode, className }: Undo
         onClick={() => void redo()}
         disabled={!canRedo || isLoading}
         className="gap-2"
-        title="Rétablir la dernière annulation (Ctrl+Y)"
+        title="Redo last undo (Ctrl+Y)"
       >
         <Redo2 className="h-4 w-4" />
-        <span className="hidden sm:inline">Rétablir</span>
+        <span className="hidden sm:inline">Redo</span>
         {redoCount > 0 && (
           <Badge variant="secondary" className="ml-1">
             {redoCount}

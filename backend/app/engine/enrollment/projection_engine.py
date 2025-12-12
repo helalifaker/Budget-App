@@ -14,6 +14,9 @@ from __future__ import annotations
 from decimal import Decimal
 
 from app.engine.enrollment.projection_models import (
+    DOCUMENT_LATERAL_DEFAULTS,
+    ENTRY_POINT_GRADES,
+    EngineEffectiveRates,
     GlobalOverrides,
     GradeOverride,
     GradeProjection,
@@ -171,7 +174,13 @@ def get_effective_lateral_entry(
     lateral_multiplier: Decimal,
     grade_overrides: dict[str, GradeOverride] | None,
 ) -> int:
-    """Calculate effective lateral entry count."""
+    """
+    Calculate effective lateral entry count (legacy mode).
+
+    This is the legacy mode that uses fixed lateral entry values.
+    For calibrated mode with percentage-based entry points, use
+    calculate_lateral_with_rates() instead.
+    """
     if grade_overrides and grade in grade_overrides:
         v = grade_overrides[grade].lateral_entry
         if v is not None:
@@ -179,6 +188,87 @@ def get_effective_lateral_entry(
 
     base = base_lateral_entry.get(grade, 0)
     return int(base * float(lateral_multiplier))
+
+
+def calculate_lateral_with_rates(
+    grade: str,
+    prev_enrollment: int,
+    effective_rates: dict[str, EngineEffectiveRates],
+) -> tuple[int, Decimal]:
+    """
+    Calculate lateral entry using calibrated effective rates.
+
+    For entry point grades (MS, GS, CP, 6EME, 2NDE):
+        lateral = prev_enrollment × lateral_entry_rate
+
+    For incidental grades:
+        lateral = lateral_entry_fixed
+
+    Returns:
+        tuple[int, Decimal]: (lateral_count, effective_retention_rate)
+    """
+    rates = effective_rates.get(grade)
+    if not rates:
+        # Fallback to document defaults
+        defaults = DOCUMENT_LATERAL_DEFAULTS.get(grade, {})
+        retention = defaults.get("retention_rate", Decimal("0.96"))
+
+        if grade in ENTRY_POINT_GRADES:
+            lateral_rate = defaults.get("lateral_rate", Decimal("0"))
+            lateral = int(prev_enrollment * float(lateral_rate))
+        else:
+            lateral = defaults.get("fixed_lateral", 0)
+
+        return lateral, retention
+
+    # Use calibrated rates
+    retention = rates.retention_rate
+
+    if rates.is_percentage_based:
+        # Entry point: percentage of previous grade
+        lateral_rate = rates.lateral_entry_rate or Decimal("0")
+        lateral = int(prev_enrollment * float(lateral_rate))
+    else:
+        # Incidental: fixed value (already includes scenario multiplier)
+        lateral = rates.lateral_entry_fixed or 0
+
+    return lateral, retention
+
+
+def get_effective_retention_with_rates(
+    grade: str,
+    effective_rates: dict[str, EngineEffectiveRates] | None,
+    scenario: ScenarioParams,
+    global_overrides: GlobalOverrides | None,
+    grade_overrides: dict[str, GradeOverride] | None,
+) -> Decimal:
+    """
+    Get effective retention rate with support for calibrated rates.
+
+    Priority:
+    1. Grade override (if set)
+    2. Effective rates (if provided)
+    3. Legacy mode (global adjustment + scenario default)
+    """
+    # Check grade override first (highest priority)
+    if grade_overrides and grade in grade_overrides:
+        override_val = grade_overrides[grade].retention_rate
+        if override_val is not None:
+            return override_val
+
+    # Check effective_rates (calibrated mode)
+    if effective_rates and grade in effective_rates:
+        return effective_rates[grade].retention_rate
+
+    # Fall back to legacy mode
+    base_retention = (
+        scenario.terminal_retention if grade == "TLE" else scenario.default_retention
+    )
+    if global_overrides and global_overrides.retention_adjustment is not None:
+        adjusted = base_retention + global_overrides.retention_adjustment
+        return min(max(adjusted, Decimal("0.0")), Decimal("1.0"))
+
+    return base_retention
 
 
 def calculate_divisions(students: int, class_size: int, max_divisions: int) -> int:
@@ -193,6 +283,18 @@ def project_single_year(input: ProjectionInput) -> dict[str, int]:
     """
     Project enrollment for a single target year.
 
+    Supports two modes:
+
+    1. **Calibrated mode** (when input.effective_rates is provided):
+       - Uses percentage-based lateral entry for entry points (MS, GS, CP, 6EME, 2NDE)
+       - Uses fixed lateral values for incidental grades
+       - Retention and lateral rates from EngineEffectiveRates
+
+    2. **Legacy mode** (when input.effective_rates is None):
+       - Uses fixed lateral values from base_lateral_entry for all grades
+       - Applies lateral_multiplier from scenario
+       - Retention from scenario defaults + adjustments
+
     Assumes input.base_year_enrollment represents the immediately
     preceding school year. For multi-year projections, call via
     project_multi_year(), which iteratively updates the base.
@@ -200,6 +302,7 @@ def project_single_year(input: ProjectionInput) -> dict[str, int]:
     result: dict[str, int] = {}
     years_diff = input.target_year - input.base_year
 
+    # PS entry calculation (same for both modes)
     ps_entry = input.scenario.ps_entry
     if input.global_overrides and input.global_overrides.ps_entry_adjustment:
         ps_entry += input.global_overrides.ps_entry_adjustment
@@ -207,23 +310,46 @@ def project_single_year(input: ProjectionInput) -> dict[str, int]:
     growth = float(input.scenario.entry_growth_rate)
     result["PS"] = round(ps_entry * ((1 + growth) ** years_diff))
 
+    # Check which mode to use
+    use_calibrated_mode = input.effective_rates is not None
+
     for i in range(1, len(GRADE_SEQUENCE)):
         grade = GRADE_SEQUENCE[i]
         prev_grade = GRADE_SEQUENCE[i - 1]
-
-        retention = get_effective_retention(
-            grade, input.scenario, input.global_overrides, input.grade_overrides
-        )
-        lateral_mult = get_effective_lateral_multiplier(
-            input.scenario, input.global_overrides
-        )
-        lateral = get_effective_lateral_entry(
-            grade, input.base_lateral_entry, lateral_mult, input.grade_overrides
-        )
-
         prev_enrollment = input.base_year_enrollment.get(prev_grade, 0)
+
+        if use_calibrated_mode:
+            # Calibrated mode: use effective_rates for retention and lateral
+            lateral, retention = calculate_lateral_with_rates(
+                grade, prev_enrollment, input.effective_rates  # type: ignore
+            )
+
+            # Grade overrides still have highest priority for retention
+            if input.grade_overrides and grade in input.grade_overrides:
+                override_retention = input.grade_overrides[grade].retention_rate
+                if override_retention is not None:
+                    retention = override_retention
+
+            # Grade overrides for lateral entry (fixed value override)
+            if input.grade_overrides and grade in input.grade_overrides:
+                override_lateral = input.grade_overrides[grade].lateral_entry
+                if override_lateral is not None:
+                    lateral = override_lateral
+        else:
+            # Legacy mode: use base_lateral_entry with multiplier
+            retention = get_effective_retention(
+                grade, input.scenario, input.global_overrides, input.grade_overrides
+            )
+            lateral_mult = get_effective_lateral_multiplier(
+                input.scenario, input.global_overrides
+            )
+            lateral = get_effective_lateral_entry(
+                grade, input.base_lateral_entry, lateral_mult, input.grade_overrides
+            )
+
         projected = int(prev_enrollment * float(retention)) + lateral
 
+        # Apply grade capacity constraint
         max_div = get_effective_max_divisions(
             grade, input.level_overrides, input.grade_overrides
         )

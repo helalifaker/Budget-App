@@ -2,6 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { enrollmentApi } from '@/services/enrollment'
 import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
 
+// PERFORMANCE: 10 minutes staleTime for enrollment data
+// Enrollment changes rarely during a session, so we can cache it longer
+const ENROLLMENT_STALE_TIME = 10 * 60 * 1000 // 10 minutes
+
 export const enrollmentKeys = {
   all: ['enrollments'] as const,
   lists: () => [...enrollmentKeys.all, 'list'] as const,
@@ -20,6 +24,7 @@ export function useEnrollments(versionId: string | undefined, page = 1, pageSize
     queryKey: enrollmentKeys.list(versionId ?? '', `page=${page}&pageSize=${pageSize}`),
     queryFn: () => enrollmentApi.getAll(versionId!, { page, page_size: pageSize }),
     enabled: !!versionId,
+    staleTime: ENROLLMENT_STALE_TIME,
   })
 }
 
@@ -28,6 +33,7 @@ export function useEnrollmentSummary(versionId: string | undefined) {
     queryKey: enrollmentKeys.summary(versionId ?? ''),
     queryFn: () => enrollmentApi.getSummary(versionId!),
     enabled: !!versionId,
+    staleTime: ENROLLMENT_STALE_TIME,
   })
 }
 
@@ -131,6 +137,7 @@ export function useEnrollmentWithDistribution(versionId: string | undefined) {
     queryKey: enrollmentKeys.withDistribution(versionId ?? ''),
     queryFn: () => enrollmentApi.getWithDistribution(versionId!),
     enabled: !!versionId,
+    staleTime: ENROLLMENT_STALE_TIME,
   })
 }
 
@@ -142,6 +149,7 @@ export function useDistributions(versionId: string | undefined) {
     queryKey: enrollmentKeys.distributions(versionId ?? ''),
     queryFn: () => enrollmentApi.getDistributions(versionId!),
     enabled: !!versionId,
+    staleTime: ENROLLMENT_STALE_TIME,
   })
 }
 

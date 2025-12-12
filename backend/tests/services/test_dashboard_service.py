@@ -554,6 +554,7 @@ class TestGetRecentActivity:
         db_session: AsyncSession,
         test_budget_version: BudgetVersion,
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test recent activity is ordered by timestamp descending."""
         # Create multiple budget versions with different timestamps
@@ -566,6 +567,7 @@ class TestGetRecentActivity:
             name="Version 1",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.WORKING,
             created_by_id=test_user_id,
             created_at=datetime.utcnow() - timedelta(hours=3),
@@ -576,6 +578,7 @@ class TestGetRecentActivity:
             name="Version 2",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.WORKING,
             created_by_id=test_user_id,
             created_at=datetime.utcnow() - timedelta(hours=1),
@@ -601,6 +604,7 @@ class TestGetRecentActivity:
         self,
         db_session: AsyncSession,
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test recent activity pagination limit."""
         # Create 5 budget versions
@@ -615,6 +619,7 @@ class TestGetRecentActivity:
                 name=f"Version {i}",
                 fiscal_year=2025,
                 academic_year="2024-2025",
+                organization_id=organization_id,
                 status=BudgetVersionStatus.WORKING,
                 created_by_id=test_user_id,
                 created_at=datetime.utcnow() - timedelta(hours=i),
@@ -649,6 +654,7 @@ class TestGetRecentActivity:
         db_session: AsyncSession,
         test_budget_version: BudgetVersion,
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test recent activity filtered by specific version."""
         from app.models.configuration import BudgetVersionStatus
@@ -659,6 +665,7 @@ class TestGetRecentActivity:
             name="Other Version",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.WORKING,
             created_by_id=test_user_id,
         )
@@ -679,6 +686,7 @@ class TestGetRecentActivity:
         self,
         db_session: AsyncSession,
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test recent activity includes submission activity."""
         from datetime import datetime
@@ -690,6 +698,7 @@ class TestGetRecentActivity:
             name="Submitted Version",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.SUBMITTED,
             created_by_id=test_user_id,
             submitted_at=datetime.utcnow(),
@@ -712,6 +721,7 @@ class TestGetRecentActivity:
         self,
         db_session: AsyncSession,
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test recent activity includes approval activity."""
         from datetime import datetime
@@ -723,6 +733,7 @@ class TestGetRecentActivity:
             name="Approved Version",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.APPROVED,
             created_by_id=test_user_id,
             submitted_at=datetime.utcnow(),
@@ -757,6 +768,7 @@ class TestGetComparisonData:
         db_session: AsyncSession,
         test_budget_version: BudgetVersion,
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test comparison data for two versions."""
         from app.models.configuration import BudgetVersionStatus
@@ -767,6 +779,7 @@ class TestGetComparisonData:
             name="Version 2",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.WORKING,
             created_by_id=test_user_id,
         )
@@ -790,6 +803,7 @@ class TestGetComparisonData:
         self,
         db_session: AsyncSession,
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test comparison data for 3+ versions."""
         from app.models.configuration import BudgetVersionStatus
@@ -802,6 +816,7 @@ class TestGetComparisonData:
                 name=f"Version {i+1}",
                 fiscal_year=2025,
                 academic_year="2024-2025",
+                organization_id=organization_id,
                 status=BudgetVersionStatus.WORKING,
                 created_by_id=test_user_id,
             )

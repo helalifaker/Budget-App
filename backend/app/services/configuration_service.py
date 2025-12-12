@@ -13,14 +13,12 @@ Handles CRUD operations for:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.logging import logger
 from app.data.curriculum_templates import CURRICULUM_TEMPLATES, get_template
@@ -41,13 +39,18 @@ from app.models.configuration import (
     TimetableConstraint,
 )
 from app.services.base import BaseService
+from app.services.budget_version_service import BudgetVersionService
+from app.services.class_size_service import ClassSizeService
 from app.services.exceptions import (
-    BusinessRuleError,
     ConflictError,
     NotFoundError,
     ServiceException,
-    ValidationError,
 )
+from app.services.fee_structure_service import FeeStructureService
+from app.services.reference_data_service import ReferenceDataService
+from app.services.subject_hours_service import SubjectHoursService
+from app.services.teacher_cost_service import TeacherCostParametersService
+from app.services.timetable_constraints_service import TimetableConstraintsService
 
 if TYPE_CHECKING:
     from app.schemas.configuration import (
@@ -73,12 +76,20 @@ class ConfigurationService:
         """
         self.session = session
         self.system_config_service = BaseService(SystemConfig, session)
-        self.budget_version_service = BaseService(BudgetVersion, session)
+        self.budget_version_base_service = BaseService(BudgetVersion, session)
         self.class_size_param_service = BaseService(ClassSizeParam, session)
-        self.subject_hours_service = BaseService(SubjectHoursMatrix, session)
-        self.teacher_cost_service = BaseService(TeacherCostParam, session)
-        self.fee_structure_service = BaseService(FeeStructure, session)
-        self.timetable_constraint_service = BaseService(TimetableConstraint, session)
+        self.subject_hours_base_service = BaseService(SubjectHoursMatrix, session)
+        self.teacher_cost_base_service = BaseService(TeacherCostParam, session)
+        self.fee_structure_base_service = BaseService(FeeStructure, session)
+        self.timetable_constraint_base_service = BaseService(TimetableConstraint, session)
+        # Delegate to specialized services
+        self._reference_data = ReferenceDataService(session)
+        self._class_size = ClassSizeService(session)
+        self._fee_structure = FeeStructureService(session)
+        self._timetable_constraints = TimetableConstraintsService(session)
+        self._teacher_cost = TeacherCostParametersService(session)
+        self._budget_version = BudgetVersionService(session)
+        self._subject_hours = SubjectHoursService(session)
 
     async def get_system_config(self, key: str) -> SystemConfig | None:
         """
@@ -189,8 +200,11 @@ class ConfigurationService:
 
         Raises:
             NotFoundError: If version not found
+
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
         """
-        return await self.budget_version_service.get_by_id(version_id)
+        return await self._budget_version.get_budget_version(version_id)
 
     async def get_all_budget_versions(
         self,
@@ -206,16 +220,13 @@ class ConfigurationService:
 
         Returns:
             List of BudgetVersion instances
-        """
-        filters = {}
-        if fiscal_year:
-            filters["fiscal_year"] = fiscal_year
-        if status:
-            filters["status"] = status
 
-        return await self.budget_version_service.get_all(
-            filters=filters,
-            order_by="created_at",
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
+        """
+        return await self._budget_version.get_all_budget_versions(
+            fiscal_year=fiscal_year,
+            status=status,
         )
 
     async def get_budget_versions_paginated(
@@ -236,18 +247,15 @@ class ConfigurationService:
 
         Returns:
             Paginated response with items, total, page, page_size, total_pages
-        """
-        filters = {}
-        if fiscal_year:
-            filters["fiscal_year"] = fiscal_year
-        if status:
-            filters["status"] = status
 
-        return await self.budget_version_service.get_paginated(
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
+        """
+        return await self._budget_version.get_budget_versions_paginated(
             page=page,
             page_size=page_size,
-            filters=filters,
-            order_by="created_at",
+            fiscal_year=fiscal_year,
+            status=status,
         )
 
     async def create_budget_version(
@@ -255,6 +263,7 @@ class ConfigurationService:
         name: str,
         fiscal_year: int,
         academic_year: str,
+        organization_id: uuid.UUID,
         notes: str | None = None,
         parent_version_id: uuid.UUID | None = None,
         user_id: uuid.UUID | None = None,
@@ -266,6 +275,7 @@ class ConfigurationService:
             name: Version name
             fiscal_year: Fiscal year
             academic_year: Academic year string
+            organization_id: Organization UUID this version belongs to
             notes: Optional notes
             parent_version_id: Optional parent version for forecast revisions
             user_id: User ID for audit trail
@@ -274,31 +284,18 @@ class ConfigurationService:
             Created BudgetVersion instance
 
         Raises:
-            ConflictError: If a working version already exists for the fiscal year
+            ConflictError: If a working version already exists for the organization and fiscal year
+
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
         """
-        existing_working = await self.budget_version_service.exists(
-            {
-                "fiscal_year": fiscal_year,
-                "status": BudgetVersionStatus.WORKING,
-            }
-        )
-
-        if existing_working:
-            raise ConflictError(
-                f"A working budget version already exists for fiscal year {fiscal_year}. "
-                "Please submit or supersede the existing version first."
-            )
-
-        return await self.budget_version_service.create(
-            {
-                "name": name,
-                "fiscal_year": fiscal_year,
-                "academic_year": academic_year,
-                "status": BudgetVersionStatus.WORKING,
-                "notes": notes,
-                "is_baseline": False,
-                "parent_version_id": parent_version_id,
-            },
+        return await self._budget_version.create_budget_version(
+            name=name,
+            fiscal_year=fiscal_year,
+            academic_year=academic_year,
+            organization_id=organization_id,
+            notes=notes,
+            parent_version_id=parent_version_id,
             user_id=user_id,
         )
 
@@ -319,22 +316,12 @@ class ConfigurationService:
 
         Raises:
             BusinessRuleError: If version is not in working status
+
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
         """
-        version = await self.get_budget_version(version_id)
-
-        if version.status != BudgetVersionStatus.WORKING:
-            raise BusinessRuleError(
-                "INVALID_STATUS_TRANSITION",
-                f"Cannot submit version with status '{version.status}'. Only working versions can be submitted.",
-            )
-
-        return await self.budget_version_service.update(
-            version_id,
-            {
-                "status": BudgetVersionStatus.SUBMITTED,
-                "submitted_at": datetime.utcnow(),
-                "submitted_by_id": user_id,
-            },
+        return await self._budget_version.submit_budget_version(
+            version_id=version_id,
             user_id=user_id,
         )
 
@@ -355,22 +342,12 @@ class ConfigurationService:
 
         Raises:
             BusinessRuleError: If version is not in submitted status
+
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
         """
-        version = await self.get_budget_version(version_id)
-
-        if version.status != BudgetVersionStatus.SUBMITTED:
-            raise BusinessRuleError(
-                "INVALID_STATUS_TRANSITION",
-                f"Cannot approve version with status '{version.status}'. Only submitted versions can be approved.",
-            )
-
-        return await self.budget_version_service.update(
-            version_id,
-            {
-                "status": BudgetVersionStatus.APPROVED,
-                "approved_at": datetime.utcnow(),
-                "approved_by_id": user_id,
-            },
+        return await self._budget_version.approve_budget_version(
+            version_id=version_id,
             user_id=user_id,
         )
 
@@ -388,10 +365,12 @@ class ConfigurationService:
 
         Returns:
             Updated BudgetVersion instance
+
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
         """
-        return await self.budget_version_service.update(
-            version_id,
-            {"status": BudgetVersionStatus.SUPERSEDED},
+        return await self._budget_version.supersede_budget_version(
+            version_id=version_id,
             user_id=user_id,
         )
 
@@ -413,17 +392,14 @@ class ConfigurationService:
         Raises:
             NotFoundError: If version not found
             BusinessRuleError: If version is approved (cannot delete approved budgets)
+
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
         """
-        version = await self.get_budget_version(version_id)
-
-        # Business rule: Cannot delete approved versions
-        if version.status == BudgetVersionStatus.APPROVED:
-            raise BusinessRuleError(
-                "CANNOT_DELETE_APPROVED",
-                "Cannot delete approved budget versions. Please use supersede instead to maintain audit trail.",
-            )
-
-        await self.budget_version_service.soft_delete(version_id, user_id=user_id)
+        await self._budget_version.delete_budget_version(
+            version_id=version_id,
+            user_id=user_id,
+        )
 
     async def clone_budget_version(
         self,
@@ -454,166 +430,18 @@ class ConfigurationService:
         Raises:
             NotFoundError: If source version not found
             ConflictError: If working version exists for target fiscal year
+
+        Note:
+            Delegates to BudgetVersionService for centralized version management.
         """
-        # 1. Validate source exists
-        source_version = await self.get_budget_version(source_version_id)
-
-        # 2. Check for existing working version in target year
-        existing_working = await self.budget_version_service.exists(
-            {
-                "fiscal_year": fiscal_year,
-                "status": BudgetVersionStatus.WORKING,
-            }
-        )
-
-        if existing_working:
-            raise ConflictError(
-                f"A working budget version already exists for fiscal year {fiscal_year}. "
-                "Please submit or supersede it first."
-            )
-
-        # 3. Create new version with source as parent
-        new_version = await self.budget_version_service.create(
-            {
-                "name": name,
-                "fiscal_year": fiscal_year,
-                "academic_year": academic_year,
-                "status": BudgetVersionStatus.WORKING,
-                "notes": f"Cloned from {source_version.name}",
-                "is_baseline": False,
-                "parent_version_id": source_version_id,
-            },
+        return await self._budget_version.clone_budget_version(
+            source_version_id=source_version_id,
+            name=name,
+            fiscal_year=fiscal_year,
+            academic_year=academic_year,
+            clone_configuration=clone_configuration,
             user_id=user_id,
         )
-
-        # 4. Clone configuration data if requested
-        if clone_configuration:
-            await self._clone_configuration_data(
-                source_version_id=source_version_id,
-                target_version_id=new_version.id,
-                user_id=user_id,
-            )
-
-        # Refresh to get the complete object
-        await self.session.refresh(new_version)
-        return new_version
-
-    async def _clone_configuration_data(
-        self,
-        source_version_id: uuid.UUID,
-        target_version_id: uuid.UUID,
-        user_id: uuid.UUID | None = None,
-    ) -> None:
-        """
-        Clone configuration data from source to target version.
-
-        Copies:
-        - Class size parameters (Module 2)
-        - Subject hours matrix (Module 3)
-        - Teacher cost parameters (Module 4)
-        - Fee structure (Module 5)
-
-        Does NOT copy planning data (enrollment, classes, DHG, revenue, costs, capex)
-        as these are recalculated from scratch.
-
-        Args:
-            source_version_id: Source version ID
-            target_version_id: Target version ID
-            user_id: User ID for audit trail
-        """
-        # 1. Clone Class Size Parameters
-        source_class_sizes = await self.session.execute(
-            select(ClassSizeParam).where(
-                and_(
-                    ClassSizeParam.budget_version_id == source_version_id,
-                    ClassSizeParam.deleted_at.is_(None),
-                )
-            )
-        )
-        for source in source_class_sizes.scalars().all():
-            await self.class_size_param_service.create(
-                {
-                    "budget_version_id": target_version_id,
-                    "level_id": source.level_id,
-                    "cycle_id": source.cycle_id,
-                    "min_class_size": source.min_class_size,
-                    "target_class_size": source.target_class_size,
-                    "max_class_size": source.max_class_size,
-                    "notes": source.notes,
-                },
-                user_id=user_id,
-            )
-
-        # 2. Clone Subject Hours Matrix
-        source_subject_hours = await self.session.execute(
-            select(SubjectHoursMatrix).where(
-                and_(
-                    SubjectHoursMatrix.budget_version_id == source_version_id,
-                    SubjectHoursMatrix.deleted_at.is_(None),
-                )
-            )
-        )
-        for source in source_subject_hours.scalars().all():
-            await self.subject_hours_service.create(
-                {
-                    "budget_version_id": target_version_id,
-                    "level_id": source.level_id,
-                    "subject_id": source.subject_id,
-                    "hours_per_week": source.hours_per_week,
-                    "is_split": source.is_split,
-                    "notes": source.notes,
-                },
-                user_id=user_id,
-            )
-
-        # 3. Clone Teacher Cost Parameters
-        source_teacher_costs = await self.session.execute(
-            select(TeacherCostParam).where(
-                and_(
-                    TeacherCostParam.budget_version_id == source_version_id,
-                    TeacherCostParam.deleted_at.is_(None),
-                )
-            )
-        )
-        for source in source_teacher_costs.scalars().all():
-            await self.teacher_cost_service.create(
-                {
-                    "budget_version_id": target_version_id,
-                    "category_id": source.category_id,
-                    "cycle_id": source.cycle_id,
-                    "prrd_contribution_eur": source.prrd_contribution_eur,
-                    "avg_salary_sar": source.avg_salary_sar,
-                    "social_charges_rate": source.social_charges_rate,
-                    "benefits_allowance_sar": source.benefits_allowance_sar,
-                    "hsa_hourly_rate_sar": source.hsa_hourly_rate_sar,
-                    "max_hsa_hours": source.max_hsa_hours,
-                    "notes": source.notes,
-                },
-                user_id=user_id,
-            )
-
-        # 4. Clone Fee Structure
-        source_fees = await self.session.execute(
-            select(FeeStructure).where(
-                and_(
-                    FeeStructure.budget_version_id == source_version_id,
-                    FeeStructure.deleted_at.is_(None),
-                )
-            )
-        )
-        for source in source_fees.scalars().all():
-            await self.fee_structure_service.create(
-                {
-                    "budget_version_id": target_version_id,
-                    "level_id": source.level_id,
-                    "nationality_type_id": source.nationality_type_id,
-                    "fee_category_id": source.fee_category_id,
-                    "amount_sar": source.amount_sar,
-                    "trimester": source.trimester,
-                    "notes": source.notes,
-                },
-                user_id=user_id,
-            )
 
     async def get_academic_cycles(self) -> list[AcademicCycle]:
         """
@@ -621,10 +449,11 @@ class ConfigurationService:
 
         Returns:
             List of AcademicCycle instances
+
+        Note:
+            Delegates to ReferenceDataService for centralized reference data access.
         """
-        query = select(AcademicCycle).order_by(AcademicCycle.sort_order)
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._reference_data.get_academic_cycles()
 
     async def get_academic_levels(
         self,
@@ -638,16 +467,11 @@ class ConfigurationService:
 
         Returns:
             List of AcademicLevel instances
+
+        Note:
+            Delegates to ReferenceDataService for centralized reference data access.
         """
-        query = select(AcademicLevel).options(selectinload(AcademicLevel.cycle))
-
-        if cycle_id:
-            query = query.where(AcademicLevel.cycle_id == cycle_id)
-
-        query = query.order_by(AcademicLevel.sort_order)
-
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._reference_data.get_academic_levels(cycle_id=cycle_id)
 
     async def get_class_size_params(
         self,
@@ -661,10 +485,11 @@ class ConfigurationService:
 
         Returns:
             List of ClassSizeParam instances
+
+        Note:
+            Delegates to ClassSizeService for centralized parameter management.
         """
-        return await self.class_size_param_service.get_all(
-            filters={"budget_version_id": version_id}
-        )
+        return await self._class_size.get_class_size_params(version_id)
 
     async def upsert_class_size_param(
         self,
@@ -695,46 +520,20 @@ class ConfigurationService:
 
         Raises:
             ValidationError: If parameters are invalid
+
+        Note:
+            Delegates to ClassSizeService for centralized parameter management.
         """
-        if min_class_size >= target_class_size or target_class_size > max_class_size:
-            raise ValidationError(
-                "Invalid class size parameters. Must satisfy: min < target <= max"
-            )
-
-        if not level_id and not cycle_id:
-            raise ValidationError("Either level_id or cycle_id must be provided")
-
-        if level_id and cycle_id:
-            raise ValidationError("Cannot specify both level_id and cycle_id")
-
-        query = select(ClassSizeParam).where(
-            and_(
-                ClassSizeParam.budget_version_id == version_id,
-                ClassSizeParam.level_id == level_id if level_id else ClassSizeParam.cycle_id == cycle_id,
-                ClassSizeParam.deleted_at.is_(None),
-            )
+        return await self._class_size.upsert_class_size_param(
+            version_id=version_id,
+            level_id=level_id,
+            cycle_id=cycle_id,
+            min_class_size=min_class_size,
+            target_class_size=target_class_size,
+            max_class_size=max_class_size,
+            notes=notes,
+            user_id=user_id,
         )
-        result = await self.session.execute(query)
-        existing = result.scalar_one_or_none()
-
-        data = {
-            "budget_version_id": version_id,
-            "level_id": level_id,
-            "cycle_id": cycle_id,
-            "min_class_size": min_class_size,
-            "target_class_size": target_class_size,
-            "max_class_size": max_class_size,
-            "notes": notes,
-        }
-
-        if existing:
-            return await self.class_size_param_service.update(
-                existing.id,
-                data,
-                user_id=user_id,
-            )
-        else:
-            return await self.class_size_param_service.create(data, user_id=user_id)
 
     async def get_subjects(self) -> list[Subject]:
         """
@@ -742,11 +541,11 @@ class ConfigurationService:
 
         Returns:
             List of Subject instances
+
+        Note:
+            Delegates to ReferenceDataService for centralized reference data access.
         """
-        # Use == True for SQLAlchemy comparison (not Python's 'is' operator)
-        query = select(Subject).where(Subject.is_active == True).order_by(Subject.name_en)  # noqa: E712
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._reference_data.get_subjects(active_only=True)
 
     async def get_subject_hours_matrix(
         self,
@@ -760,22 +559,11 @@ class ConfigurationService:
 
         Returns:
             List of SubjectHoursMatrix instances
+
+        Note:
+            Delegates to SubjectHoursService for centralized matrix management.
         """
-        query = (
-            select(SubjectHoursMatrix)
-            .where(
-                and_(
-                    SubjectHoursMatrix.budget_version_id == version_id,
-                    SubjectHoursMatrix.deleted_at.is_(None),
-                )
-            )
-            .options(
-                selectinload(SubjectHoursMatrix.subject),
-                selectinload(SubjectHoursMatrix.level),
-            )
-        )
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._subject_hours.get_subject_hours_matrix(version_id)
 
     async def upsert_subject_hours(
         self,
@@ -804,41 +592,19 @@ class ConfigurationService:
 
         Raises:
             ValidationError: If hours are invalid
+
+        Note:
+            Delegates to SubjectHoursService for centralized matrix management.
         """
-        if hours_per_week <= 0 or hours_per_week > 12:
-            raise ValidationError(
-                "Hours per week must be between 0 and 12",
-                field="hours_per_week",
-            )
-
-        query = select(SubjectHoursMatrix).where(
-            and_(
-                SubjectHoursMatrix.budget_version_id == version_id,
-                SubjectHoursMatrix.subject_id == subject_id,
-                SubjectHoursMatrix.level_id == level_id,
-                SubjectHoursMatrix.deleted_at.is_(None),
-            )
+        return await self._subject_hours.upsert_subject_hours(
+            version_id=version_id,
+            subject_id=subject_id,
+            level_id=level_id,
+            hours_per_week=hours_per_week,
+            is_split=is_split,
+            notes=notes,
+            user_id=user_id,
         )
-        result = await self.session.execute(query)
-        existing = result.scalar_one_or_none()
-
-        data = {
-            "budget_version_id": version_id,
-            "subject_id": subject_id,
-            "level_id": level_id,
-            "hours_per_week": hours_per_week,
-            "is_split": is_split,
-            "notes": notes,
-        }
-
-        if existing:
-            return await self.subject_hours_service.update(
-                existing.id,
-                data,
-                user_id=user_id,
-            )
-        else:
-            return await self.subject_hours_service.create(data, user_id=user_id)
 
     async def get_teacher_categories(self) -> list[TeacherCategory]:
         """
@@ -846,10 +612,11 @@ class ConfigurationService:
 
         Returns:
             List of TeacherCategory instances
+
+        Note:
+            Delegates to ReferenceDataService for centralized reference data access.
         """
-        query = select(TeacherCategory)
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._reference_data.get_teacher_categories()
 
     async def get_teacher_cost_params(
         self,
@@ -863,22 +630,11 @@ class ConfigurationService:
 
         Returns:
             List of TeacherCostParam instances
+
+        Note:
+            Delegates to TeacherCostParametersService for centralized cost management.
         """
-        query = (
-            select(TeacherCostParam)
-            .where(
-                and_(
-                    TeacherCostParam.budget_version_id == version_id,
-                    TeacherCostParam.deleted_at.is_(None),
-                )
-            )
-            .options(
-                selectinload(TeacherCostParam.category),
-                selectinload(TeacherCostParam.cycle),
-            )
-        )
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._teacher_cost.get_teacher_cost_params(version_id)
 
     async def upsert_teacher_cost_param(
         self,
@@ -912,39 +668,26 @@ class ConfigurationService:
 
         Returns:
             TeacherCostParam instance
+
+        Raises:
+            ValidationError: If parameters are invalid
+
+        Note:
+            Delegates to TeacherCostParametersService for centralized cost management.
         """
-        query = select(TeacherCostParam).where(
-            and_(
-                TeacherCostParam.budget_version_id == version_id,
-                TeacherCostParam.category_id == category_id,
-                TeacherCostParam.cycle_id == cycle_id if cycle_id else TeacherCostParam.cycle_id.is_(None),
-                TeacherCostParam.deleted_at.is_(None),
-            )
+        return await self._teacher_cost.upsert_teacher_cost_param(
+            version_id=version_id,
+            category_id=category_id,
+            cycle_id=cycle_id,
+            prrd_contribution_eur=prrd_contribution_eur,
+            avg_salary_sar=avg_salary_sar,
+            social_charges_rate=social_charges_rate,
+            benefits_allowance_sar=benefits_allowance_sar,
+            hsa_hourly_rate_sar=hsa_hourly_rate_sar,
+            max_hsa_hours=max_hsa_hours,
+            notes=notes,
+            user_id=user_id,
         )
-        result = await self.session.execute(query)
-        existing = result.scalar_one_or_none()
-
-        data = {
-            "budget_version_id": version_id,
-            "category_id": category_id,
-            "cycle_id": cycle_id,
-            "prrd_contribution_eur": prrd_contribution_eur,
-            "avg_salary_sar": avg_salary_sar,
-            "social_charges_rate": social_charges_rate,
-            "benefits_allowance_sar": benefits_allowance_sar,
-            "hsa_hourly_rate_sar": hsa_hourly_rate_sar,
-            "max_hsa_hours": max_hsa_hours,
-            "notes": notes,
-        }
-
-        if existing:
-            return await self.teacher_cost_service.update(
-                existing.id,
-                data,
-                user_id=user_id,
-            )
-        else:
-            return await self.teacher_cost_service.create(data, user_id=user_id)
 
     async def get_fee_categories(self) -> list[FeeCategory]:
         """
@@ -952,10 +695,11 @@ class ConfigurationService:
 
         Returns:
             List of FeeCategory instances
+
+        Note:
+            Delegates to ReferenceDataService for centralized reference data access.
         """
-        query = select(FeeCategory)
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._reference_data.get_fee_categories()
 
     async def get_nationality_types(self) -> list[NationalityType]:
         """
@@ -963,10 +707,11 @@ class ConfigurationService:
 
         Returns:
             List of NationalityType instances
+
+        Note:
+            Delegates to ReferenceDataService for centralized reference data access.
         """
-        query = select(NationalityType).order_by(NationalityType.sort_order)
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._reference_data.get_nationality_types()
 
     async def get_fee_structure(
         self,
@@ -980,23 +725,11 @@ class ConfigurationService:
 
         Returns:
             List of FeeStructure instances
+
+        Note:
+            Delegates to FeeStructureService for centralized fee management.
         """
-        query = (
-            select(FeeStructure)
-            .where(
-                and_(
-                    FeeStructure.budget_version_id == version_id,
-                    FeeStructure.deleted_at.is_(None),
-                )
-            )
-            .options(
-                selectinload(FeeStructure.level),
-                selectinload(FeeStructure.nationality_type),
-                selectinload(FeeStructure.fee_category),
-            )
-        )
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._fee_structure.get_fee_structure(version_id)
 
     async def upsert_fee_structure(
         self,
@@ -1024,38 +757,20 @@ class ConfigurationService:
 
         Returns:
             FeeStructure instance
+
+        Note:
+            Delegates to FeeStructureService for centralized fee management.
         """
-        query = select(FeeStructure).where(
-            and_(
-                FeeStructure.budget_version_id == version_id,
-                FeeStructure.level_id == level_id,
-                FeeStructure.nationality_type_id == nationality_type_id,
-                FeeStructure.fee_category_id == fee_category_id,
-                FeeStructure.trimester == trimester if trimester else FeeStructure.trimester.is_(None),
-                FeeStructure.deleted_at.is_(None),
-            )
+        return await self._fee_structure.upsert_fee_structure(
+            version_id=version_id,
+            level_id=level_id,
+            nationality_type_id=nationality_type_id,
+            fee_category_id=fee_category_id,
+            amount_sar=amount_sar,
+            trimester=trimester,
+            notes=notes,
+            user_id=user_id,
         )
-        result = await self.session.execute(query)
-        existing = result.scalar_one_or_none()
-
-        data = {
-            "budget_version_id": version_id,
-            "level_id": level_id,
-            "nationality_type_id": nationality_type_id,
-            "fee_category_id": fee_category_id,
-            "amount_sar": amount_sar,
-            "trimester": trimester,
-            "notes": notes,
-        }
-
-        if existing:
-            return await self.fee_structure_service.update(
-                existing.id,
-                data,
-                user_id=user_id,
-            )
-        else:
-            return await self.fee_structure_service.create(data, user_id=user_id)
 
     # ========================================================================
     # Timetable Constraints (Module 6)
@@ -1073,20 +788,11 @@ class ConfigurationService:
 
         Returns:
             List of TimetableConstraint instances
+
+        Note:
+            Delegates to TimetableConstraintsService for centralized timetable management.
         """
-        query = (
-            select(TimetableConstraint)
-            .where(
-                and_(
-                    TimetableConstraint.budget_version_id == version_id,
-                    TimetableConstraint.deleted_at.is_(None),
-                )
-            )
-            .options(selectinload(TimetableConstraint.level))
-            .order_by(TimetableConstraint.level_id)
-        )
-        result = await self.session.execute(query)
-        return list(result.scalars().all())
+        return await self._timetable_constraints.get_timetable_constraints(version_id)
 
     async def upsert_timetable_constraint(
         self,
@@ -1119,42 +825,21 @@ class ConfigurationService:
 
         Raises:
             ValidationError: If max_hours_per_day > total_hours_per_week
+
+        Note:
+            Delegates to TimetableConstraintsService for centralized timetable management.
         """
-        # Validate cross-field constraint
-        if max_hours_per_day > total_hours_per_week:
-            raise ValidationError(
-                "max_hours_per_day cannot exceed total_hours_per_week"
-            )
-
-        query = select(TimetableConstraint).where(
-            and_(
-                TimetableConstraint.budget_version_id == version_id,
-                TimetableConstraint.level_id == level_id,
-                TimetableConstraint.deleted_at.is_(None),
-            )
+        return await self._timetable_constraints.upsert_timetable_constraint(
+            version_id=version_id,
+            level_id=level_id,
+            total_hours_per_week=total_hours_per_week,
+            max_hours_per_day=max_hours_per_day,
+            days_per_week=days_per_week,
+            requires_lunch_break=requires_lunch_break,
+            min_break_duration_minutes=min_break_duration_minutes,
+            notes=notes,
+            user_id=user_id,
         )
-        result = await self.session.execute(query)
-        existing = result.scalar_one_or_none()
-
-        data = {
-            "budget_version_id": version_id,
-            "level_id": level_id,
-            "total_hours_per_week": total_hours_per_week,
-            "max_hours_per_day": max_hours_per_day,
-            "days_per_week": days_per_week,
-            "requires_lunch_break": requires_lunch_break,
-            "min_break_duration_minutes": min_break_duration_minutes,
-            "notes": notes,
-        }
-
-        if existing:
-            return await self.timetable_constraint_service.update(
-                existing.id,
-                data,
-                user_id=user_id,
-            )
-        else:
-            return await self.timetable_constraint_service.create(data, user_id=user_id)
 
     # ========================================================================
     # Subject Hours Matrix - Batch Operations & Templates
@@ -1178,69 +863,14 @@ class ConfigurationService:
 
         Returns:
             SubjectHoursBatchResponse with counts and errors
+
+        Note:
+            Delegates to SubjectHoursService for centralized matrix management.
         """
-        from app.schemas.configuration import SubjectHoursBatchResponse
-
-        created_count = 0
-        updated_count = 0
-        deleted_count = 0
-        errors: list[str] = []
-
-        for entry in entries:
-            try:
-                # Find existing entry
-                query = select(SubjectHoursMatrix).where(
-                    and_(
-                        SubjectHoursMatrix.budget_version_id == version_id,
-                        SubjectHoursMatrix.subject_id == entry.subject_id,
-                        SubjectHoursMatrix.level_id == entry.level_id,
-                        SubjectHoursMatrix.deleted_at.is_(None),
-                    )
-                )
-                result = await self.session.execute(query)
-                existing = result.scalar_one_or_none()
-
-                # Handle deletion
-                if entry.hours_per_week is None:
-                    if existing:
-                        await self.subject_hours_service.soft_delete(existing.id, user_id)
-                        deleted_count += 1
-                    continue
-
-                # Validate hours range
-                if entry.hours_per_week < 0 or entry.hours_per_week > 12:
-                    errors.append(
-                        f"Invalid hours for subject {entry.subject_id}, level {entry.level_id}: "
-                        f"must be 0-12, got {entry.hours_per_week}"
-                    )
-                    continue
-
-                data = {
-                    "budget_version_id": version_id,
-                    "subject_id": entry.subject_id,
-                    "level_id": entry.level_id,
-                    "hours_per_week": entry.hours_per_week,
-                    "is_split": entry.is_split,
-                    "notes": entry.notes,
-                }
-
-                if existing:
-                    await self.subject_hours_service.update(existing.id, data, user_id=user_id)
-                    updated_count += 1
-                else:
-                    await self.subject_hours_service.create(data, user_id=user_id)
-                    created_count += 1
-
-            except Exception as e:
-                errors.append(
-                    f"Error processing subject {entry.subject_id}, level {entry.level_id}: {e!s}"
-                )
-
-        return SubjectHoursBatchResponse(
-            created_count=created_count,
-            updated_count=updated_count,
-            deleted_count=deleted_count,
-            errors=errors,
+        return await self._subject_hours.batch_upsert_subject_hours(
+            version_id=version_id,
+            entries=entries,
+            user_id=user_id,
         )
 
     async def get_subject_hours_matrix_by_cycle(
@@ -1260,109 +890,14 @@ class ConfigurationService:
 
         Returns:
             List of SubjectHoursMatrixResponse (one per cycle)
+
+        Note:
+            Delegates to SubjectHoursService for centralized matrix management.
         """
-        from app.schemas.configuration import (
-            LevelInfo,
-            SubjectHoursMatrixResponse,
-            SubjectLevelHours,
-            SubjectWithHours,
+        return await self._subject_hours.get_subject_hours_matrix_by_cycle(
+            version_id=version_id,
+            cycle_code=cycle_code,
         )
-
-        # Get cycles
-        cycles_query = select(AcademicCycle).order_by(AcademicCycle.sort_order)
-        if cycle_code:
-            cycles_query = cycles_query.where(AcademicCycle.code == cycle_code)
-        cycles_result = await self.session.execute(cycles_query)
-        cycles = list(cycles_result.scalars().all())
-
-        # Get all subjects
-        subjects = await self.get_subjects()
-
-        # Get all subject hours for this version
-        hours_query = select(SubjectHoursMatrix).where(
-            and_(
-                SubjectHoursMatrix.budget_version_id == version_id,
-                SubjectHoursMatrix.deleted_at.is_(None),
-            )
-        )
-        hours_result = await self.session.execute(hours_query)
-        all_hours = list(hours_result.scalars().all())
-
-        # Create hours lookup: (subject_id, level_id) -> SubjectHoursMatrix
-        hours_lookup: dict[tuple[uuid.UUID, uuid.UUID], SubjectHoursMatrix] = {
-            (h.subject_id, h.level_id): h for h in all_hours
-        }
-
-        result: list[SubjectHoursMatrixResponse] = []
-
-        for cycle in cycles:
-            # Get levels for this cycle
-            levels_query = (
-                select(AcademicLevel)
-                .where(AcademicLevel.cycle_id == cycle.id)
-                .order_by(AcademicLevel.sort_order)
-            )
-            levels_result = await self.session.execute(levels_query)
-            levels = list(levels_result.scalars().all())
-
-            level_infos = [
-                LevelInfo(
-                    id=level.id,
-                    code=level.code,
-                    name_en=level.name_en,
-                    name_fr=level.name_fr,
-                    sort_order=level.sort_order,
-                )
-                for level in levels
-            ]
-
-            # Build subject data with hours
-            subjects_with_hours: list[SubjectWithHours] = []
-            for subject in subjects:
-                # Determine if subject is applicable to this cycle
-                # For now, all subjects are applicable to COLL and LYC
-                is_applicable = cycle.code in ("COLL", "LYC")
-
-                hours_dict: dict[str, SubjectLevelHours] = {}
-                for level in levels:
-                    key = (subject.id, level.id)
-                    if key in hours_lookup:
-                        h = hours_lookup[key]
-                        hours_dict[str(level.id)] = SubjectLevelHours(
-                            hours_per_week=h.hours_per_week,
-                            is_split=h.is_split,
-                            notes=h.notes,
-                        )
-                    else:
-                        hours_dict[str(level.id)] = SubjectLevelHours(
-                            hours_per_week=None,
-                            is_split=False,
-                            notes=None,
-                        )
-
-                subjects_with_hours.append(
-                    SubjectWithHours(
-                        id=subject.id,
-                        code=subject.code,
-                        name_en=subject.name_en,
-                        name_fr=subject.name_fr,
-                        category=subject.category,
-                        is_applicable=is_applicable,
-                        hours=hours_dict,
-                    )
-                )
-
-            result.append(
-                SubjectHoursMatrixResponse(
-                    cycle_id=cycle.id,
-                    cycle_code=cycle.code,
-                    cycle_name=cycle.name_en,
-                    levels=level_infos,
-                    subjects=subjects_with_hours,
-                )
-            )
-
-        return result
 
     async def apply_curriculum_template(
         self,
@@ -1451,9 +986,9 @@ class ConfigurationService:
                 }
 
                 if existing:
-                    await self.subject_hours_service.update(existing.id, data, user_id=user_id)
+                    await self.subject_hours_base_service.update(existing.id, data, user_id=user_id)
                 else:
-                    await self.subject_hours_service.create(data, user_id=user_id)
+                    await self.subject_hours_base_service.create(data, user_id=user_id)
 
                 applied_count += 1
 

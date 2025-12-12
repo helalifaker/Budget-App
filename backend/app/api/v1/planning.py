@@ -995,6 +995,130 @@ async def delete_teacher_allocation(
 
 
 # ==============================================================================
+# DHG Draft/Apply BFF Endpoints (Performance Pattern)
+# ==============================================================================
+
+
+@router.post(
+    "/dhg/{version_id}/draft",
+    response_model=list[TeacherAllocationResponse],
+)
+async def save_dhg_draft(
+    version_id: uuid.UUID,
+    bulk_data: TeacherAllocationBulkUpdate,
+    dhg_service: DHGService = Depends(get_dhg_service),
+    user: UserDep = ...,
+):
+    """
+    Save DHG allocation changes as a draft without recalculating FTE.
+
+    This endpoint saves allocation changes quickly for auto-save functionality.
+    Use /apply to commit changes and recalculate teacher requirements.
+
+    Args:
+        version_id: Budget version UUID
+        bulk_data: Allocation changes to save
+        dhg_service: DHG service
+        user: Current authenticated user
+
+    Returns:
+        List of saved teacher allocations
+    """
+    try:
+        allocations_dict = [
+            {
+                "subject_id": a.subject_id,
+                "cycle_id": a.cycle_id,
+                "category_id": a.category_id,
+                "fte_count": a.fte_count,
+                "notes": a.notes,
+            }
+            for a in bulk_data.allocations
+        ]
+        allocations = await dhg_service.bulk_update_allocations(
+            version_id=version_id,
+            allocations=allocations_dict,
+            user_id=user.user_id,
+        )
+        return allocations
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.post(
+    "/dhg/{version_id}/apply",
+    response_model=TRMDGapAnalysisResponse,
+)
+async def apply_dhg_and_calculate(
+    version_id: uuid.UUID,
+    bulk_data: TeacherAllocationBulkUpdate | None = None,
+    dhg_service: DHGService = Depends(get_dhg_service),
+    user: UserDep = ...,
+):
+    """
+    Apply DHG allocation changes and run full FTE calculation (BFF endpoint).
+
+    This combines:
+    1. Save any pending allocation changes
+    2. Recalculate teacher requirements (FTE)
+    3. Update TRMD gap analysis
+    4. Return updated gap analysis
+
+    Args:
+        version_id: Budget version UUID
+        bulk_data: Optional final allocation changes
+        dhg_service: DHG service
+        user: Current authenticated user
+
+    Returns:
+        Updated TRMD gap analysis with recalculated data
+    """
+    try:
+        # Step 1: Save any pending allocation changes
+        if bulk_data and bulk_data.allocations:
+            allocations_dict = [
+                {
+                    "subject_id": a.subject_id,
+                    "cycle_id": a.cycle_id,
+                    "category_id": a.category_id,
+                    "fte_count": a.fte_count,
+                    "notes": a.notes,
+                }
+                for a in bulk_data.allocations
+            ]
+            await dhg_service.bulk_update_allocations(
+                version_id=version_id,
+                allocations=allocations_dict,
+                user_id=user.user_id,
+            )
+
+        # Step 2: Recalculate teacher requirements
+        await dhg_service.calculate_teacher_requirements(
+            version_id=version_id,
+            recalculate_all=True,
+            user_id=user.user_id,
+        )
+
+        # Step 3: Return updated TRMD gap analysis
+        analysis = await dhg_service.get_trmd_gap_analysis(version_id)
+        return analysis
+    except BusinessRuleError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+# ==============================================================================
 # TRMD Gap Analysis Endpoint
 # ==============================================================================
 

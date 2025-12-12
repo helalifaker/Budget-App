@@ -202,4 +202,56 @@ export const dhgApi = {
       throw error
     }
   },
+
+  // =============================================================================
+  // PERFORMANCE: Draft + Apply Pattern (BFF Endpoints)
+  // =============================================================================
+
+  /**
+   * Save allocation changes as a draft without triggering FTE recalculation.
+   * Use this for debounced auto-save as user edits allocation cells.
+   */
+  saveDraft: async (
+    versionId: string,
+    allocations: Array<{
+      subject_id: string
+      cycle_id: string
+      category_id: string
+      fte_count: number
+      notes?: string | null
+    }>
+  ) => {
+    return withServiceErrorHandling(
+      apiRequest<TeacherAllocation[]>({
+        method: 'POST',
+        url: `/planning/dhg/${versionId}/draft`,
+        data: { allocations },
+      }),
+      'dhg: save draft'
+    )
+  },
+
+  /**
+   * Apply allocation changes and run full FTE calculation.
+   * This is the "Apply & Calculate" action that combines save + calculate.
+   */
+  applyAndCalculate: async (
+    versionId: string,
+    allocations?: Array<{
+      subject_id: string
+      cycle_id: string
+      category_id: string
+      fte_count: number
+      notes?: string | null
+    }>
+  ) => {
+    return withServiceErrorHandling(
+      apiRequest<TRMDGapAnalysis>({
+        method: 'POST',
+        url: `/planning/dhg/${versionId}/apply`,
+        data: allocations ? { allocations } : {},
+      }),
+      'dhg: apply and calculate'
+    )
+  },
 }

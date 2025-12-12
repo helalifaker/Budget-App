@@ -7,18 +7,21 @@
  * - Contextual explanations via StepIntroCard
  * - Help tooltips on all fields
  * - Clear navigation between steps
+ * - Settings reminder card linking to calibration (Step 0)
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { ArrowRight } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ArrowRight, Calculator } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
 import { useCycles, useLevels } from '@/hooks/api/useConfiguration'
 import {
-  useCalculateProjections,
+  projectionKeys,
+  useApplyAndCalculate,
   useEnrollmentProjectionConfig,
   useEnrollmentProjectionResults,
   useEnrollmentScenarios,
@@ -29,6 +32,11 @@ import {
   useUpdateProjectionConfig,
   useValidateProjections,
 } from '@/hooks/api/useEnrollmentProjection'
+import { DraftStatusIndicator } from '@/components/ui/DraftStatusIndicator'
+import { UnappliedChangesBanner } from '@/components/ui/UnappliedChangesBanner'
+import type { DraftStatus } from '@/hooks/useDraft'
+import { useCalibrationStatus } from '@/hooks/api/useEnrollmentSettings'
+import { useOrganization } from '@/hooks/api/useOrganization'
 import { toastMessages } from '@/lib/toast-messages'
 import { ScenarioSelector } from '@/components/enrollment/ScenarioSelector'
 import {
@@ -46,9 +54,15 @@ import { AdvancedFeaturesSection } from '@/components/enrollment/AdvancedFeature
 import { WelcomeDialog } from '@/components/enrollment/WelcomeDialog'
 import { WhatsNextCard } from '@/components/enrollment/WhatsNextCard'
 import { ProjectionSummaryCard } from '@/components/enrollment/ProjectionSummaryCard'
+import { SettingsReminderCard } from '@/components/enrollment/SettingsReminderCard'
 import { ContextualTip } from '@/components/ui/ContextualTip'
 import { STEP_INTRO_CONTENT } from '@/constants/enrollment-field-definitions'
-import type { GlobalOverrides, GradeOverride, LevelOverride } from '@/types/enrollmentProjection'
+import type {
+  GlobalOverrides,
+  GradeOverride,
+  LevelOverride,
+  ProjectionConfig,
+} from '@/types/enrollmentProjection'
 
 interface LevelLike {
   id: string
@@ -74,10 +88,29 @@ export const Route = createFileRoute('/_authenticated/enrollment/planning')({
 
 function EnrollmentPlanningPage() {
   const { selectedVersionId } = useBudgetVersion()
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<'projections' | 'distribution' | 'validation'>(
     'projections'
   )
   const resultsRef = useRef<HTMLDivElement>(null)
+
+  // =============================================================================
+  // DRAFT SYSTEM: Track unapplied changes
+  // =============================================================================
+  const [hasUnappliedChanges, setHasUnappliedChanges] = useState(false)
+  const [lastAppliedAt, setLastAppliedAt] = useState<Date | null>(null)
+  const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle')
+
+  // Reset unapplied changes when version changes
+  useEffect(() => {
+    setHasUnappliedChanges(false)
+    setLastAppliedAt(null)
+    setDraftStatus('idle')
+  }, [selectedVersionId])
+
+  // Calibration status for Settings reminder card
+  const { organizationId } = useOrganization()
+  const { data: calibrationStatus } = useCalibrationStatus(organizationId)
 
   const { data: scenarios = [] } = useEnrollmentScenarios()
   const { data: config, isLoading: configLoading } =
@@ -92,13 +125,23 @@ function EnrollmentPlanningPage() {
   const updateGlobal = useUpdateGlobalOverrides()
   const updateLevel = useUpdateLevelOverrides()
   const updateGrade = useUpdateGradeOverrides()
-  const calculate = useCalculateProjections()
+  const applyAndCalculate = useApplyAndCalculate()
   const validate = useValidateProjections()
   const unvalidate = useUnvalidateProjections()
 
   const disabled = config?.status === 'validated'
 
   const selectedScenarioId = config?.scenario_id ?? null
+
+  // Find the selected scenario object to pass base values to adjustment panels
+  const selectedScenario = useMemo(
+    () => scenarios.find((s) => s.id === selectedScenarioId) ?? null,
+    [scenarios, selectedScenarioId]
+  )
+
+  // =============================================================================
+  // HANDLERS: Track changes and mark as unapplied
+  // =============================================================================
 
   // PERFORMANCE FIX: Memoize handlers with useCallback to prevent child re-renders
   const onSelectScenario = useCallback(
@@ -111,14 +154,23 @@ function EnrollmentPlanningPage() {
         versionId: selectedVersionId,
         updates: { scenario_id: scenarioId },
       })
+      setHasUnappliedChanges(true)
+      setDraftStatus('saved')
     },
     [selectedVersionId, updateConfig]
   )
 
+  // PERFORMANCE FIX (Phase 12): Use queryClient.getQueryData() inside callback to avoid stale closures
+  // This prevents callback recreation on every config change, which was causing child re-renders
+  // and cascading to 20+ duplicate API requests
   const onGlobalChange = useCallback(
     (patch: Partial<GlobalOverrides>) => {
       if (!selectedVersionId) return
-      const current = config?.global_overrides ?? {
+      // Get fresh config from React Query cache (not from closure)
+      const currentConfig = queryClient.getQueryData<ProjectionConfig>(
+        projectionKeys.config(selectedVersionId)
+      )
+      const current = currentConfig?.global_overrides ?? {
         ps_entry_adjustment: null,
         retention_adjustment: null,
         lateral_multiplier_override: null,
@@ -128,8 +180,10 @@ function EnrollmentPlanningPage() {
         versionId: selectedVersionId,
         overrides: { ...current, ...patch },
       })
+      setHasUnappliedChanges(true)
+      setDraftStatus('saved')
     },
-    [selectedVersionId, config?.global_overrides, updateGlobal]
+    [selectedVersionId, queryClient, updateGlobal] // Stable deps: no object references!
   )
 
   const onLevelChange = useCallback(
@@ -143,6 +197,8 @@ function EnrollmentPlanningPage() {
           max_divisions: r.max_divisions,
         })),
       })
+      setHasUnappliedChanges(true)
+      setDraftStatus('saved')
     },
     [selectedVersionId, updateLevel]
   )
@@ -160,9 +216,37 @@ function EnrollmentPlanningPage() {
           class_size_ceiling: r.class_size_ceiling,
         })),
       })
+      setHasUnappliedChanges(true)
+      setDraftStatus('saved')
     },
     [selectedVersionId, updateGrade]
   )
+
+  // =============================================================================
+  // APPLY & CALCULATE: BFF endpoint for commit + calculate
+  // =============================================================================
+  const handleApplyAndCalculate = useCallback(async () => {
+    if (!selectedVersionId) return
+
+    setDraftStatus('applying')
+    try {
+      await applyAndCalculate.mutateAsync({ versionId: selectedVersionId })
+      setHasUnappliedChanges(false)
+      setLastAppliedAt(new Date())
+      setDraftStatus('applied')
+    } catch {
+      setDraftStatus('error')
+    }
+  }, [selectedVersionId, applyAndCalculate])
+
+  // Discard changes and reload from server
+  const handleDiscardChanges = useCallback(() => {
+    if (!selectedVersionId) return
+    // Invalidate cache to force reload from server
+    queryClient.invalidateQueries({ queryKey: projectionKeys.config(selectedVersionId) })
+    setHasUnappliedChanges(false)
+    setDraftStatus('idle')
+  }, [selectedVersionId, queryClient])
 
   const isLoading = configLoading || resultsLoading
 
@@ -206,10 +290,19 @@ function EnrollmentPlanningPage() {
     }
   }
 
+  // Determine if calibration has been completed
+  const isCalibrated = calibrationStatus?.last_calibrated != null
+
   return (
     <div className="space-y-6">
       {/* Welcome Dialog for first-time users */}
       <WelcomeDialog />
+
+      {/* Settings Reminder Card - Step 0 linking to calibration settings */}
+      <SettingsReminderCard
+        isCalibrated={isCalibrated}
+        confidenceLevel={calibrationStatus?.overall_confidence}
+      />
 
       <Tabs value={activeTab} onValueChange={onTabChange}>
         {/* Numbered Tab List */}
@@ -245,17 +338,38 @@ function EnrollmentPlanningPage() {
             tip={STEP_INTRO_CONTENT.projections.tip}
           />
 
-          {/* Action bar */}
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="default"
-              onClick={() => selectedVersionId && calculate.mutate(selectedVersionId)}
-              disabled={!selectedVersionId || calculate.isPending}
-            >
-              {calculate.isPending ? 'Calculating...' : 'Calculate Projections'}
-            </Button>
+          {/* Draft Status & Action Bar */}
+          <div className="flex items-center justify-between">
+            {/* Draft Status Indicator */}
+            <DraftStatusIndicator
+              status={draftStatus}
+              lastAppliedAt={lastAppliedAt}
+              hasUnappliedChanges={hasUnappliedChanges}
+            />
+
+            {/* Apply & Calculate Button - only show when no unapplied changes (banner has its own button) */}
+            {!hasUnappliedChanges && (
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleApplyAndCalculate}
+                disabled={!selectedVersionId || applyAndCalculate.isPending || disabled}
+                className="gap-2"
+              >
+                <Calculator className="h-4 w-4" />
+                {applyAndCalculate.isPending ? 'Calculating...' : 'Apply & Calculate'}
+              </Button>
+            )}
           </div>
+
+          {/* Unapplied Changes Banner - shown when there are pending changes */}
+          <UnappliedChangesBanner
+            hasChanges={hasUnappliedChanges && !disabled}
+            impactSummary={`${projections.length} levels, ~${projections.reduce((sum, p) => sum + (p.total_students ?? 0), 0)} students`}
+            onDiscard={handleDiscardChanges}
+            onApply={handleApplyAndCalculate}
+            isApplying={applyAndCalculate.isPending}
+          />
 
           {/* Contextual Tip for Scenario Selection */}
           <ContextualTip tipId="scenario-selection-hint" variant="compact">
@@ -277,6 +391,7 @@ function EnrollmentPlanningPage() {
               overrides={config.global_overrides}
               onChange={onGlobalChange}
               disabled={disabled}
+              selectedScenario={selectedScenario}
             />
           )}
 

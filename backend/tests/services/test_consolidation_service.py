@@ -302,6 +302,7 @@ class TestConsolidationServiceApprovalWorkflow:
         test_enrollment_data: list[EnrollmentPlan],
         test_class_structure: list[ClassStructure],
         test_user_id: uuid.UUID,
+        organization_id: uuid.UUID,
     ):
         """Test approving new budget supersedes previous approved."""
         service = ConsolidationService(db_session)
@@ -312,6 +313,7 @@ class TestConsolidationServiceApprovalWorkflow:
             name="FY2025 Budget v1",
             fiscal_year=2025,
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.WORKING,
             created_by_id=test_user_id,
         )
@@ -349,6 +351,7 @@ class TestConsolidationServiceApprovalWorkflow:
             name="FY2025 Budget v2",
             fiscal_year=2025,  # Same fiscal year
             academic_year="2024-2025",
+            organization_id=organization_id,
             status=BudgetVersionStatus.WORKING,
             created_by_id=test_user_id,
         )

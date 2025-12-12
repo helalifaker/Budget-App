@@ -34,8 +34,10 @@ export function useEnrollmentProjectionConfig(versionId: string | undefined) {
     queryKey: projectionKeys.config(versionId ?? ''),
     queryFn: () => enrollmentProjectionApi.getConfig(versionId!),
     enabled: !!versionId,
-    // PERFORMANCE FIX: 30s staleTime prevents rapid refetches during UI interactions
-    staleTime: 30_000,
+    // PERFORMANCE FIX (Phase 12): Prevent request cascades during re-renders
+    staleTime: 5 * 60 * 1000, // 5 minutes - enrollment config changes rarely
+    refetchOnMount: false, // Don't refetch on component mount
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   })
 }
 
@@ -47,8 +49,10 @@ export function useEnrollmentProjectionResults(
     queryKey: projectionKeys.results(versionId ?? ''),
     queryFn: () => enrollmentProjectionApi.getResults(versionId!, includeFiscalProration),
     enabled: !!versionId,
-    // PERFORMANCE FIX: 30s staleTime prevents rapid refetches during UI interactions
-    staleTime: 30_000,
+    // PERFORMANCE FIX (Phase 12): Prevent request cascades during re-renders
+    staleTime: 5 * 60 * 1000, // 5 minutes - projection results change rarely
+    refetchOnMount: false, // Don't refetch on component mount
+    refetchOnWindowFocus: false, // Don't refetch on window focus
   })
 }
 
@@ -108,9 +112,10 @@ export function useUpdateGlobalOverrides() {
   return useMutation({
     mutationFn: ({ versionId, overrides }: { versionId: string; overrides: GlobalOverrides }) =>
       enrollmentProjectionApi.updateGlobalOverrides(versionId, overrides),
-    onSuccess: (_, variables) => {
-      // FIX Issue #3: Only invalidate config - results are recalculated on-demand
-      queryClient.invalidateQueries({ queryKey: projectionKeys.config(variables.versionId) })
+    onSuccess: (data, variables) => {
+      // PERFORMANCE FIX (Phase 12): Use setQueryData instead of invalidateQueries
+      // This prevents unnecessary refetch since backend returns updated config
+      queryClient.setQueryData(projectionKeys.config(variables.versionId), data)
       toastMessages.success.updated('Global overrides')
     },
     onError: (error) => handleAPIErrorToast(error),
@@ -127,9 +132,10 @@ export function useUpdateLevelOverrides() {
       versionId: string
       overrides: LevelOverrideUpdate[]
     }) => enrollmentProjectionApi.updateLevelOverrides(versionId, overrides),
-    onSuccess: (_, variables) => {
-      // FIX Issue #3: Only invalidate config - results are recalculated on-demand
-      queryClient.invalidateQueries({ queryKey: projectionKeys.config(variables.versionId) })
+    onSuccess: (data, variables) => {
+      // PERFORMANCE FIX (Phase 12): Use setQueryData instead of invalidateQueries
+      // This prevents unnecessary refetch since backend returns updated config
+      queryClient.setQueryData(projectionKeys.config(variables.versionId), data)
       toastMessages.success.updated('Level overrides')
     },
     onError: (error) => handleAPIErrorToast(error),
@@ -146,9 +152,10 @@ export function useUpdateGradeOverrides() {
       versionId: string
       overrides: GradeOverrideUpdate[]
     }) => enrollmentProjectionApi.updateGradeOverrides(versionId, overrides),
-    onSuccess: (_, variables) => {
-      // FIX Issue #3: Only invalidate config - results are recalculated on-demand
-      queryClient.invalidateQueries({ queryKey: projectionKeys.config(variables.versionId) })
+    onSuccess: (data, variables) => {
+      // PERFORMANCE FIX (Phase 12): Use setQueryData instead of invalidateQueries
+      // This prevents unnecessary refetch since backend returns updated config
+      queryClient.setQueryData(projectionKeys.config(variables.versionId), data)
       toastMessages.success.updated('Grade overrides')
     },
     onError: (error) => handleAPIErrorToast(error),
@@ -190,6 +197,100 @@ export function useUnvalidateProjections() {
       queryClient.invalidateQueries({ queryKey: projectionKeys.results(versionId) })
       toastMessages.success.updated('Projection unvalidated')
     },
+    onError: (error) => handleAPIErrorToast(error),
+  })
+}
+
+// =============================================================================
+// PERFORMANCE: Draft + Apply Pattern (BFF Hooks)
+//
+// These hooks support the "Auto-Draft + Manual Apply" UX pattern:
+// - useSaveDraft: Debounced background save without calculations
+// - useApplyAndCalculate: BFF endpoint for commit + calculate in one request
+// =============================================================================
+
+/**
+ * Hook for saving draft configuration without triggering calculations.
+ * Use this for debounced auto-save as user edits form fields.
+ *
+ * This mutation:
+ * - Does NOT show toast notifications (silent background save)
+ * - Updates the cache optimistically for instant UI feedback
+ * - Does NOT invalidate results (no expensive recalculation)
+ */
+export function useSaveDraft() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      updates,
+    }: {
+      versionId: string
+      updates: Partial<ProjectionConfig>
+    }) => enrollmentProjectionApi.saveDraft(versionId, updates),
+
+    // Optimistic update for instant UI feedback
+    onMutate: async ({ versionId, updates }) => {
+      await queryClient.cancelQueries({ queryKey: projectionKeys.config(versionId) })
+
+      const previousConfig = queryClient.getQueryData<ProjectionConfig>(
+        projectionKeys.config(versionId)
+      )
+
+      if (previousConfig) {
+        queryClient.setQueryData<ProjectionConfig>(projectionKeys.config(versionId), {
+          ...previousConfig,
+          ...updates,
+        })
+      }
+
+      return { previousConfig }
+    },
+
+    onSuccess: (data, variables) => {
+      // Update cache with server response (no toast - silent save)
+      queryClient.setQueryData(projectionKeys.config(variables.versionId), data)
+    },
+
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousConfig) {
+        queryClient.setQueryData(projectionKeys.config(variables.versionId), context.previousConfig)
+      }
+      handleAPIErrorToast(error)
+    },
+  })
+}
+
+/**
+ * Hook for applying draft changes and running full projection calculation.
+ * This is the "Apply & Calculate" action that users explicitly trigger.
+ *
+ * This mutation:
+ * - Saves any final updates (if provided)
+ * - Runs full projection calculation
+ * - Invalidates results cache to show new projections
+ * - Shows success toast when complete
+ */
+export function useApplyAndCalculate() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      updates,
+    }: {
+      versionId: string
+      updates?: Partial<ProjectionConfig>
+    }) => enrollmentProjectionApi.applyAndCalculate(versionId, updates),
+
+    onSuccess: (data, variables) => {
+      // Update results cache with new projection data
+      queryClient.setQueryData(projectionKeys.results(variables.versionId), data)
+      // Also refresh config in case it changed
+      queryClient.invalidateQueries({ queryKey: projectionKeys.config(variables.versionId) })
+      toastMessages.success.calculated()
+    },
+
     onError: (error) => handleAPIErrorToast(error),
   })
 }

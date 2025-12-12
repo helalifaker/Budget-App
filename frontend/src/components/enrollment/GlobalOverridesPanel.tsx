@@ -2,15 +2,18 @@ import { memo, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
 import { FieldLabel, FieldHint } from '@/components/ui/HelpTooltip'
 import { ENROLLMENT_FIELDS } from '@/constants/enrollment-field-definitions'
-import type { GlobalOverrides } from '@/types/enrollmentProjection'
+import type { GlobalOverrides, EnrollmentScenario } from '@/types/enrollmentProjection'
 import { SLIDER_CONFIGS } from '@/types/enrollmentProjection'
 
 interface BasicOverridesPanelProps {
   overrides: GlobalOverrides | null
   onChange: (updates: Partial<GlobalOverrides>) => void
   disabled?: boolean
+  /** Selected scenario to show base values as reference */
+  selectedScenario?: EnrollmentScenario | null
 }
 
 /**
@@ -27,6 +30,7 @@ export const BasicOverridesPanel = memo(function BasicOverridesPanel({
   overrides,
   onChange,
   disabled,
+  selectedScenario,
 }: BasicOverridesPanelProps) {
   const current = useMemo(
     () =>
@@ -48,6 +52,16 @@ export const BasicOverridesPanel = memo(function BasicOverridesPanel({
     [onChange]
   )
 
+  // Base values from selected scenario (ensure numeric conversion - API may return strings)
+  const basePsEntry = Number(selectedScenario?.ps_entry) || 0
+  const baseRetention = Number(selectedScenario?.default_retention) || 0.96
+
+  // Computed final values (base + adjustment)
+  const psEntryAdjustment = current.ps_entry_adjustment ?? 0
+  const retentionAdjustment = current.retention_adjustment ?? 0
+  const finalPsEntry = basePsEntry + psEntryAdjustment
+  const finalRetention = baseRetention + retentionAdjustment
+
   return (
     <Card>
       <CardHeader>
@@ -65,45 +79,85 @@ export const BasicOverridesPanel = memo(function BasicOverridesPanel({
         </CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* PS Entry Adjustment - Basic Field */}
-        <div className="space-y-1.5">
+        {/* PS Entry Adjustment - Slider showing variation from base */}
+        <div className="space-y-2">
           <FieldLabel field={ENROLLMENT_FIELDS.ps_entry_adjustment} />
-          <Input
-            type="number"
-            min={SLIDER_CONFIGS.psEntryAdjustment.min}
-            max={SLIDER_CONFIGS.psEntryAdjustment.max}
-            step={SLIDER_CONFIGS.psEntryAdjustment.step}
-            value={current.ps_entry_adjustment ?? ''}
-            onChange={(e) =>
-              onChange({
-                ps_entry_adjustment: e.target.value === '' ? null : Number(e.target.value),
-              })
-            }
-            disabled={disabled}
-            placeholder="0"
-            className="w-full"
-          />
+
+          {/* Base reference */}
+          <div className="text-xs text-text-secondary">
+            Scenario base:{' '}
+            <span className="font-medium text-text-primary">{basePsEntry} students</span>
+          </div>
+
+          {/* Slider */}
+          <div className="flex items-center gap-4">
+            <Slider
+              min={SLIDER_CONFIGS.psEntryAdjustment.min}
+              max={SLIDER_CONFIGS.psEntryAdjustment.max}
+              step={SLIDER_CONFIGS.psEntryAdjustment.step}
+              value={[psEntryAdjustment]}
+              onValueChange={([value]) =>
+                onChange({
+                  ps_entry_adjustment: value === 0 ? null : value,
+                })
+              }
+              disabled={disabled}
+              className="flex-1"
+            />
+            <span className="w-16 text-right font-medium tabular-nums">
+              {psEntryAdjustment > 0 ? '+' : ''}
+              {psEntryAdjustment}
+            </span>
+          </div>
+
+          {/* Final value */}
+          <div className="text-xs">
+            <span className="text-text-secondary">Result: </span>
+            <span className="font-semibold text-sage">{finalPsEntry} students</span>
+          </div>
+
           <FieldHint field={ENROLLMENT_FIELDS.ps_entry_adjustment} />
         </div>
 
-        {/* Retention Adjustment - Basic Field */}
-        <div className="space-y-1.5">
+        {/* Retention Adjustment - Slider showing variation from base */}
+        <div className="space-y-2">
           <FieldLabel field={ENROLLMENT_FIELDS.retention_adjustment} />
-          <Input
-            type="number"
-            min={SLIDER_CONFIGS.retentionAdjustment.min}
-            max={SLIDER_CONFIGS.retentionAdjustment.max}
-            step={SLIDER_CONFIGS.retentionAdjustment.step}
-            value={current.retention_adjustment ?? ''}
-            onChange={(e) =>
-              onChange({
-                retention_adjustment: e.target.value === '' ? null : Number(e.target.value),
-              })
-            }
-            disabled={disabled}
-            placeholder="0.00"
-            className="w-full"
-          />
+
+          {/* Base reference */}
+          <div className="text-xs text-text-secondary">
+            Scenario base:{' '}
+            <span className="font-medium text-text-primary">
+              {Math.round(baseRetention * 100)}% retention
+            </span>
+          </div>
+
+          {/* Slider */}
+          <div className="flex items-center gap-4">
+            <Slider
+              min={Math.round(SLIDER_CONFIGS.retentionAdjustment.min * 100)}
+              max={Math.round(SLIDER_CONFIGS.retentionAdjustment.max * 100)}
+              step={Math.round(SLIDER_CONFIGS.retentionAdjustment.step * 100)}
+              value={[Math.round(retentionAdjustment * 100)]}
+              onValueChange={([value]) =>
+                onChange({
+                  retention_adjustment: value === 0 ? null : value / 100,
+                })
+              }
+              disabled={disabled}
+              className="flex-1"
+            />
+            <span className="w-16 text-right font-medium tabular-nums">
+              {retentionAdjustment > 0 ? '+' : ''}
+              {Math.round(retentionAdjustment * 100)}%
+            </span>
+          </div>
+
+          {/* Final value */}
+          <div className="text-xs">
+            <span className="text-text-secondary">Result: </span>
+            <span className="font-semibold text-sage">{Math.round(finalRetention * 100)}%</span>
+          </div>
+
           <FieldHint field={ENROLLMENT_FIELDS.retention_adjustment} />
         </div>
       </CardContent>

@@ -70,6 +70,7 @@ class BudgetVersionBase(BaseModel):
 class BudgetVersionCreate(BudgetVersionBase):
     """Schema for creating budget version."""
 
+    organization_id: uuid.UUID = Field(..., description="Organization this budget version belongs to")
     parent_version_id: uuid.UUID | None = Field(None, description="Parent version for forecast revisions")
 
 

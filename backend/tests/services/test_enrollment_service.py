@@ -203,7 +203,7 @@ class TestEnrollmentServiceCRUD:
 
 
 class TestEnrollmentServiceCapacity:
-    """Tests for capacity validation (max 1,875 students)."""
+    """Tests for capacity validation (max 1,850 students - DEFAULT_SCHOOL_CAPACITY)."""
 
     @pytest.mark.asyncio
     async def test_create_enrollment_within_capacity(
@@ -217,7 +217,7 @@ class TestEnrollmentServiceCapacity:
         """Test creating enrollment within capacity limits."""
         service = EnrollmentService(db_session)
 
-        # Should succeed - well within 1,875 limit
+        # Should succeed - well within 1,850 limit
         result = await service.create_enrollment(
             version_id=test_budget_version.id,
             level_id=academic_levels["GS"].id,
@@ -242,7 +242,7 @@ class TestEnrollmentServiceCapacity:
         service = EnrollmentService(db_session)
 
         # Current total from fixtures: 35 + 15 + 80 = 130
-        # Try to add 1750, which would exceed 1,875
+        # Try to add 1750, which would exceed 1,850 (DEFAULT_SCHOOL_CAPACITY)
         with pytest.raises(BusinessRuleError) as exc_info:
             await service.create_enrollment(
                 version_id=test_budget_version.id,
@@ -253,7 +253,7 @@ class TestEnrollmentServiceCapacity:
             )
 
         assert exc_info.value.details["rule"] == "CAPACITY_EXCEEDED"
-        assert "1875" in str(exc_info.value)
+        assert "1850" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_update_enrollment_exceeds_capacity(
@@ -286,12 +286,12 @@ class TestEnrollmentServiceCapacity:
         test_enrollment_data: list[EnrollmentPlan],
         test_user_id: uuid.UUID,
     ):
-        """Test enrollment at exactly 1,875 is allowed."""
+        """Test enrollment at exactly 1,850 (DEFAULT_SCHOOL_CAPACITY) is allowed."""
         service = EnrollmentService(db_session)
 
         # Current total: 35 + 15 + 80 = 130
-        # Add exactly enough to reach 1,875
-        remaining = 1875 - 130
+        # Add exactly enough to reach 1,850
+        remaining = 1850 - 130
 
         result = await service.create_enrollment(
             version_id=test_budget_version.id,
@@ -333,8 +333,8 @@ class TestEnrollmentServiceSummary:
         assert summary["by_nationality"]["FRENCH"] == 115  # 35 + 80
         assert summary["by_nationality"]["SAUDI"] == 15
 
-        # Capacity utilization
-        expected_utilization = Decimal((130 / 1875) * 100).quantize(Decimal("0.01"))
+        # Capacity utilization (DEFAULT_SCHOOL_CAPACITY = 1850)
+        expected_utilization = Decimal((130 / 1850) * 100).quantize(Decimal("0.01"))
         assert summary["capacity_utilization"] == expected_utilization
 
     @pytest.mark.asyncio
@@ -642,7 +642,7 @@ class TestEnrollmentServiceEdgeCases:
             user_id=test_user_id,
         )
 
-        # Third addition: 300 would exceed (1630 + 300 = 1930 > 1875)
+        # Third addition: 300 would exceed (1630 + 300 = 1930 > 1850)
         with pytest.raises(BusinessRuleError) as exc_info:
             await service.create_enrollment(
                 version_id=test_budget_version.id,
@@ -710,7 +710,7 @@ class TestEnrollmentServiceRealEFIRData:
         summary = await service.get_enrollment_summary(test_budget_version.id)
 
         assert summary["total_students"] == total_enrolled
-        assert summary["total_students"] <= 1875  # Within capacity
+        assert summary["total_students"] <= 1850  # Within capacity
 
     @pytest.mark.asyncio
     async def test_french_majority_nationality_distribution(

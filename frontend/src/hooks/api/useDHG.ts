@@ -1,5 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dhgApi } from '@/services/dhg'
+import { toastMessages, handleAPIErrorToast, entityNames } from '@/lib/toast-messages'
+
+// PERFORMANCE: 10 minutes staleTime for DHG data
+// DHG calculations are expensive and data changes rarely during a session
+const DHG_STALE_TIME = 10 * 60 * 1000 // 10 minutes
 
 export const dhgKeys = {
   all: ['dhg'] as const,
@@ -16,6 +21,7 @@ export function useSubjectHours(versionId: string) {
     queryKey: dhgKeys.subjectHours(versionId),
     queryFn: () => dhgApi.getSubjectHours(versionId),
     enabled: !!versionId,
+    staleTime: DHG_STALE_TIME,
   })
 }
 
@@ -35,7 +41,9 @@ export function useCalculateSubjectHours() {
       queryClient.invalidateQueries({
         queryKey: dhgKeys.teacherRequirements(variables.versionId),
       })
+      toastMessages.success.calculated()
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -45,6 +53,7 @@ export function useTeacherRequirements(versionId: string) {
     queryKey: dhgKeys.teacherRequirements(versionId),
     queryFn: () => dhgApi.getTeacherRequirements(versionId),
     enabled: !!versionId,
+    staleTime: DHG_STALE_TIME,
   })
 }
 
@@ -64,7 +73,9 @@ export function useCalculateTeacherRequirements() {
         queryKey: dhgKeys.teacherRequirements(variables.versionId),
       })
       queryClient.invalidateQueries({ queryKey: dhgKeys.trmd(variables.versionId) })
+      toastMessages.success.calculated()
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -74,6 +85,7 @@ export function useTeacherAllocations(versionId: string) {
     queryKey: dhgKeys.allocations(versionId),
     queryFn: () => dhgApi.getAllocations(versionId),
     enabled: !!versionId,
+    staleTime: DHG_STALE_TIME,
   })
 }
 
@@ -97,7 +109,9 @@ export function useCreateAllocation() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: dhgKeys.allocations(variables.versionId) })
       queryClient.invalidateQueries({ queryKey: dhgKeys.trmd(variables.versionId) })
+      toastMessages.success.created(entityNames.dhg)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -114,7 +128,9 @@ export function useUpdateAllocation() {
     }) => dhgApi.updateAllocation(allocationId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dhgKeys.all })
+      toastMessages.success.updated(entityNames.dhg)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -125,7 +141,9 @@ export function useDeleteAllocation() {
     mutationFn: (allocationId: string) => dhgApi.deleteAllocation(allocationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: dhgKeys.all })
+      toastMessages.success.deleted(entityNames.dhg)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -149,7 +167,9 @@ export function useBulkUpdateAllocations() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: dhgKeys.allocations(variables.versionId) })
       queryClient.invalidateQueries({ queryKey: dhgKeys.trmd(variables.versionId) })
+      toastMessages.success.updated(entityNames.dhg)
     },
+    onError: (error) => handleAPIErrorToast(error),
   })
 }
 
@@ -161,6 +181,92 @@ export function useTRMDGapAnalysis(versionId: string) {
     queryKey: dhgKeys.trmd(versionId),
     queryFn: () => dhgApi.getTRMDGapAnalysis(versionId),
     enabled: !!versionId,
+    staleTime: DHG_STALE_TIME,
     retry: false, // Don't retry 422 validation errors
+  })
+}
+
+// =============================================================================
+// PERFORMANCE: Draft + Apply Pattern (BFF Hooks)
+//
+// These hooks support the "Auto-Draft + Manual Apply" UX pattern:
+// - useSaveDHGDraft: Debounced background save without FTE recalculation
+// - useApplyAndCalculateDHG: BFF endpoint for commit + calculate in one request
+// =============================================================================
+
+interface AllocationUpdate {
+  subject_id: string
+  cycle_id: string
+  category_id: string
+  fte_count: number
+  notes?: string | null
+}
+
+/**
+ * Hook for saving allocation changes without triggering FTE recalculation.
+ * Use this for debounced auto-save as user edits allocation cells.
+ *
+ * This mutation:
+ * - Does NOT show toast notifications (silent background save)
+ * - Updates the cache optimistically for instant UI feedback
+ * - Does NOT invalidate teacher requirements (no expensive recalculation)
+ */
+export function useSaveDHGDraft() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      allocations,
+    }: {
+      versionId: string
+      allocations: AllocationUpdate[]
+    }) => dhgApi.saveDraft(versionId, allocations),
+
+    onSuccess: (data, variables) => {
+      // Update allocations cache with server response (no toast - silent save)
+      queryClient.setQueryData(dhgKeys.allocations(variables.versionId), data)
+    },
+
+    onError: (error) => handleAPIErrorToast(error),
+  })
+}
+
+/**
+ * Hook for applying allocation changes and running full FTE calculation.
+ * This is the "Apply & Calculate" action that users explicitly trigger.
+ *
+ * This mutation:
+ * - Saves any final allocation changes (if provided)
+ * - Recalculates teacher FTE requirements
+ * - Returns updated TRMD gap analysis
+ * - Shows success toast when complete
+ */
+export function useApplyAndCalculateDHG() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      allocations,
+    }: {
+      versionId: string
+      allocations?: AllocationUpdate[]
+    }) => dhgApi.applyAndCalculate(versionId, allocations),
+
+    onSuccess: (data, variables) => {
+      // Update TRMD cache with new analysis data
+      queryClient.setQueryData(dhgKeys.trmd(variables.versionId), data)
+      // Invalidate teacher requirements and allocations to refresh
+      queryClient.invalidateQueries({
+        queryKey: dhgKeys.teacherRequirements(variables.versionId),
+      })
+      queryClient.invalidateQueries({
+        queryKey: dhgKeys.allocations(variables.versionId),
+      })
+      toastMessages.success.calculated()
+    },
+
+    onError: (error) => handleAPIErrorToast(error),
   })
 }

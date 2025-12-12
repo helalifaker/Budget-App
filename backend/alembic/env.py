@@ -13,7 +13,18 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 # Load environment variables
-load_dotenv()
+# Prefer .env.local over .env for local development
+from pathlib import Path
+
+env_local = Path(__file__).parent.parent / ".env.local"
+env_default = Path(__file__).parent.parent / ".env"
+
+if env_local.exists():
+    load_dotenv(env_local)
+elif env_default.exists():
+    load_dotenv(env_default)
+else:
+    load_dotenv()  # Fall back to default behavior
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

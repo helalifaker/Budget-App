@@ -15,7 +15,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
 import { requireAuth } from '@/lib/auth-guard'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { DataTableLazy } from '@/components/DataTableLazy'
+import { ExcelDataTableLazy, type ClearedCell } from '@/components/ExcelDataTableLazy'
+// CellUpdate type used by ExcelDataTable has originalData as unknown
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertCircle, DollarSign, Globe, GraduationCap, Settings } from 'lucide-react'
 import {
@@ -195,6 +196,149 @@ function FinanceSettingsPage() {
     [updateMutation]
   )
 
+  // Handle paste from clipboard (Excel-style Ctrl+V)
+  const handlePaste = useCallback(
+    async (
+      updates: Array<{ rowId: string; field: string; newValue: string; originalData: unknown }>
+    ) => {
+      for (const update of updates) {
+        const { field, newValue, originalData: rawOriginalData } = update
+        const originalData = rawOriginalData as FeeStructure
+
+        // Handle numeric fields
+        if (field === 'amount_sar') {
+          const numericValue = parseFloat(newValue)
+          if (isNaN(numericValue) || numericValue < 0) {
+            toastMessages.error.validation(`Invalid amount: ${newValue}`)
+            continue
+          }
+
+          const payload = {
+            budget_version_id: originalData.budget_version_id,
+            level_id: originalData.level_id,
+            nationality_type_id: originalData.nationality_type_id,
+            fee_category_id: originalData.fee_category_id,
+            amount_sar: numericValue,
+            trimester: originalData.trimester,
+            notes: originalData.notes,
+          }
+
+          try {
+            await updateMutation.mutateAsync(payload)
+          } catch {
+            toastMessages.error.custom('Failed to update fee amount')
+          }
+        } else if (field === 'trimester') {
+          // Trimester can be empty (annual) or 1-3
+          let trimesterValue: number | null = null
+          if (newValue && newValue.trim() !== '') {
+            const parsed = parseInt(newValue, 10)
+            if (isNaN(parsed) || parsed < 1 || parsed > 3) {
+              toastMessages.error.validation(`Trimester must be 1, 2, or 3: ${newValue}`)
+              continue
+            }
+            trimesterValue = parsed
+          }
+
+          const payload = {
+            budget_version_id: originalData.budget_version_id,
+            level_id: originalData.level_id,
+            nationality_type_id: originalData.nationality_type_id,
+            fee_category_id: originalData.fee_category_id,
+            amount_sar: originalData.amount_sar,
+            trimester: trimesterValue,
+            notes: originalData.notes,
+          }
+
+          try {
+            await updateMutation.mutateAsync(payload)
+          } catch {
+            toastMessages.error.custom('Failed to update trimester')
+          }
+        } else if (field === 'notes') {
+          const payload = {
+            budget_version_id: originalData.budget_version_id,
+            level_id: originalData.level_id,
+            nationality_type_id: originalData.nationality_type_id,
+            fee_category_id: originalData.fee_category_id,
+            amount_sar: originalData.amount_sar,
+            trimester: originalData.trimester,
+            notes: newValue || null,
+          }
+
+          try {
+            await updateMutation.mutateAsync(payload)
+          } catch {
+            toastMessages.error.custom('Failed to update notes')
+          }
+        }
+      }
+    },
+    [updateMutation]
+  )
+
+  // Handle clearing cells (Delete key)
+  const handleCellsCleared = useCallback(
+    async (cells: ClearedCell[]) => {
+      for (const cell of cells) {
+        const row = rowData.find((r) => r.id === cell.rowId)
+        if (!row) continue
+
+        // Determine reset value based on field
+        let payload: {
+          budget_version_id: string
+          level_id: string
+          nationality_type_id: string
+          fee_category_id: string
+          amount_sar: number
+          trimester: number | null
+          notes: string | null
+        }
+
+        if (cell.field === 'amount_sar') {
+          payload = {
+            budget_version_id: row.budget_version_id,
+            level_id: row.level_id,
+            nationality_type_id: row.nationality_type_id,
+            fee_category_id: row.fee_category_id,
+            amount_sar: 0, // Reset to 0
+            trimester: row.trimester ?? null,
+            notes: row.notes ?? null,
+          }
+        } else if (cell.field === 'trimester') {
+          payload = {
+            budget_version_id: row.budget_version_id,
+            level_id: row.level_id,
+            nationality_type_id: row.nationality_type_id,
+            fee_category_id: row.fee_category_id,
+            amount_sar: row.amount_sar,
+            trimester: null, // Reset to annual (null)
+            notes: row.notes ?? null,
+          }
+        } else if (cell.field === 'notes') {
+          payload = {
+            budget_version_id: row.budget_version_id,
+            level_id: row.level_id,
+            nationality_type_id: row.nationality_type_id,
+            fee_category_id: row.fee_category_id,
+            amount_sar: row.amount_sar,
+            trimester: row.trimester ?? null,
+            notes: null, // Clear notes
+          }
+        } else {
+          continue
+        }
+
+        try {
+          await updateMutation.mutateAsync(payload)
+        } catch {
+          toastMessages.error.custom(`Failed to clear ${cell.field}`)
+        }
+      }
+    },
+    [rowData, updateMutation]
+  )
+
   return (
     <PageContainer
       title="Finance Settings"
@@ -278,8 +422,8 @@ function FinanceSettingsPage() {
               </CardContent>
             </Card>
 
-            {/* Data Grid */}
-            <DataTableLazy
+            {/* Data Grid with Excel-like clipboard support */}
+            <ExcelDataTableLazy<FeeStructure>
               rowData={rowData}
               columnDefs={columnDefs}
               loading={isLoading}
@@ -287,6 +431,11 @@ function FinanceSettingsPage() {
               pagination
               paginationPageSize={50}
               onCellValueChanged={handleCellValueChanged}
+              onPaste={handlePaste}
+              onCellsCleared={handleCellsCleared}
+              rowIdGetter={(data) => data.id}
+              tableLabel="Fee Structure Grid"
+              showStatusBar={true}
               defaultColDef={{
                 sortable: true,
                 filter: true,

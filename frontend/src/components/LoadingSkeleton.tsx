@@ -45,7 +45,7 @@ export function ChartSkeleton() {
   return (
     <div className="animate-pulse">
       <div className="h-64 bg-subtle dark:bg-border-medium rounded flex items-center justify-center">
-        <span className="text-text-muted dark:text-text-tertiary">Chargement du graphique...</span>
+        <span className="text-text-muted dark:text-text-tertiary">Loading chart...</span>
       </div>
     </div>
   )
@@ -187,9 +187,9 @@ export function LoadingSpinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
       <div
         className={`animate-spin rounded-full border-b-2 border-primary ${sizeClasses[size]}`}
         role="status"
-        aria-label="Chargement..."
+        aria-label="Loading..."
       >
-        <span className="sr-only">Chargement...</span>
+        <span className="sr-only">Loading...</span>
       </div>
     </div>
   )

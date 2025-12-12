@@ -56,7 +56,7 @@ import type {
   ValueFormatterParams,
   CellStyle,
 } from 'ag-grid-community'
-import { DataTableLazy as DataTable } from '@/components/DataTableLazy'
+import { ExcelDataTableLazy as DataTable } from '@/components/ExcelDataTableLazy'
 
 export const Route = createFileRoute('/_authenticated/workforce/dhg/gap-analysis')({
   beforeLoad: requireAuth,
@@ -643,7 +643,7 @@ function GapAnalysisPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <DataTable
+            <DataTable<TRMDGapItem>
               columnDefs={columnDefs}
               rowData={enrichedGaps}
               rowHeight={40}
@@ -654,6 +654,9 @@ function GapAnalysisPage() {
                 resizable: true,
               }}
               getRowId={(params) => `${params.data.subject_id}-${params.data.cycle_id}`}
+              rowIdGetter={(data) => `${data.subject_id}-${data.cycle_id}`}
+              tableLabel="TRMD Gap Analysis Grid"
+              showStatusBar={true}
             />
           </CardContent>
         </Card>

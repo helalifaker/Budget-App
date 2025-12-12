@@ -13,13 +13,18 @@ interface UseCustomClipboardProps<TData> {
   onPasteCells: (updates: CellUpdate<TData>[]) => Promise<void>
 }
 
-export function useCustomClipboard<TData extends { id: string }>({
+export function useCustomClipboard<TData>({
   gridApi,
   onPasteCells,
 }: UseCustomClipboardProps<TData>) {
   const handlePaste = useCallback(
     async (event: React.ClipboardEvent) => {
-      if (!gridApi) return
+      console.log('[useCustomClipboard] Paste event triggered')
+
+      if (!gridApi) {
+        console.log('[useCustomClipboard] No gridApi available')
+        return
+      }
 
       // prevent default paste behavior which might be limited in Community version
       // or conflict with our custom logic
@@ -27,13 +32,23 @@ export function useCustomClipboard<TData extends { id: string }>({
       // but for grid data paste, we usually want to take over.
 
       const clipboardText = event.clipboardData.getData('text/plain')
-      if (!clipboardText) return
+      console.log('[useCustomClipboard] Clipboard text:', clipboardText?.substring(0, 100))
+
+      if (!clipboardText) {
+        console.log('[useCustomClipboard] No clipboard text')
+        return
+      }
 
       event.preventDefault()
 
       // 1. Get the starting cell (focused cell)
       const focusedCell = gridApi.getFocusedCell()
-      if (!focusedCell) return
+      console.log('[useCustomClipboard] Focused cell:', focusedCell)
+
+      if (!focusedCell) {
+        console.log('[useCustomClipboard] No focused cell - try clicking on a cell first')
+        return
+      }
 
       const { rowIndex, column: resultColumn } = focusedCell
       const startRowIndex = rowIndex
@@ -66,7 +81,10 @@ export function useCustomClipboard<TData extends { id: string }>({
         if (!rowNode) break
 
         const rowData = rowNode.data as TData | undefined
-        if (!rowData || !rowData.id) continue
+        // Use rowNode.id which is set by getRowId callback, not rowData.id
+        // This allows data with any ID field (e.g., level_id instead of id)
+        const rowId = rowNode.id
+        if (!rowData || !rowId) continue
 
         for (let j = 0; j < data[i].length; j++) {
           const colOffset = j
@@ -104,7 +122,7 @@ export function useCustomClipboard<TData extends { id: string }>({
           // but usually paste overwrites.
 
           updates.push({
-            rowId: rowData.id,
+            rowId: rowId,
             field: field,
             newValue: newValue,
             originalData: rowData,
@@ -112,8 +130,13 @@ export function useCustomClipboard<TData extends { id: string }>({
         }
       }
 
+      console.log('[useCustomClipboard] Updates to apply:', updates.length)
       if (updates.length > 0) {
+        console.log('[useCustomClipboard] Calling onPasteCells with updates:', updates)
         await onPasteCells(updates)
+        console.log('[useCustomClipboard] Paste complete')
+      } else {
+        console.log('[useCustomClipboard] No updates to apply')
       }
     },
     [gridApi, onPasteCells]

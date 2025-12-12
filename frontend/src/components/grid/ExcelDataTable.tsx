@@ -3,7 +3,7 @@
  *
  * A premium AG Grid wrapper that provides a true Excel-like experience:
  *
- * ## Features
+ * ## Features (AG Grid Community Edition)
  * - **Full Clipboard Support**: Ctrl+C/V for copy/paste, compatible with Excel
  * - **Multi-row Selection**: Click to select, Ctrl+Click for multiple, Shift+Click for range
  * - **Keyboard Navigation**: Tab, Enter, Arrow keys navigate like Excel
@@ -12,7 +12,8 @@
  * - **Fill Down**: Ctrl+D fills selected rows with first row's values
  * - **Status Bar**: Shows Sum, Average, Count of selected numeric cells
  * - **Delete Key**: Clear selected cells with Delete/Backspace
- * - **Context Menu**: Right-click menu with copy/paste options
+ *
+ * Note: Context menu requires AG Grid Enterprise. Use keyboard shortcuts instead.
  *
  * ## Keyboard Shortcuts
  * | Shortcut | Action |
@@ -42,12 +43,7 @@
 
 import { AgGridReact, type AgGridReactProps } from 'ag-grid-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import type {
-  GridReadyEvent,
-  GridApi,
-  GetContextMenuItems,
-  GetRowIdParams,
-} from 'ag-grid-community'
+import type { GridReadyEvent, GridApi, GetRowIdParams } from 'ag-grid-community'
 import { themeQuartz } from 'ag-grid-community'
 import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -143,13 +139,16 @@ export function ExcelDataTable<TData = unknown>({
 
   /**
    * Excel keyboard shortcuts hook
+   * Handles Ctrl+C, Ctrl+V, Delete, Ctrl+D, F2, Tab, Enter, etc.
+   * The hook internally registers event listeners for keyboard shortcuts
    */
-  const { selectionInfo, copyToClipboard, clearSelectedCells, fillDown } = useExcelKeyboard({
+  const { selectionInfo } = useExcelKeyboard({
     gridApi: gridApi as GridApi | null,
     enableEditing: true,
     onCellsCleared,
     onCellsFilled,
     containerRef,
+    onPaste: handlePasteCells,
   })
 
   /**
@@ -167,46 +166,8 @@ export function ExcelDataTable<TData = unknown>({
     [props]
   )
 
-  /**
-   * Context menu with Excel-like options
-   */
-  const getContextMenuItems: GetContextMenuItems<TData> = useCallback(() => {
-    return [
-      {
-        name: 'Copy',
-        shortcut: 'Ctrl+C',
-        action: () => copyToClipboard(),
-        icon: '<span style="font-size: 14px;">📋</span>',
-      },
-      {
-        name: 'Paste',
-        shortcut: 'Ctrl+V',
-        action: () => {
-          // Paste is handled by the container's paste event
-          // This is just for visual consistency
-        },
-        icon: '<span style="font-size: 14px;">📄</span>',
-      },
-      'separator',
-      {
-        name: 'Clear Contents',
-        shortcut: 'Delete',
-        action: () => clearSelectedCells(),
-        icon: '<span style="font-size: 14px;">🗑️</span>',
-      },
-      {
-        name: 'Fill Down',
-        shortcut: 'Ctrl+D',
-        action: () => fillDown(),
-        icon: '<span style="font-size: 14px;">⬇️</span>',
-      },
-      'separator',
-      'copy',
-      'copyWithHeaders',
-      'separator',
-      'export',
-    ]
-  }, [copyToClipboard, clearSelectedCells, fillDown])
+  // Note: Context menu requires AG Grid Enterprise (ContextMenuModule)
+  // Keyboard shortcuts (Ctrl+C, Ctrl+V, Delete, Ctrl+D) work via our custom hooks
 
   /**
    * Enhanced default column definitions for Excel-like behavior
@@ -221,7 +182,7 @@ export function ExcelDataTable<TData = unknown>({
       suppressKeyboardEvent: () => false,
       // Cell style for Excel-like appearance
       cellStyle: {
-        borderRight: '1px solid #e5e5e5',
+        borderRight: '1px solid var(--color-border-light)',
       },
       // Merge with user-provided defaults
       ...userDefaultColDef,
@@ -305,7 +266,6 @@ export function ExcelDataTable<TData = unknown>({
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           onGridReady={onGridReady}
-          getContextMenuItems={getContextMenuItems}
           theme={themeQuartz}
           // Excel-like behavior
           rowSelection={enableSelection ? { mode: 'multiRow' } : undefined}
@@ -318,9 +278,11 @@ export function ExcelDataTable<TData = unknown>({
           // Undo/Redo
           undoRedoCellEditing={true}
           undoRedoCellEditingLimit={50}
-          // Navigation
-          enterNavigatesVertically={true}
-          enterNavigatesVerticallyAfterEdit={true}
+          // Navigation - disabled because useExcelKeyboard handles Enter key
+          // Having both AG Grid's built-in navigation AND our custom handler
+          // causes double navigation (Enter jumps 2 cells instead of 1)
+          enterNavigatesVertically={false}
+          enterNavigatesVerticallyAfterEdit={false}
           tabToNextCell={(params) => params.nextCellPosition ?? false}
           // Row ID for operations
           getRowId={getRowIdCallback}

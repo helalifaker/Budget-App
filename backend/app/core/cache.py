@@ -559,7 +559,9 @@ class CacheInvalidator:
 
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(_background_invalidate())
+            # Fire-and-forget: we intentionally don't await this task
+            # RUF006 suppressed - this is the correct pattern for background cache invalidation
+            loop.create_task(_background_invalidate())  # noqa: RUF006
             logger.debug(
                 "cache_invalidation_background_scheduled",
                 budget_version_id=budget_version_id,

@@ -140,4 +140,44 @@ export const enrollmentProjectionApi = {
       'enrollmentProjection: unvalidate'
     )
   },
+
+  // =============================================================================
+  // PERFORMANCE: Draft + Apply Pattern (BFF Endpoints)
+  // =============================================================================
+
+  /**
+   * Save draft overrides without triggering calculations.
+   * Use this for debounced auto-save as user edits form fields.
+   */
+  saveDraft: async (
+    versionId: string,
+    updates: Partial<ProjectionConfig>
+  ): Promise<ProjectionConfig> => {
+    return withServiceErrorHandling(
+      apiRequest<ProjectionConfig>({
+        method: 'POST',
+        url: `${BASE_PATH}/${versionId}/draft`,
+        data: updates,
+      }),
+      'enrollmentProjection: save draft'
+    )
+  },
+
+  /**
+   * Apply draft changes and run full projection calculation.
+   * This is the "Apply & Calculate" action that combines save + calculate.
+   */
+  applyAndCalculate: async (
+    versionId: string,
+    updates?: Partial<ProjectionConfig>
+  ): Promise<ProjectionResults> => {
+    return withServiceErrorHandling(
+      apiRequest<ProjectionResults>({
+        method: 'POST',
+        url: `${BASE_PATH}/${versionId}/apply`,
+        data: updates ?? {},
+      }),
+      'enrollmentProjection: apply and calculate'
+    )
+  },
 }
