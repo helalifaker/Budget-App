@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from sqlalchemy import and_, delete, func, insert, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -20,10 +21,18 @@ from sqlalchemy.orm import joinedload, selectinload
 # See update_config method comment for full rationale.
 from app.core.logging import logger
 from app.engine.enrollment import (
+    ClassSizeConfig,
     EngineEffectiveRates,
+    GradeOptimizationInput,
+    GradeOptimizationResult,
+    NewStudentsSummary,
     ProjectionInput,
     ScenarioParams,
+    build_new_students_summary,
     calculate_proration_by_grade,
+    is_entry_point_grade,
+    optimize_grade_lateral_entry,
+    optimize_ps_entry,
     project_multi_year,
     validate_projection_input,
 )
@@ -36,8 +45,18 @@ from app.engine.enrollment import (
 from app.engine.enrollment import (
     LevelOverride as EngineLevelOverride,
 )
-from app.engine.enrollment.projection_engine import GRADE_SEQUENCE
-from app.models.configuration import AcademicLevel, BudgetVersion, NationalityType
+from app.engine.enrollment.projection_engine import GRADE_SEQUENCE, GRADE_TO_CYCLE
+from app.models.analysis import (
+    HistoricalActuals,
+    HistoricalDimensionType,
+    HistoricalModuleCode,
+)
+from app.models.configuration import (
+    AcademicLevel,
+    BudgetVersion,
+    ClassSizeParam,
+    NationalityType,
+)
 from app.models.enrollment_projection import (
     EnrollmentGlobalOverride,
     EnrollmentGradeOverride,
@@ -130,9 +149,37 @@ class EnrollmentProjectionService:
             status="draft",
         )
         self.session.add(config)
-        await self.session.commit()
 
-        return await self.get_or_create_config(version_id)
+        try:
+            await self.session.commit()
+            # SUCCESS: Re-fetch with eager-loaded relationships for consistent return type
+            await self.session.refresh(config)
+            refetch_query = (
+                select(EnrollmentProjectionConfig)
+                .where(EnrollmentProjectionConfig.id == config.id)
+                .options(
+                    joinedload(EnrollmentProjectionConfig.scenario),
+                    joinedload(EnrollmentProjectionConfig.global_overrides),
+                    joinedload(EnrollmentProjectionConfig.level_overrides).joinedload(
+                        EnrollmentLevelOverride.cycle
+                    ),
+                    joinedload(EnrollmentProjectionConfig.grade_overrides).joinedload(
+                        EnrollmentGradeOverride.level
+                    ),
+                )
+            )
+            return (await self.session.execute(refetch_query)).unique().scalar_one()
+        except IntegrityError:
+            # Race condition: another request created the config between our SELECT and INSERT
+            # Rollback and retry the SELECT - the config now exists
+            await self.session.rollback()
+            logger.info(
+                "get_or_create_config_race_condition",
+                version_id=str(version_id),
+                message="Concurrent insert detected, retrying SELECT",
+            )
+            # Only recurse after IntegrityError to fetch the existing config
+            return await self.get_or_create_config(version_id)
 
     async def update_config(
         self,
@@ -146,7 +193,7 @@ class EnrollmentProjectionService:
         # PERFORMANCE FIX: Single query at start - avoid double get_or_create_config
         # The first call already loads all relationships with selectinload
         config = await self.get_or_create_config(version_id)
-        print(f"⏱️ TIMING: get_or_create_config took {time.perf_counter() - _t0:.3f}s")
+        logger.debug("timing_get_or_create_config", duration_s=round(time.perf_counter() - _t0, 3))
 
         # Track if anything actually changed
         changed = False
@@ -170,12 +217,12 @@ class EnrollmentProjectionService:
 
         # Early return if nothing changed - saves commit + cache invalidation
         if not changed:
-            print(f"⏱️ TIMING: no changes, returning early at {time.perf_counter() - _t0:.3f}s")
+            logger.debug("timing_no_changes_early_return", duration_s=round(time.perf_counter() - _t0, 3))
             return config
 
         _t1 = time.perf_counter()
         await self.session.commit()
-        print(f"⏱️ TIMING: commit took {time.perf_counter() - _t1:.3f}s")
+        logger.debug("timing_commit", duration_s=round(time.perf_counter() - _t1, 3))
 
         # PHASE 11: Use session.get() instead of session.refresh() to avoid extra roundtrip
         # session.get() checks identity map first - if scenario was already loaded in this
@@ -184,7 +231,7 @@ class EnrollmentProjectionService:
         if scenario_changed and config.scenario_id:
             _t2 = time.perf_counter()
             config.scenario = await self.session.get(EnrollmentScenario, config.scenario_id)
-            print(f"⏱️ TIMING: session.get scenario took {time.perf_counter() - _t2:.3f}s")
+            logger.debug("timing_session_get_scenario", duration_s=round(time.perf_counter() - _t2, 3))
 
         # FIX Issue #4: Deferred calculation - only calculate when explicitly requested
         if recalculate:
@@ -195,7 +242,7 @@ class EnrollmentProjectionService:
         # Cache will auto-expire via TTL, and heavy calculations recalculate on-demand when needed.
         # (Removed: CacheInvalidator.invalidate_background - caused 6s blocking despite fire-and-forget)
 
-        print(f"⏱️ TIMING: update_config TOTAL took {time.perf_counter() - _t0:.3f}s")
+        logger.debug("timing_update_config_total", duration_s=round(time.perf_counter() - _t0, 3))
         # PERFORMANCE FIX: Return the already-loaded config directly
         # No need for second get_or_create_config - nested relationships haven't changed
         # (level_overrides.cycle and grade_overrides.level are reference data)
@@ -373,7 +420,8 @@ class EnrollmentProjectionService:
             .with_for_update()
         )
 
-        baseline = await self._get_baseline_enrollment(version_id)
+        # Use historical_actuals for base year (actual enrollment from previous year)
+        baseline = await self._get_baseline_from_historical(config.base_year)
 
         global_overrides, level_overrides, grade_overrides = (
             self._build_engine_overrides(config)
@@ -462,6 +510,8 @@ class EnrollmentProjectionService:
                     "fiscal_year": year_result.fiscal_year,
                     "level_id": level_id,
                     "projected_students": g.projected_students,
+                    "retained_students": g.retained_students,
+                    "lateral_students": g.lateral_students,
                     "divisions": g.divisions,
                     "avg_class_size": g.avg_class_size,
                     "fiscal_year_weighted_students": proration.get(g.grade_code, {}).get(
@@ -525,7 +575,8 @@ class EnrollmentProjectionService:
             projections_by_year.setdefault(row.fiscal_year, []).append(row)
 
         year_responses = []
-        baseline_totals = await self._get_baseline_enrollment(version_id)
+        # Use historical_actuals for base year (actual enrollment from previous year)
+        baseline_totals = await self._get_baseline_from_historical(config.base_year)
         base_total = sum(baseline_totals.values())
         prev_year_grades = baseline_totals.copy()
         for fiscal_year, rows in sorted(projections_by_year.items()):
@@ -547,6 +598,8 @@ class EnrollmentProjectionService:
                             "grade_code": r.level.code,
                             "cycle_code": r.level.cycle.code,
                             "projected_students": r.projected_students,
+                            "retained_students": r.retained_students,
+                            "lateral_students": r.lateral_students,
                             "divisions": r.divisions,
                             "avg_class_size": r.avg_class_size or Decimal("0.0"),
                             "original_projection": r.original_projection,
@@ -575,10 +628,18 @@ class EnrollmentProjectionService:
             years_at_capacity=sum(1 for y in year_responses if y["was_capacity_constrained"]),
         )
 
+        # Fetch historical enrollment data (2 years before base year)
+        historical_years: list[dict] = []
+        if config:
+            historical_years = await self._get_historical_enrollment_data(
+                config.base_year, num_years=2
+            )
+
         return {
             "config": config,
             "projections": year_responses,
             "summary": summary,
+            "historical_years": historical_years,
         }
 
     # ---------------------------------------------------------------------
@@ -660,16 +721,53 @@ class EnrollmentProjectionService:
         baseline.update({code: int(total) for code, total in rows})
         return baseline
 
+    async def _get_baseline_from_historical(self, base_year: int) -> dict[str, int]:
+        """
+        Get baseline enrollment from historical_actuals (previous year's actual data).
+
+        This method fetches actual enrollment data from the historical_actuals table
+        for the specified base year. This is the correct source for base year data
+        in projections, as it represents real enrollment numbers from the previous
+        academic year.
+
+        Args:
+            base_year: The fiscal year to fetch actuals for (e.g., 2025 for Budget 2026)
+
+        Returns:
+            Dictionary mapping grade_code to student count (e.g., {"PS": 65, "MS": 71, ...})
+        """
+        query = (
+            select(
+                HistoricalActuals.dimension_code,
+                HistoricalActuals.annual_count,
+            )
+            .where(
+                and_(
+                    HistoricalActuals.module_code == HistoricalModuleCode.ENROLLMENT,
+                    HistoricalActuals.dimension_type == HistoricalDimensionType.LEVEL,
+                    HistoricalActuals.fiscal_year == base_year,
+                    HistoricalActuals.deleted_at.is_(None),
+                )
+            )
+        )
+        rows = (await self.session.execute(query)).all()
+        baseline = {g: 0 for g in GRADE_SEQUENCE}
+        baseline.update(
+            {code: int(count) for code, count in rows if code and count is not None}
+        )
+        return baseline
+
     async def _get_calibrated_rates(
         self,
         organization_id: uuid.UUID,
         scenario_code: str,
-    ) -> dict[str, EngineEffectiveRates] | None:
+    ) -> dict[str, EngineEffectiveRates]:
         """
         Get calibrated effective rates from EnrollmentCalibrationService.
 
-        This is the ONLY way to get lateral entry rates - there is no legacy fallback.
-        Returns None if no calibration data is available for the organization.
+        Returns calibrated rates if available, otherwise returns an empty dict.
+        When returning an empty dict, the engine will use DOCUMENT_LATERAL_DEFAULTS
+        which provides sensible percentage-based defaults for all grades.
 
         The calibration service resolves rates using priority chain:
         Override → Derived (from history) → Document Default
@@ -690,10 +788,11 @@ class EnrollmentProjectionService:
 
             if not status.has_sufficient_data:
                 logger.info(
-                    "No calibration data available for organization %s, using legacy mode",
+                    "No calibration data for organization %s, using document defaults",
                     organization_id,
                 )
-                return None
+                # Return empty dict - engine will use DOCUMENT_LATERAL_DEFAULTS
+                return {}
 
             # Get effective rates with scenario multiplier applied
             all_rates = await calibration_service.get_effective_rates(
@@ -721,11 +820,12 @@ class EnrollmentProjectionService:
         except Exception as e:
             logger.warning(
                 "Failed to get calibrated rates for organization %s: %s, "
-                "falling back to legacy mode",
+                "using document defaults",
                 organization_id,
                 str(e),
             )
-            return None
+            # Return empty dict - engine will use DOCUMENT_LATERAL_DEFAULTS
+            return {}
 
     def _build_engine_overrides(
         self, config: EnrollmentProjectionConfig
@@ -886,4 +986,363 @@ class EnrollmentProjectionService:
             "final_year_total": final_total,
             "cagr": cagr.quantize(Decimal("0.0001")),
             "years_at_capacity": years_at_capacity,
+        }
+
+    async def _get_historical_enrollment_data(
+        self, base_year: int, num_years: int = 2
+    ) -> list[dict]:
+        """
+        Fetch historical enrollment data from HistoricalActuals.
+
+        Note: HistoricalActuals is currently not organization-scoped.
+        If multi-tenant support is needed, add organization_id column via migration.
+
+        Args:
+            base_year: The base year for projections (we fetch years before this)
+            num_years: Number of historical years to fetch (default: 2)
+
+        Returns:
+            List of dicts with fiscal_year, school_year, grades, total_students
+        """
+        target_years = [base_year - i for i in range(1, num_years + 1)]
+
+        query = (
+            select(
+                HistoricalActuals.fiscal_year,
+                HistoricalActuals.dimension_code,  # grade_code
+                HistoricalActuals.annual_count,
+            )
+            .where(
+                and_(
+                    HistoricalActuals.module_code == HistoricalModuleCode.ENROLLMENT,
+                    HistoricalActuals.dimension_type == HistoricalDimensionType.LEVEL,
+                    HistoricalActuals.fiscal_year.in_(target_years),
+                    HistoricalActuals.deleted_at.is_(None),
+                )
+            )
+            .order_by(HistoricalActuals.fiscal_year.asc())
+        )
+
+        rows = (await self.session.execute(query)).all()
+
+        # Group by fiscal year
+        years_data: dict[int, dict[str, int]] = {}
+        for fiscal_year, grade_code, count in rows:
+            if fiscal_year not in years_data:
+                years_data[fiscal_year] = {}
+            if grade_code and count is not None:
+                years_data[fiscal_year][grade_code] = count
+
+        # Build response list
+        result = []
+        for fiscal_year in sorted(years_data.keys()):
+            grades = years_data[fiscal_year]
+            result.append({
+                "fiscal_year": fiscal_year,
+                "school_year": f"{fiscal_year}/{fiscal_year + 1}",
+                "grades": grades,
+                "total_students": sum(grades.values()),
+            })
+
+        return result
+
+    # ---------------------------------------------------------------------
+    # Lateral Entry Optimization (Class Structure Aware)
+    # ---------------------------------------------------------------------
+
+    async def _get_class_size_configs(
+        self, version_id: uuid.UUID
+    ) -> dict[str, ClassSizeConfig]:
+        """
+        Get effective class size configurations for all grades.
+
+        Resolves level-specific → cycle-level → default hierarchy.
+
+        Args:
+            version_id: Budget version UUID
+
+        Returns:
+            Dict mapping grade_code to ClassSizeConfig
+        """
+        # Get all class size params for this version
+        params_query = select(ClassSizeParam).where(
+            and_(
+                ClassSizeParam.budget_version_id == version_id,
+                ClassSizeParam.deleted_at.is_(None),
+            )
+        )
+        params = (await self.session.execute(params_query)).scalars().all()
+
+        # Get all levels for code lookups
+        levels = (await self.session.execute(select(AcademicLevel))).scalars().all()
+
+        # Build params lookup: level_id → param, cycle_id → param
+        level_params: dict[uuid.UUID, ClassSizeParam] = {}
+        cycle_params: dict[uuid.UUID, ClassSizeParam] = {}
+
+        for param in params:
+            if param.level_id:
+                level_params[param.level_id] = param
+            elif param.cycle_id:
+                cycle_params[param.cycle_id] = param
+
+        # Default configs by cycle (fallback values)
+        default_configs = {
+            "MAT": ClassSizeConfig(
+                min_class_size=21, target_class_size=25, max_class_size=28, max_divisions=6
+            ),
+            "ELEM": ClassSizeConfig(
+                min_class_size=21, target_class_size=25, max_class_size=28, max_divisions=6
+            ),
+            "COLL": ClassSizeConfig(
+                min_class_size=15, target_class_size=25, max_class_size=30, max_divisions=6
+            ),
+            "LYC": ClassSizeConfig(
+                min_class_size=15, target_class_size=25, max_class_size=30, max_divisions=6
+            ),
+        }
+
+        # Build effective config for each grade
+        configs: dict[str, ClassSizeConfig] = {}
+
+        for grade in GRADE_SEQUENCE:
+            cycle_code = GRADE_TO_CYCLE.get(grade, "ELEM")
+
+            # Find level ID for this grade
+            level_id = None
+            cycle_id = None
+            for level in levels:
+                if level.code == grade:
+                    level_id = level.id
+                    cycle_id = level.cycle_id
+                    break
+
+            # Resolution priority: level-specific → cycle-level → default
+            param = None
+            if level_id and level_id in level_params:
+                param = level_params[level_id]
+            elif cycle_id and cycle_id in cycle_params:
+                param = cycle_params[cycle_id]
+
+            if param:
+                configs[grade] = ClassSizeConfig(
+                    min_class_size=param.min_class_size,
+                    target_class_size=param.target_class_size,
+                    max_class_size=param.max_class_size,
+                    max_divisions=6,  # Default, could be overridden from level_overrides
+                )
+            else:
+                configs[grade] = default_configs.get(
+                    cycle_code,
+                    ClassSizeConfig(
+                        min_class_size=21,
+                        target_class_size=25,
+                        max_class_size=28,
+                        max_divisions=6,
+                    ),
+                )
+
+        return configs
+
+    async def calculate_lateral_optimization(
+        self,
+        version_id: uuid.UUID,
+        base_year_enrollment: dict[str, int],
+        effective_rates: dict[str, EngineEffectiveRates] | None = None,
+        ps_entry: int = 55,
+        entry_growth_rate: Decimal = Decimal("0.0"),
+    ) -> tuple[list[GradeOptimizationResult], NewStudentsSummary]:
+        """
+        Calculate optimal lateral entry for all grades using class structure optimization.
+
+        This implements the capacity-aware lateral entry model that minimizes
+        rejections while maintaining efficient class structures.
+
+        Args:
+            version_id: Budget version UUID (for class size config lookup)
+            base_year_enrollment: Current enrollment by grade
+            effective_rates: Calibrated rates from EnrollmentCalibrationService
+            ps_entry: Base PS entry count from scenario
+            entry_growth_rate: Growth rate to apply to PS entry
+
+        Returns:
+            Tuple of (list of grade optimization results, summary)
+        """
+        # Get class size configs from database
+        class_configs = await self._get_class_size_configs(version_id)
+
+        results: list[GradeOptimizationResult] = []
+
+        # PS is special - pure entry point with no retention
+        ps_demand = int(ps_entry * (1 + float(entry_growth_rate)))
+        ps_result = optimize_ps_entry(ps_demand, class_configs.get("PS", class_configs["MS"]))
+        results.append(ps_result)
+
+        # Process other grades in sequence
+        for i in range(1, len(GRADE_SEQUENCE)):
+            grade = GRADE_SEQUENCE[i]
+            prev_grade = GRADE_SEQUENCE[i - 1]
+
+            # Calculate retained students from previous grade
+            prev_enrollment = base_year_enrollment.get(prev_grade, 0)
+
+            # Get retention rate
+            if effective_rates and grade in effective_rates:
+                retention_rate = float(effective_rates[grade].retention_rate)
+            else:
+                retention_rate = 0.96  # Default
+
+            retained = int(prev_enrollment * retention_rate)
+
+            # Get historical demand (from calibration)
+            historical_demand = 0
+            if effective_rates and grade in effective_rates:
+                rate = effective_rates[grade]
+                if rate.is_percentage_based and rate.lateral_entry_rate:
+                    # Entry point: percentage of previous grade
+                    historical_demand = int(
+                        prev_enrollment * float(rate.lateral_entry_rate)
+                    )
+                elif rate.lateral_entry_fixed is not None:
+                    # Incidental: fixed count
+                    historical_demand = rate.lateral_entry_fixed
+
+            # Get class size config for this grade
+            config = class_configs.get(grade)
+            if not config:
+                cycle_code = GRADE_TO_CYCLE.get(grade, "ELEM")
+                config = class_configs.get(
+                    grade,
+                    ClassSizeConfig(
+                        min_class_size=21 if cycle_code in ("MAT", "ELEM") else 15,
+                        target_class_size=25,
+                        max_class_size=28 if cycle_code in ("MAT", "ELEM") else 30,
+                        max_divisions=6,
+                    ),
+                )
+
+            # Build optimization input
+            grade_input = GradeOptimizationInput(
+                grade_code=grade,
+                cycle_code=GRADE_TO_CYCLE.get(grade, "ELEM"),
+                retained_students=retained,
+                historical_demand=historical_demand,
+                class_size_config=config,
+                is_entry_point=is_entry_point_grade(grade),
+            )
+
+            # Run optimization
+            result = optimize_grade_lateral_entry(grade_input)
+            results.append(result)
+
+        # Build summary
+        summary = build_new_students_summary(results)
+
+        logger.info(
+            "lateral_optimization_calculated",
+            version_id=str(version_id),
+            total_demand=summary.total_demand,
+            total_accepted=summary.total_accepted,
+            acceptance_rate=str(summary.overall_acceptance_rate),
+        )
+
+        return results, summary
+
+    async def get_lateral_optimization(
+        self,
+        version_id: uuid.UUID,
+    ) -> dict:
+        """
+        Get lateral entry optimization results for a budget version.
+
+        Calculates optimization based on current projection config and baseline.
+
+        Args:
+            version_id: Budget version UUID
+
+        Returns:
+            Dict with optimization_results and new_students_summary
+        """
+        config = await self.get_or_create_config(version_id)
+        scenario = config.scenario
+        # Use historical_actuals for base year (actual enrollment from previous year)
+        baseline = await self._get_baseline_from_historical(config.base_year)
+
+        # Get organization_id for calibrated rates
+        version = (
+            await self.session.execute(
+                select(BudgetVersion).where(BudgetVersion.id == version_id)
+            )
+        ).scalar_one_or_none()
+
+        if not version:
+            raise NotFoundError("BudgetVersion", str(version_id))
+
+        effective_rates = await self._get_calibrated_rates(
+            version.organization_id, scenario.code
+        )
+
+        results, summary = await self.calculate_lateral_optimization(
+            version_id=version_id,
+            base_year_enrollment=baseline,
+            effective_rates=effective_rates,
+            ps_entry=scenario.ps_entry,
+            entry_growth_rate=scenario.entry_growth_rate,
+        )
+
+        return {
+            "optimization_results": [
+                {
+                    "grade_code": r.grade_code,
+                    "cycle_code": r.cycle_code,
+                    "is_entry_point": r.is_entry_point,
+                    "retained_students": r.retained_students,
+                    "historical_demand": r.historical_demand,
+                    "base_classes": r.base_classes,
+                    "fill_to_target": r.fill_to_target,
+                    "fill_to_max": r.fill_to_max,
+                    "new_class_threshold": r.new_class_threshold,
+                    "decision": r.decision.value,
+                    "accepted": r.accepted,
+                    "rejected": r.rejected,
+                    "final_classes": r.final_classes,
+                    "final_students": r.final_students,
+                    "avg_class_size": r.avg_class_size,
+                    "utilization_pct": r.utilization_pct,
+                    "acceptance_rate": r.acceptance_rate,
+                }
+                for r in results
+            ],
+            "new_students_summary": {
+                "total_demand": summary.total_demand,
+                "total_available": summary.total_available,
+                "total_accepted": summary.total_accepted,
+                "total_rejected": summary.total_rejected,
+                "overall_acceptance_rate": summary.overall_acceptance_rate,
+                "entry_point_demand": summary.entry_point_demand,
+                "entry_point_accepted": summary.entry_point_accepted,
+                "incidental_demand": summary.incidental_demand,
+                "incidental_accepted": summary.incidental_accepted,
+                "grades_accept_all": summary.grades_accept_all,
+                "grades_fill_max": summary.grades_fill_max,
+                "grades_restricted": summary.grades_restricted,
+                "grades_new_class": summary.grades_new_class,
+                "grades_at_ceiling": summary.grades_at_ceiling,
+                "by_grade": [
+                    {
+                        "grade_code": row.grade_code,
+                        "grade_name": row.grade_name,
+                        "cycle_code": row.cycle_code,
+                        "is_entry_point": row.is_entry_point,
+                        "historical_demand": row.historical_demand,
+                        "available_slots": row.available_slots,
+                        "accepted": row.accepted,
+                        "rejected": row.rejected,
+                        "acceptance_rate": row.acceptance_rate,
+                        "pct_of_total_intake": row.pct_of_total_intake,
+                        "decision": row.decision.value,
+                    }
+                    for row in summary.by_grade
+                ],
+            },
         }

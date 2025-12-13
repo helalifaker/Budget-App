@@ -131,7 +131,7 @@ else:
     if use_connection_pool:
         # Connection pooling mode (for development or direct connections)
         # Keeps 5 connections ready, allows up to 15 total
-        print("🚀 Database: Using connection pooling (USE_CONNECTION_POOL=true)")
+        logger.info("database_engine_created", pool_mode="connection_pooling")
         engine = create_async_engine(
             DATABASE_URL,
             echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
@@ -139,15 +139,18 @@ else:
             max_overflow=10,
             pool_pre_ping=True,
             pool_recycle=300,  # Recycle connections after 5 minutes
+            pool_timeout=30,  # Wait max 30s for a connection from pool
             connect_args={
                 "statement_cache_size": 0,
                 "prepared_statement_name_func": unique_stmt_name,
                 "server_settings": {"jit": "off"},
+                "timeout": 30,  # Connection timeout (asyncpg)
+                "command_timeout": 60,  # Query timeout (asyncpg)
             },
         )
     else:
         # NullPool mode (default - for pgBouncer/Supavisor compatibility)
-        print("🐢 Database: Using NullPool (USE_CONNECTION_POOL=false or unset)")
+        logger.info("database_engine_created", pool_mode="NullPool")
         engine = create_async_engine(
             DATABASE_URL,
             echo=bool(os.getenv("SQL_ECHO", "False") == "True"),
@@ -157,6 +160,8 @@ else:
                 "statement_cache_size": 0,
                 "prepared_statement_name_func": unique_stmt_name,
                 "server_settings": {"jit": "off"},
+                "timeout": 30,  # Connection timeout (asyncpg)
+                "command_timeout": 60,  # Query timeout (asyncpg)
             },
         )
 
@@ -268,10 +273,10 @@ async def init_db() -> None:
     pytest_current_test = os.getenv("PYTEST_CURRENT_TEST")
 
     if pytest_running or pytest_current_test:
-        print(f"🔵 init_db SKIPPED (PYTEST_RUNNING={pytest_running})")
+        logger.debug("init_db_skipped", pytest_running=pytest_running)
         return
 
-    print(f"🟢 init_db RUNNING (PYTEST_RUNNING={pytest_running})")
+    logger.debug("init_db_running", pytest_running=pytest_running)
 
     # CRITICAL: Import from app.models (not app.models.base) to ensure ALL model
     # classes are imported and registered with Base.metadata before create_all().
