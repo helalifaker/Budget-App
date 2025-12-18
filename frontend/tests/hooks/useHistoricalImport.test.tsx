@@ -21,15 +21,15 @@ import {
   useDeleteHistoricalData,
   historicalImportKeys,
 } from '@/hooks/api/useHistoricalImport'
-import { historicalImportService } from '@/services/historicalImport'
+import { historicalImportService } from '@/services/historical-import'
 import type {
   ImportPreviewResponse,
   ImportResultResponse,
   ImportHistoryEntry,
-} from '@/services/historicalImport'
+} from '@/services/historical-import'
 
 // Mock the historical import service
-vi.mock('@/services/historicalImport', () => ({
+vi.mock('@/services/historical-import', () => ({
   historicalImportService: {
     previewImport: vi.fn(),
     executeImport: vi.fn(),

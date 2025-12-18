@@ -1,0 +1,383 @@
+/**
+ * TanStack Table Styles
+ *
+ * EFIR Design System styling for TanStack Table components.
+ * These styles use CSS variables defined in index.css for consistency
+ * with the rest of the application.
+ *
+ * Usage:
+ * Import this file in the main entry point or component that uses tables.
+ * The classes can be applied via Tailwind's @apply or directly in className.
+ */
+
+/* Reference Tailwind utilities for @apply */
+@reference "../../../../index.css";
+
+/* ============================================================================
+   Table Container
+   ============================================================================ */
+
+.efir-table-container {
+  @apply relative rounded-lg border border-[var(--color-border-light)] bg-[var(--color-paper)] overflow-hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.efir-table-container--elevated {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+/* ============================================================================
+   Table Base
+   ============================================================================ */
+
+.efir-table {
+  @apply w-full border-collapse;
+  font-family: 'Lato', system-ui, -apple-system, sans-serif;
+}
+
+/* ============================================================================
+   Header
+   ============================================================================ */
+
+.efir-table-header {
+  @apply sticky top-0 z-10 bg-[var(--color-paper)];
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.efir-table-header-row {
+  @apply border-b border-[var(--color-border-medium)];
+}
+
+.efir-table-header-cell {
+  @apply px-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[var(--color-text-secondary)];
+  @apply border-b border-[var(--color-border-medium)];
+}
+
+.efir-table-header-cell--compact {
+  @apply h-10;
+}
+
+.efir-table-header-cell--default {
+  @apply h-12;
+}
+
+.efir-table-header-cell--sortable {
+  @apply cursor-pointer select-none;
+  @apply hover:bg-[var(--color-warm)];
+  transition: background-color 150ms ease-out;
+}
+
+.efir-table-header-cell--sorted {
+  @apply bg-[var(--color-subtle)];
+}
+
+/* ============================================================================
+   Body & Rows
+   ============================================================================ */
+
+.efir-table-body {
+  @apply bg-[var(--color-paper)];
+}
+
+.efir-table-row {
+  transition: background-color 150ms ease-out;
+}
+
+.efir-table-row--compact {
+  height: 36px;
+}
+
+.efir-table-row--default {
+  height: 44px;
+}
+
+.efir-table-row--striped:nth-child(even) {
+  @apply bg-[var(--color-subtle)];
+}
+
+.efir-table-row--hoverable:hover {
+  @apply bg-[var(--color-warm)];
+}
+
+.efir-table-row--selectable {
+  @apply cursor-pointer;
+}
+
+.efir-table-row--selected {
+  @apply bg-[var(--color-muted)];
+  border-left: 3px solid var(--color-gold);
+}
+
+.efir-table-row--selected.efir-table-row--accent-sage {
+  border-left-color: var(--color-sage);
+}
+
+.efir-table-row--selected.efir-table-row--accent-terracotta {
+  border-left-color: var(--color-terracotta);
+}
+
+.efir-table-row--selected.efir-table-row--accent-slate {
+  border-left-color: var(--color-slate);
+}
+
+.efir-table-row--selected.efir-table-row--accent-wine {
+  border-left-color: var(--color-wine);
+}
+
+.efir-table-row--focused {
+  @apply bg-[var(--color-warm)];
+}
+
+/* ============================================================================
+   Cells
+   ============================================================================ */
+
+.efir-table-cell {
+  @apply px-3 text-[13px] text-[var(--color-text-primary)];
+  @apply border-b border-[var(--color-border-light)];
+}
+
+.efir-table-cell--compact {
+  @apply py-2;
+}
+
+.efir-table-cell--default {
+  @apply py-3;
+}
+
+.efir-table-cell--focused {
+  @apply ring-2 ring-inset ring-[var(--color-gold)] ring-offset-1;
+  transition: box-shadow 100ms ease-out;
+}
+
+.efir-table-cell--editing {
+  @apply bg-white ring-2 ring-[var(--color-gold)];
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transform: scale(1.02);
+  transition: transform 100ms ease-out, box-shadow 100ms ease-out;
+}
+
+/* Cell alignment */
+.efir-table-cell--align-left {
+  @apply text-left;
+}
+
+.efir-table-cell--align-center {
+  @apply text-center;
+}
+
+.efir-table-cell--align-right {
+  @apply text-right;
+}
+
+/* Cell types */
+.efir-table-cell--number {
+  @apply text-right tabular-nums;
+}
+
+.efir-table-cell--currency {
+  @apply text-right tabular-nums;
+}
+
+.efir-table-cell--percentage {
+  @apply text-right tabular-nums;
+}
+
+.efir-table-cell--negative {
+  @apply text-[var(--color-terracotta)];
+}
+
+.efir-table-cell--positive {
+  @apply text-[var(--color-sage)];
+}
+
+.efir-table-cell--readonly {
+  @apply text-[var(--color-text-tertiary)];
+}
+
+.efir-table-cell--calculated {
+  @apply italic text-[var(--color-text-secondary)];
+}
+
+.efir-table-cell--editable {
+  @apply cursor-text;
+}
+
+.efir-table-cell--editable:hover {
+  @apply bg-[var(--color-gold-lighter)];
+}
+
+/* ============================================================================
+   Footer / Status Bar
+   ============================================================================ */
+
+.efir-table-footer {
+  @apply flex items-center justify-between;
+  @apply border-t border-[var(--color-border-light)] bg-[var(--color-subtle)];
+  @apply px-3 py-2 text-[12px] text-[var(--color-text-secondary)];
+}
+
+.efir-table-footer-stats {
+  @apply flex items-center gap-4;
+}
+
+.efir-table-footer-stat {
+  @apply flex items-center gap-1;
+}
+
+.efir-table-footer-stat-label {
+  @apply text-[var(--color-text-tertiary)];
+}
+
+.efir-table-footer-stat-value {
+  @apply font-medium text-[var(--color-text-primary)] tabular-nums;
+}
+
+/* ============================================================================
+   Sort Icons
+   ============================================================================ */
+
+.efir-sort-icon {
+  @apply ml-1 h-4 w-4 text-[var(--color-text-tertiary)];
+  transition: transform 200ms ease-out;
+}
+
+.efir-sort-icon--active {
+  @apply text-[var(--color-gold)];
+}
+
+.efir-sort-icon--none {
+  @apply opacity-30;
+}
+
+/* ============================================================================
+   Loading & Empty States
+   ============================================================================ */
+
+.efir-table-loading {
+  @apply h-4 w-3/4 animate-pulse rounded bg-[var(--color-muted)];
+}
+
+.efir-table-empty {
+  @apply h-32 text-center text-[var(--color-text-tertiary)];
+}
+
+.efir-table-empty-icon {
+  @apply mx-auto mb-2 h-8 w-8 text-[var(--color-text-muted)];
+}
+
+.efir-table-empty-message {
+  @apply text-[14px];
+}
+
+/* ============================================================================
+   Pagination
+   ============================================================================ */
+
+.efir-table-pagination {
+  @apply flex items-center justify-between;
+  @apply border-t border-[var(--color-border-light)] bg-[var(--color-subtle)];
+  @apply px-3 py-2;
+}
+
+.efir-table-pagination-info {
+  @apply text-[12px] text-[var(--color-text-secondary)];
+}
+
+.efir-table-pagination-buttons {
+  @apply flex items-center gap-1;
+}
+
+.efir-table-pagination-button {
+  @apply rounded px-2 py-1 text-[12px];
+  @apply bg-transparent text-[var(--color-text-secondary)];
+  @apply hover:bg-[var(--color-warm)] hover:text-[var(--color-text-primary)];
+  @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.efir-table-pagination-button--active {
+  @apply bg-[var(--color-gold-light)] text-[var(--color-gold)];
+}
+
+/* ============================================================================
+   Resize Handle
+   ============================================================================ */
+
+.efir-table-resize-handle {
+  @apply absolute right-0 top-0 h-full w-1 cursor-col-resize;
+  @apply bg-transparent hover:bg-[var(--color-gold)];
+  transition: background-color 150ms ease-out;
+}
+
+.efir-table-resize-handle--resizing {
+  @apply bg-[var(--color-gold)];
+}
+
+/* ============================================================================
+   Selection Checkbox
+   ============================================================================ */
+
+.efir-table-checkbox {
+  @apply h-4 w-4 rounded border-[var(--color-border-medium)];
+  @apply text-[var(--color-gold)] focus:ring-[var(--color-gold)] focus:ring-offset-0;
+}
+
+.efir-table-checkbox--header {
+  @apply mr-2;
+}
+
+/* ============================================================================
+   Context Menu (for future use)
+   ============================================================================ */
+
+.efir-table-context-menu {
+  @apply absolute z-50 min-w-[160px] rounded-lg border border-[var(--color-border-light)] bg-[var(--color-paper)] py-1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.efir-table-context-menu-item {
+  @apply flex items-center gap-2 px-3 py-2 text-[13px] text-[var(--color-text-primary)];
+  @apply cursor-pointer hover:bg-[var(--color-warm)];
+  transition: background-color 150ms ease-out;
+}
+
+.efir-table-context-menu-item--disabled {
+  @apply opacity-50 cursor-not-allowed hover:bg-transparent;
+}
+
+.efir-table-context-menu-divider {
+  @apply my-1 border-t border-[var(--color-border-light)];
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes efir-table-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.efir-table-row--entering {
+  animation: efir-table-row-enter 200ms ease-out;
+}
+
+@keyframes efir-table-skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.efir-table-skeleton {
+  animation: efir-table-skeleton-pulse 1.5s ease-in-out infinite;
+}

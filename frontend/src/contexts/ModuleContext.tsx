@@ -3,7 +3,17 @@
  * ModuleContext - Executive Cockpit Module State Management
  *
  * Provides context for tracking the active module across the Executive Cockpit layout.
- * Modules: workforce, enrollment, finance, analysis, strategic, configuration
+ * 10 Modules aligned with FP&A best practices:
+ * - enrollment: Student enrollment planning (Academic Director)
+ * - workforce: Teacher/HR workforce planning (HR Manager)
+ * - revenue: Revenue planning (Finance Director)
+ * - costs: Cost planning (Finance Director)
+ * - investments: CapEx/Investment planning (Finance Director/CFO)
+ * - consolidation: Budget consolidation & statements (Finance Director/CFO)
+ * - insights: KPIs, dashboards, variance (All roles - read)
+ * - strategic: Long-term planning & scenarios (CFO/Executive)
+ * - settings: Global configuration (All roles - limited)
+ * - admin: System administration (Admin only)
  *
  * Features:
  * - Auto-detects active module from current route
@@ -17,25 +27,45 @@ import { useLocation } from '@tanstack/react-router'
 import {
   Users,
   GraduationCap,
-  Wallet,
   BarChart3,
-  Target,
   LayoutDashboard,
   Settings,
+  Shield,
+  DollarSign,
+  TrendingUp,
+  PiggyBank,
+  FileStack,
+  Target,
   type LucideIcon,
 } from 'lucide-react'
 
 /**
- * Module identifiers - the main workspaces
+ * Module identifiers - the 10 main workspaces
+ *
+ * Aligned with FP&A best practices and DB_golden_rules.md Section 9:
+ * - enrollment: Student enrollment planning (Academic Director)
+ * - workforce: Teacher/HR workforce planning (HR Manager)
+ * - revenue: Revenue planning (Finance Director)
+ * - costs: Cost planning (Finance Director)
+ * - investments: CapEx/Investment planning (Finance Director/CFO)
+ * - consolidation: Budget consolidation & statements (Finance Director/CFO)
+ * - insights: KPIs, dashboards, variance (All roles - read)
+ * - strategic: Long-term planning & scenarios (CFO/Executive)
+ * - settings: Global configuration (All roles - limited)
+ * - admin: System administration (Admin only)
  */
 export type ModuleId =
-  | 'workforce'
-  | 'enrollment'
-  | 'finance'
-  | 'analysis'
-  | 'strategic'
-  | 'configuration'
   | 'command-center'
+  | 'enrollment'
+  | 'workforce'
+  | 'revenue'
+  | 'costs'
+  | 'investments'
+  | 'consolidation'
+  | 'insights'
+  | 'strategic'
+  | 'settings'
+  | 'admin'
 
 /**
  * Module health status for dock badges
@@ -61,7 +91,7 @@ export interface ModuleDefinition {
   shortLabel: string
   icon: LucideIcon
   basePath: string
-  color: 'gold' | 'sage' | 'wine' | 'slate' | 'neutral'
+  color: 'gold' | 'sage' | 'wine' | 'slate' | 'neutral' | 'orange' | 'teal' | 'blue' | 'purple'
   description: string
   subpages: SubpageDefinition[]
   /** Whether this module has a separate settings tab */
@@ -83,7 +113,7 @@ export interface ModuleColorClasses {
  * Module color mapping for CSS classes
  */
 export const MODULE_COLORS: Record<
-  'gold' | 'sage' | 'wine' | 'slate' | 'neutral',
+  'gold' | 'sage' | 'wine' | 'slate' | 'neutral' | 'orange' | 'teal' | 'blue' | 'purple',
   ModuleColorClasses
 > = {
   gold: {
@@ -121,18 +151,50 @@ export const MODULE_COLORS: Record<
     text: 'text-text-secondary',
     bg: 'bg-text-tertiary',
   },
+  orange: {
+    active: 'bg-orange-100 text-orange-700 border-orange-500',
+    underline: 'bg-orange-500',
+    hover: 'hover:bg-orange-50 hover:text-orange-600',
+    text: 'text-orange-600',
+    bg: 'bg-orange-500',
+  },
+  teal: {
+    active: 'bg-teal-100 text-teal-700 border-teal-500',
+    underline: 'bg-teal-500',
+    hover: 'hover:bg-teal-50 hover:text-teal-600',
+    text: 'text-teal-600',
+    bg: 'bg-teal-500',
+  },
+  blue: {
+    active: 'bg-blue-100 text-blue-700 border-blue-500',
+    underline: 'bg-blue-500',
+    hover: 'hover:bg-blue-50 hover:text-blue-600',
+    text: 'text-blue-600',
+    bg: 'bg-blue-500',
+  },
+  purple: {
+    active: 'bg-purple-100 text-purple-700 border-purple-500',
+    underline: 'bg-purple-500',
+    hover: 'hover:bg-purple-50 hover:text-purple-600',
+    text: 'text-purple-600',
+    bg: 'bg-purple-500',
+  },
 }
 
 /**
  * Module definitions with metadata and subpages
  *
- * Phase 3 restructuring (UI Redesign):
- * - Enrollment: Planning → Class Structure → Validation + Settings
- * - Workforce: Employees → DHG → Requirements → Gap Analysis + Settings
- * - Finance: Revenue → Costs → CapEx → Statements + Settings
- * - Analysis: KPIs → Dashboards → Variance (no settings)
- * - Strategic: 5-Year Plan (no settings)
- * - Configuration: Versions → Uploads → System (no settings)
+ * 10-Module Architecture (aligned with FP&A best practices):
+ * - Enrollment: Projections → Class Structure → Validation + Settings (Academic Director)
+ * - Workforce: Employees → DHG → Requirements → Gap Analysis + Settings (HR Manager)
+ * - Revenue: Tuition → Other → Subsidies + Settings (Finance Director)
+ * - Costs: Personnel → Operating → Overhead + Settings (Finance Director)
+ * - Investments: CapEx → Projects → Cash Flow + Settings (Finance Director/CFO)
+ * - Consolidation: Checklist → Rollup → Statements → Exports (Finance Director/CFO)
+ * - Insights: KPIs → Variance → Trends → Reports (All roles - read)
+ * - Strategic: Long-term → Scenarios → Targets (CFO/Executive)
+ * - Settings: Versions → Parameters → System (All roles - limited)
+ * - Admin: Users → Imports → Audit (Admin only)
  */
 export const MODULES: Record<ModuleId, ModuleDefinition> = {
   'command-center': {
@@ -148,14 +210,14 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
   },
   enrollment: {
     id: 'enrollment',
-    label: 'Enrollment',
+    label: 'Enrollment Planning',
     shortLabel: 'Enrollment',
     icon: GraduationCap,
     basePath: '/enrollment',
     color: 'sage',
-    description: 'Student enrollment and class structure',
+    description: 'Student enrollment projections and class formation',
     subpages: [
-      { id: 'planning', label: 'Planning', path: '/enrollment/planning' },
+      { id: 'projections', label: 'Projections', path: '/enrollment/projections' },
       { id: 'class-structure', label: 'Class Structure', path: '/enrollment/class-structure' },
       { id: 'validation', label: 'Validation', path: '/enrollment/validation' },
     ],
@@ -163,100 +225,184 @@ export const MODULES: Record<ModuleId, ModuleDefinition> = {
   },
   workforce: {
     id: 'workforce',
-    label: 'Workforce',
+    label: 'Workforce Planning',
     shortLabel: 'Workforce',
     icon: Users,
     basePath: '/workforce',
     color: 'wine',
-    description: 'Employee management and DHG planning',
+    description: 'Employee management and DHG workforce planning',
     subpages: [
       { id: 'employees', label: 'Employees', path: '/workforce/employees' },
       { id: 'dhg', label: 'DHG', path: '/workforce/dhg' },
-      { id: 'requirements', label: 'Requirements', path: '/workforce/dhg/requirements' },
-      { id: 'gap-analysis', label: 'Gap Analysis', path: '/workforce/dhg/gap-analysis' },
+      { id: 'requirements', label: 'Requirements', path: '/workforce/requirements' },
+      { id: 'gap-analysis', label: 'Gap Analysis', path: '/workforce/gap-analysis' },
+      { id: 'salaries', label: 'Salaries', path: '/workforce/salaries' },
     ],
     hasSettings: true,
   },
-  finance: {
-    id: 'finance',
-    label: 'Finance',
-    shortLabel: 'Finance',
-    icon: Wallet,
-    basePath: '/finance',
+  revenue: {
+    id: 'revenue',
+    label: 'Revenue Planning',
+    shortLabel: 'Revenue',
+    icon: DollarSign,
+    basePath: '/revenue',
     color: 'gold',
-    description: 'Revenue, costs, and financial statements',
+    description: 'Tuition and other revenue projections',
     subpages: [
-      { id: 'revenue', label: 'Revenue', path: '/finance/revenue' },
-      { id: 'costs', label: 'Costs', path: '/finance/costs' },
-      { id: 'capex', label: 'CapEx', path: '/finance/capex' },
-      { id: 'statements', label: 'Statements', path: '/finance/statements' },
+      { id: 'tuition', label: 'Tuition', path: '/revenue/tuition' },
+      { id: 'other', label: 'Other Revenue', path: '/revenue/other' },
+      { id: 'subsidies', label: 'Subsidies', path: '/revenue/subsidies' },
     ],
     hasSettings: true,
   },
-  analysis: {
-    id: 'analysis',
-    label: 'Analysis',
-    shortLabel: 'Analysis',
+  costs: {
+    id: 'costs',
+    label: 'Cost Planning',
+    shortLabel: 'Costs',
+    icon: TrendingUp,
+    basePath: '/costs',
+    color: 'orange',
+    description: 'Personnel, operating, and overhead costs',
+    subpages: [
+      { id: 'personnel', label: 'Personnel', path: '/costs/personnel' },
+      { id: 'operating', label: 'Operating', path: '/costs/operating' },
+      { id: 'overhead', label: 'Overhead', path: '/costs/overhead' },
+    ],
+    hasSettings: true,
+  },
+  investments: {
+    id: 'investments',
+    label: 'Investment Planning',
+    shortLabel: 'Investments',
+    icon: PiggyBank,
+    basePath: '/investments',
+    color: 'teal',
+    description: 'Capital expenditure and project budgeting',
+    subpages: [
+      { id: 'capex', label: 'CapEx', path: '/investments/capex' },
+      { id: 'projects', label: 'Projects', path: '/investments/projects' },
+      { id: 'cashflow', label: 'Cash Flow', path: '/investments/cashflow' },
+    ],
+    hasSettings: true,
+  },
+  consolidation: {
+    id: 'consolidation',
+    label: 'Consolidation',
+    shortLabel: 'Consolidation',
+    icon: FileStack,
+    basePath: '/consolidation',
+    color: 'blue',
+    description: 'Budget consolidation and financial statements',
+    subpages: [
+      { id: 'checklist', label: 'Checklist', path: '/consolidation/checklist' },
+      { id: 'rollup', label: 'Rollup', path: '/consolidation/rollup' },
+      { id: 'statements', label: 'Statements', path: '/consolidation/statements' },
+      { id: 'exports', label: 'Exports', path: '/consolidation/exports' },
+    ],
+    hasSettings: false,
+  },
+  insights: {
+    id: 'insights',
+    label: 'Insights',
+    shortLabel: 'Insights',
     icon: BarChart3,
-    basePath: '/analysis',
+    basePath: '/insights',
     color: 'slate',
     description: 'KPIs, dashboards, and variance analysis',
     subpages: [
-      { id: 'kpis', label: 'KPIs', path: '/analysis/kpis' },
-      { id: 'dashboards', label: 'Dashboards', path: '/analysis/dashboards' },
-      { id: 'variance', label: 'Variance', path: '/analysis/variance' },
+      { id: 'kpis', label: 'KPIs', path: '/insights/kpis' },
+      { id: 'variance', label: 'Variance', path: '/insights/variance' },
+      { id: 'trends', label: 'Trends', path: '/insights/trends' },
+      { id: 'reports', label: 'Reports', path: '/insights/reports' },
     ],
     hasSettings: false,
   },
   strategic: {
     id: 'strategic',
-    label: 'Strategic',
+    label: 'Strategic Planning',
     shortLabel: 'Strategic',
     icon: Target,
     basePath: '/strategic',
-    color: 'neutral',
-    description: '5-year planning and projections',
-    subpages: [{ id: 'five-year-plan', label: '5-Year Plan', path: '/strategic' }],
+    color: 'purple',
+    description: 'Long-term planning and scenario modeling',
+    subpages: [
+      { id: 'long-term', label: 'Long-term', path: '/strategic/long-term' },
+      { id: 'scenarios', label: 'Scenarios', path: '/strategic/scenarios' },
+      { id: 'targets', label: 'Targets', path: '/strategic/targets' },
+    ],
     hasSettings: false,
   },
-  configuration: {
-    id: 'configuration',
-    label: 'Configuration',
-    shortLabel: 'Config',
+  settings: {
+    id: 'settings',
+    label: 'Settings',
+    shortLabel: 'Settings',
     icon: Settings,
-    basePath: '/configuration',
+    basePath: '/settings',
     color: 'neutral',
-    description: 'System settings, versions, and data imports',
+    description: 'Global configuration and parameters',
     subpages: [
-      { id: 'versions', label: 'Versions', path: '/configuration/versions' },
-      { id: 'uploads', label: 'Uploads', path: '/configuration/uploads' },
-      { id: 'system', label: 'System', path: '/configuration/system' },
+      { id: 'versions', label: 'Versions', path: '/settings/versions' },
+      { id: 'system', label: 'System', path: '/settings/system' },
     ],
+    hasSettings: false,
+  },
+  admin: {
+    id: 'admin',
+    label: 'Admin',
+    shortLabel: 'Admin',
+    icon: Shield,
+    basePath: '/admin',
+    color: 'neutral',
+    description: 'System administration and data imports',
+    subpages: [{ id: 'uploads', label: 'Data Uploads', path: '/admin/uploads' }],
     hasSettings: false,
   },
 }
 
 /**
- * Ordered list of modules for the dock (main modules only)
+ * Ordered list of modules for the sidebar (main planning modules)
  */
 export const MODULE_ORDER: ModuleId[] = [
   'enrollment',
   'workforce',
-  'finance',
-  'analysis',
+  'revenue',
+  'costs',
+  'investments',
+  'consolidation',
+  'insights',
   'strategic',
+  'settings',
 ]
 
 /**
- * All modules including configuration (for mobile nav)
+ * All modules for navigation (excludes Admin - shown separately for admin role)
  */
 export const ALL_MODULES: ModuleId[] = [
   'enrollment',
   'workforce',
-  'finance',
-  'analysis',
+  'revenue',
+  'costs',
+  'investments',
+  'consolidation',
+  'insights',
   'strategic',
-  'configuration',
+  'settings',
+]
+
+/**
+ * All modules including Admin (for admin users only)
+ */
+export const ALL_MODULES_WITH_ADMIN: ModuleId[] = [
+  'enrollment',
+  'workforce',
+  'revenue',
+  'costs',
+  'investments',
+  'consolidation',
+  'insights',
+  'strategic',
+  'settings',
+  'admin',
 ]
 
 /**
@@ -296,28 +442,54 @@ function getActiveModuleFromPath(pathname: string): ModuleId | null {
     return 'command-center'
   }
 
-  // Check each module's base path
-  for (const moduleId of ALL_MODULES) {
-    const module = MODULES[moduleId]
-    if (pathname.startsWith(module.basePath)) {
-      return moduleId
-    }
+  // Check admin module first (requires special access)
+  if (pathname.startsWith('/admin')) {
+    return 'admin'
   }
 
-  // Legacy route mapping
-  if (pathname.startsWith('/planning/enrollment') || pathname.startsWith('/planning/classes')) {
+  // Enrollment module routes (was: students)
+  if (pathname.startsWith('/enrollment')) {
     return 'enrollment'
   }
-  if (
-    pathname.startsWith('/planning/revenue') ||
-    pathname.startsWith('/planning/costs') ||
-    pathname.startsWith('/planning/capex') ||
-    pathname.startsWith('/consolidation')
-  ) {
-    return 'finance'
-  }
-  if (pathname.startsWith('/planning/dhg')) {
+
+  // Workforce module routes (was: teachers)
+  if (pathname.startsWith('/workforce')) {
     return 'workforce'
+  }
+
+  // Revenue module routes (was: finance/revenue)
+  if (pathname.startsWith('/revenue')) {
+    return 'revenue'
+  }
+
+  // Costs module routes (was: finance/costs)
+  if (pathname.startsWith('/costs')) {
+    return 'costs'
+  }
+
+  // Investments module routes (was: finance/capex)
+  if (pathname.startsWith('/investments')) {
+    return 'investments'
+  }
+
+  // Consolidation module routes
+  if (pathname.startsWith('/consolidation')) {
+    return 'consolidation'
+  }
+
+  // Insights module routes
+  if (pathname.startsWith('/insights')) {
+    return 'insights'
+  }
+
+  // Strategic module routes (elevated from settings)
+  if (pathname.startsWith('/strategic')) {
+    return 'strategic'
+  }
+
+  // Settings module routes
+  if (pathname.startsWith('/settings')) {
+    return 'settings'
   }
 
   return null

@@ -4,6 +4,8 @@ import {
   NationalityType,
   Cycle,
   ClassSizeParam,
+  ClassSizeParamBatchRequest,
+  ClassSizeParamBatchResponse,
   SubjectHours,
   Subject,
   TeacherCategory,
@@ -89,18 +91,18 @@ export const configurationApi = {
   },
 
   classSizeParams: {
-    getAll: async (budgetVersionId: string) => {
+    getAll: async (versionId: string) => {
       return withServiceErrorHandling(
         apiRequest<ClassSizeParam[]>({
           method: 'GET',
-          url: `/class-size-params?version_id=${budgetVersionId}`,
+          url: `/class-size-params?version_id=${versionId}`,
         }),
         'configuration: get class size params'
       )
     },
 
     create: async (data: {
-      budget_version_id: string
+      version_id: string
       level_id: string | null
       cycle_id: string | null
       min_class_size: number
@@ -119,7 +121,7 @@ export const configurationApi = {
     },
 
     update: async (data: {
-      budget_version_id: string
+      version_id: string
       level_id: string | null
       cycle_id: string | null
       min_class_size: number
@@ -146,21 +148,32 @@ export const configurationApi = {
         'configuration: delete class size param'
       )
     },
+
+    batchSave: async (data: ClassSizeParamBatchRequest) => {
+      return withServiceErrorHandling(
+        apiRequest<ClassSizeParamBatchResponse>({
+          method: 'POST',
+          url: '/class-size-params/batch',
+          data,
+        }),
+        'configuration: batch save class size params'
+      )
+    },
   },
 
   subjectHours: {
-    getAll: async (budgetVersionId: string) => {
+    getAll: async (versionId: string) => {
       return withServiceErrorHandling(
         apiRequest<SubjectHours[]>({
           method: 'GET',
-          url: `/subject-hours?version_id=${budgetVersionId}`,
+          url: `/subject-hours?version_id=${versionId}`,
         }),
         'configuration: get subject hours'
       )
     },
 
     create: async (data: {
-      budget_version_id: string
+      version_id: string
       subject_id: string
       level_id: string
       hours_per_week: number
@@ -178,7 +191,7 @@ export const configurationApi = {
     },
 
     update: async (data: {
-      budget_version_id: string
+      version_id: string
       subject_id: string
       level_id: string
       hours_per_week: number
@@ -196,11 +209,11 @@ export const configurationApi = {
     },
 
     // Matrix view by cycle (new endpoint)
-    getMatrix: async (budgetVersionId: string, cycleCode: string) => {
+    getMatrix: async (versionId: string, cycleCode: string) => {
       return withServiceErrorHandling(
         apiRequest<SubjectHoursMatrixResponse>({
           method: 'GET',
-          url: `/subject-hours/matrix?version_id=${budgetVersionId}&cycle_code=${cycleCode}`,
+          url: `/subject-hours/matrix?version_id=${versionId}&cycle_code=${cycleCode}`,
         }),
         'configuration: get subject hours matrix'
       )
@@ -231,7 +244,7 @@ export const configurationApi = {
 
     // Apply curriculum template
     applyTemplate: async (data: {
-      budget_version_id: string
+      version_id: string
       template_code: string
       cycle_codes: string[]
       overwrite_existing: boolean
@@ -284,18 +297,18 @@ export const configurationApi = {
   },
 
   teacherCosts: {
-    getAll: async (budgetVersionId: string) => {
+    getAll: async (versionId: string) => {
       return withServiceErrorHandling(
         apiRequest<TeacherCostParam[]>({
           method: 'GET',
-          url: `/teacher-costs?version_id=${budgetVersionId}`,
+          url: `/teacher-costs?version_id=${versionId}`,
         }),
         'configuration: get teacher cost params'
       )
     },
 
     update: async (data: {
-      budget_version_id: string
+      version_id: string
       category_id: string
       cycle_id: string | null
       prrd_contribution_eur: number | null
@@ -330,18 +343,18 @@ export const configurationApi = {
   },
 
   feeStructure: {
-    getAll: async (budgetVersionId: string) => {
+    getAll: async (versionId: string) => {
       return withServiceErrorHandling(
         apiRequest<FeeStructure[]>({
           method: 'GET',
-          url: `/fee-structure?version_id=${budgetVersionId}`,
+          url: `/fee-structure?version_id=${versionId}`,
         }),
         'configuration: get fee structure'
       )
     },
 
     update: async (data: {
-      budget_version_id: string
+      version_id: string
       level_id: string
       nationality_type_id: string
       fee_category_id: string
@@ -397,18 +410,18 @@ export const configurationApi = {
 
   // Timetable Constraints (Module 6)
   timetableConstraints: {
-    getAll: async (budgetVersionId: string) => {
+    getAll: async (versionId: string) => {
       return withServiceErrorHandling(
         apiRequest<TimetableConstraint[]>({
           method: 'GET',
-          url: `/timetable-constraints?version_id=${budgetVersionId}`,
+          url: `/timetable-constraints?version_id=${versionId}`,
         }),
         'configuration: get timetable constraints'
       )
     },
 
     update: async (data: {
-      budget_version_id: string
+      version_id: string
       level_id: string
       total_hours_per_week: number
       max_hours_per_day: number

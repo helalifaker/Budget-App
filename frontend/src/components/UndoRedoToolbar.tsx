@@ -6,13 +6,13 @@
  */
 
 import { Undo2, Redo2, Loader2 } from 'lucide-react'
-import { useUndoRedo } from '@/hooks/useUndoRedo'
+import { useUndoRedo } from '@/hooks/state/useUndoRedo'
 import { Button } from './ui/button'
 import { Badge } from './ui/badge'
 import { cn } from '@/lib/utils'
 
 export interface UndoRedoToolbarProps {
-  budgetVersionId: string
+  versionId: string
   moduleCode?: string
   className?: string
 }
@@ -20,18 +20,18 @@ export interface UndoRedoToolbarProps {
 /**
  * Toolbar with undo/redo buttons and keyboard shortcuts
  *
- * @param budgetVersionId - Current budget version
+ * @param versionId - Current version
  * @param moduleCode - Optional module filter
  * @param className - Additional CSS classes
  *
  * @example
  * ```typescript
- * <UndoRedoToolbar budgetVersionId={budgetVersionId} moduleCode="enrollment" />
+ * <UndoRedoToolbar versionId={versionId} moduleCode="enrollment" />
  * ```
  */
-export function UndoRedoToolbar({ budgetVersionId, moduleCode, className }: UndoRedoToolbarProps) {
+export function UndoRedoToolbar({ versionId, moduleCode, className }: UndoRedoToolbarProps) {
   const { undo, redo, canUndo, canRedo, isLoading, undoCount, redoCount } = useUndoRedo(
-    budgetVersionId,
+    versionId,
     moduleCode
   )
 

@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test'
-import { setupBudgetVersionMocks, resetMockData } from './helpers/api-mock.helper'
+import { setupVersionMocks, resetMockData } from './helpers/api-mock.helper'
 
 /**
  * E2E Test Suite: Budget Consolidation
@@ -172,7 +172,7 @@ test.describe('Budget Consolidation', () => {
   test.beforeEach(async ({ page }) => {
     // Reset mock data and setup mocks
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupConsolidationMocks(page)
 
     // Login as manager
@@ -325,7 +325,7 @@ test.describe('Budget Consolidation', () => {
 test.describe('Financial Statements', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupConsolidationMocks(page)
 
     await page.goto('/login')
@@ -335,7 +335,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('generate income statement (compte de résultat)', async ({ page }) => {
-    await page.goto('/finance/statements')
+    await page.goto('/consolidation/statements')
 
     // Select version
     await selectVersion(page)
@@ -361,7 +361,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('generate balance sheet (bilan)', async ({ page }) => {
-    await page.goto('/finance/statements')
+    await page.goto('/consolidation/statements')
 
     // Select version
     await selectVersion(page)
@@ -387,7 +387,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('generate cash flow statement', async ({ page }) => {
-    await page.goto('/finance/statements')
+    await page.goto('/consolidation/statements')
 
     // Select version
     await selectVersion(page)
@@ -413,7 +413,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('French PCG account code structure', async ({ page }) => {
-    await page.goto('/finance/statements')
+    await page.goto('/consolidation/statements')
 
     // Select version
     await selectVersion(page)
@@ -433,7 +433,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('toggle between French PCG and IFRS view', async ({ page }) => {
-    await page.goto('/finance/statements')
+    await page.goto('/consolidation/statements')
 
     // Select version
     await selectVersion(page)
@@ -462,7 +462,7 @@ test.describe('Financial Statements', () => {
   })
 
   test('export financial statements to PDF', async ({ page }) => {
-    await page.goto('/finance/statements')
+    await page.goto('/consolidation/statements')
 
     // Select version
     await selectVersion(page)
@@ -492,7 +492,7 @@ test.describe('Financial Statements', () => {
 test.describe('Consolidation Validation', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupConsolidationMocks(page)
 
     await page.goto('/login')
@@ -517,7 +517,7 @@ test.describe('Consolidation Validation', () => {
   })
 
   test('verify balance sheet equation: Assets = Liabilities + Equity', async ({ page }) => {
-    await page.goto('/finance/statements')
+    await page.goto('/consolidation/statements')
 
     // Select version
     await selectVersion(page)

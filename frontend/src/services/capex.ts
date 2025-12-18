@@ -4,7 +4,7 @@ import { withServiceErrorHandling } from './utils'
 // Types matching backend schemas
 interface CapExPlan {
   id: string
-  budget_version_id: string
+  version_id: string
   account_code: string
   description: string
   category: string
@@ -40,7 +40,7 @@ export const capexApi = {
     return withServiceErrorHandling(
       apiRequest<CapExPlan[]>({
         method: 'GET',
-        url: `/planning/capex/${versionId}`,
+        url: `/capex/${versionId}`,
       }),
       'capex: get all'
     )
@@ -62,7 +62,7 @@ export const capexApi = {
     return withServiceErrorHandling(
       apiRequest<CapExPlan>({
         method: 'POST',
-        url: `/planning/capex/${versionId}`,
+        url: `/capex/${versionId}`,
         data,
       }),
       'capex: create'
@@ -86,7 +86,7 @@ export const capexApi = {
     return withServiceErrorHandling(
       apiRequest<CapExPlan>({
         method: 'PUT',
-        url: `/planning/capex/${versionId}/${capexId}`,
+        url: `/capex/${versionId}/${capexId}`,
         data,
       }),
       'capex: update'
@@ -97,7 +97,7 @@ export const capexApi = {
     return withServiceErrorHandling(
       apiRequest<void>({
         method: 'DELETE',
-        url: `/planning/capex/${versionId}/${capexId}`,
+        url: `/capex/${versionId}/${capexId}`,
       }),
       'capex: delete'
     )
@@ -107,7 +107,7 @@ export const capexApi = {
     return withServiceErrorHandling(
       apiRequest<DepreciationCalculation>({
         method: 'POST',
-        url: `/planning/capex/${capexId}/depreciation`,
+        url: `/capex/${capexId}/depreciation`,
         data: { calculation_year: calculationYear },
       }),
       'capex: calculate depreciation'
@@ -118,7 +118,7 @@ export const capexApi = {
     return withServiceErrorHandling(
       apiRequest<DepreciationCalculation[]>({
         method: 'GET',
-        url: `/planning/capex/${capexId}/depreciation-schedule`,
+        url: `/capex/${capexId}/depreciation-schedule`,
         params: { years_ahead: yearsAhead },
       }),
       'capex: get depreciation schedule'
@@ -129,7 +129,7 @@ export const capexApi = {
     return withServiceErrorHandling(
       apiRequest<CapExSummary>({
         method: 'GET',
-        url: `/planning/capex/${versionId}/summary`,
+        url: `/capex/${versionId}/summary`,
       }),
       'capex: get summary'
     )
@@ -143,7 +143,7 @@ export const capexApi = {
         depreciation_by_category: Record<string, number>
       }>({
         method: 'GET',
-        url: `/planning/capex/${versionId}/depreciation/${year}`,
+        url: `/capex/${versionId}/depreciation/${year}`,
       }),
       'capex: get annual depreciation'
     )

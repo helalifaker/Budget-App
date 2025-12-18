@@ -12,7 +12,7 @@ vi.mock('@/lib/api-client', () => ({
 
 describe('useChangeHistory', () => {
   let queryClient: QueryClient
-  const budgetVersionId = 'budget-version-123'
+  const versionId = 'budget-version-123'
   const mockChanges: CellChange[] = [
     {
       id: 'change-1',
@@ -63,7 +63,7 @@ describe('useChangeHistory', () => {
     it('should fetch change history for a budget version', async () => {
       vi.mocked(apiRequest).mockResolvedValue(mockChanges)
 
-      const { result } = renderHook(() => useChangeHistory(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => useChangeHistory(versionId), { wrapper })
 
       // Wait for data to load
       await waitFor(() => {
@@ -77,7 +77,7 @@ describe('useChangeHistory', () => {
       // Verify API was called with correct params
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
-        url: `/writeback/cells/changes/${budgetVersionId}?limit=100&offset=0`,
+        url: `/writeback/cells/changes/${versionId}?limit=100&offset=0`,
       })
     })
 
@@ -86,7 +86,7 @@ describe('useChangeHistory', () => {
 
       const { result } = renderHook(
         () =>
-          useChangeHistory(budgetVersionId, {
+          useChangeHistory(versionId, {
             module_code: 'enrollment',
             entity_id: 'entity-1',
             field_name: 'student_count',
@@ -103,7 +103,7 @@ describe('useChangeHistory', () => {
       // Verify API was called with filters
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
-        url: `/writeback/cells/changes/${budgetVersionId}?module_code=enrollment&entity_id=entity-1&field_name=student_count&limit=50&offset=0`,
+        url: `/writeback/cells/changes/${versionId}?module_code=enrollment&entity_id=entity-1&field_name=student_count&limit=50&offset=0`,
       })
     })
 
@@ -125,7 +125,7 @@ describe('useChangeHistory', () => {
 
       vi.mocked(apiRequest).mockResolvedValue(firstPageChanges)
 
-      const { result } = renderHook(() => useChangeHistory(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => useChangeHistory(versionId), { wrapper })
 
       // Wait for first page to load
       await waitFor(() => {
@@ -151,14 +151,14 @@ describe('useChangeHistory', () => {
       // Verify API was called with new offset
       expect(apiRequest).toHaveBeenLastCalledWith({
         method: 'GET',
-        url: `/writeback/cells/changes/${budgetVersionId}?limit=100&offset=100`,
+        url: `/writeback/cells/changes/${versionId}?limit=100&offset=100`,
       })
     })
 
     it('should support reset to beginning', async () => {
       vi.mocked(apiRequest).mockResolvedValue(mockChanges)
 
-      const { result } = renderHook(() => useChangeHistory(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => useChangeHistory(versionId), { wrapper })
 
       // Wait for data to load
       await waitFor(() => {
@@ -185,7 +185,7 @@ describe('useChangeHistory', () => {
     it('should support goToOffset for direct navigation', async () => {
       vi.mocked(apiRequest).mockResolvedValue(mockChanges)
 
-      const { result } = renderHook(() => useChangeHistory(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => useChangeHistory(versionId), { wrapper })
 
       // Wait for data to load
       await waitFor(() => {
@@ -205,7 +205,7 @@ describe('useChangeHistory', () => {
       // Verify API was called with new offset
       expect(apiRequest).toHaveBeenLastCalledWith({
         method: 'GET',
-        url: `/writeback/cells/changes/${budgetVersionId}?limit=100&offset=200`,
+        url: `/writeback/cells/changes/${versionId}?limit=100&offset=200`,
       })
     })
   })
@@ -266,7 +266,7 @@ describe('useChangeHistory', () => {
     it('should fetch recent changes with default limit', async () => {
       vi.mocked(apiRequest).mockResolvedValue(mockChanges)
 
-      const { result } = renderHook(() => useRecentChanges(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => useRecentChanges(versionId), { wrapper })
 
       // Wait for data to load
       await waitFor(() => {
@@ -279,14 +279,14 @@ describe('useChangeHistory', () => {
       // Verify API was called
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
-        url: `/writeback/cells/changes/${budgetVersionId}?limit=20&offset=0`,
+        url: `/writeback/cells/changes/${versionId}?limit=20&offset=0`,
       })
     })
 
     it('should support custom limit', async () => {
       vi.mocked(apiRequest).mockResolvedValue(mockChanges)
 
-      const { result } = renderHook(() => useRecentChanges(budgetVersionId, 10), { wrapper })
+      const { result } = renderHook(() => useRecentChanges(versionId, 10), { wrapper })
 
       // Wait for data to load
       await waitFor(() => {
@@ -296,7 +296,7 @@ describe('useChangeHistory', () => {
       // Verify API was called with custom limit
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
-        url: `/writeback/cells/changes/${budgetVersionId}?limit=10&offset=0`,
+        url: `/writeback/cells/changes/${versionId}?limit=10&offset=0`,
       })
     })
 
@@ -306,7 +306,7 @@ describe('useChangeHistory', () => {
       vi.useFakeTimers()
       vi.mocked(apiRequest).mockResolvedValue(mockChanges)
 
-      renderHook(() => useRecentChanges(budgetVersionId), { wrapper })
+      renderHook(() => useRecentChanges(versionId), { wrapper })
 
       // Wait for initial load
       await waitFor(() => {
@@ -330,7 +330,7 @@ describe('useChangeHistory', () => {
       const errorMessage = 'Network error'
       vi.mocked(apiRequest).mockRejectedValue(new Error(errorMessage))
 
-      const { result } = renderHook(() => useChangeHistory(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => useChangeHistory(versionId), { wrapper })
 
       // Wait for error
       await waitFor(() => {

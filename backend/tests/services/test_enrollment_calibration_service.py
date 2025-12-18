@@ -24,17 +24,23 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from app.models import (
     AcademicLevel,
-    EnrollmentDerivedParameter,
     EnrollmentScenario,
     HistoricalActuals,
     HistoricalDimensionType,
     HistoricalModuleCode,
+    StudentsCalibration,
+    Version,
+    VersionStatus,
 )
-from app.schemas.enrollment_settings import (
+
+# Backward compatibility aliases
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
+from app.schemas.enrollment.enrollment_settings import (
     DOCUMENT_DEFAULTS,
     ENTRY_POINT_GRADES,
 )
-from app.services.enrollment_calibration_service import (
+from app.services.enrollment.enrollment_calibration_service import (
     EnrollmentCalibrationService,
     calculate_confidence,
     calculate_data_quality_score,
@@ -320,7 +326,7 @@ class TestCalibrationServiceUnit:
     @pytest.mark.asyncio
     async def test_get_current_school_year_september(self, service):
         """Test school year detection in September (new year)."""
-        with patch("app.services.enrollment_calibration_service.datetime") as mock_dt:
+        with patch("app.services.enrollment.enrollment_calibration_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2025, 9, 15, tzinfo=UTC)
             year = await service.get_current_school_year()
             assert year == "2025/2026"
@@ -328,7 +334,7 @@ class TestCalibrationServiceUnit:
     @pytest.mark.asyncio
     async def test_get_current_school_year_june(self, service):
         """Test school year detection in June (same year)."""
-        with patch("app.services.enrollment_calibration_service.datetime") as mock_dt:
+        with patch("app.services.enrollment.enrollment_calibration_service.datetime") as mock_dt:
             mock_dt.now.return_value = datetime(2025, 6, 15, tzinfo=UTC)
             year = await service.get_current_school_year()
             assert year == "2024/2025"
@@ -336,15 +342,28 @@ class TestCalibrationServiceUnit:
     @pytest.mark.asyncio
     async def test_calibration_insufficient_data(self, service, mock_session):
         """Test calibration fails gracefully with insufficient data."""
-        # Mock empty historical data
-        mock_result = MagicMock()
-        mock_result.all.return_value = []
-        mock_session.execute.return_value = mock_result
-
         org_id = uuid.uuid4()
+        version_id = uuid.uuid4()
 
-        with patch.object(service, "get_current_school_year", return_value="2025/2026"):
-            result = await service.calibrate_parameters(org_id)
+        # Create mock budget version for the lookup
+        mock_budget_version = MagicMock(spec=BudgetVersion)
+        mock_budget_version.fiscal_year = 2025  # Targets 2025/2026
+        mock_budget_version.id = version_id
+
+        # Configure mock session to return budget version first, then empty historical data
+        def mock_execute_side_effect(stmt):
+            mock_result = MagicMock()
+            # First call is for budget version lookup
+            if "budget_versions" in str(stmt).lower() or hasattr(stmt, "_raw_columns"):
+                mock_result.scalar_one_or_none.return_value = mock_budget_version
+            else:
+                # Historical data query returns empty
+                mock_result.all.return_value = []
+            return mock_result
+
+        mock_session.execute = AsyncMock(side_effect=mock_execute_side_effect)
+
+        result = await service.calibrate_parameters(org_id, version_id)
 
         assert result.success is False
         assert "Insufficient" in result.message
@@ -368,7 +387,7 @@ async def academic_levels_list(
 
     Uses the academic_cycles fixture from conftest.py to satisfy FK constraints.
     """
-    from app.engine.enrollment.projection_engine import GRADE_SEQUENCE
+    from app.engine.enrollment.projection.projection_engine import GRADE_SEQUENCE
 
     # Map grades to cycles
     grade_to_cycle = {
@@ -390,7 +409,6 @@ async def academic_levels_list(
     }
 
     # Grades that are secondary level
-    secondary_grades = {"6EME", "5EME", "4EME", "3EME", "2NDE", "1ERE", "TLE"}
 
     levels = []
     for idx, grade in enumerate(GRADE_SEQUENCE):
@@ -404,7 +422,6 @@ async def academic_levels_list(
             name_fr=f"Niveau {grade}",
             cycle_id=cycle.id,
             sort_order=idx,
-            is_secondary=grade in secondary_grades,
         )
         db_session.add(level)
         levels.append(level)
@@ -484,6 +501,37 @@ async def enrollment_scenarios(db_session: AsyncSession) -> list[EnrollmentScena
 
     await db_session.flush()
     return scenarios
+
+
+@pytest.fixture
+async def calibration_budget_version(
+    db_session: AsyncSession,
+    organization_id: uuid.UUID,
+) -> BudgetVersion:
+    """Create a budget version for calibration tests.
+
+    Uses fiscal_year=2025, which means:
+    - target_school_year = "2025/2026"
+    - Historical window uses 2021-2024 data (N-4 to N-1)
+
+    Note: This fixture does NOT depend on test_user_id to avoid
+    creating unnecessary user records for calibration tests.
+    """
+    version = BudgetVersion(
+        id=uuid.uuid4(),
+        name="Budget 2025 Test",
+        fiscal_year=2025,
+        academic_year="2025-2026",  # STARTING year convention
+        status=BudgetVersionStatus.WORKING,
+        is_baseline=False,
+        notes="Test budget for calibration",
+        organization_id=organization_id,
+        created_by_id=None,  # No user required for this test
+        created_at=datetime.now(UTC),
+    )
+    db_session.add(version)
+    await db_session.flush()
+    return version
 
 
 @pytest.fixture
@@ -590,20 +638,27 @@ class TestCalibrationServiceIntegration:
         service: EnrollmentCalibrationService,
         db_session: AsyncSession,
         organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,
         historical_enrollment_data: dict,
     ):
-        """Test calibration successfully calculates rates."""
-        with patch.object(service, "get_current_school_year", return_value="2025/2026"):
-            result = await service.calibrate_parameters(organization_id)
+        """Test calibration successfully calculates rates.
+
+        Uses budget version with fiscal_year=2025 targeting 2025/2026.
+        Historical window: 2021-2024 data.
+        """
+        result = await service.calibrate_parameters(
+            organization_id, calibration_budget_version.id
+        )
 
         assert result.success is True
         assert result.parameters_updated > 0
         assert len(result.source_years) > 0
         assert result.fallback_used is False
+        assert result.target_school_year == "2025/2026"
 
-        # Verify derived parameters were saved
-        stmt = select(EnrollmentDerivedParameter).where(
-            EnrollmentDerivedParameter.organization_id == organization_id
+        # Verify calibration data was saved (uses unified StudentsCalibration model)
+        stmt = select(StudentsCalibration).where(
+            StudentsCalibration.organization_id == organization_id
         )
         db_result = await db_session.execute(stmt)
         params = db_result.scalars().all()
@@ -615,12 +670,14 @@ class TestCalibrationServiceIntegration:
         self,
         service: EnrollmentCalibrationService,
         organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,
         historical_enrollment_data: dict,
     ):
         """Test calibration status reflects successful calibration."""
-        with patch.object(service, "get_current_school_year", return_value="2025/2026"):
-            await service.calibrate_parameters(organization_id)
-            status = await service.get_calibration_status(organization_id)
+        await service.calibrate_parameters(
+            organization_id, calibration_budget_version.id
+        )
+        status = await service.get_calibration_status(organization_id)
 
         assert status.last_calibrated is not None
         assert len(status.source_years) > 0
@@ -666,6 +723,7 @@ class TestCalibrationServiceIntegration:
         service: EnrollmentCalibrationService,
         db_session: AsyncSession,
         organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,  # Need working version
     ):
         """Test creating and updating scenario multiplier."""
         multiplier_data = {
@@ -675,22 +733,25 @@ class TestCalibrationServiceIntegration:
 
         await service.update_scenario_multiplier(organization_id, multiplier_data)
 
-        # Verify multiplier was saved
+        # Verify multiplier was saved (returns tuple: (config, org_id))
         multipliers = await service.get_scenario_multipliers(organization_id)
         assert "conservative" in multipliers
-        assert multipliers["conservative"].lateral_multiplier == Decimal("0.70")
+        config, _ = multipliers["conservative"]
+        assert config.lateral_multiplier == Decimal("0.70")
 
     @pytest.mark.asyncio
     async def test_effective_rates_with_override(
         self,
         service: EnrollmentCalibrationService,
         organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,
         historical_enrollment_data: dict,
     ):
         """Test effective rates use override when set."""
         # First calibrate
-        with patch.object(service, "get_current_school_year", return_value="2025/2026"):
-            await service.calibrate_parameters(organization_id)
+        await service.calibrate_parameters(
+            organization_id, calibration_budget_version.id
+        )
 
         # Set override for CP
         override_data = {
@@ -712,12 +773,14 @@ class TestCalibrationServiceIntegration:
         self,
         service: EnrollmentCalibrationService,
         organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,
         historical_enrollment_data: dict,
     ):
         """Test effective rates use derived when no override."""
         # Calibrate
-        with patch.object(service, "get_current_school_year", return_value="2025/2026"):
-            await service.calibrate_parameters(organization_id)
+        await service.calibrate_parameters(
+            organization_id, calibration_budget_version.id
+        )
 
         # Get effective rates (no override set)
         effective = await service.get_effective_rates(organization_id, "base")
@@ -733,6 +796,7 @@ class TestCalibrationServiceIntegration:
         self,
         service: EnrollmentCalibrationService,
         organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,  # Need working version
     ):
         """Test scenario multiplier affects lateral entry rates."""
         # Set multiplier for conservative scenario
@@ -755,7 +819,11 @@ class TestCalibrationServiceIntegration:
         db_session: AsyncSession,
         organization_id: uuid.UUID,
     ):
-        """Test resetting all overrides."""
+        """Test resetting all overrides.
+
+        The unified StudentsCalibration model resets override flags but
+        preserves records (with derived data).
+        """
         # Create multiple overrides
         for grade in ["CP", "6EME", "2NDE"]:
             await service.update_parameter_override(
@@ -763,16 +831,21 @@ class TestCalibrationServiceIntegration:
                 {"grade_code": grade, "override_lateral_rate": True, "manual_lateral_rate": Decimal("0.20")},
             )
 
-        # Verify overrides exist
+        # Verify overrides exist with flags enabled
         overrides = await service.get_parameter_overrides(organization_id)
         assert len(overrides) == 3
+        for _grade_code, calibration in overrides.items():
+            assert calibration.override_lateral_rate is True
 
         # Reset all
         await service.reset_all_overrides(organization_id)
 
-        # Verify all deleted
+        # Verify override flags are reset (records still exist but flags are False)
         overrides = await service.get_parameter_overrides(organization_id)
-        assert len(overrides) == 0
+        assert len(overrides) == 3  # Records preserved
+        for _grade_code, calibration in overrides.items():
+            assert calibration.override_lateral_rate is False
+            assert calibration.manual_lateral_rate is None
 
     @pytest.mark.asyncio
     async def test_reset_scenario_multipliers(
@@ -780,6 +853,7 @@ class TestCalibrationServiceIntegration:
         service: EnrollmentCalibrationService,
         db_session: AsyncSession,
         organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,  # Need working version
     ):
         """Test resetting scenario multipliers to defaults."""
         # Set non-default multiplier
@@ -791,10 +865,207 @@ class TestCalibrationServiceIntegration:
         # Reset
         await service.reset_scenario_multipliers(organization_id)
 
-        # Verify defaults restored
+        # Verify defaults restored (returns tuple: (config, org_id))
         multipliers = await service.get_scenario_multipliers(organization_id)
-        assert multipliers["conservative"].lateral_multiplier == Decimal("0.60")
-        assert multipliers["base"].lateral_multiplier == Decimal("1.00")
+        conservative_config, _ = multipliers["conservative"]
+        base_config, _ = multipliers["base"]
+        assert conservative_config.lateral_multiplier == Decimal("0.60")
+        assert base_config.lateral_multiplier == Decimal("1.00")
+
+
+class TestWeightedCalibrationAlgorithm:
+    """Tests specifically for the 70% N-1 + 30% N-2 weighted calibration algorithm.
+
+    These tests verify that the service correctly uses the weighted average
+    formula as documented in the enrollment projection specification.
+    """
+
+    @pytest.fixture
+    def service(self, db_session: AsyncSession) -> EnrollmentCalibrationService:
+        """Create service with real session."""
+        return EnrollmentCalibrationService(db_session)
+
+    @pytest.fixture
+    async def three_year_historical_data(
+        self,
+        db_session: AsyncSession,
+        organization_id: uuid.UUID,
+        academic_levels_list: list[AcademicLevel],
+    ) -> dict[str, dict[str, int]]:
+        """Create 3 years of historical data with predictable progression.
+
+        This data is designed to verify the 70/30 weighted formula:
+        - N-1 transition (2024→2025): MS gets 120 students from 100 PS = 120% progression
+        - N-2 transition (2023→2024): MS gets 110 students from 100 PS = 110% progression
+        - Expected weighted: 0.70 * 1.20 + 0.30 * 1.10 = 0.84 + 0.33 = 1.17 (117%)
+        """
+        historical_data = {
+            "2022/2023": {
+                "PS": 100, "MS": 95, "GS": 90, "CP": 85,
+                "CE1": 80, "CE2": 75, "CM1": 70, "CM2": 65,
+                "6EME": 60, "5EME": 58, "4EME": 56, "3EME": 54,
+                "2NDE": 50, "1ERE": 48, "TLE": 46,
+            },
+            "2023/2024": {
+                "PS": 100, "MS": 110, "GS": 100, "CP": 95,  # MS: 110/100 = 110%
+                "CE1": 90, "CE2": 85, "CM1": 80, "CM2": 75,
+                "6EME": 70, "5EME": 65, "4EME": 63, "3EME": 60,
+                "2NDE": 58, "1ERE": 55, "TLE": 52,
+            },
+            "2024/2025": {
+                "PS": 100, "MS": 120, "GS": 115, "CP": 105,  # MS: 120/100 = 120%
+                "CE1": 100, "CE2": 95, "CM1": 90, "CM2": 85,
+                "6EME": 80, "5EME": 75, "4EME": 70, "3EME": 68,
+                "2NDE": 65, "1ERE": 62, "TLE": 58,
+            },
+        }
+
+        for school_year, grades in historical_data.items():
+            fiscal_year = school_year_to_fiscal_year(school_year)
+            for grade_code, total in grades.items():
+                historical_actual = HistoricalActuals(
+                    id=uuid.uuid4(),
+                    fiscal_year=fiscal_year,
+                    module_code=HistoricalModuleCode.ENROLLMENT,
+                    dimension_type=HistoricalDimensionType.LEVEL,
+                    dimension_code=grade_code,
+                    annual_count=total,
+                )
+                db_session.add(historical_actual)
+
+        await db_session.flush()
+        return historical_data
+
+    @pytest.mark.asyncio
+    async def test_calibration_uses_70_30_weighting(
+        self,
+        service: EnrollmentCalibrationService,
+        db_session: AsyncSession,
+        organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,
+        three_year_historical_data: dict,
+    ):
+        """Test that calibration uses 70% N-1 + 30% N-2 weighted formula.
+
+        For MS grade (with budget targeting 2025/2026):
+        - N-1 progression (2024→2025): 120/100 = 1.20
+        - N-2 progression (2023→2024): 110/100 = 1.10
+        - Weighted: 0.70 * 1.20 + 0.30 * 1.10 = 0.84 + 0.33 = 1.17
+
+        Lateral rate = weighted_progression - retention
+                     = 1.17 - 0.96 (MAT cycle)
+                     = 0.21 (21%)
+        """
+        result = await service.calibrate_parameters(
+            organization_id, calibration_budget_version.id
+        )
+
+        assert result.success is True
+        assert "70% N-1 + 30% N-2" in result.message
+        assert result.target_school_year == "2025/2026"
+
+        # Verify MS grade calculation (uses unified StudentsCalibration model)
+        stmt = select(StudentsCalibration).where(
+            StudentsCalibration.organization_id == organization_id,
+            StudentsCalibration.grade_code == "MS",
+        )
+        db_result = await db_session.execute(stmt)
+        ms_param = db_result.scalar_one()
+
+        # Expected: 0.70 * 1.20 + 0.30 * 1.10 = 1.17
+        expected_progression = Decimal("1.1700")
+        assert ms_param.progression_rate == expected_progression
+
+        # Retention for MAT cycle is 0.96
+        assert ms_param.retention_rate == Decimal("0.96")
+
+        # Lateral = progression - retention = 1.17 - 0.96 = 0.21
+        expected_lateral = Decimal("0.210")
+        assert ms_param.lateral_entry_rate == expected_lateral
+
+    @pytest.mark.asyncio
+    async def test_calibration_with_only_n1_data(
+        self,
+        service: EnrollmentCalibrationService,
+        db_session: AsyncSession,
+        organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,
+        academic_levels_list: list[AcademicLevel],
+    ):
+        """Test calibration falls back to N-1 only when N-2 is unavailable.
+
+        With only 2 years of data, we can only calculate N-1 transition.
+        The weighted function should return N-1 alone (100% weight).
+        """
+        # Create only 2 years of data
+        historical_data = {
+            "2023/2024": {
+                "PS": 100, "MS": 90, "GS": 85, "CP": 80,
+                "CE1": 75, "CE2": 70, "CM1": 65, "CM2": 60,
+                "6EME": 55, "5EME": 50, "4EME": 48, "3EME": 45,
+                "2NDE": 42, "1ERE": 40, "TLE": 38,
+            },
+            "2024/2025": {
+                "PS": 100, "MS": 130, "GS": 95, "CP": 90,  # MS: 130/100 = 130%
+                "CE1": 85, "CE2": 80, "CM1": 75, "CM2": 70,
+                "6EME": 65, "5EME": 60, "4EME": 55, "3EME": 52,
+                "2NDE": 48, "1ERE": 45, "TLE": 42,
+            },
+        }
+
+        for school_year, grades in historical_data.items():
+            fiscal_year = school_year_to_fiscal_year(school_year)
+            for grade_code, total in grades.items():
+                historical_actual = HistoricalActuals(
+                    id=uuid.uuid4(),
+                    fiscal_year=fiscal_year,
+                    module_code=HistoricalModuleCode.ENROLLMENT,
+                    dimension_type=HistoricalDimensionType.LEVEL,
+                    dimension_code=grade_code,
+                    annual_count=total,
+                )
+                db_session.add(historical_actual)
+
+        await db_session.flush()
+
+        result = await service.calibrate_parameters(
+            organization_id, calibration_budget_version.id
+        )
+
+        assert result.success is True
+        assert result.target_school_year == "2025/2026"
+
+        # Verify MS grade - should use N-1 alone (130%) (uses unified StudentsCalibration)
+        stmt = select(StudentsCalibration).where(
+            StudentsCalibration.organization_id == organization_id,
+            StudentsCalibration.grade_code == "MS",
+        )
+        db_result = await db_session.execute(stmt)
+        ms_param = db_result.scalar_one()
+
+        # With only N-1, progression should be 1.30
+        assert ms_param.progression_rate == Decimal("1.3000")
+
+        # Lateral = 1.30 - 0.96 = 0.34
+        assert ms_param.lateral_entry_rate == Decimal("0.340")
+
+    @pytest.mark.asyncio
+    async def test_calibration_message_confirms_algorithm(
+        self,
+        service: EnrollmentCalibrationService,
+        db_session: AsyncSession,
+        organization_id: uuid.UUID,
+        calibration_budget_version: BudgetVersion,
+        three_year_historical_data: dict,
+    ):
+        """Test that calibration success message confirms 70/30 algorithm."""
+        result = await service.calibrate_parameters(
+            organization_id, calibration_budget_version.id
+        )
+
+        assert result.success is True
+        assert "70% N-1 + 30% N-2" in result.message
+        assert result.target_school_year == "2025/2026"
 
 
 class TestEnrollmentSettingsResponse:

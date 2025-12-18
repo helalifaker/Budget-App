@@ -2,7 +2,7 @@
 
 This guide helps developers choose the right table component for their use case in the EFIR Budget Planning Application.
 
-**Last Updated**: 2025-12-12
+**Last Updated**: 2025-12-15
 
 ---
 
@@ -14,45 +14,34 @@ Need a table component?
 ├─ Is it a simple, static display (< 20 rows)?
 │   └─ YES → Use shadcn/ui Table
 │
-├─ Is it a data grid with sorting/filtering/pagination?
-│   │
-│   ├─ Is it read-only?
-│   │   │
-│   │   ├─ Is it on a critical initial load page?
-│   │   │   └─ YES → Use DataTableLazy (lazy-loaded)
-│   │   │
-│   │   └─ NO → Use DataTable
-│   │
-│   └─ Is it editable?
-│       │
-│       ├─ Does it need budget version tracking & real-time sync?
-│       │   └─ YES → Use EnhancedDataTable
-│       │
-│       └─ Does it need Excel-like experience (copy/paste, fill-down)?
-│           └─ YES → Use ExcelDataTable
+└─ Is it a data grid (sorting/selection/virtualization)?
+    │
+    ├─ Is it read-only?
+    │   └─ YES → Use TanStackDataTable
+    │
+    └─ Is it editable?
+        │
+        ├─ Does it need Excel-like keyboard + clipboard (Ctrl+C/V/D, stats)?
+        │   └─ YES → Use ExcelEditableTable (or ExcelEditableTableLazy)
+        │
+        └─ Otherwise → Use EditableTable
 ```
 
 ---
 
 ## Component Comparison
 
-| Feature | shadcn Table | DataTable | DataTableLazy | EnhancedDataTable | ExcelDataTable |
-|---------|--------------|-----------|---------------|-------------------|----------------|
-| **Bundle Impact** | ~2KB | ~200KB | Lazy (~0KB initial) | ~200KB | ~200KB |
-| **Sorting** | Manual | ✅ Built-in | ✅ | ✅ | ✅ |
-| **Filtering** | Manual | ✅ Built-in | ✅ | ✅ | ✅ |
-| **Pagination** | Manual | ✅ Built-in | ✅ | ✅ | ✅ |
-| **Cell Editing** | ❌ | ❌ | ❌ | ✅ Auto-save | ✅ |
-| **Excel Copy/Paste** | ❌ | ❌ | ❌ | ✅ | ✅ Native |
-| **Undo/Redo** | ❌ | ❌ | ❌ | ✅ | ✅ (50 levels) |
-| **Real-time Sync** | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **Conflict Resolution** | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **Cell Comments** | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **Cell History** | ❌ | ❌ | ❌ | ✅ | ❌ |
-| **Status Bar** | ❌ | ❌ | ❌ | ❌ | ✅ Sum/Avg/Count |
-| **Fill Down (Ctrl+D)** | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Screen Reader** | Basic | ✅ Enhanced | ✅ | Basic | ✅ |
-| **Keyboard Nav** | Basic | ✅ Full | ✅ | ✅ | ✅ Excel-style |
+| Feature | shadcn Table | TanStackDataTable | EditableTable | ExcelEditableTable | ExcelEditableTableLazy |
+|---------|--------------|-------------------|---------------|--------------------|------------------------|
+| **Primary Use** | Static display | Read-only grids | Inline editing | Editing + clipboard | Code-split Excel grid |
+| **Sorting** | Manual | ✅ | ✅ | ✅ | ✅ |
+| **Row Selection** | Manual | ✅ | ✅ (optional) | ✅ (required) | ✅ |
+| **Virtualization** | ❌ | ✅ (auto) | ❌ | ❌ | ❌ |
+| **Cell Editing** | ❌ | ❌ | ✅ | ✅ | ✅ |
+| **Copy/Paste** | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **Fill Down (Ctrl+D)** | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **Selection Stats** | ❌ | ❌ | ❌ | ✅ | ✅ |
+| **A11y (labels/roles)** | Basic | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -68,18 +57,21 @@ Need a table component?
 - Simple tables with < 20 rows
 - Settings/configuration displays
 - Summary cards with tabular data
-- When you need full control over rendering
 
 **When NOT to Use**:
 - Large datasets (100+ rows)
-- When sorting/filtering is needed
+- When sorting/selection is needed
 - Editable data grids
 
 **Example**:
 ```tsx
 import {
-  Table, TableBody, TableCell, TableHead,
-  TableHeader, TableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table'
 
 function UserRoles() {
@@ -96,10 +88,6 @@ function UserRoles() {
           <TableCell>Admin</TableCell>
           <TableCell>Full system access</TableCell>
         </TableRow>
-        <TableRow>
-          <TableCell>Finance Director</TableCell>
-          <TableCell>Budget approval, read all data</TableCell>
-        </TableRow>
       </TableBody>
     </Table>
   )
@@ -108,54 +96,42 @@ function UserRoles() {
 
 ---
 
-### 2. DataTable (`@/components/DataTable`)
+### 2. TanStackDataTable (`@/components/grid/tanstack`)
 
-**Purpose**: Read-only AG Grid with accessibility features.
+**Purpose**: Read-only grid with EFIR styling, sorting, selection, and optional virtualization.
 
-**Location**: `frontend/src/components/DataTable.tsx`
+**Location**: `frontend/src/components/grid/tanstack/TanStackDataTable.tsx`
 
 **When to Use**:
-- Read-only data grids
-- Need sorting, filtering, pagination
-- Accessibility is a priority (screen readers)
-- Displaying API data with loading/error states
+- Read-only grids (reports, overview tables)
+- Need sorting and/or row selection
+- Large datasets (virtualization auto-enables when rows > 100)
 
 **When NOT to Use**:
-- Need cell editing
-- Need Excel-like interactions
-- Initial load performance is critical (use DataTableLazy)
-
-**Key Features**:
-- Built-in loading overlay
-- Error state handling with retry button
-- Network error detection
-- ARIA labels and descriptions
-- Screen reader announcements
+- Need inline editing (use `EditableTable`)
+- Need clipboard/Excel shortcuts (use `ExcelEditableTable`)
 
 **Example**:
 ```tsx
-import { DataTable } from '@/components/DataTable'
-import type { ColDef } from 'ag-grid-community'
+import type { ColumnDef } from '@tanstack/react-table'
+import { TanStackDataTable } from '@/components/grid/tanstack'
 
-function EmployeeList() {
-  const { data, isLoading, error, refetch } = useEmployees()
+type Row = { id: string; name: string; department: string; salary: number }
 
-  const columnDefs: ColDef[] = [
-    { field: 'name', headerName: 'Name' },
-    { field: 'department', headerName: 'Department' },
-    { field: 'salary', headerName: 'Salary', valueFormatter: formatCurrency },
-  ]
+const columns: ColumnDef<Row, unknown>[] = [
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'department', header: 'Department' },
+  { accessorKey: 'salary', header: 'Salary' },
+]
 
+export function EmployeeList({ data }: { data: Row[] }) {
   return (
-    <DataTable
-      gridId="employee-list"
-      gridLabel="Employee directory"
-      gridDescription="List of all employees with their departments and salaries"
+    <TanStackDataTable
       rowData={data}
-      columnDefs={columnDefs}
-      loading={isLoading}
-      error={error}
-      onRetry={refetch}
+      columnDefs={columns}
+      getRowId={(row) => row.id}
+      height={600}
+      enableRowSelection
     />
   )
 }
@@ -163,37 +139,50 @@ function EmployeeList() {
 
 ---
 
-### 3. DataTableLazy (`@/components/DataTableLazy`)
+### 3. EditableTable (`@/components/grid/tanstack`)
 
-**Purpose**: Lazy-loaded DataTable for better initial bundle size.
+**Purpose**: Inline cell editing with keyboard navigation (click/F2/type-to-edit).
 
-**Location**: `frontend/src/components/DataTableLazy.tsx`
+**Location**: `frontend/src/components/grid/tanstack/EditableTable.tsx`
 
 **When to Use**:
-- DataTable functionality needed
-- Table is below the fold or on a secondary tab
-- Initial page load performance is critical
-- Route-level code splitting
+- Editing screens that don’t need clipboard workflows
+- Forms-like grids (single-row edits, small tables)
 
 **When NOT to Use**:
-- Table is immediately visible on page load
-- User interaction with table is time-critical
-
-**Bundle Impact**:
-- Saves ~200KB from initial bundle
-- AG Grid loaded on-demand when component mounts
+- Heavy keyboard data-entry workflows with copy/paste/fill-down (use `ExcelEditableTable`)
 
 **Example**:
 ```tsx
-import { DataTableLazy } from '@/components/DataTableLazy'
+import type { ColumnDef } from '@tanstack/react-table'
+import { EditableTable, type EditableColumnMeta } from '@/components/grid/tanstack'
 
-function ReportsPage() {
-  // Grid loads only when user navigates to this page
+type Row = { id: string; name: string; enrollment: number }
+
+const columns: ColumnDef<Row, unknown>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Name',
+    meta: { editable: false } satisfies EditableColumnMeta,
+  },
+  {
+    accessorKey: 'enrollment',
+    header: 'Enrollment',
+    meta: { editable: true, editorType: 'number', min: 0 } satisfies EditableColumnMeta,
+  },
+]
+
+export function EnrollmentEditor({ data }: { data: Row[] }) {
   return (
-    <DataTableLazy
-      rowData={reportData}
+    <EditableTable
+      rowData={data}
       columnDefs={columns}
-      loading={isLoading}
+      getRowId={(row) => row.id}
+      enableRowSelection
+      onCellValueChanged={({ data, field, newValue }) => {
+        // Parent updates rowData (controlled)
+        console.log('changed', data.id, field, newValue)
+      }}
     />
   )
 }
@@ -201,46 +190,43 @@ function ReportsPage() {
 
 ---
 
-### 4. EnhancedDataTable (`@/components/EnhancedDataTable`)
+### 4. ExcelEditableTable (`@/components/grid/tanstack/ExcelEditableTable`)
 
-**Purpose**: Cell-level editing with real-time sync and version conflict resolution.
+**Purpose**: EditableTable + Excel-like keyboard shortcuts + clipboard support.
 
-**Location**: `frontend/src/components/EnhancedDataTable.tsx`
+**Location**: `frontend/src/components/grid/tanstack/ExcelEditableTable.tsx`
 
 **When to Use**:
-- Collaborative budget planning screens
-- Need to track budget versions
-- Real-time updates from other users
-- Cell-level comments and history
-- Cell locking/unlocking
+- Data-entry screens where users expect Excel-like workflows
+- Copy/paste from Excel and fill-down are core to productivity
 
-**When NOT to Use**:
-- Simple data entry without version tracking
-- Read-only displays
-- When Excel-like fill-down is needed
-
-**Key Features**:
-- **Cell Writeback**: Auto-saves on edit with optimistic updates
-- **Version Conflict**: Detects and highlights conflicting edits
-- **Real-time Sync**: Shows changes from other users
-- **User Presence**: Displays who's currently editing
-- **Context Menu**: Comments, history, lock/unlock
+**Notes**:
+- Copy/paste behavior is row-based (matches the app’s prior behavior).
 
 **Example**:
 ```tsx
-import { EnhancedDataTable } from '@/components/EnhancedDataTable'
+import type { ColumnDef } from '@tanstack/react-table'
+import { ExcelEditableTable } from '@/components/grid/tanstack/ExcelEditableTable'
+import type { EditableColumnMeta } from '@/components/grid/tanstack'
 
-function EnrollmentPlanning() {
-  const { budgetVersionId } = useBudgetVersion()
+type Row = { id: string; code: string; hours: number }
 
+const columns: ColumnDef<Row, unknown>[] = [
+  { accessorKey: 'code', header: 'Code', meta: { editable: false } satisfies EditableColumnMeta },
+  { accessorKey: 'hours', header: 'Hours', meta: { editable: true, editorType: 'number', min: 0 } satisfies EditableColumnMeta },
+]
+
+export function HoursGrid({ data }: { data: Row[] }) {
   return (
-    <EnhancedDataTable
-      budgetVersionId={budgetVersionId}
-      moduleCode="enrollment"
-      enableWriteback={true}
-      rowData={enrollmentData}
+    <ExcelEditableTable
+      rowData={data}
       columnDefs={columns}
-      onCellSaved={(cell) => console.log('Saved:', cell)}
+      getRowId={(row) => row.id}
+      enableRowSelection
+      showSelectionStats
+      onCellValueChanged={({ data, field, newValue }) => {
+        console.log('changed', data.id, field, newValue)
+      }}
     />
   )
 }
@@ -248,64 +234,23 @@ function EnrollmentPlanning() {
 
 ---
 
-### 5. ExcelDataTable (`@/components/grid/ExcelDataTable`)
+### 5. ExcelEditableTableLazy (`@/components/grid/tanstack`)
 
-**Purpose**: True Excel-like experience with full keyboard and clipboard support.
+**Purpose**: Lazy-loaded `ExcelEditableTable` for routes/tabs where initial load performance matters.
 
-**Location**: `frontend/src/components/grid/ExcelDataTable.tsx`
-
-**When to Use**:
-- Data entry screens where users expect Excel behavior
-- Need copy/paste compatibility with Excel
-- Fill-down operations (Ctrl+D)
-- Status bar with Sum/Average/Count
-- Heavy keyboard-based data entry
-
-**When NOT to Use**:
-- Need budget version tracking (use EnhancedDataTable)
-- Need real-time collaborative editing
-- Simple read-only displays
-
-**Keyboard Shortcuts**:
-| Shortcut | Action |
-|----------|--------|
-| Ctrl+C | Copy selection |
-| Ctrl+V | Paste from clipboard |
-| Ctrl+Z | Undo |
-| Ctrl+Y | Redo |
-| Ctrl+A | Select all rows |
-| Ctrl+D | Fill down |
-| Tab | Next cell |
-| Shift+Tab | Previous cell |
-| Enter | Next row / Finish edit |
-| F2 | Edit current cell |
-| Delete | Clear selected cells |
-| Escape | Cancel edit / Deselect |
+**Location**: `frontend/src/components/grid/tanstack/ExcelEditableTableLazy.tsx`
 
 **Example**:
 ```tsx
-import { ExcelDataTable } from '@/components/grid'
+import { ExcelEditableTableLazy } from '@/components/grid/tanstack'
 
-function SubjectHoursMatrix() {
-  const handleCellsCleared = (cells) => {
-    console.log('Cleared cells:', cells)
-  }
-
-  const handleCellsFilled = (cells) => {
-    console.log('Filled cells:', cells)
-  }
-
+export function HeavyTab({ data, columns }: { data: unknown[]; columns: unknown[] }) {
   return (
-    <ExcelDataTable
-      tableId="subject-hours"
-      tableLabel="Subject Hours Configuration"
-      rowData={subjectData}
-      columnDefs={columns}
-      showStatusBar={true}
-      showShortcuts={true}
-      height={500}
-      onCellsCleared={handleCellsCleared}
-      onCellsFilled={handleCellsFilled}
+    <ExcelEditableTableLazy
+      rowData={data}
+      columnDefs={columns as any}
+      getRowId={(row: any) => row.id}
+      enableRowSelection
     />
   )
 }
@@ -319,138 +264,51 @@ function SubjectHoursMatrix() {
 // shadcn/ui Table (static displays)
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
-// DataTable (read-only grid with accessibility)
-import { DataTable } from '@/components/DataTable'
-
-// DataTableLazy (code-split DataTable)
-import { DataTableLazy } from '@/components/DataTableLazy'
-
-// EnhancedDataTable (collaborative editing with versions)
-import { EnhancedDataTable } from '@/components/EnhancedDataTable'
-
-// ExcelDataTable (Excel-like experience)
-import { ExcelDataTable } from '@/components/grid'
-// or
-import { ExcelDataTable } from '@/components/grid/ExcelDataTable'
-
-// Cell renderers (for custom cell formatting)
-import { AccountCodeRenderer, CurrencyRenderer, StatusBadgeRenderer } from '@/components/grid'
-```
-
----
-
-## Performance Considerations
-
-### Bundle Size Impact
-
-```
-Total AG Grid package: ~200KB gzipped
-
-Component                  Initial Bundle    On-Demand
-──────────────────────────────────────────────────────
-shadcn/ui Table            ~2KB              -
-DataTable                  ~200KB            -
-DataTableLazy              ~0KB              ~200KB
-EnhancedDataTable          ~200KB            -
-ExcelDataTable             ~200KB            -
-```
-
-### Recommendations
-
-1. **Landing/Dashboard Pages**: Use `DataTableLazy` to defer AG Grid loading
-2. **Data Entry Modules**: Use `ExcelDataTable` or `EnhancedDataTable` (already loaded)
-3. **Settings Pages**: Use shadcn/ui `Table` for simple config displays
-4. **Reports**: Use `DataTable` for read-only report grids
-
----
-
-## Migration Guide
-
-### From shadcn Table to DataTable
-
-```tsx
-// Before: shadcn Table
-<Table>
-  <TableHeader>
-    <TableRow>
-      <TableHead>Name</TableHead>
-    </TableRow>
-  </TableHeader>
-  <TableBody>
-    {data.map((item) => (
-      <TableRow key={item.id}>
-        <TableCell>{item.name}</TableCell>
-      </TableRow>
-    ))}
-  </TableBody>
-</Table>
-
-// After: DataTable
-<DataTable
-  rowData={data}
-  columnDefs={[{ field: 'name', headerName: 'Name' }]}
-/>
-```
-
-### From DataTable to EnhancedDataTable
-
-```tsx
-// Before: DataTable (read-only)
-<DataTable
-  rowData={data}
-  columnDefs={columns}
-  loading={isLoading}
-/>
-
-// After: EnhancedDataTable (with editing)
-<EnhancedDataTable
-  budgetVersionId={budgetVersionId}
-  moduleCode="module-name"
-  enableWriteback={true}
-  rowData={data}
-  columnDefs={columns}
-  loading={isLoading}
-/>
+// TanStack grid components
+import { TanStackDataTable, EditableTable, ExcelEditableTableLazy } from '@/components/grid/tanstack'
+import { ExcelEditableTable } from '@/components/grid/tanstack/ExcelEditableTable'
 ```
 
 ---
 
 ## Common Patterns
 
-### Loading States
-
-All AG Grid components support `loading` and `error` props:
+### Loading & Error States
 
 ```tsx
-<DataTable
+<TanStackDataTable
+  rowData={data}
+  columnDefs={columns}
+  getRowId={(row) => row.id}
   loading={isLoading}
   error={error}
   onRetry={refetch}
-  rowData={data}
-  columnDefs={columns}
 />
 ```
 
-### Custom Cell Renderers
+### Custom Cell Rendering
 
 ```tsx
-import { CurrencyRenderer, StatusBadgeRenderer } from '@/components/grid'
-
-const columnDefs = [
-  { field: 'amount', cellRenderer: CurrencyRenderer },
-  { field: 'status', cellRenderer: StatusBadgeRenderer },
+const columns = [
+  {
+    accessorKey: 'amount',
+    header: 'Amount',
+    cell: ({ getValue }) => new Intl.NumberFormat('en-SA').format(Number(getValue() ?? 0)),
+  },
 ]
 ```
 
-### Conditional Editing
+### Pinned Columns
 
 ```tsx
-const columnDefs = [
-  { field: 'name', editable: true },
-  { field: 'total', editable: false }, // Calculated field
+import type { EditableColumnMeta } from '@/components/grid/tanstack'
+
+const columns = [
   {
-    field: 'budget',
-    editable: (params) => params.data.status !== 'locked',
+    accessorKey: 'name',
+    header: 'Name',
+    size: 220,
+    meta: { pinned: 'left' as const, editable: false } satisfies EditableColumnMeta,
   },
 ]
 ```
@@ -459,29 +317,23 @@ const columnDefs = [
 
 ## Troubleshooting
 
-### AG Grid not rendering
+### Table not rendering
 
-1. Ensure container has explicit height
-2. Check if `rowData` is undefined vs empty array
-3. Verify `columnDefs` has at least one column with `field`
+1. Ensure the container has a height (e.g. pass `height={600}`).
+2. Ensure `getRowId` returns a stable, unique ID.
+3. Ensure `columnDefs` has at least one column with `accessorKey` / `accessorFn`.
 
-### Copy/paste not working in ExcelDataTable
+### Copy/paste not working in ExcelEditableTable
 
-1. Ensure container has `tabIndex={0}` (handled internally)
-2. User must focus the table before keyboard shortcuts work
-3. Check browser clipboard permissions
-
-### EnhancedDataTable conflicts
-
-1. Check `budgetVersionId` is correct
-2. Ensure backend is running for real-time sync
-3. Check network tab for WebSocket connection
+1. The table container must be focused (click inside the grid first).
+2. Check browser clipboard permissions (especially in Safari).
 
 ---
 
 ## Related Documentation
 
-- [AG Grid Documentation](https://www.ag-grid.com/react-data-grid/)
+- [TanStack Table Documentation](https://tanstack.com/table/latest)
+- [TanStack Virtual Documentation](https://tanstack.com/virtual/latest)
 - [shadcn/ui Table](https://ui.shadcn.com/docs/components/table)
 - [Frontend README](../../frontend/README.md)
 - [Developer Guide](./DEVELOPER_GUIDE.md)

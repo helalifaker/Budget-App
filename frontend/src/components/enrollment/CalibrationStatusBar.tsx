@@ -13,7 +13,7 @@ import {
   Activity,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { CalibrationStatus } from '@/types/enrollmentSettings'
+import type { CalibrationStatus } from '@/types/enrollment-settings'
 
 interface CalibrationStatusBarProps {
   status: CalibrationStatus

@@ -18,9 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import UserDep
-from app.models.auth import Organization
+from app.models import Organization
 
-router = APIRouter(prefix="/api/v1/organization", tags=["Organization"])
+router = APIRouter(prefix="/organization", tags=["Organization"])
 
 
 class OrganizationResponse(BaseModel):

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { configurationApi } from '@/services/configuration'
 import { toastMessages } from '@/lib/toast-messages'
 import { useAuth } from '@/contexts/AuthContext'
-import type { SystemConfig } from '@/types/api'
+import type { SystemConfig, ClassSizeParamBatchRequest } from '@/types/api'
 
 export const configurationKeys = {
   all: ['configuration'] as const,
@@ -12,30 +12,30 @@ export const configurationKeys = {
   nationalityTypes: () => [...configurationKeys.all, 'nationality-types'] as const,
   nationalityType: (id: string) => [...configurationKeys.nationalityTypes(), id] as const,
   cycles: () => [...configurationKeys.all, 'cycles'] as const,
-  classSizeParams: (budgetVersionId: string) =>
-    [...configurationKeys.all, 'class-size-params', budgetVersionId] as const,
+  classSizeParams: (versionId: string) =>
+    [...configurationKeys.all, 'class-size-params', versionId] as const,
   subjects: () => [...configurationKeys.all, 'subjects'] as const,
-  subjectHours: (budgetVersionId: string) =>
-    [...configurationKeys.all, 'subject-hours', budgetVersionId] as const,
-  subjectHoursMatrix: (budgetVersionId: string, cycleCode: string) =>
-    [...configurationKeys.all, 'subject-hours-matrix', budgetVersionId, cycleCode] as const,
+  subjectHours: (versionId: string) =>
+    [...configurationKeys.all, 'subject-hours', versionId] as const,
+  subjectHoursMatrix: (versionId: string, cycleCode: string) =>
+    [...configurationKeys.all, 'subject-hours-matrix', versionId, cycleCode] as const,
   curriculumTemplates: () => [...configurationKeys.all, 'curriculum-templates'] as const,
   teacherCategories: () => [...configurationKeys.all, 'teacher-categories'] as const,
-  teacherCosts: (budgetVersionId?: string) =>
-    budgetVersionId
-      ? ([...configurationKeys.all, 'teacher-costs', budgetVersionId] as const)
+  teacherCosts: (versionId?: string) =>
+    versionId
+      ? ([...configurationKeys.all, 'teacher-costs', versionId] as const)
       : ([...configurationKeys.all, 'teacher-costs'] as const),
   feeCategories: () => [...configurationKeys.all, 'fee-categories'] as const,
-  feeStructure: (budgetVersionId?: string) =>
-    budgetVersionId
-      ? ([...configurationKeys.all, 'fee-structure', budgetVersionId] as const)
+  feeStructure: (versionId?: string) =>
+    versionId
+      ? ([...configurationKeys.all, 'fee-structure', versionId] as const)
       : ([...configurationKeys.all, 'fee-structure'] as const),
   systemConfigs: (category?: string) =>
     category
       ? ([...configurationKeys.all, 'system-configs', category] as const)
       : ([...configurationKeys.all, 'system-configs'] as const),
-  timetableConstraints: (budgetVersionId: string) =>
-    [...configurationKeys.all, 'timetable-constraints', budgetVersionId] as const,
+  timetableConstraints: (versionId: string) =>
+    [...configurationKeys.all, 'timetable-constraints', versionId] as const,
 }
 
 /**
@@ -108,11 +108,11 @@ export function useCycles() {
   })
 }
 
-export function useClassSizeParams(budgetVersionId: string | undefined) {
+export function useClassSizeParams(versionId: string | undefined) {
   return useQuery({
-    queryKey: configurationKeys.classSizeParams(budgetVersionId ?? ''),
-    queryFn: () => configurationApi.classSizeParams.getAll(budgetVersionId!),
-    enabled: !!budgetVersionId,
+    queryKey: configurationKeys.classSizeParams(versionId ?? ''),
+    queryFn: () => configurationApi.classSizeParams.getAll(versionId!),
+    enabled: !!versionId,
     staleTime: 30 * 60 * 1000, // 30 minutes - configuration data changes rarely
   })
 }
@@ -122,7 +122,7 @@ export function useCreateClassSizeParam() {
 
   return useMutation({
     mutationFn: (data: {
-      budget_version_id: string
+      version_id: string
       level_id: string | null
       cycle_id: string | null
       min_class_size: number
@@ -132,7 +132,7 @@ export function useCreateClassSizeParam() {
     }) => configurationApi.classSizeParams.create(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.classSizeParams(variables.budget_version_id),
+        queryKey: configurationKeys.classSizeParams(variables.version_id),
       })
       toastMessages.success.created('Paramètre de taille de classe')
     },
@@ -147,7 +147,7 @@ export function useUpdateClassSizeParam() {
 
   return useMutation({
     mutationFn: (data: {
-      budget_version_id: string
+      version_id: string
       level_id: string | null
       cycle_id: string | null
       min_class_size: number
@@ -157,7 +157,7 @@ export function useUpdateClassSizeParam() {
     }) => configurationApi.classSizeParams.update(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.classSizeParams(variables.budget_version_id),
+        queryKey: configurationKeys.classSizeParams(variables.version_id),
       })
       toastMessages.success.updated('Paramètre de taille de classe')
     },
@@ -171,13 +171,44 @@ export function useDeleteClassSizeParam() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id }: { id: string; budgetVersionId: string }) =>
+    mutationFn: ({ id }: { id: string; versionId: string }) =>
       configurationApi.classSizeParams.delete(id),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.classSizeParams(variables.budgetVersionId),
+        queryKey: configurationKeys.classSizeParams(variables.versionId),
       })
       toastMessages.success.deleted('Paramètre de taille de classe')
+    },
+    onError: (error: Error) => {
+      toastMessages.error.custom(error.message)
+    },
+  })
+}
+
+/**
+ * Batch save class size params with optimistic locking.
+ * Saves all changes in a single transaction instead of sequential calls.
+ * Returns per-entry status including conflict detection.
+ */
+export function useBatchSaveClassSizeParams() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: ClassSizeParamBatchRequest) =>
+      configurationApi.classSizeParams.batchSave(data),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: configurationKeys.classSizeParams(variables.version_id),
+      })
+      // Show appropriate message based on results
+      if (data.conflict_count > 0) {
+        toastMessages.error.custom(
+          `${data.conflict_count} conflict(s) detected. Please refresh and try again.`
+        )
+      } else {
+        const total = data.created_count + data.updated_count
+        toastMessages.success.custom(`Saved ${total} class size parameter${total !== 1 ? 's' : ''}`)
+      }
     },
     onError: (error: Error) => {
       toastMessages.error.custom(error.message)
@@ -199,11 +230,11 @@ export function useSubjects() {
   })
 }
 
-export function useSubjectHours(budgetVersionId: string | undefined) {
+export function useSubjectHours(versionId: string | undefined) {
   return useQuery({
-    queryKey: configurationKeys.subjectHours(budgetVersionId ?? ''),
-    queryFn: () => configurationApi.subjectHours.getAll(budgetVersionId!),
-    enabled: !!budgetVersionId,
+    queryKey: configurationKeys.subjectHours(versionId ?? ''),
+    queryFn: () => configurationApi.subjectHours.getAll(versionId!),
+    enabled: !!versionId,
     staleTime: 30 * 60 * 1000, // 30 minutes - configuration data changes rarely
   })
 }
@@ -213,7 +244,7 @@ export function useCreateSubjectHours() {
 
   return useMutation({
     mutationFn: (data: {
-      budget_version_id: string
+      version_id: string
       subject_id: string
       level_id: string
       hours_per_week: number
@@ -222,7 +253,7 @@ export function useCreateSubjectHours() {
     }) => configurationApi.subjectHours.create(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.subjectHours(variables.budget_version_id),
+        queryKey: configurationKeys.subjectHours(variables.version_id),
       })
       toastMessages.success.created('Heures par matière')
     },
@@ -237,7 +268,7 @@ export function useUpdateSubjectHours() {
 
   return useMutation({
     mutationFn: (data: {
-      budget_version_id: string
+      version_id: string
       subject_id: string
       level_id: string
       hours_per_week: number
@@ -267,13 +298,13 @@ export function useUpdateSubjectHours() {
  * Fetch subject hours matrix by cycle for a budget version.
  * Returns all subjects with hours organized by level columns.
  */
-export function useSubjectHoursMatrix(budgetVersionId: string | null, cycleCode: string | null) {
+export function useSubjectHoursMatrix(versionId: string | null, cycleCode: string | null) {
   const { session, loading } = useAuth()
 
   return useQuery({
-    queryKey: configurationKeys.subjectHoursMatrix(budgetVersionId ?? '', cycleCode ?? ''),
-    queryFn: () => configurationApi.subjectHours.getMatrix(budgetVersionId!, cycleCode!),
-    enabled: !!budgetVersionId && !!cycleCode && !!session && !loading,
+    queryKey: configurationKeys.subjectHoursMatrix(versionId ?? '', cycleCode ?? ''),
+    queryFn: () => configurationApi.subjectHours.getMatrix(versionId!, cycleCode!),
+    enabled: !!versionId && !!cycleCode && !!session && !loading,
     staleTime: 5 * 60 * 1000, // 5 minutes - matrix may be edited frequently
   })
 }
@@ -294,7 +325,7 @@ export function useBatchSaveSubjectHours() {
         predicate: (query) =>
           query.queryKey[0] === 'configuration' &&
           (query.queryKey[1] === 'subject-hours' || query.queryKey[1] === 'subject-hours-matrix') &&
-          query.queryKey[2] === variables.budget_version_id,
+          query.queryKey[2] === variables.version_id,
       })
       toastMessages.success.updated('Heures par matière')
     },
@@ -334,7 +365,7 @@ export function useApplyTemplate() {
         predicate: (query) =>
           query.queryKey[0] === 'configuration' &&
           (query.queryKey[1] === 'subject-hours' || query.queryKey[1] === 'subject-hours-matrix') &&
-          query.queryKey[2] === variables.budget_version_id,
+          query.queryKey[2] === variables.version_id,
       })
       toastMessages.success.custom(
         `Applied template "${data.template_name}": ${data.applied_count} entries created, ${data.skipped_count} skipped`
@@ -380,11 +411,11 @@ export function useTeacherCategories() {
   })
 }
 
-export function useTeacherCosts(budgetVersionId: string) {
+export function useTeacherCosts(versionId: string) {
   return useQuery({
-    queryKey: configurationKeys.teacherCosts(budgetVersionId),
-    queryFn: () => configurationApi.teacherCosts.getAll(budgetVersionId),
-    enabled: !!budgetVersionId,
+    queryKey: configurationKeys.teacherCosts(versionId),
+    queryFn: () => configurationApi.teacherCosts.getAll(versionId),
+    enabled: !!versionId,
     staleTime: 30 * 60 * 1000, // 30 minutes - configuration data changes rarely
   })
 }
@@ -394,7 +425,7 @@ export function useUpdateTeacherCost() {
 
   return useMutation({
     mutationFn: (data: {
-      budget_version_id: string
+      version_id: string
       category_id: string
       cycle_id: string | null
       prrd_contribution_eur: number | null
@@ -407,7 +438,7 @@ export function useUpdateTeacherCost() {
     }) => configurationApi.teacherCosts.update(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.teacherCosts(variables.budget_version_id),
+        queryKey: configurationKeys.teacherCosts(variables.version_id),
       })
       toastMessages.success.updated('Paramètre de coûts enseignants')
     },
@@ -431,11 +462,11 @@ export function useFeeCategories() {
   })
 }
 
-export function useFeeStructure(budgetVersionId: string) {
+export function useFeeStructure(versionId: string) {
   return useQuery({
-    queryKey: configurationKeys.feeStructure(budgetVersionId),
-    queryFn: () => configurationApi.feeStructure.getAll(budgetVersionId),
-    enabled: !!budgetVersionId,
+    queryKey: configurationKeys.feeStructure(versionId),
+    queryFn: () => configurationApi.feeStructure.getAll(versionId),
+    enabled: !!versionId,
     staleTime: 30 * 60 * 1000,
   })
 }
@@ -445,7 +476,7 @@ export function useUpdateFeeStructure() {
 
   return useMutation({
     mutationFn: (data: {
-      budget_version_id: string
+      version_id: string
       level_id: string
       nationality_type_id: string
       fee_category_id: string
@@ -455,7 +486,7 @@ export function useUpdateFeeStructure() {
     }) => configurationApi.feeStructure.update(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.feeStructure(variables.budget_version_id),
+        queryKey: configurationKeys.feeStructure(variables.version_id),
       })
       toastMessages.success.updated('Structure tarifaire')
     },
@@ -505,11 +536,11 @@ export function useUpdateSystemConfig() {
 // Timetable Constraints (Module 6)
 // ============================================================================
 
-export function useTimetableConstraints(budgetVersionId: string) {
+export function useTimetableConstraints(versionId: string) {
   return useQuery({
-    queryKey: configurationKeys.timetableConstraints(budgetVersionId),
-    queryFn: () => configurationApi.timetableConstraints.getAll(budgetVersionId),
-    enabled: !!budgetVersionId,
+    queryKey: configurationKeys.timetableConstraints(versionId),
+    queryFn: () => configurationApi.timetableConstraints.getAll(versionId),
+    enabled: !!versionId,
     staleTime: 30 * 60 * 1000,
   })
 }
@@ -519,7 +550,7 @@ export function useUpdateTimetableConstraint() {
 
   return useMutation({
     mutationFn: (data: {
-      budget_version_id: string
+      version_id: string
       level_id: string
       total_hours_per_week: number
       max_hours_per_day: number
@@ -530,7 +561,7 @@ export function useUpdateTimetableConstraint() {
     }) => configurationApi.timetableConstraints.update(data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: configurationKeys.timetableConstraints(variables.budget_version_id),
+        queryKey: configurationKeys.timetableConstraints(variables.version_id),
       })
       toastMessages.success.updated('Contrainte horaire')
     },

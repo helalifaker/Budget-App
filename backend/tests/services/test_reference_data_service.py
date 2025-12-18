@@ -13,7 +13,7 @@ Tests all read-only reference data access methods including:
 import uuid
 
 import pytest
-from app.models.configuration import (
+from app.models import (
     AcademicCycle,
     AcademicLevel,
     FeeCategory,
@@ -21,7 +21,7 @@ from app.models.configuration import (
     Subject,
     TeacherCategory,
 )
-from app.services.reference_data_service import ReferenceDataService
+from app.services.settings.reference_data_service import ReferenceDataService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -464,7 +464,7 @@ class TestConfigurationServiceDelegation:
         self, db_session: AsyncSession, academic_cycles: dict[str, AcademicCycle]
     ):
         """Test that ConfigurationService delegates to ReferenceDataService."""
-        from app.services.configuration_service import ConfigurationService
+        from app.services.settings.configuration_service import ConfigurationService
 
         config_service = ConfigurationService(db_session)
 
@@ -482,7 +482,7 @@ class TestConfigurationServiceDelegation:
         self, db_session: AsyncSession, subjects: dict[str, Subject]
     ):
         """Test ConfigurationService.get_subjects delegates correctly."""
-        from app.services.configuration_service import ConfigurationService
+        from app.services.settings.configuration_service import ConfigurationService
 
         config_service = ConfigurationService(db_session)
         ref_service = ReferenceDataService(db_session)

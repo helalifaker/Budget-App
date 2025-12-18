@@ -187,7 +187,7 @@ sa.Column(
 **Files**: All models and migrations (Phases 1-2)
 
 **Problem**:
-- **Schema design** (docs/DATABASE/schema_design.md:43-44) states:
+- **Schema design** (docs/database/schema_design.md:43-44) states:
   > "Tables use `deleted_at` for soft deletes to maintain audit history"
 
 - **SoftDeleteMixin defined** (base.py:77-102) with deleted_at field
@@ -440,7 +440,7 @@ Option 2 (Database-level validation):
 
 ### 🟡 MEDIUM-1: RLS Policy Verification Needed for Budget Versions
 
-**File**: `docs/DATABASE/sql/rls_policies.sql`
+**File**: `docs/database/sql/rls_policies.sql`
 
 **Problem**:
 
@@ -603,12 +603,12 @@ backend/tests/
 - ✨ NEW: `backend/alembic/versions/YYYYMMDD_HHMM_fix_critical_issues.py` (Comprehensive fix migration)
 
 ### Database:
-- ✏️ `docs/DATABASE/sql/rls_policies.sql` (Add soft-delete filter, rename policies)
-- ✨ NEW: `docs/DATABASE/sql/triggers.sql` (Version-lock trigger, soft-delete trigger)
+- ✏️ `docs/database/sql/rls_policies.sql` (Add soft-delete filter, rename policies)
+- ✨ NEW: `docs/database/sql/triggers.sql` (Version-lock trigger, soft-delete trigger)
 
 ### Documentation:
-- ✏️ `docs/DATABASE/schema_design.md` (Update to match actual implementation OR vice versa)
-- ✨ NEW: `docs/DATABASE/access_control_matrix.md` (Document RLS policy intent)
+- ✏️ `docs/database/schema_design.md` (Update to match actual implementation OR vice versa)
+- ✨ NEW: `docs/database/access_control_matrix.md` (Document RLS policy intent)
 
 ### Tests:
 - ✨ NEW: `backend/tests/test_models.py` (Model relationship tests)
@@ -699,7 +699,7 @@ All critical and high-priority issues have been resolved. The application is now
 **Files**:
 - `backend/app/models/base.py:122` - BaseModel now inherits SoftDeleteMixin
 - `backend/alembic/versions/20251201_0045_fix_critical_issues.py` - NEW migration
-- `docs/DATABASE/sql/rls_policies.sql` - Updated all policies
+- `docs/database/sql/rls_policies.sql` - Updated all policies
 
 **Fixes Applied**:
 1. Added `SoftDeleteMixin` to `BaseModel` inheritance
@@ -749,7 +749,7 @@ All critical and high-priority issues have been resolved. The application is now
 ### Medium Priority Fixes
 
 #### ⚠️ MEDIUM-1: RLS Policy Verification - VERIFIED & UPDATED
-**File**: `docs/DATABASE/sql/rls_policies.sql`
+**File**: `docs/database/sql/rls_policies.sql`
 
 **Verification Results**:
 - ✅ Budget versions: Policies correctly restrict access by role and status
@@ -798,7 +798,7 @@ All critical and high-priority issues have been resolved. The application is now
 - ✨ `backend/alembic/versions/20251201_0045_fix_critical_issues.py` - **NEW** comprehensive fix migration
 
 #### Database Scripts (1 file):
-- ✅ `docs/DATABASE/sql/rls_policies.sql` - Added soft-delete filtering, verified policies
+- ✅ `docs/database/sql/rls_policies.sql` - Added soft-delete filtering, verified policies
 
 #### Documentation (1 file):
 - ✅ `docs/PHASE_0-3_CRITICAL_REVIEW.md` - **THIS FILE** updated with fix status
@@ -825,7 +825,7 @@ alembic upgrade head
 
 **To Apply RLS Policies**:
 ```bash
-psql $DATABASE_URL -f ../docs/DATABASE/sql/rls_policies.sql
+psql $DATABASE_URL -f ../docs/database/sql/rls_policies.sql
 ```
 
 ---

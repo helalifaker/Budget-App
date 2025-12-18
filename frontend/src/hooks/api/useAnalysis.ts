@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { analysisService } from '@/services/analysis'
+import { analysisApi } from '@/services/analysis'
 import { toastMessages, handleAPIErrorToast } from '@/lib/toast-messages'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -14,7 +14,7 @@ export const analysisKeys = {
 }
 
 /**
- * Fetch KPIs for a budget version with authentication check.
+ * Fetch KPIs for a version with authentication check.
  * Query is disabled until session is available to prevent race conditions.
  */
 export function useKPIs(versionId: string | undefined) {
@@ -22,13 +22,13 @@ export function useKPIs(versionId: string | undefined) {
 
   return useQuery({
     queryKey: analysisKeys.kpis(versionId ?? ''),
-    queryFn: () => analysisService.getKPIs(versionId!),
+    queryFn: () => analysisApi.getKPIs(versionId!),
     enabled: !!session && !loading && !!versionId,
   })
 }
 
 /**
- * Fetch variance report for a budget version with authentication check.
+ * Fetch variance report for a version with authentication check.
  * Query is disabled until session is available to prevent race conditions.
  */
 export function useVarianceReport(
@@ -39,7 +39,7 @@ export function useVarianceReport(
 
   return useQuery({
     queryKey: analysisKeys.variance(versionId ?? '', period),
-    queryFn: () => analysisService.getVarianceReport(versionId!, period),
+    queryFn: () => analysisApi.getVarianceReport(versionId!, period),
     enabled: !!session && !loading && !!versionId,
   })
 }
@@ -49,7 +49,7 @@ export function useImportActuals() {
 
   return useMutation({
     mutationFn: ({ versionId, period, file }: { versionId: string; period: string; file: File }) =>
-      analysisService.importActuals(versionId, period, file),
+      analysisApi.importActuals(versionId, period, file),
     onSuccess: (data, { versionId, period }) => {
       queryClient.invalidateQueries({
         queryKey: analysisKeys.variance(versionId, period as 'T1' | 'T2' | 'T3' | 'ANNUAL'),
@@ -67,9 +67,9 @@ export function useCreateForecastRevision() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (versionId: string) => analysisService.createForecastRevision(versionId),
+    mutationFn: (versionId: string) => analysisApi.createForecastRevision(versionId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['budget-versions'] })
+      queryClient.invalidateQueries({ queryKey: ['versions'] })
       toastMessages.success.created('Révision de prévision')
     },
     onError: (error) => {
@@ -79,7 +79,7 @@ export function useCreateForecastRevision() {
 }
 
 /**
- * Fetch dashboard summary for a budget version with authentication check.
+ * Fetch dashboard summary for a version with authentication check.
  * Query is disabled until session is available to prevent race conditions.
  */
 export function useDashboardSummary(versionId: string | undefined) {
@@ -87,7 +87,7 @@ export function useDashboardSummary(versionId: string | undefined) {
 
   return useQuery({
     queryKey: analysisKeys.dashboard(versionId ?? ''),
-    queryFn: () => analysisService.getDashboardSummary(versionId!),
+    queryFn: () => analysisApi.getDashboardSummary(versionId!),
     enabled: !!session && !loading && !!versionId,
   })
 }
@@ -101,7 +101,7 @@ export function useRecentActivity(limit: number = 10) {
 
   return useQuery({
     queryKey: analysisKeys.activity(),
-    queryFn: () => analysisService.getRecentActivity(limit),
+    queryFn: () => analysisApi.getRecentActivity(limit),
     refetchInterval: 30000, // Refresh every 30 seconds
     // Only enable query when session is confirmed and not loading
     enabled: !!session && !loading,
@@ -109,7 +109,7 @@ export function useRecentActivity(limit: number = 10) {
 }
 
 /**
- * Fetch system alerts for a budget version with authentication check.
+ * Fetch system alerts for a version with authentication check.
  * Query is disabled until session is available to prevent race conditions.
  */
 export function useSystemAlerts(versionId: string | undefined) {
@@ -117,7 +117,7 @@ export function useSystemAlerts(versionId: string | undefined) {
 
   return useQuery({
     queryKey: analysisKeys.alerts(versionId ?? ''),
-    queryFn: () => analysisService.getSystemAlerts(versionId!),
+    queryFn: () => analysisApi.getSystemAlerts(versionId!),
     enabled: !!session && !loading && !!versionId,
     refetchInterval: 60000, // Refresh every minute
   })

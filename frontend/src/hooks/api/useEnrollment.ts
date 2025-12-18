@@ -44,7 +44,7 @@ export function useCreateEnrollment() {
     mutationFn: enrollmentApi.create,
     onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: enrollmentKeys.byVersion(data.budget_version_id),
+        queryKey: enrollmentKeys.byVersion(data.version_id),
       })
       queryClient.invalidateQueries({ queryKey: enrollmentKeys.lists() })
       toastMessages.success.created(entityNames.enrollment)
@@ -63,7 +63,7 @@ export function useUpdateEnrollment() {
       enrollmentApi.update(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: enrollmentKeys.byVersion(data.budget_version_id),
+        queryKey: enrollmentKeys.byVersion(data.version_id),
       })
       queryClient.invalidateQueries({ queryKey: enrollmentKeys.lists() })
       toastMessages.success.updated(entityNames.enrollment)

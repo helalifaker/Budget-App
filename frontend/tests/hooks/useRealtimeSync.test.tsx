@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useRealtimeSync } from '@/hooks/useRealtimeSync'
+import { useRealtimeSync } from '@/hooks/sync/useRealtimeSync'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from 'sonner'
@@ -88,7 +88,7 @@ describe('useRealtimeSync', () => {
     const { result } = renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId: 'budget-123',
+          versionId: 'budget-123',
         }),
       { wrapper }
     )
@@ -98,19 +98,19 @@ describe('useRealtimeSync', () => {
   })
 
   it('should connect to realtime channel on mount', async () => {
-    const budgetVersionId = 'budget-123'
+    const versionId = 'budget-123'
 
     renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId,
+          versionId,
         }),
       { wrapper }
     )
 
     await waitFor(() => {
       expect(supabase.channel).toHaveBeenCalledWith(
-        `budget:${budgetVersionId}`,
+        `budget:${versionId}`,
         expect.objectContaining({
           config: expect.objectContaining({
             broadcast: { self: false },
@@ -122,12 +122,12 @@ describe('useRealtimeSync', () => {
   })
 
   it('should subscribe to postgres changes', async () => {
-    const budgetVersionId = 'budget-123'
+    const versionId = 'budget-123'
 
     renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId,
+          versionId,
         }),
       { wrapper }
     )
@@ -139,7 +139,7 @@ describe('useRealtimeSync', () => {
           event: '*',
           schema: 'public',
           table: 'planning_cells',
-          filter: `budget_version_id=eq.${budgetVersionId}`,
+          filter: `version_id=eq.${versionId}`,
         }),
         expect.any(Function)
       )
@@ -150,7 +150,7 @@ describe('useRealtimeSync', () => {
     const { result } = renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId: 'budget-123',
+          versionId: 'budget-123',
         }),
       { wrapper }
     )
@@ -162,7 +162,7 @@ describe('useRealtimeSync', () => {
   })
 
   it('should handle UPDATE event and update cache', async () => {
-    const budgetVersionId = 'budget-123'
+    const versionId = 'budget-123'
     let changeHandler: any
 
     // Capture the change handler
@@ -177,7 +177,7 @@ describe('useRealtimeSync', () => {
     const initialCells: CellData[] = [
       {
         id: 'cell-1',
-        budget_version_id: budgetVersionId,
+        version_id: versionId,
         module_code: 'enrollment',
         entity_id: 'level-1',
         field_name: 'student_count',
@@ -190,12 +190,12 @@ describe('useRealtimeSync', () => {
       },
     ]
 
-    queryClient.setQueryData(['cells', budgetVersionId], initialCells)
+    queryClient.setQueryData(['cells', versionId], initialCells)
 
     renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId,
+          versionId,
         }),
       { wrapper }
     )
@@ -220,7 +220,7 @@ describe('useRealtimeSync', () => {
 
     // Check cache was updated
     await waitFor(() => {
-      const cachedData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+      const cachedData = queryClient.getQueryData<CellData[]>(['cells', versionId])
       expect(cachedData).toBeDefined()
       expect(cachedData![0].value_numeric).toBe(150)
       expect(cachedData![0].version).toBe(2)
@@ -236,7 +236,7 @@ describe('useRealtimeSync', () => {
   })
 
   it('should ignore changes from current user', async () => {
-    const budgetVersionId = 'budget-123'
+    const versionId = 'budget-123'
     let changeHandler: any
 
     mockChannel.on.mockImplementation((event: string, config: any, handler: any) => {
@@ -246,12 +246,12 @@ describe('useRealtimeSync', () => {
       return mockChannel
     })
 
-    queryClient.setQueryData(['cells', budgetVersionId], [])
+    queryClient.setQueryData(['cells', versionId], [])
 
     renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId,
+          versionId,
         }),
       { wrapper }
     )
@@ -272,7 +272,7 @@ describe('useRealtimeSync', () => {
     })
 
     // Cache should not be updated
-    const cachedData = queryClient.getQueryData(['cells', budgetVersionId])
+    const cachedData = queryClient.getQueryData(['cells', versionId])
     expect(cachedData).toEqual([])
 
     // Toast should not be shown
@@ -280,7 +280,7 @@ describe('useRealtimeSync', () => {
   })
 
   it('should handle INSERT event', async () => {
-    const budgetVersionId = 'budget-123'
+    const versionId = 'budget-123'
     let changeHandler: any
 
     mockChannel.on.mockImplementation((event: string, config: any, handler: any) => {
@@ -290,12 +290,12 @@ describe('useRealtimeSync', () => {
       return mockChannel
     })
 
-    queryClient.setQueryData(['cells', budgetVersionId], [])
+    queryClient.setQueryData(['cells', versionId], [])
 
     renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId,
+          versionId,
         }),
       { wrapper }
     )
@@ -307,7 +307,7 @@ describe('useRealtimeSync', () => {
     // Simulate INSERT event
     const newCell: CellData = {
       id: 'cell-2',
-      budget_version_id: budgetVersionId,
+      version_id: versionId,
       module_code: 'enrollment',
       entity_id: 'level-2',
       field_name: 'new_field',
@@ -327,7 +327,7 @@ describe('useRealtimeSync', () => {
 
     // Check cache was updated
     await waitFor(() => {
-      const cachedData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+      const cachedData = queryClient.getQueryData<CellData[]>(['cells', versionId])
       expect(cachedData).toBeDefined()
       expect(cachedData).toHaveLength(1)
       expect(cachedData![0].id).toBe('cell-2')
@@ -335,7 +335,7 @@ describe('useRealtimeSync', () => {
   })
 
   it('should handle DELETE event', async () => {
-    const budgetVersionId = 'budget-123'
+    const versionId = 'budget-123'
     let changeHandler: any
 
     mockChannel.on.mockImplementation((event: string, config: any, handler: any) => {
@@ -348,7 +348,7 @@ describe('useRealtimeSync', () => {
     const initialCells: CellData[] = [
       {
         id: 'cell-1',
-        budget_version_id: budgetVersionId,
+        version_id: versionId,
         module_code: 'enrollment',
         entity_id: 'level-1',
         field_name: 'student_count',
@@ -361,12 +361,12 @@ describe('useRealtimeSync', () => {
       },
     ]
 
-    queryClient.setQueryData(['cells', budgetVersionId], initialCells)
+    queryClient.setQueryData(['cells', versionId], initialCells)
 
     renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId,
+          versionId,
         }),
       { wrapper }
     )
@@ -384,14 +384,14 @@ describe('useRealtimeSync', () => {
 
     // Check cache was updated
     await waitFor(() => {
-      const cachedData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+      const cachedData = queryClient.getQueryData<CellData[]>(['cells', versionId])
       expect(cachedData).toBeDefined()
       expect(cachedData).toHaveLength(0)
     })
   })
 
   it('should call onCellChanged callback', async () => {
-    const budgetVersionId = 'budget-123'
+    const versionId = 'budget-123'
     const onCellChanged = vi.fn()
     let changeHandler: any
 
@@ -405,7 +405,7 @@ describe('useRealtimeSync', () => {
     renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId,
+          versionId,
           onCellChanged,
         }),
       { wrapper }
@@ -417,7 +417,7 @@ describe('useRealtimeSync', () => {
 
     const cellData: CellData = {
       id: 'cell-1',
-      budget_version_id: budgetVersionId,
+      version_id: versionId,
       module_code: 'enrollment',
       entity_id: 'level-1',
       field_name: 'test',
@@ -448,7 +448,7 @@ describe('useRealtimeSync', () => {
     const { unmount } = renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId: 'budget-123',
+          versionId: 'budget-123',
         }),
       { wrapper }
     )
@@ -474,7 +474,7 @@ describe('useRealtimeSync', () => {
     const { result } = renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId: 'budget-123',
+          versionId: 'budget-123',
         }),
       { wrapper }
     )
@@ -505,7 +505,7 @@ describe('useRealtimeSync', () => {
     renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId: 'budget-123',
+          versionId: 'budget-123',
           showNotifications: false,
         }),
       { wrapper }
@@ -532,7 +532,7 @@ describe('useRealtimeSync', () => {
     const { result } = renderHook(
       () =>
         useRealtimeSync({
-          budgetVersionId: 'budget-123',
+          versionId: 'budget-123',
         }),
       { wrapper }
     )

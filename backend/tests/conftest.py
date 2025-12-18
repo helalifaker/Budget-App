@@ -4,7 +4,7 @@ Pytest configuration and fixtures for EFIR Budget Planning Application tests.
 This file provides common fixtures and configuration for all tests, including:
 - Database setup (worker-isolated SQLite for parallel testing)
 - Sample data fixtures
-- Budget version fixtures
+- Version fixtures
 - Configuration fixtures
 - Authentication mocks
 
@@ -27,6 +27,8 @@ from pathlib import Path
 os.environ["USE_SQLITE_FOR_TESTS"] = "true"
 os.environ["PYTEST_RUNNING"] = "true"
 os.environ["REDIS_ENABLED"] = "false"
+# Prevent Sentry from attempting network calls during tests
+os.environ["SENTRY_DSN_BACKEND"] = ""
 
 # Create worker-specific database URL for pytest-xdist parallel execution
 # Each worker gets its own SQLite file to prevent "index already exists" errors
@@ -66,16 +68,15 @@ import pytest
 # Import all models to ensure they're registered with SQLAlchemy
 from app.models import *  # noqa: F403
 
-# Import User from app.models.auth (already imported via `from app.models import *`)
-# The User model in auth.py properly handles both SQLite and PostgreSQL schemas
-from app.models.auth import User  # Re-import explicitly for clarity
-from app.models.base import Base
-from app.models.configuration import (
+# Import all models via centralized __init__.py
+from app.models import (
     AcademicCycle,
     AcademicLevel,
-    BudgetVersion,
-    BudgetVersionStatus,
     ClassSizeParam,
+    ClassStructure,
+    DHGSubjectHours,
+    DHGTeacherRequirement,
+    EnrollmentPlan,
     FeeCategory,
     FeeStructure,
     NationalityType,
@@ -84,13 +85,15 @@ from app.models.configuration import (
     SystemConfig,
     TeacherCategory,
     TeacherCostParam,
+    User,
+    Version,
+    VersionStatus,
 )
-from app.models.planning import (
-    ClassStructure,
-    DHGSubjectHours,
-    DHGTeacherRequirement,
-    EnrollmentPlan,
-)
+from app.models.base import Base
+
+# Backward compatibility aliases
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -375,9 +378,14 @@ async def test_user_id(db_session: AsyncSession) -> UUID:
     Create a test user in auth.users and return the ID.
 
     This ensures foreign key constraints to auth.users.id are satisfied.
+
+    Note: Uses unique email per user_id to avoid UNIQUE constraint violations
+    when tests commit data (e.g., batch operations that call session.commit()).
     """
     user_id = uuid4()
-    user = User(id=user_id, email="test@efir.local")
+    # Use unique email to avoid conflicts when tests commit
+    unique_email = f"test_{user_id.hex[:8]}@efir.local"
+    user = User(id=user_id, email=unique_email)
     db_session.add(user)
     await db_session.flush()
     return user_id
@@ -392,7 +400,7 @@ async def organization_id(db_session: AsyncSession) -> UUID:
     for models like EnrollmentDerivedParameter, EnrollmentParameterOverride,
     and EnrollmentScenarioMultiplier.
     """
-    from app.models.auth import Organization
+    from app.models import Organization
 
     org_id = uuid4()
     org = Organization(id=org_id, name="Test School Organization", is_active=True)
@@ -408,14 +416,29 @@ async def organization_id(db_session: AsyncSession) -> UUID:
 
 @pytest.fixture
 async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
-    """Create academic cycles for testing."""
+    """Create academic cycles for testing.
+
+    Note: Uses get-or-create pattern to handle tests that commit data.
+    When batch operations commit, reference data persists to subsequent tests.
+    """
+    from sqlalchemy import select
+
+    # Check if cycles already exist (from previous tests that committed)
+    existing_query = select(AcademicCycle).order_by(AcademicCycle.sort_order)
+    result = await db_session.execute(existing_query)
+    existing_cycles = result.scalars().all()
+
+    if existing_cycles:
+        # Return existing cycles by code
+        return {c.code.lower(): c for c in existing_cycles}
+
+    # Create new cycles
     maternelle = AcademicCycle(
         id=uuid4(),
         code="MATERNELLE",
         name_en="Preschool",
         name_fr="Maternelle",
         sort_order=1,
-        requires_atsem=True,
     )
     elementaire = AcademicCycle(
         id=uuid4(),
@@ -423,7 +446,6 @@ async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
         name_en="Elementary",
         name_fr="Élémentaire",
         sort_order=2,
-        requires_atsem=False,
     )
     college = AcademicCycle(
         id=uuid4(),
@@ -431,7 +453,6 @@ async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
         name_en="Middle School",
         name_fr="Collège",
         sort_order=3,
-        requires_atsem=False,
     )
     lycee = AcademicCycle(
         id=uuid4(),
@@ -439,7 +460,6 @@ async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
         name_en="High School",
         name_fr="Lycée",
         sort_order=4,
-        requires_atsem=False,
     )
 
     db_session.add_all([maternelle, elementaire, college, lycee])
@@ -457,7 +477,21 @@ async def academic_cycles(db_session: AsyncSession) -> dict[str, AcademicCycle]:
 async def academic_levels(
     db_session: AsyncSession, academic_cycles: dict
 ) -> dict[str, AcademicLevel]:
-    """Create academic levels for testing."""
+    """Create academic levels for testing.
+
+    Note: Uses get-or-create pattern to handle tests that commit data.
+    """
+    from sqlalchemy import select
+
+    # Check if levels already exist (from previous tests that committed)
+    existing_query = select(AcademicLevel).order_by(AcademicLevel.sort_order)
+    result = await db_session.execute(existing_query)
+    existing_levels = result.scalars().all()
+
+    if existing_levels:
+        # Return existing levels by code
+        return {lvl.code: lvl for lvl in existing_levels}
+
     levels = {
         "PS": AcademicLevel(
             id=uuid4(),
@@ -466,7 +500,6 @@ async def academic_levels(
             name_fr="Petite Section",
             cycle_id=academic_cycles["maternelle"].id,
             sort_order=1,
-            is_secondary=False,
         ),
         "MS": AcademicLevel(
             id=uuid4(),
@@ -475,7 +508,6 @@ async def academic_levels(
             name_fr="Moyenne Section",
             cycle_id=academic_cycles["maternelle"].id,
             sort_order=2,
-            is_secondary=False,
         ),
         "GS": AcademicLevel(
             id=uuid4(),
@@ -484,7 +516,6 @@ async def academic_levels(
             name_fr="Grande Section",
             cycle_id=academic_cycles["maternelle"].id,
             sort_order=3,
-            is_secondary=False,
         ),
         "CP": AcademicLevel(
             id=uuid4(),
@@ -493,7 +524,6 @@ async def academic_levels(
             name_fr="CP",
             cycle_id=academic_cycles["elementaire"].id,
             sort_order=4,
-            is_secondary=False,
         ),
         "6EME": AcademicLevel(
             id=uuid4(),
@@ -502,7 +532,6 @@ async def academic_levels(
             name_fr="6ème",
             cycle_id=academic_cycles["college"].id,
             sort_order=11,
-            is_secondary=True,
         ),
         "5EME": AcademicLevel(
             id=uuid4(),
@@ -511,7 +540,6 @@ async def academic_levels(
             name_fr="5ème",
             cycle_id=academic_cycles["college"].id,
             sort_order=12,
-            is_secondary=True,
         ),
         # Elementary levels (Élémentaire) - CE1 through CM2
         "CE1": AcademicLevel(
@@ -521,7 +549,6 @@ async def academic_levels(
             name_fr="CE1",
             cycle_id=academic_cycles["elementaire"].id,
             sort_order=5,
-            is_secondary=False,
         ),
         "CE2": AcademicLevel(
             id=uuid4(),
@@ -530,7 +557,6 @@ async def academic_levels(
             name_fr="CE2",
             cycle_id=academic_cycles["elementaire"].id,
             sort_order=6,
-            is_secondary=False,
         ),
         "CM1": AcademicLevel(
             id=uuid4(),
@@ -539,7 +565,6 @@ async def academic_levels(
             name_fr="CM1",
             cycle_id=academic_cycles["elementaire"].id,
             sort_order=7,
-            is_secondary=False,
         ),
         "CM2": AcademicLevel(
             id=uuid4(),
@@ -548,7 +573,6 @@ async def academic_levels(
             name_fr="CM2",
             cycle_id=academic_cycles["elementaire"].id,
             sort_order=8,
-            is_secondary=False,
         ),
         # Middle school levels (Collège) - 4ème and 3ème
         "4EME": AcademicLevel(
@@ -558,7 +582,6 @@ async def academic_levels(
             name_fr="4ème",
             cycle_id=academic_cycles["college"].id,
             sort_order=13,
-            is_secondary=True,
         ),
         "3EME": AcademicLevel(
             id=uuid4(),
@@ -567,7 +590,6 @@ async def academic_levels(
             name_fr="3ème",
             cycle_id=academic_cycles["college"].id,
             sort_order=14,
-            is_secondary=True,
         ),
         # High school levels (Lycée) - 2nde, 1ère, Terminale
         "2NDE": AcademicLevel(
@@ -577,7 +599,6 @@ async def academic_levels(
             name_fr="2nde",
             cycle_id=academic_cycles["lycee"].id,
             sort_order=15,
-            is_secondary=True,
         ),
         "1ERE": AcademicLevel(
             id=uuid4(),
@@ -586,7 +607,6 @@ async def academic_levels(
             name_fr="1ère",
             cycle_id=academic_cycles["lycee"].id,
             sort_order=16,
-            is_secondary=True,
         ),
         "TERM": AcademicLevel(
             id=uuid4(),
@@ -595,7 +615,6 @@ async def academic_levels(
             name_fr="Terminale",
             cycle_id=academic_cycles["lycee"].id,
             sort_order=17,
-            is_secondary=True,
         ),
     }
 
@@ -676,7 +695,6 @@ async def subjects(db_session: AsyncSession) -> dict[str, Subject]:
                 name_en=name_en,
                 name_fr=name_fr,
                 category=category,
-                is_active=True,
             )
             db_session.add(subject)
             subjects_data[code] = subject
@@ -724,27 +742,18 @@ async def fee_categories(db_session: AsyncSession) -> dict[str, FeeCategory]:
             code="TUITION",
             name_en="Tuition",
             name_fr="Scolarité",
-            account_code="70110",
-            is_recurring=True,
-            allows_sibling_discount=True,
         ),
         "DAI": FeeCategory(
             id=uuid4(),
             code="DAI",
             name_en="Annual Enrollment Fee",
             name_fr="Droit Annuel d'Inscription",
-            account_code="70140",
-            is_recurring=True,
-            allows_sibling_discount=False,
         ),
         "REGISTRATION": FeeCategory(
             id=uuid4(),
             code="REGISTRATION",
             name_en="Registration Fee",
             name_fr="Frais d'Inscription",
-            account_code="70150",
-            is_recurring=False,
-            allows_sibling_discount=False,
         ),
     }
 
@@ -755,7 +764,7 @@ async def fee_categories(db_session: AsyncSession) -> dict[str, FeeCategory]:
 
 
 # ==============================================================================
-# Budget Version Fixtures
+# Version Fixtures
 # ==============================================================================
 
 
@@ -808,19 +817,23 @@ def fiscal_year_factory() -> Callable[[], int]:
 
 
 @pytest.fixture
-async def test_budget_version(
+async def test_version(
     db_session: AsyncSession,
     test_user_id: UUID,
     fiscal_year_factory,
     organization_id: UUID,
 ) -> BudgetVersion:
-    """Create a test budget version."""
+    """Create a test version.
+
+    Uses STARTING year convention:
+    - fiscal_year=2026 → academic_year="2026-2027" → targets school year 2026/2027
+    """
     fiscal_year = fiscal_year_factory()
     version = BudgetVersion(
         id=uuid4(),
         name=f"FY{fiscal_year} Budget v1",
         fiscal_year=fiscal_year,
-        academic_year=f"{fiscal_year - 1}-{fiscal_year}",
+        academic_year=f"{fiscal_year}-{fiscal_year + 1}",  # STARTING year convention
         status=BudgetVersionStatus.WORKING,
         is_baseline=False,
         notes="Test budget version",
@@ -838,7 +851,7 @@ async def test_budget_version(
 @pytest.fixture
 async def test_class_size_params(
     db_session: AsyncSession,
-    test_budget_version: BudgetVersion,
+    test_version: BudgetVersion,
     academic_levels: dict,
     test_user_id: UUID,
 ) -> list[ClassSizeParam]:
@@ -846,7 +859,7 @@ async def test_class_size_params(
     params = [
         ClassSizeParam(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["PS"].id,
             cycle_id=None,
             min_class_size=15,
@@ -857,7 +870,7 @@ async def test_class_size_params(
         ),
         ClassSizeParam(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["6EME"].id,
             cycle_id=None,
             min_class_size=20,
@@ -877,7 +890,7 @@ async def test_class_size_params(
 @pytest.fixture
 async def test_enrollment_data(
     db_session: AsyncSession,
-    test_budget_version: BudgetVersion,
+    test_version: BudgetVersion,
     academic_levels: dict,
     nationality_types: dict,
     test_user_id: UUID,
@@ -886,7 +899,7 @@ async def test_enrollment_data(
     enrollments = [
         EnrollmentPlan(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["PS"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             student_count=35,
@@ -895,7 +908,7 @@ async def test_enrollment_data(
         ),
         EnrollmentPlan(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["PS"].id,
             nationality_type_id=nationality_types["SAUDI"].id,
             student_count=15,
@@ -904,7 +917,7 @@ async def test_enrollment_data(
         ),
         EnrollmentPlan(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["6EME"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             student_count=80,
@@ -922,7 +935,7 @@ async def test_enrollment_data(
 @pytest.fixture
 async def test_class_structure(
     db_session: AsyncSession,
-    test_budget_version: BudgetVersion,
+    test_version: BudgetVersion,
     academic_levels: dict,
     test_user_id: UUID,
 ) -> list[ClassStructure]:
@@ -930,7 +943,7 @@ async def test_class_structure(
     structures = [
         ClassStructure(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["PS"].id,
             total_students=50,
             number_of_classes=3,
@@ -942,7 +955,7 @@ async def test_class_structure(
         ),
         ClassStructure(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["6EME"].id,
             total_students=80,
             number_of_classes=3,
@@ -963,7 +976,7 @@ async def test_class_structure(
 @pytest.fixture
 async def test_subject_hours_matrix(
     db_session: AsyncSession,
-    test_budget_version: BudgetVersion,
+    test_version: BudgetVersion,
     subjects: dict,
     academic_levels: dict,
     test_user_id: UUID,
@@ -972,7 +985,7 @@ async def test_subject_hours_matrix(
     matrix = [
         SubjectHoursMatrix(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("4.5"),
@@ -982,7 +995,7 @@ async def test_subject_hours_matrix(
         ),
         SubjectHoursMatrix(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["FRENCH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("5.0"),
@@ -992,7 +1005,7 @@ async def test_subject_hours_matrix(
         ),
         SubjectHoursMatrix(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["ENGLISH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("3.0"),
@@ -1011,7 +1024,7 @@ async def test_subject_hours_matrix(
 @pytest.fixture
 async def test_teacher_cost_params(
     db_session: AsyncSession,
-    test_budget_version: BudgetVersion,
+    test_version: BudgetVersion,
     teacher_categories: dict,
     academic_cycles: dict,
     test_user_id: UUID,
@@ -1020,7 +1033,7 @@ async def test_teacher_cost_params(
     params = [
         TeacherCostParam(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             category_id=teacher_categories["AEFE_DETACHED"].id,
             cycle_id=None,
             prrd_contribution_eur=Decimal("41863.00"),
@@ -1034,7 +1047,7 @@ async def test_teacher_cost_params(
         ),
         TeacherCostParam(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             category_id=teacher_categories["LOCAL"].id,
             cycle_id=academic_cycles["college"].id,
             prrd_contribution_eur=None,
@@ -1057,7 +1070,7 @@ async def test_teacher_cost_params(
 @pytest.fixture
 async def test_fee_structure(
     db_session: AsyncSession,
-    test_budget_version: BudgetVersion,
+    test_version: BudgetVersion,
     academic_levels: dict,
     nationality_types: dict,
     fee_categories: dict,
@@ -1068,7 +1081,7 @@ async def test_fee_structure(
         # Tuition for PS - French
         FeeStructure(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["PS"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             fee_category_id=fee_categories["TUITION"].id,
@@ -1080,7 +1093,7 @@ async def test_fee_structure(
         # DAI for PS - French
         FeeStructure(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["PS"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             fee_category_id=fee_categories["DAI"].id,
@@ -1092,7 +1105,7 @@ async def test_fee_structure(
         # Tuition for 6EME - French
         FeeStructure(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["6EME"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             fee_category_id=fee_categories["TUITION"].id,
@@ -1112,7 +1125,7 @@ async def test_fee_structure(
 @pytest.fixture
 async def test_dhg_data(
     db_session: AsyncSession,
-    test_budget_version: BudgetVersion,
+    test_version: BudgetVersion,
     subjects: dict,
     academic_levels: dict,
     test_class_structure: list[ClassStructure],
@@ -1124,7 +1137,7 @@ async def test_dhg_data(
     dhg_hours = [
         DHGSubjectHours(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             number_of_classes=3,
@@ -1135,7 +1148,7 @@ async def test_dhg_data(
         ),
         DHGSubjectHours(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["FRENCH"].id,
             level_id=academic_levels["6EME"].id,
             number_of_classes=3,
@@ -1150,7 +1163,7 @@ async def test_dhg_data(
     teacher_requirements = [
         DHGTeacherRequirement(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             total_hours_per_week=Decimal("13.5"),
             standard_teaching_hours=Decimal("18.00"),
@@ -1161,7 +1174,7 @@ async def test_dhg_data(
         ),
         DHGTeacherRequirement(
             id=uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["FRENCH"].id,
             total_hours_per_week=Decimal("15.0"),
             standard_teaching_hours=Decimal("18.00"),

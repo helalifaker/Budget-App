@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { FieldLabel, FieldHint } from '@/components/ui/HelpTooltip'
 import { ENROLLMENT_FIELDS } from '@/constants/enrollment-field-definitions'
-import type { LevelOverride } from '@/types/enrollmentProjection'
-import { SLIDER_CONFIGS } from '@/types/enrollmentProjection'
+import type { LevelOverride } from '@/types/enrollment-projection'
+import { SLIDER_CONFIGS } from '@/types/enrollment-projection'
 
 interface CycleLike {
   id: string

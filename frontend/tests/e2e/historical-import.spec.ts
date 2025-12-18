@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 import {
-  setupBudgetVersionMocks,
+  setupVersionMocks,
   setupHistoricalImportMocks,
   setupHistoricalComparisonMocks,
   setupRevenueMocks,
@@ -67,7 +67,7 @@ test.describe('Historical Import Admin Page', () => {
 
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupHistoricalImportMocks(page)
 
     // Login as admin
@@ -394,7 +394,7 @@ test.describe('Template Downloads', () => {
 test.describe('Import History', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupHistoricalImportMocks(page)
 
     await page.goto('/login')
@@ -511,7 +511,7 @@ test.describe('Import History', () => {
 test.describe('Historical Toggle in Planning Pages', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupRevenueMocks(page)
     await setupHistoricalComparisonMocks(page)
 
@@ -616,7 +616,7 @@ test.describe('Column Requirements Info', () => {
 test.describe('Error Handling', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
 
     // Setup mock that returns error
     const apiBaseUrl = 'http://localhost:8000/api/v1'
@@ -673,7 +673,7 @@ test.describe('Error Handling', () => {
 test.describe('Import Button State', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupHistoricalImportMocks(page)
 
     await page.goto('/login')

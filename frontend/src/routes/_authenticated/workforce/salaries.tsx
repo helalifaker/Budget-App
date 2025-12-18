@@ -7,7 +7,7 @@
  * - End of Service provision tracking
  * - Yearly EOS impact calculation
  *
- * @module /workforce/salaries
+ * @module /teachers/salaries
  */
 
 import { createFileRoute } from '@tanstack/react-router'
@@ -39,14 +39,12 @@ import {
   BadgePercent,
   Calendar,
 } from 'lucide-react'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import {
   useEmployees,
   useCurrentSalary,
-  useEOSProvision,
   useCalculateEOS,
   useWorkforceSummary,
-  useEOSSummary,
 } from '@/hooks/api/useWorkforce'
 import type { Employee, EOSCalculation, TerminationType } from '@/types/workforce'
 import {
@@ -371,15 +369,13 @@ function EOSCalculatorCard({ employee }: EOSCalculatorCardProps) {
 // ============================================================================
 
 function SalariesPage() {
-  const { selectedVersionId } = useBudgetVersion()
+  const { selectedVersionId } = useVersion()
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
 
   // Queries
   const { data: employeesData } = useEmployees(selectedVersionId)
   const { data: summaryData } = useWorkforceSummary(selectedVersionId)
-  const { data: eosSummaryData } = useEOSSummary(selectedVersionId)
   const { data: currentSalaryData } = useCurrentSalary(selectedEmployeeId || undefined)
-  const { data: eosProvisionData } = useEOSProvision(selectedEmployeeId || undefined)
 
   // Find selected employee
   const selectedEmployee = useMemo(() => {
@@ -393,9 +389,9 @@ function SalariesPage() {
       monthlyPayroll: summaryData?.total_monthly_payroll_sar || 0,
       gosiEmployer: summaryData?.total_gosi_employer_sar || 0,
       eosProvision: summaryData?.total_eos_provision_sar || 0,
-      yearlyImpact: eosSummaryData?.year_over_year_change_sar || 0,
+      yearlyImpact: 0, // EOS summary endpoint not available yet
     }
-  }, [summaryData, eosSummaryData])
+  }, [summaryData])
 
   // Check if no version selected
   if (!selectedVersionId) {
@@ -408,9 +404,9 @@ function SalariesPage() {
           <CardContent className="flex items-center gap-4 py-6">
             <AlertCircle className="h-8 w-8 text-amber-600" />
             <div>
-              <p className="font-medium text-amber-800">No Budget Version Selected</p>
+              <p className="font-medium text-amber-800">No Version Selected</p>
               <p className="text-sm text-amber-700">
-                Please select a budget version from the header to view salaries.
+                Please select a version from the header to view salaries.
               </p>
             </div>
           </CardContent>
@@ -548,57 +544,6 @@ function SalariesPage() {
           {/* EOS Calculator */}
           <EOSCalculatorCard employee={selectedEmployee} />
         </div>
-
-        {/* Current EOS Provision */}
-        {selectedEmployee && eosProvisionData && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Wallet className="h-5 w-5 text-text-secondary" />
-                Current EOS Provision
-              </CardTitle>
-              <CardDescription>
-                As of {format(new Date(eosProvisionData.as_of_date), 'MMMM d, yyyy')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Years of Service</p>
-                  <p className="text-lg font-semibold">
-                    {eosProvisionData.years_of_service} years, {eosProvisionData.months_of_service}{' '}
-                    months
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Base Salary</p>
-                  <p className="text-lg font-semibold">
-                    {eosProvisionData.base_salary_sar.toLocaleString()} SAR
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Years 1-5</p>
-                  <p className="text-lg font-semibold">
-                    {eosProvisionData.years_1_to_5_amount_sar.toLocaleString()} SAR
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Years 6+</p>
-                  <p className="text-lg font-semibold">
-                    {eosProvisionData.years_6_plus_amount_sar.toLocaleString()} SAR
-                  </p>
-                </div>
-              </div>
-              <Separator className="my-4" />
-              <div className="flex justify-between items-center">
-                <span className="text-lg">Total Provision</span>
-                <span className="text-2xl font-bold text-green-600">
-                  {eosProvisionData.provision_amount_sar.toLocaleString()} SAR
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </PageContainer>
   )

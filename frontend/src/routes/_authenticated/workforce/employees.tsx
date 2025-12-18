@@ -7,15 +7,15 @@
  * - Add/Edit employee functionality
  * - "Base 100" vs "Planned" badges
  *
- * @module /workforce/employees
+ * @module /teachers/employees
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
 import { useState, useMemo, useCallback } from 'react'
-import { ColDef, ValueFormatterParams, ICellRendererParams } from 'ag-grid-community'
+import type { ColumnDef, CellContext } from '@tanstack/react-table'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { ExcelDataTableLazy } from '@/components/ExcelDataTableLazy'
+import { TanStackDataTable } from '@/components/grid/tanstack'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -46,7 +46,7 @@ import {
   AlertCircle,
   BadgeEuro,
 } from 'lucide-react'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import { useEmployees, useCreateEmployee, useWorkforceSummary } from '@/hooks/api/useWorkforce'
 import type {
   Employee,
@@ -92,12 +92,12 @@ function EmployeeBadge({ isPlaceholder }: { isPlaceholder: boolean }) {
 // ============================================================================
 
 interface AddEmployeeDialogProps {
-  budgetVersionId: string
+  versionId: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-function AddEmployeeDialog({ budgetVersionId, open, onOpenChange }: AddEmployeeDialogProps) {
+function AddEmployeeDialog({ versionId, open, onOpenChange }: AddEmployeeDialogProps) {
   const [formData, setFormData] = useState({
     full_name: '',
     nationality: 'EXPATRIATE' as EmployeeNationality,
@@ -121,7 +121,7 @@ function AddEmployeeDialog({ budgetVersionId, open, onOpenChange }: AddEmployeeD
     try {
       await createMutation.mutateAsync({
         ...formData,
-        budget_version_id: budgetVersionId,
+        version_id: versionId,
         basic_salary_percentage: 0.5,
         is_active: true,
         is_placeholder: false,
@@ -295,7 +295,7 @@ function AddEmployeeDialog({ budgetVersionId, open, onOpenChange }: AddEmployeeD
 // ============================================================================
 
 function EmployeesPage() {
-  const { selectedVersionId } = useBudgetVersion()
+  const { selectedVersionId } = useVersion()
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [filters, setFilters] = useState<EmployeeFilters>({})
 
@@ -309,86 +309,102 @@ function EmployeesPage() {
 
   const { data: summaryData } = useWorkforceSummary(selectedVersionId)
 
-  // Column definitions for AG Grid
-  const columnDefs = useMemo<ColDef<Employee>[]>(
+  // Column definitions
+  const columnDefs = useMemo<ColumnDef<Employee, unknown>[]>(
     () => [
       {
-        field: 'employee_code',
-        headerName: 'Code',
-        width: 100,
-        pinned: 'left',
-        sortable: true,
+        id: 'employee_code',
+        accessorKey: 'employee_code',
+        header: 'Code',
+        size: 100,
+        meta: { pinned: 'left' as const },
       },
       {
-        field: 'full_name',
-        headerName: 'Name',
-        flex: 2,
-        minWidth: 200,
-        sortable: true,
-        filter: true,
+        id: 'full_name',
+        accessorKey: 'full_name',
+        header: 'Name',
+        size: 200,
+        minSize: 200,
       },
       {
-        field: 'is_placeholder',
-        headerName: 'Status',
-        width: 120,
-        cellRenderer: (params: ICellRendererParams<Employee>) => {
-          if (params.value === undefined) return null
-          return <EmployeeBadge isPlaceholder={params.value} />
+        id: 'is_placeholder',
+        accessorKey: 'is_placeholder',
+        header: 'Status',
+        size: 120,
+        cell: ({ getValue }: CellContext<Employee, unknown>) => {
+          const value = getValue()
+          if (value === undefined) return null
+          return <EmployeeBadge isPlaceholder={value as boolean} />
         },
       },
       {
-        field: 'category',
-        headerName: 'Category',
-        width: 150,
-        valueFormatter: (params: ValueFormatterParams<Employee>) =>
-          EMPLOYEE_CATEGORY_LABELS[params.value as EmployeeCategory] || params.value,
-        sortable: true,
-        filter: true,
+        id: 'category',
+        accessorKey: 'category',
+        header: 'Category',
+        size: 150,
+        cell: ({ getValue }: CellContext<Employee, unknown>) => {
+          const value = getValue() as EmployeeCategory
+          return EMPLOYEE_CATEGORY_LABELS[value] || value
+        },
       },
       {
-        field: 'nationality',
-        headerName: 'Nationality',
-        width: 120,
-        valueFormatter: (params: ValueFormatterParams<Employee>) =>
-          NATIONALITY_LABELS[params.value as EmployeeNationality] || params.value,
-        sortable: true,
+        id: 'nationality',
+        accessorKey: 'nationality',
+        header: 'Nationality',
+        size: 120,
+        cell: ({ getValue }: CellContext<Employee, unknown>) => {
+          const value = getValue() as EmployeeNationality
+          return NATIONALITY_LABELS[value] || value
+        },
       },
       {
-        field: 'hire_date',
-        headerName: 'Hire Date',
-        width: 120,
-        valueFormatter: (params: ValueFormatterParams<Employee>) =>
-          params.value ? format(new Date(params.value), 'dd/MM/yyyy') : '-',
-        sortable: true,
+        id: 'hire_date',
+        accessorKey: 'hire_date',
+        header: 'Hire Date',
+        size: 120,
+        cell: ({ getValue }: CellContext<Employee, unknown>) => {
+          const value = getValue() as string | undefined
+          return value ? format(new Date(value), 'dd/MM/yyyy') : '-'
+        },
       },
       {
-        field: 'contract_type',
-        headerName: 'Contract',
-        width: 120,
-        valueFormatter: (params: ValueFormatterParams<Employee>) =>
-          CONTRACT_TYPE_LABELS[params.value as ContractType] || params.value,
+        id: 'contract_type',
+        accessorKey: 'contract_type',
+        header: 'Contract',
+        size: 120,
+        cell: ({ getValue }: CellContext<Employee, unknown>) => {
+          const value = getValue() as ContractType
+          return CONTRACT_TYPE_LABELS[value] || value
+        },
       },
       {
-        field: 'fte',
-        headerName: 'FTE',
-        width: 80,
-        type: 'numericColumn',
-        valueFormatter: (params: ValueFormatterParams<Employee>) =>
-          params.value?.toFixed(2) || '1.00',
+        id: 'fte',
+        accessorKey: 'fte',
+        header: 'FTE',
+        size: 80,
+        cell: ({ getValue }: CellContext<Employee, unknown>) => {
+          const value = getValue() as number | undefined
+          return (
+            <span className="block text-right tabular-nums">{value?.toFixed(2) || '1.00'}</span>
+          )
+        },
       },
       {
-        field: 'job_title',
-        headerName: 'Position',
-        flex: 1,
-        minWidth: 150,
+        id: 'job_title',
+        accessorKey: 'job_title',
+        header: 'Position',
+        size: 150,
+        minSize: 150,
       },
       {
-        field: 'is_active',
-        headerName: 'Active',
-        width: 90,
-        cellRenderer: (params: ICellRendererParams<Employee>) => {
-          if (params.value === undefined) return null
-          return params.value ? (
+        id: 'is_active',
+        accessorKey: 'is_active',
+        header: 'Active',
+        size: 90,
+        cell: ({ getValue }: CellContext<Employee, unknown>) => {
+          const value = getValue()
+          if (value === undefined) return null
+          return value ? (
             <Badge className="bg-green-100 text-green-700">Active</Badge>
           ) : (
             <Badge className="bg-gray-100 text-gray-700">Inactive</Badge>
@@ -660,24 +676,16 @@ function EmployeesPage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="h-[500px] w-full">
-              <ExcelDataTableLazy<Employee>
-                rowData={employeesData?.employees || []}
+              <TanStackDataTable<Employee>
                 columnDefs={columnDefs}
+                rowData={employeesData?.employees || []}
+                getRowId={(data) => data.id}
+                nativeColumns={true}
                 loading={isLoading}
                 error={error}
-                defaultColDef={{
-                  resizable: true,
-                  sortable: true,
-                }}
-                getRowId={(params) => params.data.id}
-                rowIdGetter={(data) => data.id}
-                rowSelection="single"
-                animateRows={true}
-                pagination={true}
-                paginationPageSize={20}
-                tableLabel="Employee Registry Grid"
-                showStatusBar={true}
                 height={500}
+                tableLabel="Employee Registry Grid"
+                virtualize={true}
               />
             </div>
           </CardContent>
@@ -686,7 +694,7 @@ function EmployeesPage() {
 
       {/* Add Employee Dialog */}
       <AddEmployeeDialog
-        budgetVersionId={selectedVersionId}
+        versionId={selectedVersionId}
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
       />

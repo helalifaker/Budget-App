@@ -13,9 +13,9 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import AcademicLevel
+from app.models import AcademicLevel
 from app.services.exceptions import ValidationError
-from app.services.timetable_constraints_service import TimetableConstraintsService
+from app.services.settings.timetable_constraints_service import TimetableConstraintsService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -34,18 +34,18 @@ class TestGetTimetableConstraints:
 
     @pytest.mark.asyncio
     async def test_get_timetable_constraints_empty(
-        self, db_session: AsyncSession, test_budget_version
+        self, db_session: AsyncSession, test_version
     ):
         """Test retrieving constraints when none exist."""
         service = TimetableConstraintsService(db_session)
-        constraints = await service.get_timetable_constraints(test_budget_version.id)
+        constraints = await service.get_timetable_constraints(test_version.id)
         assert constraints == []
 
     @pytest.mark.asyncio
     async def test_get_timetable_constraints_returns_all_for_version(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test retrieving all timetable constraints for a budget version."""
@@ -54,7 +54,7 @@ class TestGetTimetableConstraints:
         # Create a constraint for PS level
         ps_level = academic_levels["PS"]
         constraint = await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("5.5"),
@@ -64,7 +64,7 @@ class TestGetTimetableConstraints:
         )
 
         # Retrieve all constraints
-        constraints = await service.get_timetable_constraints(test_budget_version.id)
+        constraints = await service.get_timetable_constraints(test_version.id)
         assert len(constraints) >= 1
         assert any(c.id == constraint.id for c in constraints)
 
@@ -72,7 +72,7 @@ class TestGetTimetableConstraints:
     async def test_get_timetable_constraints_ordered_by_level(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test that constraints are ordered by level_id."""
@@ -83,7 +83,7 @@ class TestGetTimetableConstraints:
         ms_level = academic_levels["MS"]
 
         await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ms_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("5.5"),
@@ -92,7 +92,7 @@ class TestGetTimetableConstraints:
             min_break_duration_minutes=60,
         )
         await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("5.5"),
@@ -101,7 +101,7 @@ class TestGetTimetableConstraints:
             min_break_duration_minutes=60,
         )
 
-        constraints = await service.get_timetable_constraints(test_budget_version.id)
+        constraints = await service.get_timetable_constraints(test_version.id)
         # Should be ordered by level_id
         assert len(constraints) >= 2
 
@@ -111,12 +111,12 @@ class TestGetConstraintByLevel:
 
     @pytest.mark.asyncio
     async def test_get_constraint_by_level_not_found(
-        self, db_session: AsyncSession, test_budget_version
+        self, db_session: AsyncSession, test_version
     ):
         """Test retrieving constraint for non-existent level returns None."""
         service = TimetableConstraintsService(db_session)
         constraint = await service.get_constraint_by_level(
-            test_budget_version.id, uuid.uuid4()
+            test_version.id, uuid.uuid4()
         )
         assert constraint is None
 
@@ -124,7 +124,7 @@ class TestGetConstraintByLevel:
     async def test_get_constraint_by_level_found(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test retrieving constraint for existing level."""
@@ -132,7 +132,7 @@ class TestGetConstraintByLevel:
 
         ps_level = academic_levels["PS"]
         created = await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("5.5"),
@@ -143,7 +143,7 @@ class TestGetConstraintByLevel:
 
         # Retrieve by level
         constraint = await service.get_constraint_by_level(
-            test_budget_version.id, ps_level.id
+            test_version.id, ps_level.id
         )
         assert constraint is not None
         assert constraint.id == created.id
@@ -157,7 +157,7 @@ class TestUpsertTimetableConstraint:
     async def test_create_maternelle_constraint(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test creating timetable constraint for maternelle level."""
@@ -165,7 +165,7 @@ class TestUpsertTimetableConstraint:
 
         ps_level = academic_levels["PS"]
         constraint = await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("5.5"),
@@ -176,7 +176,7 @@ class TestUpsertTimetableConstraint:
         )
 
         assert constraint.id is not None
-        assert constraint.budget_version_id == test_budget_version.id
+        assert constraint.version_id == test_version.id
         assert constraint.level_id == ps_level.id
         assert constraint.total_hours_per_week == Decimal("24.0")
         assert constraint.max_hours_per_day == Decimal("5.5")
@@ -189,7 +189,7 @@ class TestUpsertTimetableConstraint:
     async def test_create_secondary_constraint(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test creating timetable constraint for secondary level (collège)."""
@@ -198,7 +198,7 @@ class TestUpsertTimetableConstraint:
         # Get 6EME level (first year of collège)
         sixeme_level = academic_levels["6EME"]
         constraint = await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=sixeme_level.id,
             total_hours_per_week=Decimal("26.0"),
             max_hours_per_day=Decimal("6.0"),
@@ -215,7 +215,7 @@ class TestUpsertTimetableConstraint:
     async def test_update_existing_constraint(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test updating an existing timetable constraint."""
@@ -225,7 +225,7 @@ class TestUpsertTimetableConstraint:
 
         # Create initial constraint
         constraint1 = await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("5.5"),
@@ -236,7 +236,7 @@ class TestUpsertTimetableConstraint:
 
         # Update the same constraint
         constraint2 = await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("25.0"),
             max_hours_per_day=Decimal("6.0"),
@@ -261,7 +261,7 @@ class TestTimetableConstraintValidation:
     async def test_validation_max_hours_exceeds_total(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test validation: max_hours_per_day cannot exceed total_hours_per_week."""
@@ -270,7 +270,7 @@ class TestTimetableConstraintValidation:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.upsert_timetable_constraint(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 level_id=ps_level.id,
                 total_hours_per_week=Decimal("20.0"),
                 max_hours_per_day=Decimal("25.0"),  # > total
@@ -287,7 +287,7 @@ class TestTimetableConstraintValidation:
     async def test_validation_valid_hours_passes(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test that valid hours configuration passes validation."""
@@ -296,7 +296,7 @@ class TestTimetableConstraintValidation:
 
         # This should not raise
         constraint = await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("6.0"),
@@ -315,7 +315,7 @@ class TestDeleteTimetableConstraint:
     async def test_delete_timetable_constraint(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test soft deleting a timetable constraint."""
@@ -324,7 +324,7 @@ class TestDeleteTimetableConstraint:
 
         # Create constraint
         constraint = await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("5.5"),
@@ -338,7 +338,7 @@ class TestDeleteTimetableConstraint:
         assert result is True
 
         # Should not be found anymore
-        found = await service.get_constraint_by_level(test_budget_version.id, ps_level.id)
+        found = await service.get_constraint_by_level(test_version.id, ps_level.id)
         assert found is None
 
 
@@ -349,7 +349,7 @@ class TestValidateSubjectHoursFit:
     async def test_validate_subject_hours_within_limit(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test validation passes when subject hours are within limit."""
@@ -358,7 +358,7 @@ class TestValidateSubjectHoursFit:
 
         # Create constraint allowing 24h/week
         await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("6.0"),
@@ -369,7 +369,7 @@ class TestValidateSubjectHoursFit:
 
         # Validate 20h of subject hours
         is_valid, error = await service.validate_subject_hours_fit(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_subject_hours=Decimal("20.0"),
         )
@@ -381,7 +381,7 @@ class TestValidateSubjectHoursFit:
     async def test_validate_subject_hours_exceeds_limit(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test validation fails when subject hours exceed limit."""
@@ -390,7 +390,7 @@ class TestValidateSubjectHoursFit:
 
         # Create constraint allowing 24h/week
         await service.upsert_timetable_constraint(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_hours_per_week=Decimal("24.0"),
             max_hours_per_day=Decimal("6.0"),
@@ -401,7 +401,7 @@ class TestValidateSubjectHoursFit:
 
         # Validate 30h of subject hours (exceeds 24h limit)
         is_valid, error = await service.validate_subject_hours_fit(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_subject_hours=Decimal("30.0"),
         )
@@ -415,7 +415,7 @@ class TestValidateSubjectHoursFit:
     async def test_validate_subject_hours_no_constraint(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
     ):
         """Test validation passes when no constraint is defined (permissive)."""
@@ -426,7 +426,7 @@ class TestValidateSubjectHoursFit:
 
         # Should pass even with high hours (no constraint = no limit)
         is_valid, error = await service.validate_subject_hours_fit(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             total_subject_hours=Decimal("100.0"),
         )

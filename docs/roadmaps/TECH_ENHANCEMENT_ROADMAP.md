@@ -4,6 +4,9 @@
 **Date:** December 2025
 **Status:** Draft for Review
 
+> **Schema naming (Phase 3+)**: Use `version_id` (not `budget_version_id`) and `settings_versions` (not `budget_versions`).
+> Tables are prefixed under the single `efir_budget` schema (`ref_*`, `settings_*`, `students_*`, `teachers_*`, `finance_*`, `insights_*`, `admin_*`).
+
 ---
 
 ## Executive Summary
@@ -167,22 +170,22 @@ cashews = { version = ">=7.0", extras = ["redis"] }
 -- KPI Summary View
 CREATE MATERIALIZED VIEW efir_budget.mv_kpi_summary AS
 SELECT
-    bv.id as budget_version_id,
-    bv.fiscal_year,
-    bv.status,
-    COUNT(DISTINCT ed.student_id) as total_students,
-    SUM(dhg.total_hours) as total_dhg_hours,
+    v.id as version_id,
+    v.fiscal_year,
+    v.status,
+    SUM(sd.student_count) as total_students,
+    SUM(dhg.hours_required) as total_dhg_hours,
     SUM(pc.amount_sar) as total_personnel_costs,
     SUM(rv.amount_sar) as total_revenue
-FROM efir_budget.budget_versions bv
-LEFT JOIN efir_budget.enrollment_data ed ON ed.budget_version_id = bv.id
-LEFT JOIN efir_budget.dhg_calculations dhg ON dhg.budget_version_id = bv.id
-LEFT JOIN efir_budget.personnel_costs pc ON pc.budget_version_id = bv.id
-LEFT JOIN efir_budget.revenue_projections rv ON rv.budget_version_id = bv.id
-GROUP BY bv.id, bv.fiscal_year, bv.status
+FROM efir_budget.settings_versions v
+LEFT JOIN efir_budget.students_data sd ON sd.version_id = v.id AND sd.deleted_at IS NULL
+LEFT JOIN efir_budget.teachers_dhg_requirements dhg ON dhg.version_id = v.id
+LEFT JOIN efir_budget.finance_data pc ON pc.version_id = v.id AND pc.data_type = 'personnel_cost'
+LEFT JOIN efir_budget.finance_data rv ON rv.version_id = v.id AND rv.data_type = 'revenue'
+GROUP BY v.id, v.fiscal_year, v.status
 WITH DATA;
 
-CREATE UNIQUE INDEX ON efir_budget.mv_kpi_summary(budget_version_id);
+CREATE UNIQUE INDEX ON efir_budget.mv_kpi_summary(version_id);
 REFRESH MATERIALIZED VIEW CONCURRENTLY efir_budget.mv_kpi_summary;
 ```
 
@@ -190,12 +193,12 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY efir_budget.mv_kpi_summary;
 ```sql
 -- Only index approved budgets for dashboard queries
 CREATE INDEX ix_budget_versions_approved
-ON efir_budget.budget_versions(fiscal_year, status)
+ON efir_budget.settings_versions(fiscal_year, status)
 WHERE status = 'approved';
 
 -- Only index material variances for alerts
 CREATE INDEX ix_variance_material
-ON efir_budget.budget_vs_actual(budget_version_id, period)
+ON efir_budget.insights_budget_vs_actual(version_id, period)
 WHERE is_material = true;
 
 -- Index active dimension members only
@@ -344,7 +347,7 @@ CREATE INDEX ix_dim_members_path ON efir_budget.dimension_members USING GIST(pat
 ```sql
 CREATE TABLE efir_budget.planning_facts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    budget_version_id UUID NOT NULL REFERENCES budget_versions(id),
+    version_id UUID NOT NULL REFERENCES settings_versions(id),
 
     -- Flexible dimension keys (JSONB)
     dimension_keys JSONB NOT NULL,
@@ -372,7 +375,7 @@ CREATE TABLE efir_budget.planning_facts (
     version INT DEFAULT 1,
 
     -- Constraints
-    UNIQUE(budget_version_id, dimension_keys)
+    UNIQUE(version_id, dimension_keys)
 );
 
 -- GIN index for JSONB queries
@@ -380,7 +383,7 @@ CREATE INDEX ix_facts_dimension_keys ON efir_budget.planning_facts
     USING GIN(dimension_keys jsonb_path_ops);
 
 -- Composite index for common queries
-CREATE INDEX ix_facts_version_keys ON efir_budget.planning_facts(budget_version_id, dimension_keys);
+CREATE INDEX ix_facts_version_keys ON efir_budget.planning_facts(version_id, dimension_keys);
 ```
 
 ### 4.4 Variable & Formula Engine
@@ -486,7 +489,7 @@ function generateColumnDefs(dimensions: DimensionConfig[]): ColDef[] {
 ```sql
 CREATE TABLE efir_budget.planning_cells (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    budget_version_id UUID NOT NULL REFERENCES budget_versions(id),
+    version_id UUID NOT NULL REFERENCES settings_versions(id),
 
     -- Dimension keys
     dimension_keys JSONB NOT NULL,
@@ -514,7 +517,7 @@ CREATE TABLE efir_budget.planning_cells (
     -- Optimistic locking
     version INT DEFAULT 1,
 
-    UNIQUE(budget_version_id, dimension_keys)
+    UNIQUE(version_id, dimension_keys)
 );
 
 -- Enable Supabase Realtime
@@ -931,4 +934,3 @@ User edits cell
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-02 | Claude | Initial draft |
-

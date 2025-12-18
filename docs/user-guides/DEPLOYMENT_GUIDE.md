@@ -259,20 +259,20 @@ alembic current
 1. **Enable Row Level Security (RLS)**
 
 ```sql
--- Enable RLS on all tables
-ALTER TABLE budget_versions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE enrollment_plans ENABLE ROW LEVEL SECURITY;
--- ... repeat for all tables
+-- RLS is applied via Alembic migrations (backend/alembic/versions/).
+-- Use this only for emergency repair in a broken environment.
+ALTER TABLE efir_budget.settings_versions ENABLE ROW LEVEL SECURITY;
 ```
 
 2. **Create RLS Policies**
 
 ```sql
--- Example: Users can only see their organization's data
-CREATE POLICY "org_isolation" ON budget_versions
-  FOR ALL USING (
-    organization_id = auth.jwt()->>'organization_id'
-  );
+-- Policies are created/updated via Alembic migrations.
+-- Verify current policies:
+SELECT tablename, policyname, roles, cmd
+FROM pg_policies
+WHERE schemaname = 'efir_budget'
+ORDER BY tablename, policyname;
 ```
 
 ### Database Backup

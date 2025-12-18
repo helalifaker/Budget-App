@@ -17,18 +17,16 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import (
+from app.models import (
     AcademicCycle,
     AcademicLevel,
+    ClassStructure,
     Subject,
     SubjectHoursMatrix,
     TeacherCategory,
 )
-from app.models.planning import (
-    ClassStructure,
-)
-from app.services.dhg_service import DHGService
 from app.services.exceptions import BusinessRuleError, ValidationError
+from app.services.workforce.dhg_service import DHGService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -43,14 +41,14 @@ async def mock_budget_version(db_session: AsyncSession, test_user_id, organizati
     """Create test budget version."""
     from datetime import datetime
 
-    from app.models.configuration import BudgetVersion, BudgetVersionStatus
+    from app.models import Version, VersionStatus
 
-    version = BudgetVersion(
+    version = Version(
         id=uuid.uuid4(),
         name="Test Budget 2024",
         fiscal_year=2024,
         academic_year="2024-2025",
-        status=BudgetVersionStatus.WORKING,
+        status=VersionStatus.WORKING,
         organization_id=organization_id,
         created_by_id=test_user_id,
         created_at=datetime.utcnow(),
@@ -88,7 +86,6 @@ async def mock_college_levels(
             name_en="6th Grade",
             cycle_id=mock_college_cycle.id,
             sort_order=1,
-            is_secondary=True,  # Collège is secondary
         ),
         AcademicLevel(
             id=uuid.uuid4(),
@@ -97,7 +94,6 @@ async def mock_college_levels(
             name_en="7th Grade",
             cycle_id=mock_college_cycle.id,
             sort_order=2,
-            is_secondary=True,  # Collège is secondary
         ),
         AcademicLevel(
             id=uuid.uuid4(),
@@ -106,7 +102,6 @@ async def mock_college_levels(
             name_en="8th Grade",
             cycle_id=mock_college_cycle.id,
             sort_order=3,
-            is_secondary=True,  # Collège is secondary
         ),
         AcademicLevel(
             id=uuid.uuid4(),
@@ -115,7 +110,6 @@ async def mock_college_levels(
             name_en="9th Grade",
             cycle_id=mock_college_cycle.id,
             sort_order=4,
-            is_secondary=True,  # Collège is secondary
         ),
     ]
     for level in levels:
@@ -208,7 +202,7 @@ async def mock_subject_hours_matrix(
             if subject.code in hours_data and level.code in hours_data[subject.code]:
                 entry = SubjectHoursMatrix(
                     id=uuid.uuid4(),
-                    budget_version_id=mock_budget_version.id,
+                    version_id=mock_budget_version.id,
                     subject_id=subject.id,
                     level_id=level.id,
                     hours_per_week=hours_data[subject.code][level.code],
@@ -244,7 +238,7 @@ async def mock_class_structure(
         if level.code in class_counts:
             cs = ClassStructure(
                 id=uuid.uuid4(),
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_budget_version.id,
                 level_id=level.id,
                 number_of_classes=class_counts[level.code],
                 avg_class_size=Decimal("25.0"),
@@ -283,7 +277,7 @@ class TestDHGSubjectHoursCalculation:
         - 6 classes × 4.5 hours/week = 27 hours/week
         """
         result = await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -316,7 +310,7 @@ class TestDHGSubjectHoursCalculation:
             match="Cannot calculate DHG hours without class structure data",
         ):
             await dhg_service.calculate_dhg_subject_hours(
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_budget_version.id,
                 recalculate_all=True,
             )
 
@@ -336,7 +330,7 @@ class TestDHGSubjectHoursCalculation:
             match="Cannot calculate DHG hours without subject hours matrix",
         ):
             await dhg_service.calculate_dhg_subject_hours(
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_budget_version.id,
                 recalculate_all=True,
             )
 
@@ -351,13 +345,13 @@ class TestDHGSubjectHoursCalculation:
         """Test partial recalculation (only changed levels)."""
         # First full calculation
         await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
         # Second calculation with recalculate_all=False
         result = await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=False,
         )
 
@@ -375,13 +369,12 @@ class TestDHGSubjectHoursCalculation:
         test_user_id,
     ):
         """Test DHG calculation with split classes (doubles hours)."""
-        from app.models.configuration import SubjectHoursMatrix
-        from app.models.planning import ClassStructure
+        from app.models import ClassStructure, SubjectHoursMatrix
 
         # Create class structure
         class_structure = ClassStructure(
             id=uuid.uuid4(),
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             level_id=mock_college_levels[0].id,
             total_students=30,
             number_of_classes=1,
@@ -395,7 +388,7 @@ class TestDHGSubjectHoursCalculation:
         # Create subject hours matrix with is_split=True
         matrix = SubjectHoursMatrix(
             id=uuid.uuid4(),
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             subject_id=mock_subjects[0].id,
             level_id=mock_college_levels[0].id,
             hours_per_week=Decimal("3.0"),
@@ -408,7 +401,7 @@ class TestDHGSubjectHoursCalculation:
 
         # Calculate DHG hours
         result = await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -427,13 +420,12 @@ class TestDHGSubjectHoursCalculation:
         test_user_id,
     ):
         """Test that calculation skips subject/level pairs with no classes."""
-        from app.models.configuration import SubjectHoursMatrix
-        from app.models.planning import ClassStructure
+        from app.models import ClassStructure, SubjectHoursMatrix
 
         # Create class structure for 6ème only
         class_structure = ClassStructure(
             id=uuid.uuid4(),
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             level_id=mock_college_levels[0].id,  # 6ème
             total_students=30,
             number_of_classes=1,
@@ -448,7 +440,7 @@ class TestDHGSubjectHoursCalculation:
         matrices = [
             SubjectHoursMatrix(
                 id=uuid.uuid4(),
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_budget_version.id,
                 subject_id=mock_subjects[0].id,
                 level_id=mock_college_levels[0].id,  # 6ème - has classes
                 hours_per_week=Decimal("4.0"),
@@ -458,7 +450,7 @@ class TestDHGSubjectHoursCalculation:
             ),
             SubjectHoursMatrix(
                 id=uuid.uuid4(),
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_budget_version.id,
                 subject_id=mock_subjects[0].id,
                 level_id=mock_college_levels[1].id,  # 5ème - NO classes
                 hours_per_week=Decimal("3.5"),
@@ -473,7 +465,7 @@ class TestDHGSubjectHoursCalculation:
 
         # Calculate DHG hours
         result = await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -509,7 +501,7 @@ class TestTeacherRequirementCalculation:
         """
         # First calculate DHG hours
         await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -582,11 +574,11 @@ class TestTeacherRequirementCalculation:
         # We need total hours where: rounded_fte × 18 < total_hours
 
         # Create single level class structure
-        from app.models.planning import ClassStructure
+        from app.models import ClassStructure
 
         class_structure = ClassStructure(
             id=uuid.uuid4(),
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             level_id=mock_college_levels[0].id,  # 6ème
             total_students=125,  # 5 classes × 25 students
             number_of_classes=5,
@@ -607,11 +599,11 @@ class TestTeacherRequirementCalculation:
         # Since rounded_fte = CEILING(total_hours / 18), this will always be ≤ 0
         # HSA in real scenarios applies when comparing available vs required teachers
 
-        from app.models.configuration import SubjectHoursMatrix
+        from app.models import SubjectHoursMatrix
 
         matrix = SubjectHoursMatrix(
             id=uuid.uuid4(),
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             subject_id=mock_subjects[0].id,  # Math
             level_id=mock_college_levels[0].id,  # 6ème
             hours_per_week=Decimal("5.5"),  # Within valid range (0, 12]
@@ -624,7 +616,7 @@ class TestTeacherRequirementCalculation:
 
         # Calculate DHG hours
         await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -682,7 +674,7 @@ class TestTeacherRequirementCalculation:
         """Test that recalculation updates existing requirements instead of creating new."""
         # First calculation
         await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -1080,7 +1072,7 @@ class TestGapAnalysis:
         """
         # Calculate DHG hours and teacher requirements
         await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -1115,7 +1107,7 @@ class TestGapAnalysis:
         gap_analysis = await dhg_service.get_trmd_gap_analysis(version_id=mock_budget_version.id)
 
         # Verify structure
-        assert gap_analysis["budget_version_id"] == mock_budget_version.id
+        assert gap_analysis["version_id"] == mock_budget_version.id
         assert gap_analysis["total_besoins"] > 0
         assert gap_analysis["total_moyens"] == 2.0  # Only Math has allocation
         assert gap_analysis["total_deficit"] > 0  # Deficit exists
@@ -1143,7 +1135,7 @@ class TestGapAnalysis:
         """Test gap analysis when surplus exists (over-staffed)."""
         # Calculate requirements
         await dhg_service.calculate_dhg_subject_hours(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             recalculate_all=True,
         )
 
@@ -1236,7 +1228,7 @@ class TestDHGServiceErrorHandling:
             match="Cannot calculate DHG hours without class structure data",
         ):
             await dhg_service.calculate_dhg_subject_hours(
-                budget_version_id=uuid.uuid4(),
+                version_id=uuid.uuid4(),
                 recalculate_all=True,
             )
 

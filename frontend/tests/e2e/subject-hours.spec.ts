@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 import {
-  setupBudgetVersionMocks,
+  setupVersionMocks,
   setupSubjectHoursMatrixMocks,
   setupConfigurationMocks,
   resetMockData,
@@ -53,7 +53,7 @@ async function waitForPageLoad(page: Page): Promise<void> {
 test.describe('Subject Hours Configuration - Workforce Settings', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupSubjectHoursMatrixMocks(page)
     await setupConfigurationMocks(page)
 
@@ -192,7 +192,7 @@ test.describe('Subject Hours Configuration - Workforce Settings', () => {
 test.describe('Subject Hours - Configuration Coming Soon', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupSubjectHoursMatrixMocks(page)
     await setupConfigurationMocks(page)
 
@@ -237,7 +237,7 @@ test.describe('Subject Hours - Configuration Coming Soon', () => {
 test.describe('Subject Hours Navigation', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupSubjectHoursMatrixMocks(page)
     await setupConfigurationMocks(page)
 
@@ -298,7 +298,7 @@ test.describe('Subject Hours Navigation', () => {
 test.describe('Subject Hours Integration', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupSubjectHoursMatrixMocks(page)
     await setupConfigurationMocks(page)
 

@@ -39,12 +39,12 @@ export interface UnlockCellParams {
  * Provides instant UI feedback by optimistically updating the cache before
  * server confirmation. Handles version conflicts, locked cells, and batch updates.
  *
- * @param budgetVersionId - Current budget version
+ * @param versionId - Current version
  * @returns Functions for updating cells, batch updates, and loading state
  *
  * @example
  * ```typescript
- * const { updateCell, batchUpdate, isUpdating } = usePlanningWriteback(budgetVersionId);
+ * const { updateCell, batchUpdate, isUpdating } = usePlanningWriteback(versionId);
  *
  * // Update single cell
  * await updateCell({
@@ -64,7 +64,7 @@ export interface UnlockCellParams {
  * });
  * ```
  */
-export function usePlanningWriteback(budgetVersionId: string) {
+export function usePlanningWriteback(versionId: string) {
   const queryClient = useQueryClient()
 
   // Mutation for single cell update
@@ -121,13 +121,13 @@ export function usePlanningWriteback(budgetVersionId: string) {
     // Optimistic update - update UI immediately before server confirmation
     onMutate: async (update: CellUpdate) => {
       // Cancel any outgoing refetches to prevent race conditions
-      await queryClient.cancelQueries({ queryKey: ['cells', budgetVersionId] })
+      await queryClient.cancelQueries({ queryKey: ['cells', versionId] })
 
       // Snapshot previous value for rollback on error
-      const previousData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+      const previousData = queryClient.getQueryData<CellData[]>(['cells', versionId])
 
       // Optimistically update cache
-      queryClient.setQueryData<CellData[]>(['cells', budgetVersionId], (old) => {
+      queryClient.setQueryData<CellData[]>(['cells', versionId], (old) => {
         if (!old) return old
         return old.map((cell) =>
           cell.id === update.cellId
@@ -148,7 +148,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
     onError: (err: unknown, _update: CellUpdate, context) => {
       // Rollback to previous state
       if (context?.previousData) {
-        queryClient.setQueryData(['cells', budgetVersionId], context.previousData)
+        queryClient.setQueryData(['cells', versionId], context.previousData)
       }
 
       // Show appropriate error toast
@@ -158,7 +158,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
           duration: 4000,
         })
         // Refetch to get latest data
-        queryClient.invalidateQueries({ queryKey: ['cells', budgetVersionId] })
+        queryClient.invalidateQueries({ queryKey: ['cells', versionId] })
       } else if (err instanceof CellLockedError) {
         toast.error('Cellule verrouillée', {
           description: 'Cette cellule ne peut pas être modifiée.',
@@ -185,7 +185,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
       })
 
       // Update cache with authoritative server response
-      queryClient.setQueryData<CellData[]>(['cells', budgetVersionId], (old) => {
+      queryClient.setQueryData<CellData[]>(['cells', versionId], (old) => {
         if (!old) return old
         return old.map((cell) =>
           cell.id === data.id
@@ -201,7 +201,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
       })
 
       // Invalidate related queries
-      queryClient.invalidateQueries({ queryKey: ['cell-changes', budgetVersionId] })
+      queryClient.invalidateQueries({ queryKey: ['cell-changes', versionId] })
     },
   })
 
@@ -249,12 +249,12 @@ export function usePlanningWriteback(budgetVersionId: string) {
 
     // Optimistic update for batch
     onMutate: async (batch: BatchUpdate) => {
-      await queryClient.cancelQueries({ queryKey: ['cells', budgetVersionId] })
+      await queryClient.cancelQueries({ queryKey: ['cells', versionId] })
 
-      const previousData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+      const previousData = queryClient.getQueryData<CellData[]>(['cells', versionId])
 
       // Optimistically update all cells in batch
-      queryClient.setQueryData<CellData[]>(['cells', budgetVersionId], (old) => {
+      queryClient.setQueryData<CellData[]>(['cells', versionId], (old) => {
         if (!old) return old
 
         const updateMap = new Map(batch.updates.map((u) => [u.cellId, u.value]))
@@ -279,7 +279,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
     onError: (err: unknown, _batch: BatchUpdate, context) => {
       // Rollback on error
       if (context?.previousData) {
-        queryClient.setQueryData(['cells', budgetVersionId], context.previousData)
+        queryClient.setQueryData(['cells', versionId], context.previousData)
       }
 
       if (err instanceof BatchConflictError) {
@@ -288,7 +288,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
           duration: 5000,
         })
         // Refetch to get latest
-        queryClient.invalidateQueries({ queryKey: ['cells', budgetVersionId] })
+        queryClient.invalidateQueries({ queryKey: ['cells', versionId] })
       } else if (err instanceof Error) {
         toast.error('Erreur de sauvegarde groupée', {
           description: err.message || 'Une erreur est survenue lors de la sauvegarde.',
@@ -317,8 +317,8 @@ export function usePlanningWriteback(budgetVersionId: string) {
       }
 
       // Invalidate to refetch latest data
-      queryClient.invalidateQueries({ queryKey: ['cells', budgetVersionId] })
-      queryClient.invalidateQueries({ queryKey: ['cell-changes', budgetVersionId] })
+      queryClient.invalidateQueries({ queryKey: ['cells', versionId] })
+      queryClient.invalidateQueries({ queryKey: ['cell-changes', versionId] })
     },
   })
 
@@ -342,7 +342,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
       })
 
       // Update cache to reflect locked state
-      queryClient.setQueryData<CellData[]>(['cells', budgetVersionId], (old) => {
+      queryClient.setQueryData<CellData[]>(['cells', versionId], (old) => {
         if (!old) return old
         return old.map((cell) =>
           cell.id === data.id
@@ -355,7 +355,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
       })
 
       // Invalidate to refetch latest data
-      queryClient.invalidateQueries({ queryKey: ['cells', budgetVersionId] })
+      queryClient.invalidateQueries({ queryKey: ['cells', versionId] })
     },
 
     onError: (err: unknown) => {
@@ -393,7 +393,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
       })
 
       // Update cache to reflect unlocked state
-      queryClient.setQueryData<CellData[]>(['cells', budgetVersionId], (old) => {
+      queryClient.setQueryData<CellData[]>(['cells', versionId], (old) => {
         if (!old) return old
         return old.map((cell) =>
           cell.id === data.id
@@ -406,7 +406,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
       })
 
       // Invalidate to refetch latest data
-      queryClient.invalidateQueries({ queryKey: ['cells', budgetVersionId] })
+      queryClient.invalidateQueries({ queryKey: ['cells', versionId] })
     },
 
     onError: (err: unknown) => {

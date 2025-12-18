@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from app.schemas.writeback import (
+from app.schemas.admin import (
     BatchUpdateRequest,
     CellUpdate,
     CommentRequest,
@@ -25,11 +25,11 @@ from app.schemas.writeback import (
     UndoRequest,
     UnlockRequest,
 )
+from app.services.admin.writeback_service import WritebackService
 from app.services.exceptions import (
     NotFoundError,
     VersionConflictError,
 )
-from app.services.writeback_service import WritebackService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # ==============================================================================
@@ -39,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 def create_mock_cell(
     cell_id: UUID | None = None,
-    budget_version_id: UUID | None = None,
+    version_id: UUID | None = None,
     module_code: str = "enrollment",
     is_locked: bool = False,
     version: int = 1,
@@ -49,7 +49,7 @@ def create_mock_cell(
     """Create a mock cell dictionary for testing."""
     return {
         "id": cell_id or uuid4(),
-        "budget_version_id": budget_version_id or uuid4(),
+        "version_id": version_id or uuid4(),
         "module_code": module_code,
         "entity_id": uuid4(),
         "field_name": "student_count",
@@ -71,7 +71,7 @@ def create_mock_cell(
 
 def create_mock_change(
     cell_id: UUID,
-    budget_version_id: UUID,
+    version_id: UUID,
     module_code: str = "enrollment",
     session_id: UUID | None = None,
     sequence_number: int = 1,
@@ -82,7 +82,7 @@ def create_mock_change(
     return {
         "id": uuid4(),
         "cell_id": cell_id,
-        "budget_version_id": budget_version_id,
+        "version_id": version_id,
         "module_code": module_code,
         "entity_id": uuid4(),
         "field_name": "student_count",
@@ -114,10 +114,10 @@ class TestBatchUpdateCells:
 
         # Setup mocks for 3 cells
         cell_ids = [uuid4() for _ in range(3)]
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         # Mock get_cell_by_id calls
-        cells = [create_mock_cell(cell_id, budget_version_id) for cell_id in cell_ids]
+        cells = [create_mock_cell(cell_id, version_id) for cell_id in cell_ids]
 
         async def mock_get_cell(cell_id, raise_if_not_found=True):
             for cell in cells:
@@ -170,10 +170,10 @@ class TestBatchUpdateCells:
         mock_session = AsyncMock(spec=AsyncSession)
 
         cell_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         # Cell has version 5, but client expects version 3
-        cell = create_mock_cell(cell_id, budget_version_id, version=5)
+        cell = create_mock_cell(cell_id, version_id, version=5)
 
         async def mock_get_cell(cell_id_arg, raise_if_not_found=True):
             return cell if cell_id_arg == cell_id else None
@@ -212,12 +212,12 @@ class TestBatchUpdateCells:
 
         # 3 cells: 1 succeeds, 1 version conflict, 1 locked
         cell_ids = [uuid4() for _ in range(3)]
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         cells = [
-            create_mock_cell(cell_ids[0], budget_version_id, version=1),  # Success
-            create_mock_cell(cell_ids[1], budget_version_id, version=5),  # Conflict
-            create_mock_cell(cell_ids[2], budget_version_id, is_locked=True),  # Locked
+            create_mock_cell(cell_ids[0], version_id, version=1),  # Success
+            create_mock_cell(cell_ids[1], version_id, version=5),  # Conflict
+            create_mock_cell(cell_ids[2], version_id, is_locked=True),  # Locked
         ]
 
         async def mock_get_cell(cell_id, raise_if_not_found=True):
@@ -298,11 +298,11 @@ class TestBatchUpdateCells:
         mock_session = AsyncMock(spec=AsyncSession)
 
         cell_ids = [uuid4(), uuid4()]
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         cells = [
-            create_mock_cell(cell_ids[0], budget_version_id),
-            create_mock_cell(cell_ids[1], budget_version_id, is_locked=True),  # Locked
+            create_mock_cell(cell_ids[0], version_id),
+            create_mock_cell(cell_ids[1], version_id, is_locked=True),  # Locked
         ]
 
         async def mock_get_cell(cell_id, raise_if_not_found=True):
@@ -370,11 +370,11 @@ class TestBatchUpdateCells:
         # Two cells from different modules
         cell1_id = uuid4()
         cell2_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         cells = [
-            create_mock_cell(cell1_id, budget_version_id, module_code="enrollment"),
-            create_mock_cell(cell2_id, budget_version_id, module_code="dhg"),
+            create_mock_cell(cell1_id, version_id, module_code="enrollment"),
+            create_mock_cell(cell2_id, version_id, module_code="dhg"),
         ]
 
         async def mock_get_cell(cell_id, raise_if_not_found=True):
@@ -434,13 +434,13 @@ class TestUndoSession:
 
         session_id = uuid4()
         cell_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         # Mock change history (3 changes in sequence)
         changes = [
             create_mock_change(
                 cell_id,
-                budget_version_id,
+                version_id,
                 session_id=session_id,
                 sequence_number=3,
                 old_value_numeric=Decimal("200"),
@@ -448,7 +448,7 @@ class TestUndoSession:
             ),
             create_mock_change(
                 cell_id,
-                budget_version_id,
+                version_id,
                 session_id=session_id,
                 sequence_number=2,
                 old_value_numeric=Decimal("150"),
@@ -456,7 +456,7 @@ class TestUndoSession:
             ),
             create_mock_change(
                 cell_id,
-                budget_version_id,
+                version_id,
                 session_id=session_id,
                 sequence_number=1,
                 old_value_numeric=Decimal("100"),
@@ -469,7 +469,7 @@ class TestUndoSession:
         mock_result_changes.fetchall.return_value = [MagicMock(_mapping=c) for c in changes]
 
         # Mock get current cell
-        current_cell = create_mock_cell(cell_id, budget_version_id, is_locked=False, version=4)
+        current_cell = create_mock_cell(cell_id, version_id, is_locked=False, version=4)
 
         async def mock_get_cell(cell_id_arg, raise_if_not_found=True):
             return current_cell if cell_id_arg == cell_id else None
@@ -480,9 +480,9 @@ class TestUndoSession:
 
         # Setup execute to return different results based on query
         def mock_execute(query, params):
-            if "FROM efir_budget.cell_changes" in str(query):
+            if "FROM efir_budget.admin_cell_changes" in str(query):
                 return mock_result_changes
-            elif "INSERT INTO efir_budget.cell_changes" in str(query):
+            elif "INSERT INTO efir_budget.admin_cell_changes" in str(query):
                 return MagicMock()
             else:  # UPDATE
                 return mock_result_update
@@ -528,18 +528,18 @@ class TestUndoSession:
 
         session_id = uuid4()
         cell_ids = [uuid4() for _ in range(3)]
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         # Changes to 3 different cells
         changes = [
-            create_mock_change(cell_ids[i], budget_version_id, session_id=session_id, sequence_number=i + 1)
+            create_mock_change(cell_ids[i], version_id, session_id=session_id, sequence_number=i + 1)
             for i in range(3)
         ]
 
         mock_result_changes = MagicMock()
         mock_result_changes.fetchall.return_value = [MagicMock(_mapping=c) for c in changes]
 
-        cells = [create_mock_cell(cell_id, budget_version_id) for cell_id in cell_ids]
+        cells = [create_mock_cell(cell_id, version_id) for cell_id in cell_ids]
 
         async def mock_get_cell(cell_id, raise_if_not_found=True):
             for cell in cells:
@@ -548,7 +548,7 @@ class TestUndoSession:
             return None
 
         def mock_execute(query, params):
-            if "FROM efir_budget.cell_changes" in str(query):
+            if "FROM efir_budget.admin_cell_changes" in str(query):
                 return mock_result_changes
             return MagicMock()
 
@@ -571,20 +571,20 @@ class TestUndoSession:
 
         session_id = uuid4()
         cell_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
-        change = create_mock_change(cell_id, budget_version_id, session_id=session_id)
+        change = create_mock_change(cell_id, version_id, session_id=session_id)
         mock_result_changes = MagicMock()
         mock_result_changes.fetchall.return_value = [MagicMock(_mapping=change)]
 
         # Cell is now locked
-        locked_cell = create_mock_cell(cell_id, budget_version_id, is_locked=True)
+        locked_cell = create_mock_cell(cell_id, version_id, is_locked=True)
 
         async def mock_get_cell(cell_id_arg, raise_if_not_found=True):
             return locked_cell if cell_id_arg == cell_id else None
 
         def mock_execute(query, params):
-            if "FROM efir_budget.cell_changes" in str(query):
+            if "FROM efir_budget.admin_cell_changes" in str(query):
                 return mock_result_changes
             return MagicMock()
 
@@ -608,9 +608,9 @@ class TestUndoSession:
 
         session_id = uuid4()
         cell_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
-        change = create_mock_change(cell_id, budget_version_id, session_id=session_id)
+        change = create_mock_change(cell_id, version_id, session_id=session_id)
         mock_result_changes = MagicMock()
         mock_result_changes.fetchall.return_value = [MagicMock(_mapping=change)]
 
@@ -618,7 +618,7 @@ class TestUndoSession:
             return None  # Cell deleted
 
         def mock_execute(query, params):
-            if "FROM efir_budget.cell_changes" in str(query):
+            if "FROM efir_budget.admin_cell_changes" in str(query):
                 return mock_result_changes
             return MagicMock()
 
@@ -642,19 +642,19 @@ class TestUndoSession:
 
         session_id = uuid4()
         cell_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
-        change = create_mock_change(cell_id, budget_version_id, session_id=session_id, module_code="enrollment")
+        change = create_mock_change(cell_id, version_id, session_id=session_id, module_code="enrollment")
         mock_result_changes = MagicMock()
         mock_result_changes.fetchall.return_value = [MagicMock(_mapping=change)]
 
-        cell = create_mock_cell(cell_id, budget_version_id, module_code="enrollment")
+        cell = create_mock_cell(cell_id, version_id, module_code="enrollment")
 
         async def mock_get_cell(cell_id_arg, raise_if_not_found=True):
             return cell if cell_id_arg == cell_id else None
 
         def mock_execute(query, params):
-            if "FROM efir_budget.cell_changes" in str(query):
+            if "FROM efir_budget.admin_cell_changes" in str(query):
                 return mock_result_changes
             return MagicMock()
 
@@ -967,11 +967,11 @@ class TestChangeHistory:
         """Test retrieving change history for a budget version."""
         mock_session = AsyncMock(spec=AsyncSession)
 
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         # Mock change records
         changes = [
-            create_mock_change(uuid4(), budget_version_id, sequence_number=i + 1) for i in range(5)
+            create_mock_change(uuid4(), version_id, sequence_number=i + 1) for i in range(5)
         ]
 
         mock_result = MagicMock()
@@ -979,7 +979,7 @@ class TestChangeHistory:
         mock_session.execute.return_value = mock_result
 
         service = WritebackService(mock_session)
-        result = await service.get_change_history(budget_version_id)
+        result = await service.get_change_history(version_id)
 
         assert len(result) == 5
 
@@ -988,10 +988,10 @@ class TestChangeHistory:
         """Test change history with module/entity/field filters."""
         mock_session = AsyncMock(spec=AsyncSession)
 
-        budget_version_id = uuid4()
+        version_id = uuid4()
         entity_id = uuid4()
 
-        changes = [create_mock_change(uuid4(), budget_version_id)]
+        changes = [create_mock_change(uuid4(), version_id)]
 
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [MagicMock(_mapping=c) for c in changes]
@@ -999,7 +999,7 @@ class TestChangeHistory:
 
         service = WritebackService(mock_session)
         await service.get_change_history(
-            budget_version_id,
+            version_id,
             module_code="enrollment",
             entity_id=entity_id,
             field_name="student_count",
@@ -1009,7 +1009,7 @@ class TestChangeHistory:
         call_args = mock_session.execute.call_args
         assert call_args is not None
         params = call_args[0][1] if len(call_args[0]) > 1 else call_args[1].get("params", {})
-        assert params["budget_version_id"] == str(budget_version_id)
+        assert params["version_id"] == str(version_id)
         assert params.get("module_code") == "enrollment"
 
     @pytest.mark.asyncio
@@ -1017,17 +1017,17 @@ class TestChangeHistory:
         """Test change history pagination."""
         mock_session = AsyncMock(spec=AsyncSession)
 
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         # Simulate paginated results
-        changes = [create_mock_change(uuid4(), budget_version_id, sequence_number=i + 11) for i in range(10)]
+        changes = [create_mock_change(uuid4(), version_id, sequence_number=i + 11) for i in range(10)]
 
         mock_result = MagicMock()
         mock_result.fetchall.return_value = [MagicMock(_mapping=c) for c in changes]
         mock_session.execute.return_value = mock_result
 
         service = WritebackService(mock_session)
-        result = await service.get_change_history(budget_version_id, limit=10, offset=10)
+        result = await service.get_change_history(version_id, limit=10, offset=10)
 
         assert len(result) == 10
 
@@ -1042,13 +1042,13 @@ class TestChangeHistory:
         """Test change history is ordered by changed_at DESC."""
         mock_session = AsyncMock(spec=AsyncSession)
 
-        budget_version_id = uuid4()
+        version_id = uuid4()
 
         # Changes with different timestamps
         base_time = datetime.utcnow()
         changes = []
         for i in range(3):
-            change = create_mock_change(uuid4(), budget_version_id, sequence_number=i + 1)
+            change = create_mock_change(uuid4(), version_id, sequence_number=i + 1)
             change["changed_at"] = base_time.replace(second=i)
             changes.append(change)
 
@@ -1060,7 +1060,7 @@ class TestChangeHistory:
         mock_session.execute.return_value = mock_result
 
         service = WritebackService(mock_session)
-        result = await service.get_change_history(budget_version_id)
+        result = await service.get_change_history(version_id)
 
         # Most recent should be first
         assert result[0].changed_at > result[1].changed_at
@@ -1179,10 +1179,10 @@ class TestUpdateCellRaceConditions:
         mock_session = AsyncMock(spec=AsyncSession)
 
         cell_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
         user_id = uuid4()
 
-        cell = create_mock_cell(cell_id, budget_version_id, version=1, value_numeric=Decimal("100"))
+        cell = create_mock_cell(cell_id, version_id, version=1, value_numeric=Decimal("100"))
 
         async def mock_get_cell(cell_id_arg, raise_if_not_found=True):
             return cell
@@ -1218,5 +1218,5 @@ class TestUpdateCellRaceConditions:
         assert result.value_numeric == Decimal("150")
 
         # Check that change was logged (INSERT into cell_changes)
-        log_queries = [q for q, _ in executions if "INSERT INTO efir_budget.cell_changes" in q]
+        log_queries = [q for q, _ in executions if "INSERT INTO efir_budget.admin_cell_changes" in q]
         assert len(log_queries) == 1

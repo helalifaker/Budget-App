@@ -1,0 +1,33 @@
+-- ==============================================================================
+-- DEPRECATED: RLS policies are managed via Alembic migrations
+-- ==============================================================================
+--
+-- As of schema standardization (Phase 3B+) the EFIR Budget App:
+--   - uses a single schema: efir_budget
+--   - uses table prefixes (ref_*, settings_*, students_*, teachers_*, finance_*, insights_*, admin_*)
+--   - standardizes the version FK column name to version_id and centralizes versions in settings_versions
+--
+-- RLS enablement and policy creation/updates are applied via:
+--   backend/alembic/versions/
+--
+-- This file is intentionally NOT an executable “apply all RLS” script anymore, to avoid accidental
+-- execution of stale DDL against production.
+--
+-- ------------------------------------------------------------------------------
+-- Inspection helpers (safe to run)
+-- ------------------------------------------------------------------------------
+--
+-- Show RLS status for efir_budget tables
+-- SELECT schemaname, tablename, rowsecurity
+-- FROM pg_tables
+-- WHERE schemaname = 'efir_budget'
+-- ORDER BY tablename;
+--
+-- List policies for efir_budget
+-- SELECT tablename, policyname, roles, cmd, permissive
+-- FROM pg_policies
+-- WHERE schemaname = 'efir_budget'
+-- ORDER BY tablename, policyname;
+--
+-- ==============================================================================
+

@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test'
-import { setupBudgetVersionMocks, resetMockData } from './helpers/api-mock.helper'
+import { setupVersionMocks, resetMockData } from './helpers/api-mock.helper'
 
 /**
  * E2E Test Suite: External Integrations
@@ -50,7 +50,7 @@ async function setupIntegrationMocks(page: Page): Promise<void> {
 test.describe('Odoo Integration', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupIntegrationMocks(page)
 
     // Login as admin
@@ -162,7 +162,7 @@ test.describe('Odoo Integration', () => {
 test.describe('Skolengo Integration', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupIntegrationMocks(page)
 
     await page.goto('/login')
@@ -243,7 +243,7 @@ test.describe('Skolengo Integration', () => {
 test.describe('AEFE Integration', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupIntegrationMocks(page)
 
     await page.goto('/login')
@@ -348,7 +348,7 @@ test.describe('AEFE Integration', () => {
 test.describe('Integration Error Handling', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupIntegrationMocks(page)
 
     await page.goto('/login')
@@ -395,7 +395,7 @@ test.describe('Integration Error Handling', () => {
 test.describe('Integration Data Sync', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupIntegrationMocks(page)
 
     await page.goto('/login')

@@ -17,10 +17,10 @@ from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from app.schemas.dhg import DHGCalculationResponse
 from app.schemas.enrollment import EnrollmentProjectionResponse
-from app.schemas.kpi import KPICalculationResponse
+from app.schemas.insights import KPIEngineResponse as KPICalculationResponse
 from app.schemas.revenue import RevenueCalculationResponse
+from app.schemas.workforce import DHGCalculationResponse
 
 # Note: `client` fixture is defined in conftest.py with proper engine dependency
 

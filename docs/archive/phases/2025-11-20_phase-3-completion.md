@@ -77,7 +77,7 @@ Implemented 3 model classes across 2 modules:
 
 ### ✅ 3. Row Level Security (RLS) Policies
 
-**File**: `/docs/DATABASE/sql/rls_policies.sql` (updated)
+**File**: `/docs/database/sql/rls_policies.sql` (updated)
 
 **Policy Coverage**:
 - All 3 Consolidation Layer tables

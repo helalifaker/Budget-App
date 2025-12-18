@@ -260,16 +260,16 @@ export function useMultipleCellComments(cellIds: string[]) {
 }
 
 /**
- * Hook for fetching all unresolved comments in a budget version
+ * Hook for fetching all unresolved comments in a version
  *
  * Useful for showing a global list of issues that need attention.
  *
- * @param budgetVersionId - Budget version ID
+ * @param versionId - Version ID
  * @returns Unresolved comments across all cells
  *
  * @example
  * ```typescript
- * const { unresolvedComments, count } = useUnresolvedComments(budgetVersionId);
+ * const { unresolvedComments, count } = useUnresolvedComments(versionId);
  *
  * // Show notification badge
  * <Badge count={count} />
@@ -280,17 +280,17 @@ export function useMultipleCellComments(cellIds: string[]) {
  * ))}
  * ```
  */
-export function useUnresolvedComments(budgetVersionId: string) {
+export function useUnresolvedComments(versionId: string) {
   const query = useQuery({
-    queryKey: ['unresolved-comments', budgetVersionId],
+    queryKey: ['unresolved-comments', versionId],
     queryFn: async (): Promise<CellComment[]> => {
       const response = await apiRequest<CellComment[]>({
         method: 'GET',
-        url: `/writeback/versions/${budgetVersionId}/comments/unresolved`,
+        url: `/writeback/versions/${versionId}/comments/unresolved`,
       })
       return response
     },
-    enabled: !!budgetVersionId,
+    enabled: !!versionId,
     staleTime: 30 * 1000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes cache
     refetchInterval: 60 * 1000, // Auto-refresh every minute

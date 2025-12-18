@@ -17,13 +17,13 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.models.configuration import (
+from app.models import (
     AcademicCycle,
     AcademicLevel,
     ClassSizeParam,
+    ClassStructure,
 )
-from app.models.planning import ClassStructure
-from app.services.class_structure_service import ClassStructureService
+from app.services.enrollment.class_structure_service import ClassStructureService
 from app.services.exceptions import BusinessRuleError, ValidationError
 
 
@@ -50,7 +50,7 @@ def test_user_id():
 
 
 @pytest.fixture
-def mock_budget_version_id():
+def mock_version_id():
     """Create test budget version UUID."""
     return uuid.uuid4()
 
@@ -62,7 +62,6 @@ def mock_maternelle_cycle():
     cycle.id = uuid.uuid4()
     cycle.code = "MATERNELLE"
     cycle.name_fr = "Maternelle"
-    cycle.requires_atsem = True  # ATSEM required for Maternelle
     return cycle
 
 
@@ -73,7 +72,6 @@ def mock_elementaire_cycle():
     cycle.id = uuid.uuid4()
     cycle.code = "ELEMENTAIRE"
     cycle.name_fr = "Élémentaire"
-    cycle.requires_atsem = False
     return cycle
 
 
@@ -84,7 +82,6 @@ def mock_college_cycle():
     cycle.id = uuid.uuid4()
     cycle.code = "COLLEGE"
     cycle.name_fr = "Collège"
-    cycle.requires_atsem = False
     return cycle
 
 
@@ -97,7 +94,6 @@ def mock_maternelle_levels(mock_maternelle_cycle):
     ps.name_fr = "Petite Section"
     ps.cycle_id = mock_maternelle_cycle.id
     ps.cycle = mock_maternelle_cycle
-    ps.is_secondary = False
     ps.sort_order = 1
 
     ms = MagicMock(spec=AcademicLevel)
@@ -106,7 +102,6 @@ def mock_maternelle_levels(mock_maternelle_cycle):
     ms.name_fr = "Moyenne Section"
     ms.cycle_id = mock_maternelle_cycle.id
     ms.cycle = mock_maternelle_cycle
-    ms.is_secondary = False
     ms.sort_order = 2
 
     gs = MagicMock(spec=AcademicLevel)
@@ -115,7 +110,6 @@ def mock_maternelle_levels(mock_maternelle_cycle):
     gs.name_fr = "Grande Section"
     gs.cycle_id = mock_maternelle_cycle.id
     gs.cycle = mock_maternelle_cycle
-    gs.is_secondary = False
     gs.sort_order = 3
 
     return [ps, ms, gs]
@@ -137,7 +131,6 @@ def mock_college_levels(mock_college_cycle):
         level.name_fr = name
         level.cycle_id = mock_college_cycle.id
         level.cycle = mock_college_cycle
-        level.is_secondary = True
         level.sort_order = i + 1
         levels.append(level)
     return levels
@@ -156,13 +149,13 @@ class TestGetClassStructure:
         self,
         class_structure_service: ClassStructureService,
         mock_session,
-        mock_budget_version_id,
+        mock_version_id,
     ):
         """Test successful retrieval of class structure."""
         mock_structures = [
             MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=mock_budget_version_id,
+                version_id=mock_version_id,
                 level_id=uuid.uuid4(),
                 total_students=50,
                 number_of_classes=2,
@@ -174,7 +167,7 @@ class TestGetClassStructure:
         mock_result.scalars.return_value.all.return_value = mock_structures
         mock_session.execute.return_value = mock_result
 
-        result = await class_structure_service.get_class_structure(mock_budget_version_id)
+        result = await class_structure_service.get_class_structure(mock_version_id)
 
         assert len(result) == 1
         mock_session.execute.assert_called_once()
@@ -184,14 +177,14 @@ class TestGetClassStructure:
         self,
         class_structure_service: ClassStructureService,
         mock_session,
-        mock_budget_version_id,
+        mock_version_id,
     ):
         """Test retrieval when no class structures exist."""
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute.return_value = mock_result
 
-        result = await class_structure_service.get_class_structure(mock_budget_version_id)
+        result = await class_structure_service.get_class_structure(mock_version_id)
 
         assert result == []
 
@@ -209,7 +202,7 @@ class TestCalculateClassStructure:
         self,
         class_structure_service: ClassStructureService,
         mock_session,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -258,7 +251,7 @@ class TestCalculateClassStructure:
                     )
 
                     result = await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="target",
                         user_id=test_user_id,
                     )
@@ -271,7 +264,7 @@ class TestCalculateClassStructure:
     async def test_calculate_class_structure_min_method(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -317,7 +310,7 @@ class TestCalculateClassStructure:
                     )
 
                     result = await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="min",
                         user_id=test_user_id,
                     )
@@ -328,7 +321,7 @@ class TestCalculateClassStructure:
     async def test_calculate_class_structure_max_method(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -373,7 +366,7 @@ class TestCalculateClassStructure:
                     )
 
                     result = await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="max",
                         user_id=test_user_id,
                     )
@@ -384,13 +377,13 @@ class TestCalculateClassStructure:
     async def test_calculate_class_structure_invalid_method(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         test_user_id,
     ):
         """Test calculation with invalid method raises ValidationError."""
         with pytest.raises(ValidationError) as exc_info:
             await class_structure_service.calculate_class_structure(
-                version_id=mock_budget_version_id,
+                version_id=mock_version_id,
                 method="invalid_method",
                 user_id=test_user_id,
             )
@@ -401,7 +394,7 @@ class TestCalculateClassStructure:
     async def test_calculate_class_structure_no_enrollment_data(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         test_user_id,
     ):
         """Test calculation fails when no enrollment data exists."""
@@ -412,18 +405,19 @@ class TestCalculateClassStructure:
         ):
             with pytest.raises(BusinessRuleError) as exc_info:
                 await class_structure_service.calculate_class_structure(
-                    version_id=mock_budget_version_id,
+                    version_id=mock_version_id,
                     method="target",
                     user_id=test_user_id,
                 )
 
-            assert "without enrollment data" in str(exc_info.value)
+            # French error message: "Données d'inscription manquantes..."
+            assert "inscription manquantes" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_calculate_class_structure_no_class_size_params(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -443,18 +437,19 @@ class TestCalculateClassStructure:
             ):
                 with pytest.raises(BusinessRuleError) as exc_info:
                     await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="target",
                         user_id=test_user_id,
                     )
 
-                assert "without class size parameters" in str(exc_info.value)
+                # French error message: "Paramètres de taille de classe manquants..."
+                assert "taille de classe manquants" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_calculate_class_structure_with_override(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -495,7 +490,7 @@ class TestCalculateClassStructure:
                     )
 
                     result = await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="target",
                         override_by_level={str(level.id): 4},
                         user_id=test_user_id,
@@ -516,7 +511,7 @@ class TestATSEMAllocation:
     async def test_calculate_atsem_for_maternelle(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_maternelle_levels,
         mock_maternelle_cycle,
         test_user_id,
@@ -563,7 +558,7 @@ class TestATSEMAllocation:
                     )
 
                     await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="target",
                         user_id=test_user_id,
                     )
@@ -578,7 +573,7 @@ class TestATSEMAllocation:
     async def test_no_atsem_for_college(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -620,7 +615,7 @@ class TestATSEMAllocation:
                     )
 
                     await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="target",
                         user_id=test_user_id,
                     )
@@ -834,7 +829,7 @@ class TestBusinessRuleValidation:
     async def test_avg_class_size_below_minimum(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -871,7 +866,7 @@ class TestBusinessRuleValidation:
                 ):
                     with pytest.raises(BusinessRuleError) as exc_info:
                         await class_structure_service.calculate_class_structure(
-                            version_id=mock_budget_version_id,
+                            version_id=mock_version_id,
                             method="target",
                             override_by_level={str(level.id): 2},  # Forces avg = 10
                             user_id=test_user_id,
@@ -883,7 +878,7 @@ class TestBusinessRuleValidation:
     async def test_avg_class_size_exceeds_maximum(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -916,7 +911,7 @@ class TestBusinessRuleValidation:
                 ):
                     with pytest.raises(BusinessRuleError) as exc_info:
                         await class_structure_service.calculate_class_structure(
-                            version_id=mock_budget_version_id,
+                            version_id=mock_version_id,
                             method="target",
                             override_by_level={str(level.id): 3},  # Forces avg = 33.33
                             user_id=test_user_id,
@@ -928,7 +923,7 @@ class TestBusinessRuleValidation:
     async def test_missing_params_for_level(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -962,7 +957,7 @@ class TestBusinessRuleValidation:
                 ):
                     with pytest.raises(BusinessRuleError) as exc_info:
                         await class_structure_service.calculate_class_structure(
-                            version_id=mock_budget_version_id,
+                            version_id=mock_version_id,
                             method="target",
                             user_id=test_user_id,
                         )
@@ -982,7 +977,7 @@ class TestEdgeCases:
     async def test_single_student_creates_one_class(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -1020,7 +1015,7 @@ class TestEdgeCases:
                     )
 
                     await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="target",
                         user_id=test_user_id,
                     )
@@ -1033,7 +1028,7 @@ class TestEdgeCases:
     async def test_update_existing_structure(
         self,
         class_structure_service: ClassStructureService,
-        mock_budget_version_id,
+        mock_version_id,
         mock_college_levels,
         mock_college_cycle,
         test_user_id,
@@ -1077,7 +1072,7 @@ class TestEdgeCases:
                     )
 
                     await class_structure_service.calculate_class_structure(
-                        version_id=mock_budget_version_id,
+                        version_id=mock_version_id,
                         method="target",
                         user_id=test_user_id,
                     )

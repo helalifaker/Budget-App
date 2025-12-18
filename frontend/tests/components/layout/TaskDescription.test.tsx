@@ -74,7 +74,7 @@ describe('TaskDescription', () => {
 
   describe('Auto-Detection from Route', () => {
     it('displays enrollment planning description', () => {
-      mockPathname = '/enrollment/planning'
+      mockPathname = '/students/planning'
       render(<TaskDescription />)
 
       expect(
@@ -83,7 +83,7 @@ describe('TaskDescription', () => {
     })
 
     it('displays class structure description', () => {
-      mockPathname = '/enrollment/class-structure'
+      mockPathname = '/students/class-structure'
       render(<TaskDescription />)
 
       expect(
@@ -92,7 +92,7 @@ describe('TaskDescription', () => {
     })
 
     it('displays workforce employees description', () => {
-      mockPathname = '/workforce/employees'
+      mockPathname = '/teachers/employees'
       render(<TaskDescription />)
 
       expect(
@@ -110,7 +110,7 @@ describe('TaskDescription', () => {
     })
 
     it('displays analysis KPIs description', () => {
-      mockPathname = '/analysis/kpis'
+      mockPathname = '/insights/kpis'
       render(<TaskDescription />)
 
       expect(
@@ -119,11 +119,11 @@ describe('TaskDescription', () => {
     })
 
     it('displays configuration versions description', () => {
-      mockPathname = '/configuration/versions'
+      mockPathname = '/settings/versions'
       render(<TaskDescription />)
 
       expect(
-        screen.getByText('Manage budget versions and fiscal year configurations.')
+        screen.getByText('Manage versions and fiscal year configurations.')
       ).toBeInTheDocument()
     })
 
@@ -169,22 +169,22 @@ describe('TaskDescription', () => {
 
   describe('Path Matching Fallbacks', () => {
     it('falls back to immediate parent path for unknown child routes', () => {
-      // Path: /enrollment/planning/edit → immediate parent is /enrollment/planning → found!
+      // Path: /students/planning/edit → immediate parent is /students/planning → found!
       // Note: The implementation only checks ONE parent level, not recursively
-      mockPathname = '/enrollment/planning/edit'
+      mockPathname = '/students/planning/edit'
       render(<TaskDescription />)
 
-      // Should match /enrollment/planning (the immediate parent)
+      // Should match /students/planning (the immediate parent)
       expect(
         screen.getByText('Enter enrollment projections by grade level for the budget year.')
       ).toBeInTheDocument()
     })
 
     it('falls back to module root for unknown module paths', () => {
-      mockPathname = '/enrollment/unknown-page'
+      mockPathname = '/students/unknown-page'
       render(<TaskDescription />)
 
-      // Should match /enrollment
+      // Should match /students
       expect(
         screen.getByText('Manage student enrollment projections and class structure.')
       ).toBeInTheDocument()
@@ -198,7 +198,7 @@ describe('TaskDescription', () => {
     })
 
     it('handles trailing slash correctly', () => {
-      mockPathname = '/enrollment/planning/'
+      mockPathname = '/students/planning/'
       render(<TaskDescription />)
 
       expect(
@@ -210,12 +210,12 @@ describe('TaskDescription', () => {
   describe('TAB_DESCRIPTIONS Coverage', () => {
     it('has descriptions for all main modules', () => {
       const moduleRoutes = [
-        '/enrollment',
-        '/workforce',
+        '/students',
+        '/teachers',
         '/finance',
-        '/analysis',
+        '/insights',
         '/strategic',
-        '/configuration',
+        '/settings',
       ]
 
       moduleRoutes.forEach((route) => {
@@ -226,10 +226,10 @@ describe('TaskDescription', () => {
 
     it('has descriptions for enrollment subpages', () => {
       const enrollmentRoutes = [
-        '/enrollment/planning',
-        '/enrollment/class-structure',
-        '/enrollment/validation',
-        '/enrollment/settings',
+        '/students/planning',
+        '/students/class-structure',
+        '/students/validation',
+        '/students/settings',
       ]
 
       enrollmentRoutes.forEach((route) => {
@@ -239,13 +239,13 @@ describe('TaskDescription', () => {
 
     it('has descriptions for workforce subpages', () => {
       const workforceRoutes = [
-        '/workforce/employees',
-        '/workforce/salaries',
-        '/workforce/dhg',
-        '/workforce/dhg/planning',
-        '/workforce/dhg/requirements',
-        '/workforce/dhg/gap-analysis',
-        '/workforce/settings',
+        '/teachers/employees',
+        '/teachers/salaries',
+        '/teachers/dhg',
+        '/teachers/dhg/planning',
+        '/teachers/dhg/requirements',
+        '/teachers/dhg/gap-analysis',
+        '/teachers/settings',
       ]
 
       workforceRoutes.forEach((route) => {
@@ -269,7 +269,7 @@ describe('TaskDescription', () => {
     })
 
     it('has descriptions for analysis subpages', () => {
-      const analysisRoutes = ['/analysis/kpis', '/analysis/dashboards', '/analysis/variance']
+      const analysisRoutes = ['/insights/kpis', '/insights/dashboards', '/insights/variance']
 
       analysisRoutes.forEach((route) => {
         expect(TAB_DESCRIPTIONS[route]).toBeDefined()
@@ -278,13 +278,13 @@ describe('TaskDescription', () => {
 
     it('has descriptions for configuration subpages', () => {
       const configRoutes = [
-        '/configuration/versions',
-        '/configuration/class-sizes',
-        '/configuration/subject-hours',
-        '/configuration/teacher-costs',
-        '/configuration/fees',
-        '/configuration/uploads',
-        '/configuration/system',
+        '/settings/versions',
+        '/settings/class-sizes',
+        '/settings/subject-hours',
+        '/settings/teacher-costs',
+        '/settings/fees',
+        '/settings/uploads',
+        '/settings/system',
       ]
 
       configRoutes.forEach((route) => {
@@ -305,7 +305,7 @@ describe('TaskDescription', () => {
 
   describe('Settings Routes', () => {
     it('displays enrollment settings description', () => {
-      mockPathname = '/enrollment/settings'
+      mockPathname = '/students/settings'
       render(<TaskDescription />)
 
       expect(
@@ -314,7 +314,7 @@ describe('TaskDescription', () => {
     })
 
     it('displays workforce settings description', () => {
-      mockPathname = '/workforce/settings'
+      mockPathname = '/teachers/settings'
       render(<TaskDescription />)
 
       expect(
@@ -334,7 +334,7 @@ describe('TaskDescription', () => {
 
   describe('DHG Nested Routes', () => {
     it('displays DHG planning description', () => {
-      mockPathname = '/workforce/dhg/planning'
+      mockPathname = '/teachers/dhg/planning'
       render(<TaskDescription />)
 
       expect(
@@ -343,14 +343,14 @@ describe('TaskDescription', () => {
     })
 
     it('displays DHG requirements description', () => {
-      mockPathname = '/workforce/dhg/requirements'
+      mockPathname = '/teachers/dhg/requirements'
       render(<TaskDescription />)
 
       expect(screen.getByText('Calculate FTE requirements based on DHG hours.')).toBeInTheDocument()
     })
 
     it('displays DHG gap analysis description', () => {
-      mockPathname = '/workforce/dhg/gap-analysis'
+      mockPathname = '/teachers/dhg/gap-analysis'
       render(<TaskDescription />)
 
       expect(

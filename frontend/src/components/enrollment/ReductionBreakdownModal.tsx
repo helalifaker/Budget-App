@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import type { YearProjection } from '@/types/enrollmentProjection'
+import type { YearProjection } from '@/types/enrollment-projection'
 
 interface ReductionBreakdownModalProps {
   open: boolean

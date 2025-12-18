@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { YearProjection } from '@/types/enrollmentProjection'
+import type { YearProjection } from '@/types/enrollment-projection'
 import { Button } from '@/components/ui/button'
 import { ReductionBreakdownModal } from './ReductionBreakdownModal'
 

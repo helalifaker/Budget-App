@@ -61,8 +61,8 @@ All code follows **EFIR Development Standards** with zero TODOs, full type safet
 #### Files Created:
 - `app/models/strategic.py` (763 lines)
 - `alembic/versions/20251201_0138_strategic_layer.py` (855 lines)
-- `docs/DATABASE/sql/rls_policies.sql` (+253 lines)
-- `docs/MODULES/MODULE_18_STRATEGIC_PLANNING.md` (1,076 lines)
+- `docs/database/sql/rls_policies.sql` (+253 lines)
+- `docs/modules/MODULE_18_STRATEGIC_PLANNING.md` (1,076 lines)
 
 #### Models Implemented:
 1. **StrategicPlan** - Plan headers with name, base_year, status

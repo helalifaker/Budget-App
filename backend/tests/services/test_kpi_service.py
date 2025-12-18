@@ -18,12 +18,23 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.models.analysis import KPICategory, KPIDefinition, KPIValue
-from app.models.configuration import AcademicLevel, BudgetVersion, BudgetVersionStatus, Subject
-from app.models.planning import DHGSubjectHours
+from app.models import (
+    AcademicLevel,
+    DHGSubjectHours,
+    KPICategory,
+    KPIDefinition,
+    KPIValue,
+    Subject,
+    Version,
+    VersionStatus,
+)
 from app.services.exceptions import NotFoundError, ValidationError
-from app.services.kpi_service import KPIService
+from app.services.insights.kpi_service import KPIService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility aliases
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
 
 
 @pytest.fixture
@@ -299,7 +310,7 @@ class TestKPICalculation:
                 return_value=mock_kpi_definitions,
             ):
                 result = await kpi_service.calculate_kpis(
-                    budget_version_id=mock_budget_version.id
+                    version_id=mock_budget_version.id
                 )
 
                 assert isinstance(result, dict)
@@ -567,7 +578,7 @@ class TestKPICalculation:
                 return_value=h_e_def,
             ):
                 result = await kpi_service.calculate_kpis(
-                    budget_version_id=mock_budget_version.id,
+                    version_id=mock_budget_version.id,
                     kpi_codes=["H_E_PRIMARY"],
                 )
 
@@ -585,7 +596,7 @@ class TestKPICalculation:
         mock_session.execute.return_value = mock_result
 
         with pytest.raises(NotFoundError):
-            await kpi_service.calculate_kpis(budget_version_id=uuid.uuid4())
+            await kpi_service.calculate_kpis(version_id=uuid.uuid4())
 
 
 # ==============================================================================
@@ -600,7 +611,7 @@ class TestKpiCalculationDataWithDhg:
     async def test_teacher_fte_split_by_level(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         subjects: dict[str, Subject],
         academic_levels: dict[str, AcademicLevel],
         test_user_id: uuid.UUID,
@@ -611,7 +622,7 @@ class TestKpiCalculationDataWithDhg:
         db_session.add(
             DHGSubjectHours(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
+                version_id=test_version.id,
                 subject_id=subjects["MATH"].id,
                 level_id=academic_levels["PS"].id,
                 number_of_classes=2,
@@ -624,7 +635,7 @@ class TestKpiCalculationDataWithDhg:
         await db_session.flush()
 
         service = KPIService(db_session)
-        kpi_data = await service._get_kpi_calculation_data(test_budget_version.id)
+        kpi_data = await service._get_kpi_calculation_data(test_version.id)
 
         assert kpi_data["primary_teacher_fte"] == Decimal("0.50")
         # Secondary hours from test_dhg_data: 13.5 + 15.0 = 28.5 → 28.5/18 = 1.58
@@ -670,7 +681,7 @@ class TestKPIValueStorage:
             return_value=h_e_def,
         ):
             await kpi_service.save_kpi_values(
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_budget_version.id,
                 kpi_results=kpi_results,
             )
 
@@ -713,7 +724,7 @@ class TestKPIValueStorage:
             return_value=h_e_def,
         ):
             await kpi_service.save_kpi_values(
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_budget_version.id,
                 kpi_results=kpi_results,
             )
 
@@ -745,7 +756,7 @@ class TestKPIValueStorage:
             return_value=h_e_def,
         ):
             result = await kpi_service.get_kpi_by_type(
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_budget_version.id,
                 kpi_code="H_E_PRIMARY",
             )
 
@@ -772,7 +783,7 @@ class TestKPIValueStorage:
         mock_session.execute.return_value = mock_result
 
         result = await kpi_service.get_all_kpis(
-            budget_version_id=mock_budget_version.id
+            version_id=mock_budget_version.id
         )
 
         assert len(result) == 3
@@ -798,7 +809,7 @@ class TestKPIValueStorage:
         mock_session.execute.return_value = mock_result
 
         result = await kpi_service.get_all_kpis(
-            budget_version_id=mock_budget_version.id,
+            version_id=mock_budget_version.id,
             category=KPICategory.EDUCATIONAL,
         )
 
@@ -911,7 +922,7 @@ class TestAEFEBenchmarkComparison:
             return_value=[kpi_value],
         ):
             result = await kpi_service.get_benchmark_comparison(
-                budget_version_id=mock_budget_version.id
+                version_id=mock_budget_version.id
             )
 
             assert "H_E_PRIMARY" in result
@@ -939,7 +950,7 @@ class TestAEFEBenchmarkComparison:
             return_value=[kpi_value],
         ):
             result = await kpi_service.get_benchmark_comparison(
-                budget_version_id=mock_budget_version.id
+                version_id=mock_budget_version.id
             )
 
             assert "H_E_PRIMARY" in result
@@ -967,7 +978,7 @@ class TestAEFEBenchmarkComparison:
             return_value=[kpi_value],
         ):
             result = await kpi_service.get_benchmark_comparison(
-                budget_version_id=mock_budget_version.id
+                version_id=mock_budget_version.id
             )
 
             assert "H_E_PRIMARY" in result
@@ -994,7 +1005,7 @@ class TestAEFEBenchmarkComparison:
             return_value=[kpi_value],
         ):
             result = await kpi_service.get_benchmark_comparison(
-                budget_version_id=mock_budget_version.id
+                version_id=mock_budget_version.id
             )
 
             assert "COST_PER_STUDENT" in result
@@ -1108,7 +1119,7 @@ class TestErrorHandling:
         ):
             with pytest.raises(Exception):
                 await kpi_service.calculate_kpis(
-                    budget_version_id=mock_budget_version.id
+                    version_id=mock_budget_version.id
                 )
 
     @pytest.mark.asyncio
@@ -1141,7 +1152,7 @@ class TestErrorHandling:
                 ):
                     with pytest.raises(ValidationError) as exc_info:
                         await kpi_service.calculate_kpis(
-                            budget_version_id=mock_budget_version.id
+                            version_id=mock_budget_version.id
                         )
 
                     assert "Failed to calculate KPI" in str(exc_info.value)

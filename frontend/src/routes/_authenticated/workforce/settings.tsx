@@ -6,7 +6,7 @@
  * - Cost Parameters: Default salaries by category
  * - HSA Rates: Overtime configuration
  *
- * @module /workforce/settings
+ * @module /teachers/settings
  */
 
 import { createFileRoute, Link } from '@tanstack/react-router'
@@ -14,7 +14,7 @@ import { requireAuth } from '@/lib/auth-guard'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Settings, Clock, DollarSign, BookOpen, ArrowRight } from 'lucide-react'
+import { Settings, Clock, DollarSign, BookOpen, ArrowRight, Calendar } from 'lucide-react'
 
 export const Route = createFileRoute('/_authenticated/workforce/settings')({
   beforeLoad: requireAuth,
@@ -46,6 +46,14 @@ function WorkforceSettingsPage() {
       href: '/workforce/settings/hsa-rates',
       color: 'twilight',
       details: ['Max HSA hours', 'Hourly rates', 'HSA strategy'],
+    },
+    {
+      title: 'Timetable Constraints',
+      description: 'Weekly limits for hours/day, hours/week, and breaks',
+      icon: Calendar,
+      href: '/workforce/settings/timetable',
+      color: 'sage',
+      details: ['Hours per week by level', 'Max hours per day', 'Break requirements'],
     },
   ]
 
@@ -91,7 +99,7 @@ function WorkforceSettingsPage() {
         </Card>
 
         {/* Settings Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {settingsCards.map((card) => {
             const Icon = card.icon
             const colors = colorClasses[card.color as keyof typeof colorClasses]

@@ -4,7 +4,7 @@ import { withServiceErrorHandling } from './utils'
 // Types matching backend schemas
 interface PersonnelCostPlan {
   id: string
-  budget_version_id: string
+  version_id: string
   account_code: string
   description: string
   fte_count: number
@@ -21,7 +21,7 @@ interface PersonnelCostPlan {
 
 interface OperatingCostPlan {
   id: string
-  budget_version_id: string
+  version_id: string
   account_code: string
   description: string
   category: string
@@ -47,7 +47,7 @@ export const costsApi = {
     return withServiceErrorHandling(
       apiRequest<PersonnelCostPlan[]>({
         method: 'GET',
-        url: `/planning/costs/personnel/${versionId}`,
+        url: `/costs/personnel/${versionId}`,
       }),
       'costs: get personnel costs'
     )
@@ -57,7 +57,7 @@ export const costsApi = {
     return withServiceErrorHandling(
       apiRequest<PersonnelCostPlan[]>({
         method: 'POST',
-        url: `/planning/costs/personnel/${versionId}/calculate`,
+        url: `/costs/personnel/${versionId}/calculate`,
         data: { eur_to_sar_rate: eurToSarRate },
       }),
       'costs: calculate personnel costs'
@@ -81,7 +81,7 @@ export const costsApi = {
     return withServiceErrorHandling(
       apiRequest<PersonnelCostPlan>({
         method: 'POST',
-        url: `/planning/costs/personnel/${versionId}`,
+        url: `/costs/personnel/${versionId}`,
         data,
       }),
       'costs: create personnel cost'
@@ -93,7 +93,7 @@ export const costsApi = {
     return withServiceErrorHandling(
       apiRequest<OperatingCostPlan[]>({
         method: 'GET',
-        url: `/planning/costs/operating/${versionId}`,
+        url: `/costs/operating/${versionId}`,
       }),
       'costs: get operating costs'
     )
@@ -103,7 +103,7 @@ export const costsApi = {
     return withServiceErrorHandling(
       apiRequest<OperatingCostPlan[]>({
         method: 'POST',
-        url: `/planning/costs/operating/${versionId}/calculate`,
+        url: `/costs/operating/${versionId}/calculate`,
         data: { driver_rates: driverRates },
       }),
       'costs: calculate operating costs'
@@ -125,7 +125,7 @@ export const costsApi = {
     return withServiceErrorHandling(
       apiRequest<OperatingCostPlan>({
         method: 'POST',
-        url: `/planning/costs/operating/${versionId}`,
+        url: `/costs/operating/${versionId}`,
         data,
       }),
       'costs: create operating cost'
@@ -137,7 +137,7 @@ export const costsApi = {
     return withServiceErrorHandling(
       apiRequest<CostSummary>({
         method: 'GET',
-        url: `/planning/costs/${versionId}/summary`,
+        url: `/costs/${versionId}/summary`,
       }),
       'costs: get summary'
     )

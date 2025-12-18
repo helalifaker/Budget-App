@@ -50,7 +50,7 @@ export const impactService = {
   ): Promise<ImpactCalculationResponse> => {
     return apiRequest<ImpactCalculationResponse>({
       method: 'POST',
-      url: `/planning/${versionId}/impact`,
+      url: `/impact/${versionId}`,
       data: request,
     })
   },

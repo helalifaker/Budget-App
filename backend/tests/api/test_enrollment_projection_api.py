@@ -105,7 +105,7 @@ class TestProjectionConfigEndpoints:
             mock_service = AsyncMock()
             mock_service.get_or_create_config.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 scenario_id=uuid.uuid4(),
                 scenario=MagicMock(
                     id=uuid.uuid4(),
@@ -149,7 +149,7 @@ class TestProjectionConfigEndpoints:
             mock_service = AsyncMock()
             mock_service.update_config.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 scenario_id=scenario_id,
                 base_year=2026,
                 projection_years=3,
@@ -205,7 +205,7 @@ class TestGlobalOverridesEndpoints:
             mock_service = AsyncMock()
             mock_service.update_global_overrides.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 status="draft",
             )
             mock_svc.return_value = mock_service
@@ -263,7 +263,7 @@ class TestLevelOverridesEndpoints:
             mock_service = AsyncMock()
             mock_service.update_level_overrides.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 status="draft",
             )
             mock_svc.return_value = mock_service
@@ -299,7 +299,7 @@ class TestGradeOverridesEndpoints:
             mock_service = AsyncMock()
             mock_service.update_grade_overrides.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 status="draft",
             )
             mock_svc.return_value = mock_service
@@ -337,7 +337,7 @@ class TestProjectionResultsEndpoints:
             mock_service.get_projection_results.return_value = {
                 "config": MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     scenario_id=uuid.uuid4(),
                     scenario=MagicMock(
                         code="base",
@@ -490,7 +490,7 @@ class TestValidationEndpoints:
             mock_service = AsyncMock()
             mock_service.unvalidate.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 status="draft",
                 validated_at=None,
                 validated_by=None,

@@ -289,7 +289,7 @@ class TestExists:
         mock_result.scalar_one.return_value = 5
         db_session.execute.return_value = mock_result
 
-        result = await base_service.exists({"budget_version_id": uuid.uuid4()})
+        result = await base_service.exists({"version_id": uuid.uuid4()})
 
         assert result is True
 
@@ -300,7 +300,7 @@ class TestExists:
         mock_result.scalar_one.return_value = 0
         db_session.execute.return_value = mock_result
 
-        result = await base_service.exists({"budget_version_id": uuid.uuid4()})
+        result = await base_service.exists({"version_id": uuid.uuid4()})
 
         assert result is False
 

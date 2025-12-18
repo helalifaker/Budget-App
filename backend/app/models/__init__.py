@@ -1,16 +1,89 @@
 """
 EFIR Budget Planning Application - Database Models
 
-This package contains all SQLAlchemy ORM models organized by layer:
-- base: Base classes and mixins
-- configuration: Configuration Layer (Modules 1-6)
-- planning: Planning Layer (Modules 7-12)
-- consolidation: Consolidation Layer (Modules 13-14)
-- analysis: Analysis Layer (Modules 15-17)
-- strategic: Strategic Layer (Module 18)
+This package contains all SQLAlchemy ORM models organized by module-aligned files:
+
+CANONICAL IMPORTS (use these for new code):
+-------------------------------------------
+- base: Base classes, mixins, and utilities
+- reference: Reference data models (ref_* tables) - 8 models
+- settings: System configuration models (settings_* tables) - 12 models
+- students: Student/enrollment models (students_* tables) - 16 models
+- teachers: Workforce/personnel models (teachers_* tables) - 7 models
+- finance: Financial planning models (finance_* tables) - 9 models
+- insights: Analytics/dashboard models (insights_* tables) - 8 models
+- admin: Administrative models (admin_* tables) - 3 models
+
+BACKWARD COMPATIBILITY:
+-----------------------
+Old imports from configuration.py, planning.py, personnel.py, consolidation.py,
+analysis.py, strategic.py, enrollment_projection.py, enrollment_unified.py,
+finance_unified.py, integrations.py, and auth.py continue to work but are
+deprecated. Please update to new canonical imports.
+
+Module Architecture (10 Modules):
+---------------------------------
+| Module       | Route           | Models                                    |
+|--------------|-----------------|-------------------------------------------|
+| Enrollment   | /enrollment/*   | students.py (16 models)                   |
+| Workforce    | /workforce/*    | teachers.py (7 models)                    |
+| Revenue      | /revenue/*      | finance.py (FinanceData, type=revenue)    |
+| Costs        | /costs/*        | finance.py (FinanceData, type=cost)       |
+| Investments  | /investments/*  | finance.py (FinanceData, type=capex)      |
+| Consolidation| /consolidation/*| finance.py (4 consolidation models)       |
+| Insights     | /insights/*     | insights.py (8 models)                    |
+| Strategic    | /strategic/*    | settings.py (4 strategic models)          |
+| Settings     | /settings/*     | settings.py (8 settings models)           |
+| Admin        | /admin/*        | admin.py (3 models)                       |
 """
 
-from app.models.analysis import (
+# ==============================================================================
+# CANONICAL IMPORTS - Use these for new code
+# ==============================================================================
+
+# Base classes and utilities
+# Admin (admin_* tables)
+from app.models.admin import (
+    IntegrationLog,
+    Organization,
+    User,
+)
+from app.models.base import (
+    AuditMixin,
+    Base,
+    BaseModel,
+    PortableJSON,
+    ReferenceDataModel,
+    SoftDeleteMixin,
+    TimestampMixin,
+    VersionedMixin,
+    get_fk_target,
+    get_schema,
+    get_table_args,
+)
+
+# Finance (finance_* tables)
+from app.models.finance import (
+    # Active Models
+    BudgetConsolidation,
+    # Legacy Models (deprecated - Phase 4C)
+    CapExPlan,
+    # Enums
+    ConsolidationCategory,
+    FinanceData,
+    FinanceDataType,
+    FinancialStatement,
+    FinancialStatementLine,
+    LineType,
+    OperatingCostPlan,
+    PersonnelCostPlan,
+    RevenuePlan,
+    StatementFormat,
+    StatementType,
+)
+
+# Insights (insights_* tables)
+from app.models.insights import (
     # Models
     ActualData,
     # Enums
@@ -19,200 +92,257 @@ from app.models.analysis import (
     DashboardConfig,
     DashboardRole,
     DashboardWidget,
-    # Historical Comparison
     HistoricalActuals,
     HistoricalDataSource,
     HistoricalDimensionType,
     HistoricalModuleCode,
-    KPICategory,
-    KPIDefinition,
     KPIValue,
     UserPreferences,
     VarianceExplanation,
     VarianceStatus,
     WidgetType,
 )
-from app.models.auth import Organization, User
-from app.models.base import (
-    AuditMixin,
-    Base,
-    BaseModel,
-    ReferenceDataModel,
-    SoftDeleteMixin,
-    TimestampMixin,
-    VersionedMixin,
-)
-from app.models.configuration import (
+
+# Reference Data (ref_* tables)
+from app.models.reference import (
+    # Models
     AcademicCycle,
     AcademicLevel,
-    BudgetVersion,
-    BudgetVersionStatus,
-    ClassSizeParam,
+    EnrollmentScenario,
     FeeCategory,
-    FeeStructure,
+    # Enums
+    KPICategory,
+    KPIDefinition,
     NationalityType,
     Subject,
+    TeacherCategory,
+)
+
+# Settings (settings_* tables)
+from app.models.settings import (
+    # Models
+    ClassSizeParam,
+    FeeStructure,
+    # Enums
+    InitiativeStatus,
+    IntegrationSettings,
+    ProjectionCategory,
+    ScenarioType,
+    StrategicInitiative,
+    StrategicPlan,
+    StrategicPlanProjection,
+    StrategicPlanScenario,
+    StrategicScenarioType,
     SubjectHoursMatrix,
     SystemConfig,
-    TeacherCategory,
     TeacherCostParam,
     TimetableConstraint,
+    Version,
+    VersionStatus,
 )
-from app.models.consolidation import (
-    BudgetConsolidation,
-    ConsolidationCategory,
-    FinancialStatement,
-    FinancialStatementLine,
-    LineType,
-    StatementFormat,
-    StatementType,
-)
-from app.models.enrollment_projection import (
+
+# Students (students_* tables)
+from app.models.students import (
+    # Enums
+    CalibrationOrigin,
+    # Active Models
+    ClassStructure,
+    DataSourceType,
+    # Legacy Models (deprecated - Phase 4A)
     EnrollmentDerivedParameter,
     EnrollmentGlobalOverride,
     EnrollmentGradeOverride,
     EnrollmentLateralEntryDefault,
     EnrollmentLevelOverride,
     EnrollmentParameterOverride,
+    EnrollmentPlan,
     EnrollmentProjection,
     EnrollmentProjectionConfig,
-    EnrollmentScenario,
     EnrollmentScenarioMultiplier,
+    NationalityDistribution,
+    OverrideScope,
+    StudentsCalibration,
+    StudentsConfig,
+    StudentsData,
+    StudentsOverride,
 )
-from app.models.personnel import (
-    # Models
+
+# Teachers (teachers_* tables)
+from app.models.teachers import (
+    # Legacy Models (deprecated - Phase 4B)
     AEFEPosition,
     # Enums
     AEFEPositionType,
     ContractType,
+    # Active Models
+    DHGSubjectHours,
+    DHGTeacherRequirement,
     Employee,
     EmployeeCategory,
     EmployeeNationality,
     EmployeeSalary,
     EOSProvision,
+    TeacherAllocation,
     TerminationType,
 )
-from app.models.planning import (
-    CapExPlan,
-    ClassStructure,
-    DHGSubjectHours,
-    DHGTeacherRequirement,
-    EnrollmentPlan,
-    NationalityDistribution,
-    OperatingCostPlan,
-    PersonnelCostPlan,
-    RevenuePlan,
-    TeacherAllocation,
-)
-from app.models.strategic import (
-    # Enums
-    InitiativeStatus,
-    ProjectionCategory,
-    ScenarioType,
-    # Models
-    StrategicInitiative,
-    StrategicPlan,
-    StrategicPlanProjection,
-    StrategicPlanScenario,
-)
+
+# ==============================================================================
+# BACKWARD COMPATIBILITY ALIASES
+# These aliases maintain compatibility with old import paths.
+# Please update to canonical imports above for new code.
+# ==============================================================================
+
+# Version aliases (old names → new names)
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
+
+# Mixin alias (was in enrollment_unified, now not needed as separate export)
+LineageMixin = VersionedMixin  # Lineage columns are now part of models directly
+
+# ==============================================================================
+# ALL EXPORTS
+# ==============================================================================
 
 __all__ = [
-    # Personnel Layer (Workforce Module)
-    "AEFEPosition",
-    "AEFEPositionType",
-    "AcademicCycle",
-    "AcademicLevel",
-    "ActualData",
-    "ActualDataSource",
-    "AuditMixin",
-    # Base classes
+    # =========================================================================
+    # Base Classes & Utilities
+    # =========================================================================
     "Base",
     "BaseModel",
-    # Consolidation Layer (Modules 13-14)
-    "BudgetConsolidation",
-    "BudgetVersion",
-    "BudgetVersionStatus",
-    "BudgetVsActual",
-    "CapExPlan",
-    "ClassSizeParam",
-    "ClassStructure",
-    "ConsolidationCategory",
-    "ContractType",
-    "DHGSubjectHours",
-    "DHGTeacherRequirement",
-    "DashboardConfig",
-    "DashboardRole",
-    "DashboardWidget",
-    "EOSProvision",
-    "Employee",
-    "EmployeeCategory",
-    "EmployeeNationality",
-    "EmployeeSalary",
-    # Planning Layer (Modules 7-12)
-    "EnrollmentPlan",
-    # Enrollment Projection (Module 7 upgrade)
+    "ReferenceDataModel",
+    "AuditMixin",
+    "SoftDeleteMixin",
+    "TimestampMixin",
+    "VersionedMixin",
+    "PortableJSON",
+    "get_fk_target",
+    "get_schema",
+    "get_table_args",
+    # =========================================================================
+    # Reference Data (ref_* - 8 models)
+    # =========================================================================
+    "AcademicCycle",
+    "AcademicLevel",
+    "Subject",
+    "TeacherCategory",
+    "FeeCategory",
+    "NationalityType",
     "EnrollmentScenario",
+    "KPIDefinition",
+    # Reference Enums
+    "KPICategory",
+    # =========================================================================
+    # Settings (settings_* - 12 models)
+    # =========================================================================
+    "SystemConfig",
+    "Version",
+    "ClassSizeParam",
+    "SubjectHoursMatrix",
+    "TeacherCostParam",
+    "FeeStructure",
+    "TimetableConstraint",
+    "IntegrationSettings",
+    "StrategicPlan",
+    "StrategicPlanScenario",
+    "StrategicPlanProjection",
+    "StrategicInitiative",
+    # Settings Enums
+    "VersionStatus",
+    "ScenarioType",
+    "StrategicScenarioType",
+    "InitiativeStatus",
+    "ProjectionCategory",
+    # =========================================================================
+    # Students (students_* - 16 models)
+    # =========================================================================
+    # Active Models (9)
+    "EnrollmentPlan",
+    "NationalityDistribution",
+    "ClassStructure",
     "EnrollmentLateralEntryDefault",
+    "EnrollmentProjection",
+    "StudentsConfig",
+    "StudentsData",
+    "StudentsOverride",
+    "StudentsCalibration",
+    # Legacy Models - Deprecated (7)
     "EnrollmentProjectionConfig",
     "EnrollmentGlobalOverride",
     "EnrollmentLevelOverride",
     "EnrollmentGradeOverride",
-    "EnrollmentProjection",
-    # Enrollment Settings (Dynamic Lateral Entry)
     "EnrollmentDerivedParameter",
     "EnrollmentParameterOverride",
     "EnrollmentScenarioMultiplier",
-    "FeeCategory",
-    "FeeStructure",
+    # Students Enums
+    "OverrideScope",
+    "CalibrationOrigin",
+    "DataSourceType",
+    # =========================================================================
+    # Teachers (teachers_* - 7 models)
+    # =========================================================================
+    # Active Models (5)
+    "Employee",
+    "EOSProvision",
+    "DHGSubjectHours",
+    "DHGTeacherRequirement",
+    "TeacherAllocation",
+    # Legacy Models - Deprecated (2)
+    "EmployeeSalary",
+    "AEFEPosition",
+    # Teachers Enums
+    "EmployeeCategory",
+    "EmployeeNationality",
+    "ContractType",
+    "TerminationType",
+    "AEFEPositionType",
+    # =========================================================================
+    # Finance (finance_* - 9 models)
+    # =========================================================================
+    # Active Models (4)
+    "FinanceData",
+    "BudgetConsolidation",
     "FinancialStatement",
     "FinancialStatementLine",
-    # Historical Comparison
-    "HistoricalActuals",
-    "HistoricalDataSource",
-    "HistoricalDimensionType",
-    "HistoricalModuleCode",
-    "InitiativeStatus",
-    # Analysis Layer (Modules 15-17)
-    # Enums
-    "KPICategory",
-    # Models
-    "KPIDefinition",
-    "KPIValue",
-    "LineType",
-    "NationalityDistribution",
-    "NationalityType",
-    "OperatingCostPlan",
-    "PersonnelCostPlan",
-    "ProjectionCategory",
-    "ReferenceDataModel",
+    # Legacy Models - Deprecated (4)
     "RevenuePlan",
-    # Strategic Layer (Module 18)
-    # Enums
-    "ScenarioType",
-    "SoftDeleteMixin",
-    "StatementFormat",
+    "PersonnelCostPlan",
+    "OperatingCostPlan",
+    "CapExPlan",
+    # Finance Enums
+    "FinanceDataType",
+    "ConsolidationCategory",
     "StatementType",
-    "StrategicInitiative",
-    # Models
-    "StrategicPlan",
-    "StrategicPlanProjection",
-    "StrategicPlanScenario",
-    "Subject",
-    "SubjectHoursMatrix",
-    # Configuration Layer (Modules 1-6)
-    "SystemConfig",
-    "TeacherAllocation",
-    "TeacherCategory",
-    "TeacherCostParam",
-    "TerminationType",
-    "TimestampMixin",
-    "TimetableConstraint",
-    # Auth models
-    "Organization",
-    "User",
+    "StatementFormat",
+    "LineType",
+    # =========================================================================
+    # Insights (insights_* - 8 models)
+    # =========================================================================
+    "KPIValue",
+    "DashboardConfig",
+    "DashboardWidget",
     "UserPreferences",
+    "ActualData",
+    "BudgetVsActual",
     "VarianceExplanation",
-    "VarianceStatus",
-    "VersionedMixin",
+    "HistoricalActuals",
+    # Insights Enums
     "WidgetType",
+    "DashboardRole",
+    "VarianceStatus",
+    "ActualDataSource",
+    "HistoricalModuleCode",
+    "HistoricalDimensionType",
+    "HistoricalDataSource",
+    # =========================================================================
+    # Admin (admin_* - 3 models)
+    # =========================================================================
+    "User",
+    "Organization",
+    "IntegrationLog",
+    # =========================================================================
+    # Backward Compatibility Aliases
+    # =========================================================================
+    "BudgetVersion",  # → Version
+    "BudgetVersionStatus",  # → VersionStatus
+    "LineageMixin",  # → VersionedMixin
 ]

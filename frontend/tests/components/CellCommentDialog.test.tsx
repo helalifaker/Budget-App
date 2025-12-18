@@ -103,10 +103,10 @@ describe('CellCommentDialog', () => {
       </QueryClientProvider>
     )
 
-    const textarea = screen.getByPlaceholderText('Ajouter un commentaire...')
+    const textarea = screen.getByPlaceholderText('Add a comment...')
     await user.type(textarea, 'New comment text')
 
-    const addButton = screen.getByText('Ajouter')
+    const addButton = screen.getByText('Add')
     await user.click(addButton)
 
     await waitFor(() => {
@@ -128,6 +128,6 @@ describe('CellCommentDialog', () => {
       </QueryClientProvider>
     )
 
-    expect(screen.getByText('Aucun commentaire')).toBeInTheDocument()
+    expect(screen.getByText('No comments')).toBeInTheDocument()
   })
 })

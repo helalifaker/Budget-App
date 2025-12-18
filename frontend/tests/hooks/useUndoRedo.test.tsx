@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useUndoRedo } from '@/hooks/useUndoRedo'
+import { useUndoRedo } from '@/hooks/state/useUndoRedo'
 import { apiRequest } from '@/lib/api-client'
 import { CellChange } from '@/types/writeback'
 
@@ -34,7 +34,7 @@ function createWrapper() {
 }
 
 describe('useUndoRedo', () => {
-  const budgetVersionId = 'test-budget-version-id'
+  const versionId = 'test-budget-version-id'
   const moduleCode = 'enrollment'
 
   beforeEach(() => {
@@ -49,7 +49,7 @@ describe('useUndoRedo', () => {
     it('should initialize with empty stacks', async () => {
       mockApiRequest.mockResolvedValue([])
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -95,7 +95,7 @@ describe('useUndoRedo', () => {
 
       mockApiRequest.mockResolvedValue(mockChanges)
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -140,7 +140,7 @@ describe('useUndoRedo', () => {
 
       mockApiRequest.mockResolvedValue(mockChanges)
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -171,7 +171,7 @@ describe('useUndoRedo', () => {
 
       mockApiRequest.mockResolvedValue(mockChanges)
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -208,7 +208,7 @@ describe('useUndoRedo', () => {
           new_session_id: 'undo-session-1',
         }) // Undo response
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -232,7 +232,7 @@ describe('useUndoRedo', () => {
     it('should not call undo when stack is empty', async () => {
       mockApiRequest.mockResolvedValue([])
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -280,7 +280,7 @@ describe('useUndoRedo', () => {
           )
       )
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -331,7 +331,7 @@ describe('useUndoRedo', () => {
           new_session_id: 'redo-session-1',
         }) // Redo response
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -355,7 +355,7 @@ describe('useUndoRedo', () => {
     it('should not call redo when stack is empty', async () => {
       mockApiRequest.mockResolvedValue([])
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -396,7 +396,7 @@ describe('useUndoRedo', () => {
         new_session_id: 'undo-session-1',
       })
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -447,7 +447,7 @@ describe('useUndoRedo', () => {
         new_session_id: 'redo-session-1',
       })
 
-      const { result } = renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      const { result } = renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 
@@ -495,7 +495,7 @@ describe('useUndoRedo', () => {
 
       mockApiRequest.mockResolvedValue(mockChanges)
 
-      renderHook(() => useUndoRedo(budgetVersionId, moduleCode), {
+      renderHook(() => useUndoRedo(versionId, moduleCode), {
         wrapper: createWrapper(),
       })
 

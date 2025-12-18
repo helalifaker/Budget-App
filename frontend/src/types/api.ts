@@ -17,23 +17,43 @@ export type PaginatedResponse<T> = {
   total_pages: number
 }
 
-// Budget Version
-export const BudgetVersionSchema = z.object({
+// Scenario Type enum
+export const ScenarioTypeSchema = z.enum(['ACTUAL', 'BUDGET', 'FORECAST', 'STRATEGIC', 'WHAT_IF'])
+export type ScenarioType = z.infer<typeof ScenarioTypeSchema>
+
+// Version Status
+export const VersionStatusSchema = z.enum([
+  'working',
+  'submitted',
+  'approved',
+  'forecast',
+  'superseded',
+])
+export type VersionStatus = z.infer<typeof VersionStatusSchema>
+
+// Version
+export const VersionSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   fiscal_year: z.number(),
   academic_year: z.string(),
-  status: z.enum(['working', 'submitted', 'approved', 'forecast', 'superseded']),
+  status: VersionStatusSchema,
+  scenario_type: ScenarioTypeSchema,
   submitted_at: z.string().nullable(),
   approved_at: z.string().nullable(),
   is_baseline: z.boolean(),
   parent_version_id: z.string().uuid().nullable(),
+  organization_id: z.string().uuid(),
   created_at: z.string(),
   updated_at: z.string(),
   notes: z.string().nullable(),
 })
 
-export type BudgetVersion = z.infer<typeof BudgetVersionSchema>
+export type Version = z.infer<typeof VersionSchema>
+
+// Backward compatibility aliases
+export const BudgetVersionSchema = VersionSchema
+export type BudgetVersion = Version
 
 // System Configuration
 export const SystemConfigSchema = z.object({
@@ -52,7 +72,7 @@ export type SystemConfig = z.infer<typeof SystemConfigSchema>
 // Enrollment
 export const EnrollmentSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   level_id: z.string().uuid(),
   nationality_type_id: z.string().uuid(),
   student_count: z.number(),
@@ -65,7 +85,7 @@ export type Enrollment = z.infer<typeof EnrollmentSchema>
 // Nationality Distribution (per-level percentage breakdown)
 export const NationalityDistributionSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   level_id: z.string().uuid(),
   french_pct: z.number().min(0).max(100),
   saudi_pct: z.number().min(0).max(100),
@@ -163,7 +183,7 @@ export type FeeCategory = z.infer<typeof FeeCategorySchema>
 // Fee Structure
 export const FeeStructureSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   level_id: z.string().uuid(),
   nationality_type_id: z.string().uuid(),
   fee_category_id: z.string().uuid(),
@@ -191,7 +211,7 @@ export type Cycle = z.infer<typeof CycleSchema>
 // Class Size Parameters
 export const ClassSizeParamSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   level_id: z.string().uuid().nullable(),
   cycle_id: z.string().uuid().nullable(),
   min_class_size: z.number().int().min(1).max(50),
@@ -204,10 +224,50 @@ export const ClassSizeParamSchema = z.object({
 
 export type ClassSizeParam = z.infer<typeof ClassSizeParamSchema>
 
+// Class Size Batch Operations (for optimistic locking)
+export const ClassSizeParamBatchEntrySchema = z.object({
+  level_id: z.string().uuid(),
+  min_class_size: z.number().int().min(1).max(50),
+  target_class_size: z.number().int().min(1).max(50),
+  max_class_size: z.number().int().min(1).max(50),
+  notes: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional(), // For optimistic locking
+})
+
+export type ClassSizeParamBatchEntry = z.infer<typeof ClassSizeParamBatchEntrySchema>
+
+export const ClassSizeParamBatchRequestSchema = z.object({
+  version_id: z.string().uuid(),
+  entries: z.array(ClassSizeParamBatchEntrySchema).min(1).max(50),
+})
+
+export type ClassSizeParamBatchRequest = z.infer<typeof ClassSizeParamBatchRequestSchema>
+
+export const ClassSizeParamBatchResponseEntrySchema = z.object({
+  level_id: z.string().uuid(),
+  id: z.string().uuid().nullable(),
+  status: z.enum(['created', 'updated', 'conflict']),
+  error: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional(),
+})
+
+export type ClassSizeParamBatchResponseEntry = z.infer<
+  typeof ClassSizeParamBatchResponseEntrySchema
+>
+
+export const ClassSizeParamBatchResponseSchema = z.object({
+  created_count: z.number(),
+  updated_count: z.number(),
+  conflict_count: z.number(),
+  entries: z.array(ClassSizeParamBatchResponseEntrySchema),
+})
+
+export type ClassSizeParamBatchResponse = z.infer<typeof ClassSizeParamBatchResponseSchema>
+
 // Class Structure
 export const ClassStructureSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   level_id: z.string().uuid(),
   total_students: z.number(),
   number_of_classes: z.number(),
@@ -224,7 +284,7 @@ export type ClassStructure = z.infer<typeof ClassStructureSchema>
 // DHG (Teacher Workforce)
 export const DHGEntrySchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   level_id: z.string().uuid(),
   subject_id: z.string().uuid(),
   total_hours: z.number(),
@@ -238,7 +298,7 @@ export type DHGEntry = z.infer<typeof DHGEntrySchema>
 // Subject Hours (Configuration)
 export const SubjectHoursSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   level_id: z.string().uuid(),
   subject_id: z.string().uuid(),
   hours_per_week: z.number().min(0).max(12), // 0-12 hours, backend uses Decimal with 2 decimal places
@@ -253,7 +313,7 @@ export type SubjectHours = z.infer<typeof SubjectHoursSchema>
 // Teacher FTE
 export const TeacherFTESchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   cycle_id: z.string().uuid(),
   level_id: z.string().uuid().nullable(),
   subject_id: z.string().uuid(),
@@ -270,7 +330,7 @@ export type TeacherFTE = z.infer<typeof TeacherFTESchema>
 // TRMD Gap Analysis
 export const TRMDGapSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   subject_id: z.string().uuid(),
   hours_needed: z.number(),
   aefe_positions: z.number(),
@@ -286,7 +346,7 @@ export type TRMDGap = z.infer<typeof TRMDGapSchema>
 // HSA Planning
 export const HSAPlanningSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   teacher_id: z.string().uuid(),
   subject_id: z.string().uuid(),
   hsa_hours: z.number(),
@@ -297,18 +357,17 @@ export const HSAPlanningSchema = z.object({
 
 export type HSAPlanning = z.infer<typeof HSAPlanningSchema>
 
-// Revenue Line Item
+// Revenue Line Item (matches backend RevenuePlanResponse)
 export const RevenueLineItemSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   account_code: z.string(),
   description: z.string(),
   category: z.string(),
-  t1_amount: z.number().nullable(),
-  t2_amount: z.number().nullable(),
-  t3_amount: z.number().nullable(),
-  annual_amount: z.number(),
-  is_auto_calculated: z.boolean(),
+  amount_sar: z.number(), // Single amount field
+  is_calculated: z.boolean(), // Backend uses is_calculated
+  calculation_driver: z.string().nullable(),
+  trimester: z.number().min(1).max(3).nullable(), // 1-3 for trimesters, null for annual
   notes: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -316,10 +375,23 @@ export const RevenueLineItemSchema = z.object({
 
 export type RevenueLineItem = z.infer<typeof RevenueLineItemSchema>
 
+// Revenue item pivoted for UI display (one row per account with all trimesters)
+export interface RevenueLineItemPivoted {
+  account_code: string
+  description: string
+  category: string
+  t1_amount: number | null
+  t2_amount: number | null
+  t3_amount: number | null
+  annual_amount: number
+  is_calculated: boolean
+  notes: string | null
+}
+
 // Cost Line Item
 export const CostLineItemSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   account_code: z.string(),
   description: z.string(),
   category: z.enum(['PERSONNEL', 'OPERATING']),
@@ -339,7 +411,7 @@ export type CostLineItem = z.infer<typeof CostLineItemSchema>
 // CapEx Item
 export const CapExItemSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   description: z.string(),
   asset_type: z.enum(['EQUIPMENT', 'IT', 'FURNITURE', 'BUILDING_IMPROVEMENTS', 'SOFTWARE']),
   account_code: z.string(),
@@ -381,7 +453,7 @@ export type TeacherCategory = z.infer<typeof TeacherCategorySchema>
 // Teacher Cost Parameters
 export const TeacherCostParamSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   category_id: z.string().uuid(),
   cycle_id: z.string().uuid().nullable(),
   prrd_contribution_eur: z.number().nullable(),
@@ -400,7 +472,7 @@ export type TeacherCostParam = z.infer<typeof TeacherCostParamSchema>
 // Timetable Constraints
 export const TimetableConstraintSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   level_id: z.string().uuid(),
   total_hours_per_week: z.number(),
   max_hours_per_day: z.number(),
@@ -416,7 +488,7 @@ export type TimetableConstraint = z.infer<typeof TimetableConstraintSchema>
 
 // Consolidation
 export const ConsolidationStatusSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   is_complete: z.boolean(),
   modules_complete: z.object({
     enrollment: z.boolean(),
@@ -459,7 +531,7 @@ export const StatementLineSchema = z.object({
 export type StatementLine = z.infer<typeof StatementLineSchema>
 
 export const FinancialStatementSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   statement_type: z.enum(['INCOME', 'BALANCE', 'CASHFLOW']),
   format: z.enum(['PCG', 'IFRS']),
   period: z.enum(['ANNUAL', 'P1', 'P2', 'SUMMER']),
@@ -500,7 +572,7 @@ export const VarianceLineSchema = z.object({
 export type VarianceLine = z.infer<typeof VarianceLineSchema>
 
 export const VarianceReportSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   period: z.enum(['T1', 'T2', 'T3', 'ANNUAL']),
   lines: z.array(VarianceLineSchema),
   total_variance: z.number(),
@@ -660,7 +732,7 @@ export type SubjectHoursEntry = z.infer<typeof SubjectHoursEntrySchema>
 
 // Batch request for saving multiple entries
 export const SubjectHoursBatchRequestSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   entries: z.array(SubjectHoursEntrySchema).min(1).max(200),
 })
 
@@ -688,7 +760,7 @@ export type TemplateInfo = z.infer<typeof TemplateInfoSchema>
 
 // Apply template request
 export const ApplyTemplateRequestSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   template_code: z.string(),
   cycle_codes: z.array(z.string()).min(1),
   overwrite_existing: z.boolean(),

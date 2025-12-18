@@ -19,7 +19,10 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.models.configuration import BudgetVersionStatus
+from app.models import VersionStatus
+
+# Backward compatibility alias
+BudgetVersionStatus = VersionStatus
 
 # Note: `client` fixture is defined in conftest.py with proper engine dependency
 
@@ -150,7 +153,7 @@ class TestBudgetVersionEndpoints:
         """Test successful retrieval of all budget versions."""
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
-            mock_service.get_all_budget_versions.return_value = [
+            mock_service.get_all_versions.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
                     name="Budget 2024-2025",
@@ -176,7 +179,7 @@ class TestBudgetVersionEndpoints:
         """Test retrieval of versions filtered by fiscal year."""
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
-            mock_service.get_all_budget_versions.return_value = []
+            mock_service.get_all_versions.return_value = []
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -187,7 +190,7 @@ class TestBudgetVersionEndpoints:
         """Test retrieval of versions filtered by status."""
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
-            mock_service.get_all_budget_versions.return_value = []
+            mock_service.get_all_versions.return_value = []
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -200,7 +203,7 @@ class TestBudgetVersionEndpoints:
 
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
-            mock_service.get_budget_version.return_value = MagicMock(
+            mock_service.get_version.return_value = MagicMock(
                 id=version_id,
                 name="Budget 2024-2025",
                 fiscal_year=2024,
@@ -221,7 +224,7 @@ class TestBudgetVersionEndpoints:
             from app.services.exceptions import NotFoundError
 
             mock_service = AsyncMock()
-            mock_service.get_budget_version.side_effect = NotFoundError(
+            mock_service.get_version.side_effect = NotFoundError(
                 "BudgetVersion", str(version_id)
             )
             mock_svc.return_value = mock_service
@@ -234,7 +237,7 @@ class TestBudgetVersionEndpoints:
         """Test successful creation of budget version."""
         with patch("app.api.v1.configuration.get_config_service") as mock_svc:
             mock_service = AsyncMock()
-            mock_service.create_budget_version.return_value = MagicMock(
+            mock_service.create_version.return_value = MagicMock(
                 id=uuid.uuid4(),
                 name="Budget 2025-2026",
                 fiscal_year=2025,
@@ -253,7 +256,7 @@ class TestBudgetVersionEndpoints:
             from app.services.exceptions import ConflictError
 
             mock_service = AsyncMock()
-            mock_service.create_budget_version.side_effect = ConflictError(
+            mock_service.create_version.side_effect = ConflictError(
                 "A WORKING budget version already exists for fiscal year 2024"
             )
             mock_svc.return_value = mock_service
@@ -418,7 +421,7 @@ class TestClassSizeParamEndpoints:
             mock_service.get_class_size_params.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     level_id=uuid.uuid4(),
                     min_class_size=20,
                     target_class_size=25,
@@ -437,7 +440,7 @@ class TestClassSizeParamEndpoints:
             mock_service = AsyncMock()
             mock_service.upsert_class_size_param.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=uuid.uuid4(),
+                version_id=uuid.uuid4(),
                 level_id=uuid.uuid4(),
                 min_class_size=20,
                 target_class_size=25,
@@ -529,7 +532,7 @@ class TestSubjectHoursEndpoints:
             mock_service.get_subject_hours_matrix.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     subject_id=uuid.uuid4(),
                     level_id=uuid.uuid4(),
                     hours_per_week=Decimal("4.5"),
@@ -589,7 +592,7 @@ class TestTeacherCostEndpoints:
             mock_service.get_teacher_cost_params.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     category_id=uuid.uuid4(),
                     prrd_contribution_eur=Decimal("41863"),
                     avg_salary_sar=Decimal("240000"),
@@ -664,7 +667,7 @@ class TestFeeStructureEndpoints:
             mock_service.get_fee_structure.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     level_id=uuid.uuid4(),
                     nationality_type_id=uuid.uuid4(),
                     fee_category_id=uuid.uuid4(),
@@ -770,7 +773,7 @@ class TestBudgetVersionWorkflowExpanded:
             from app.services.exceptions import ConflictError
 
             mock_service = AsyncMock()
-            mock_service.create_budget_version.side_effect = ConflictError(
+            mock_service.create_version.side_effect = ConflictError(
                 "A WORKING budget version already exists for fiscal year 2024"
             )
             mock_svc.return_value = mock_service
@@ -1060,12 +1063,12 @@ class TestBudgetVersionEndpointsIntegration:
             assert response.status_code in [200, 404, 422, 500]
 
     @pytest.mark.skip(reason="Auth bypass enabled in test environment (skip_auth_for_tests=True)")
-    def test_budget_version_unauthenticated(self, client):
+    def test_version_unauthenticated(self, client):
         """Test budget version endpoint without authentication."""
         response = client.get("/api/v1/budget-versions")
         assert response.status_code in [401, 403]
 
-    def test_budget_version_invalid_id(self, client, mock_user):
+    def test_version_invalid_id(self, client, mock_user):
         """Test budget version endpoint with invalid ID."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get("/api/v1/budget-versions/invalid-uuid")
@@ -1122,7 +1125,7 @@ class TestClassSizeParamEndpointsIntegration:
     def test_upsert_class_size_param_integration(self, client, mock_user):
         """Test PUT /api/v1/class-size-params."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "level_id": str(uuid.uuid4()),
             "cycle_id": None,
             "min_class_size": 20,
@@ -1188,7 +1191,7 @@ class TestSubjectHoursEndpointsIntegration:
     def test_upsert_subject_hours_integration(self, client, mock_user):
         """Test PUT /api/v1/subject-hours."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "subject_id": str(uuid.uuid4()),
             "level_id": str(uuid.uuid4()),
             "hours_per_week": "4.5",
@@ -1231,7 +1234,7 @@ class TestTeacherCostEndpointsIntegration:
     def test_upsert_teacher_cost_param_integration(self, client, mock_user):
         """Test PUT /api/v1/teacher-costs."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "category_id": str(uuid.uuid4()),
             "cycle_id": None,
             "prrd_contribution_eur": "41863.00",
@@ -1286,7 +1289,7 @@ class TestFeeStructureEndpointsIntegration:
     def test_upsert_fee_structure_integration(self, client, mock_user):
         """Test PUT /api/v1/fee-structure."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "level_id": str(uuid.uuid4()),
             "nationality_type_id": str(uuid.uuid4()),
             "fee_category_id": str(uuid.uuid4()),
@@ -1320,7 +1323,7 @@ class TestTimetableConstraintsEndpointsIntegration:
     def test_upsert_timetable_constraint_integration(self, client, mock_user):
         """Test PUT /api/v1/timetable-constraints."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "level_id": str(uuid.uuid4()),
             "total_hours_per_week": 35,
             "max_hours_per_day": 7,
@@ -1404,7 +1407,7 @@ class TestSubjectHoursBatchEndpointsIntegration:
     def test_batch_save_subject_hours_integration(self, client, mock_user):
         """Test POST /api/v1/subject-hours/batch with valid data."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "entries": [
                 {
                     "subject_id": str(uuid.uuid4()),
@@ -1436,7 +1439,7 @@ class TestSubjectHoursBatchEndpointsIntegration:
     def test_batch_save_subject_hours_empty_entries(self, client, mock_user):
         """Test POST /api/v1/subject-hours/batch with empty entries."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "entries": [],
         }
 
@@ -1459,7 +1462,7 @@ class TestSubjectHoursBatchEndpointsIntegration:
             for _ in range(201)
         ]
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "entries": entries,
         }
 
@@ -1471,7 +1474,7 @@ class TestSubjectHoursBatchEndpointsIntegration:
     def test_batch_save_subject_hours_invalid_hours_range(self, client, mock_user):
         """Test POST /api/v1/subject-hours/batch with hours outside 0-12 range."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "entries": [
                 {
                     "subject_id": str(uuid.uuid4()),
@@ -1491,7 +1494,7 @@ class TestSubjectHoursBatchEndpointsIntegration:
     def test_batch_save_subject_hours_with_delete(self, client, mock_user):
         """Test POST /api/v1/subject-hours/batch with null hours (delete)."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "entries": [
                 {
                     "subject_id": str(uuid.uuid4()),
@@ -1527,7 +1530,7 @@ class TestSubjectHoursTemplateEndpointsIntegration:
     def test_apply_curriculum_template_integration(self, client, mock_user):
         """Test POST /api/v1/subject-hours/apply-template."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "template_code": "AEFE_STANDARD_COLL",
             "cycle_codes": ["COLL"],
             "overwrite_existing": False,
@@ -1544,7 +1547,7 @@ class TestSubjectHoursTemplateEndpointsIntegration:
     def test_apply_curriculum_template_overwrite_integration(self, client, mock_user):
         """Test POST /api/v1/subject-hours/apply-template with overwrite."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "template_code": "AEFE_STANDARD_LYC",
             "cycle_codes": ["LYC"],
             "overwrite_existing": True,
@@ -1557,7 +1560,7 @@ class TestSubjectHoursTemplateEndpointsIntegration:
     def test_apply_curriculum_template_invalid_code(self, client, mock_user):
         """Test POST /api/v1/subject-hours/apply-template with invalid template."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "template_code": "INVALID_TEMPLATE",
             "cycle_codes": ["COLL"],
             "overwrite_existing": False,
@@ -1571,7 +1574,7 @@ class TestSubjectHoursTemplateEndpointsIntegration:
     def test_apply_curriculum_template_multiple_cycles(self, client, mock_user):
         """Test POST /api/v1/subject-hours/apply-template with multiple cycles."""
         payload = {
-            "budget_version_id": str(uuid.uuid4()),
+            "version_id": str(uuid.uuid4()),
             "template_code": "AEFE_STANDARD_COLL",
             "cycle_codes": ["COLL", "LYC"],
             "overwrite_existing": False,

@@ -7,7 +7,7 @@
  * In a multi-tenant setup, this would fetch from user profile or org context.
  *
  * The organization_id is required for calibration-related APIs that are
- * scoped by organization rather than budget version.
+ * scoped by organization rather than version.
  */
 
 import { useQuery } from '@tanstack/react-query'

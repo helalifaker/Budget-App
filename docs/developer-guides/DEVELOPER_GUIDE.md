@@ -351,7 +351,7 @@ alembic history          # View migration history
      ```
 
 4. **Set Up Row Level Security (RLS)**:
-   - See `docs/DATABASE/RLS_POLICIES.md` for policies
+   - See `docs/database/RLS_POLICIES.md` for policies
    - Apply via Supabase SQL Editor
 
 ### 2.6 Running Full Stack
@@ -798,7 +798,7 @@ class EnrollmentPlan(Base, TimestampMixin):
     __tablename__ = "enrollment_plans"
 
     id = Column(String, primary_key=True)
-    budget_version_id = Column(String, ForeignKey("budget_versions.id"), nullable=False)
+    version_id = Column(String, ForeignKey("settings_versions.id"), nullable=False)
     level_id = Column(String, ForeignKey("levels.id"), nullable=False)
     nationality = Column(Enum(NationalityEnum), nullable=False)
     student_count = Column(Integer, nullable=False)
@@ -824,11 +824,11 @@ class EnrollmentPlanBase(BaseModel):
     period: Literal["P1", "P2"]
 
 class EnrollmentPlanCreate(EnrollmentPlanBase):
-    budget_version_id: str
+    version_id: str
 
 class EnrollmentPlanResponse(EnrollmentPlanBase):
     id: str
-    budget_version_id: str
+    version_id: str
     level_name: str
     created_at: datetime
     updated_at: datetime
@@ -854,7 +854,7 @@ class EnrollmentService:
 
     def get_by_version(self, version_id: str) -> List[EnrollmentPlan]:
         return self.db.query(EnrollmentPlan).filter(
-            EnrollmentPlan.budget_version_id == version_id
+            EnrollmentPlan.version_id == version_id
         ).all()
 
     def create(self, data: EnrollmentPlanCreate) -> EnrollmentPlan:
@@ -871,13 +871,13 @@ class EnrollmentService:
         self.db.refresh(plan)
 
         # Trigger downstream calculations
-        self._trigger_class_calculation(data.budget_version_id)
+        self._trigger_class_calculation(data.version_id)
 
         return plan
 
     def _validate_capacity(self, data: EnrollmentPlanCreate):
         """Validate total enrollment doesn't exceed capacity."""
-        total = self.engine.calculate_total_enrollment(data.budget_version_id)
+        total = self.engine.calculate_total_enrollment(data.version_id)
         if total + data.student_count > 1875:
             raise ValueError("Total enrollment exceeds school capacity (1,875)")
 
@@ -981,7 +981,7 @@ class DHGEngine:
 
 **Budget Versions**:
 ```sql
-CREATE TABLE budget_versions (
+CREATE TABLE settings_versions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     fiscal_year INTEGER NOT NULL,
@@ -995,25 +995,25 @@ CREATE TABLE budget_versions (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_budget_versions_status ON budget_versions(status);
-CREATE INDEX idx_budget_versions_fiscal_year ON budget_versions(fiscal_year);
+CREATE INDEX idx_settings_versions_status ON settings_versions(status);
+CREATE INDEX idx_settings_versions_fiscal_year ON settings_versions(fiscal_year);
 ```
 
 **Enrollment Plans**:
 ```sql
 CREATE TABLE enrollment_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    budget_version_id UUID REFERENCES budget_versions(id) ON DELETE CASCADE,
+    version_id UUID REFERENCES settings_versions(id) ON DELETE CASCADE,
     level_id UUID REFERENCES levels(id),
     nationality VARCHAR(20) CHECK (nationality IN ('French', 'Saudi', 'Other')),
     student_count INTEGER CHECK (student_count > 0),
     period VARCHAR(10) CHECK (period IN ('P1', 'P2')),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(budget_version_id, level_id, nationality, period)
+    UNIQUE(version_id, level_id, nationality, period)
 );
 
-CREATE INDEX idx_enrollment_version ON enrollment_plans(budget_version_id);
+CREATE INDEX idx_students_data_version ON students_data(version_id);
 ```
 
 ### 5.2 Database Migrations
@@ -1021,14 +1021,14 @@ CREATE INDEX idx_enrollment_version ON enrollment_plans(budget_version_id);
 Using Alembic:
 
 ```python
-# alembic/versions/001_create_budget_versions.py
+# alembic migrations define settings_versions (see backend/alembic/versions/)
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 def upgrade():
     op.create_table(
-        'budget_versions',
+        'settings_versions',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column('name', sa.String(255), nullable=False),
         sa.Column('fiscal_year', sa.Integer, nullable=False),
@@ -1042,16 +1042,16 @@ def upgrade():
         sa.Column('updated_at', sa.TIMESTAMP, server_default=sa.func.now()),
     )
 
-    op.create_index('idx_budget_versions_status', 'budget_versions', ['status'])
+    op.create_index('idx_settings_versions_status', 'settings_versions', ['status'])
 
 def downgrade():
-    op.drop_index('idx_budget_versions_status')
-    op.drop_table('budget_versions')
+    op.drop_index('idx_settings_versions_status')
+    op.drop_table('settings_versions')
 ```
 
 **Create Migration**:
 ```bash
-alembic revision --autogenerate -m "Create budget versions table"
+alembic revision --autogenerate -m "Create versions table"
 ```
 
 **Apply Migrations**:
@@ -1065,23 +1065,23 @@ Example RLS policies for Supabase:
 
 ```sql
 -- Enable RLS
-ALTER TABLE budget_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings_versions ENABLE ROW LEVEL SECURITY;
 
 -- Users can view all budget versions
 CREATE POLICY "Users can view budget versions"
-ON budget_versions FOR SELECT
+ON settings_versions FOR SELECT
 TO authenticated
 USING (true);
 
 -- Users can create budget versions
 CREATE POLICY "Users can create budget versions"
-ON budget_versions FOR INSERT
+ON settings_versions FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = created_by);
 
 -- Only managers can approve budgets
 CREATE POLICY "Managers can approve budgets"
-ON budget_versions FOR UPDATE
+ON settings_versions FOR UPDATE
 TO authenticated
 USING (
     status = 'SUBMITTED' AND
@@ -1110,14 +1110,14 @@ class Equipment(Base, TimestampMixin):
     __tablename__ = "equipment"
 
     id = Column(String, primary_key=True)
-    budget_version_id = Column(String, ForeignKey("budget_versions.id"))
+    version_id = Column(String, ForeignKey("settings_versions.id"))
     name = Column(String, nullable=False)
     category = Column(String, nullable=False)
     purchase_cost = Column(Numeric(12, 2), nullable=False)
     purchase_date = Column(Date)
     useful_life_years = Column(Integer, default=5)
 
-    budget_version = relationship("BudgetVersion")
+    version = relationship("Version")
 ```
 
 **Step 2: Create Migration**
@@ -1143,11 +1143,11 @@ class EquipmentBase(BaseModel):
     useful_life_years: int = Field(default=5, ge=1, le=20)
 
 class EquipmentCreate(EquipmentBase):
-    budget_version_id: str
+    version_id: str
 
 class EquipmentResponse(EquipmentBase):
     id: str
-    budget_version_id: str
+    version_id: str
 
     class Config:
         from_attributes = True
@@ -1168,7 +1168,7 @@ class EquipmentService:
 
     def get_by_version(self, version_id: str) -> List[Equipment]:
         return self.db.query(Equipment).filter(
-            Equipment.budget_version_id == version_id
+            Equipment.version_id == version_id
         ).all()
 
     def create(self, data: EquipmentCreate) -> Equipment:
@@ -1210,7 +1210,7 @@ async def create_equipment(data: EquipmentCreate, db: Session = Depends(get_db))
 // frontend/src/lib/types/equipment.ts
 export interface Equipment {
   id: string;
-  budget_version_id: string;
+  version_id: string;
   name: string;
   category: string;
   purchase_cost: number;
@@ -1219,7 +1219,7 @@ export interface Equipment {
 }
 
 export interface CreateEquipmentInput {
-  budget_version_id: string;
+  version_id: string;
   name: string;
   category: string;
   purchase_cost: number;
@@ -1278,7 +1278,7 @@ function EquipmentPage() {
 
 **Step 9: Documentation**
 
-Create `docs/MODULES/MODULE_19_EQUIPMENT.md` with:
+Create `docs/modules/MODULE_19_EQUIPMENT.md` with:
 - Overview
 - Inputs
 - Calculations (depreciation)
@@ -1293,7 +1293,7 @@ Create `docs/MODULES/MODULE_19_EQUIPMENT.md` with:
 def test_create_equipment(db_session):
     service = EquipmentService(db_session)
     data = EquipmentCreate(
-        budget_version_id="version-123",
+        version_id="version-123",
         name="Laptop",
         category="IT",
         purchase_cost=5000.00,
@@ -1446,7 +1446,7 @@ def test_create_enrollment_plan(db_session, test_user_token):
     headers = {"Authorization": f"Bearer {test_user_token}"}
 
     data = {
-        "budget_version_id": "version-123",
+        "version_id": "version-123",
         "level_id": "level-6eme",
         "nationality": "French",
         "student_count": 120,
@@ -1462,7 +1462,7 @@ def test_enrollment_over_capacity(db_session, test_user_token):
     headers = {"Authorization": f"Bearer {test_user_token}"}
 
     data = {
-        "budget_version_id": "version-123",
+        "version_id": "version-123",
         "level_id": "level-6eme",
         "nationality": "French",
         "student_count": 2000,  # Exceeds capacity

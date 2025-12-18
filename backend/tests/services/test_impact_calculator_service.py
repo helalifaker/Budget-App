@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from app.services.impact_calculator_service import (
+from app.services.insights.impact_calculator_service import (
     ImpactCalculatorService,
     ImpactMetrics,
     ProposedChange,

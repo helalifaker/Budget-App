@@ -16,9 +16,16 @@
  * - ARIA landmarks and labels
  */
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { useModule, ALL_MODULES, MODULES, type ModuleId } from '@/contexts/ModuleContext'
+import {
+  useModule,
+  ALL_MODULES,
+  ALL_MODULES_WITH_ADMIN,
+  MODULES,
+  type ModuleId,
+} from '@/contexts/ModuleContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 import { LAYOUT } from '@/styles/typography'
 
@@ -29,10 +36,15 @@ interface AppSidebarProps {
 
 export function AppSidebar({ className }: AppSidebarProps) {
   const navigate = useNavigate()
+  const { session } = useAuth()
   const { isModuleActive, getModuleColors, activeModuleDefinition } = useModule()
   const [isExpanded, setIsExpanded] = useState(false)
   const sidebarRef = useRef<HTMLElement>(null)
   const expandTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Show Admin module only for admin users
+  const isAdmin = session?.user?.user_metadata?.role === 'Admin'
+  const modulesToShow = useMemo(() => (isAdmin ? ALL_MODULES_WITH_ADMIN : ALL_MODULES), [isAdmin])
 
   // Handle hover with slight delay for smooth UX
   const handleMouseEnter = useCallback(() => {
@@ -155,7 +167,7 @@ export function AppSidebar({ className }: AppSidebarProps) {
       {/* Module Navigation */}
       <nav className="flex-1 overflow-y-auto py-2">
         <ul role="list" className="space-y-1 px-2">
-          {ALL_MODULES.map((moduleId) => {
+          {modulesToShow.map((moduleId) => {
             const module = MODULES[moduleId]
             const ModuleIcon = module.icon
             const isActive = isModuleActive(moduleId)

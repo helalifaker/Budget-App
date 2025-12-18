@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import UserDep
-from app.schemas.enrollment_settings import (
+from app.schemas.enrollment import (
     CalibrationRequest,
     CalibrationResult,
     CalibrationStatus,
@@ -27,10 +27,10 @@ from app.schemas.enrollment_settings import (
     ScenarioMultipliersBulkUpdate,
     ScenarioMultiplierUpdate,
 )
-from app.services.enrollment_calibration_service import EnrollmentCalibrationService
+from app.services.enrollment.enrollment_calibration_service import EnrollmentCalibrationService
 from app.services.exceptions import ServiceException
 
-router = APIRouter(prefix="/api/v1/enrollment/settings", tags=["Enrollment Settings"])
+router = APIRouter(prefix="/enrollment/settings", tags=["Enrollment Settings"])
 
 
 def get_service(db: AsyncSession = Depends(get_db)) -> EnrollmentCalibrationService:
@@ -95,28 +95,39 @@ async def get_calibration_status(
 
 @router.post("/calibrate", response_model=CalibrationResult)
 async def calibrate_parameters(
+    request: CalibrationRequest,
     organization_id: uuid.UUID = Query(..., description="Organization ID"),
-    request: CalibrationRequest | None = None,
     service: EnrollmentCalibrationService = Depends(get_service),
     user: UserDep = ...,
 ) -> CalibrationResult:
     """
     Trigger recalibration of derived parameters.
 
+    IMPORTANT: The target academic year is determined by the version_id.
+    For Budget 2026 (fiscal_year=2026), the target is 2026-2027 academic year.
+    Calibration uses N-1 (2025-2026) and N-2 (2024-2025) historical data.
+
     This calculates:
     - Progression rates for each grade from historical enrollment data
     - Decomposes into retention rate + lateral entry rate
-    - Uses a rolling 4-year historical window
+    - Uses a rolling 4-year historical window (years BEFORE the target)
     - Determines confidence levels based on data quality
 
     The calibration runs automatically when historical data changes,
     but can be manually triggered using this endpoint.
 
     Use `force=true` to recalculate even if cached data is fresh.
+
+    Request body:
+    - version_id: Required - determines target academic year for calibration
+    - force: Optional - force recalculation even if cached data is fresh
     """
     try:
-        force = request.force if request else False
-        return await service.calibrate_parameters(organization_id, force=force)
+        return await service.calibrate_parameters(
+            organization_id,
+            version_id=request.version_id,
+            force=request.force,
+        )
     except ServiceException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 

@@ -14,6 +14,7 @@ EFIR Fee Structure Context:
 
 from decimal import Decimal
 from enum import Enum
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -226,8 +227,14 @@ class StudentRevenueResult(BaseModel):
     total_annual_revenue: Decimal = Field(..., description="Total annual revenue (SAR)")
     sibling_discount_applied: bool = Field(..., description="Whether sibling discount applied")
 
-    class Config:
-        json_schema_extra = {
+    # Auditability: Intermediate calculation steps for debugging and audit trails
+    calculation_breakdown: dict[str, Any] | None = Field(
+        default=None,
+        description="Intermediate calculation steps for audit trail",
+    )
+
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "student_id": "123e4567-e89b-12d3-a456-426614174000",
                 "level_code": "6EME",
@@ -255,3 +262,4 @@ class StudentRevenueResult(BaseModel):
                 "sibling_discount_applied": True,
             }
         }
+    )

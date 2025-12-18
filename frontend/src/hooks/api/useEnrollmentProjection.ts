@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { enrollmentProjectionApi } from '@/services/enrollmentProjection'
+import { enrollmentProjectionApi } from '@/services/enrollment-projection'
 import { handleAPIErrorToast, toastMessages } from '@/lib/toast-messages'
 import type {
   GradeOverride,
   GlobalOverrides,
+  LateralOptimizationResults,
   LevelOverride,
   ProjectionConfig,
-} from '@/types/enrollmentProjection'
+} from '@/types/enrollment-projection'
 
 type LevelOverrideUpdate = Pick<LevelOverride, 'cycle_id' | 'class_size_ceiling' | 'max_divisions'>
 type GradeOverrideUpdate = Pick<
@@ -19,6 +20,8 @@ export const projectionKeys = {
   scenarios: () => [...projectionKeys.all, 'scenarios'] as const,
   config: (versionId: string) => [...projectionKeys.all, 'config', versionId] as const,
   results: (versionId: string) => [...projectionKeys.all, 'results', versionId] as const,
+  lateralOptimization: (versionId: string) =>
+    [...projectionKeys.all, 'lateral-optimization', versionId] as const,
 }
 
 export function useEnrollmentScenarios() {
@@ -53,6 +56,32 @@ export function useEnrollmentProjectionResults(
     staleTime: 5 * 60 * 1000, // 5 minutes - projection results change rarely
     refetchOnMount: false, // Don't refetch on component mount
     refetchOnWindowFocus: false, // Don't refetch on window focus
+  })
+}
+
+/**
+ * Hook for fetching lateral entry optimization results.
+ *
+ * This provides capacity-aware lateral entry optimization data that helps
+ * schools understand how many new students can be efficiently accommodated
+ * while minimizing rejections and maintaining optimal class structure.
+ *
+ * Returns:
+ * - optimization_results: Per-grade optimization decisions and capacities
+ * - new_students_summary: Summary table with totals and breakdowns
+ */
+export function useLateralOptimization(
+  versionId: string | undefined,
+  options?: { enabled?: boolean }
+) {
+  return useQuery<LateralOptimizationResults>({
+    queryKey: projectionKeys.lateralOptimization(versionId ?? ''),
+    queryFn: () => enrollmentProjectionApi.getLateralOptimization(versionId!),
+    enabled: !!versionId && (options?.enabled ?? true),
+    // Lateral optimization depends on projection config, cache for same duration
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 }
 

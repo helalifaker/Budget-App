@@ -96,7 +96,7 @@ class TestKPIEndpoints:
 
             mock_kpi_value = MagicMock()
             mock_kpi_value.id = uuid.uuid4()
-            mock_kpi_value.budget_version_id = version_id
+            mock_kpi_value.version_id = version_id
             mock_kpi_value.calculated_value = Decimal("1.2")
             mock_kpi_value.variance_from_target = Decimal("0.1")
             mock_kpi_value.variance_percent = Decimal("9.09")
@@ -140,7 +140,7 @@ class TestKPIEndpoints:
 
             mock_kpi_value = MagicMock()
             mock_kpi_value.id = uuid.uuid4()
-            mock_kpi_value.budget_version_id = version_id
+            mock_kpi_value.version_id = version_id
             mock_kpi_value.calculated_value = Decimal("1.2")
             mock_kpi_value.variance_from_target = Decimal("0.1")
             mock_kpi_value.variance_percent = Decimal("9.09")
@@ -587,7 +587,7 @@ class TestMaterializedViewEndpoints:
 
     def test_refresh_all_views_success(self, client, mock_user):
         """Test successful refresh of all materialized views."""
-        with patch("app.services.materialized_view_service.MaterializedViewService.refresh_all") as mock_refresh:
+        with patch("app.services.admin.materialized_view_service.MaterializedViewService.refresh_all") as mock_refresh:
             mock_refresh.return_value = {
                 "efir_budget.mv_kpi_dashboard": {"status": "success", "duration_ms": 500},
                 "efir_budget.mv_budget_consolidation": {"status": "success", "duration_ms": 800},
@@ -601,7 +601,7 @@ class TestMaterializedViewEndpoints:
         """Test successful refresh of specific view."""
         view_name = "mv_kpi_dashboard"
 
-        with patch("app.services.materialized_view_service.MaterializedViewService.refresh_view") as mock_refresh:
+        with patch("app.services.admin.materialized_view_service.MaterializedViewService.refresh_view") as mock_refresh:
             mock_refresh.return_value = {
                 "view_name": f"efir_budget.{view_name}",
                 "status": "success",
@@ -616,7 +616,7 @@ class TestMaterializedViewEndpoints:
         """Test refresh of invalid view name."""
         view_name = "invalid_view"
 
-        with patch("app.services.materialized_view_service.MaterializedViewService.refresh_view") as mock_refresh:
+        with patch("app.services.admin.materialized_view_service.MaterializedViewService.refresh_view") as mock_refresh:
             mock_refresh.side_effect = ValueError(f"Invalid view name: {view_name}")
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -627,7 +627,7 @@ class TestMaterializedViewEndpoints:
         """Test successful retrieval of view info."""
         view_name = "mv_kpi_dashboard"
 
-        with patch("app.services.materialized_view_service.MaterializedViewService.get_view_info") as mock_info:
+        with patch("app.services.admin.materialized_view_service.MaterializedViewService.get_view_info") as mock_info:
             mock_info.return_value = {
                 "view_name": f"efir_budget.{view_name}",
                 "row_count": 150,
@@ -1118,7 +1118,7 @@ class TestKPIAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_enrollment_data,
         test_class_structure,
         mock_user,
@@ -1128,7 +1128,7 @@ class TestKPIAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/analysis/kpis/{test_budget_version.id}/calculate",
+                f"/api/v1/analysis/kpis/{test_version.id}/calculate",
                 json=request_payload,
             )
 
@@ -1137,25 +1137,25 @@ class TestKPIAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_all_kpis_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get all KPIs with real database data."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
-            response = client.get(f"/api/v1/analysis/kpis/{test_budget_version.id}")
+            response = client.get(f"/api/v1/analysis/kpis/{test_version.id}")
 
         # Get KPIs may return 200 or 404
         assert response.status_code in [200, 404, 422]
 
     @pytest.mark.asyncio
     async def test_get_specific_kpi_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get specific KPI by code."""
         kpi_code = "H_E_PRIMARY"
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/kpis/{test_budget_version.id}/{kpi_code}"
+                f"/api/v1/analysis/kpis/{test_version.id}/{kpi_code}"
             )
 
         # Get specific KPI may return 200 or 404
@@ -1178,12 +1178,12 @@ class TestKPIAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_benchmark_comparison_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get KPI benchmark comparison."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/kpis/{test_budget_version.id}/benchmarks"
+                f"/api/v1/analysis/kpis/{test_version.id}/benchmarks"
             )
 
         # Get benchmarks may return 200 or 404
@@ -1191,14 +1191,14 @@ class TestKPIAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_kpi_by_category_filter_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get KPIs filtered by category."""
         category = "educational"
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/kpis/{test_budget_version.id}",
+                f"/api/v1/analysis/kpis/{test_version.id}",
                 params={"category": category},
             )
 
@@ -1220,11 +1220,14 @@ class TestKPIAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_kpi_missing_data_handling_integration(
-        self, client, db_session, mock_user
+        self, client, db_session, mock_user, organization_id
     ):
         """Integration test: KPI calculation handles missing data gracefully."""
         # Create version without data
-        from app.models.configuration import BudgetVersion, BudgetVersionStatus
+        from app.models import Version, VersionStatus
+        # Backward compatibility aliases
+        BudgetVersion = Version
+        BudgetVersionStatus = VersionStatus
 
         empty_version = BudgetVersion(
             id=uuid.uuid4(),
@@ -1232,6 +1235,7 @@ class TestKPIAPIIntegration:
             fiscal_year=2027,
             academic_year="2026-2027",
             status=BudgetVersionStatus.WORKING,
+            organization_id=organization_id,
             created_by_id=mock_user.id,
         )
         db_session.add(empty_version)
@@ -1292,7 +1296,7 @@ class TestDashboardAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_enrollment_data,
         test_class_structure,
         mock_user,
@@ -1300,7 +1304,7 @@ class TestDashboardAPIIntegration:
         """Integration test: Get dashboard summary with real calculations."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/summary"
+                f"/api/v1/analysis/dashboard/{test_version.id}/summary"
             )
 
         # Dashboard summary may return 200 or 404
@@ -1311,14 +1315,14 @@ class TestDashboardAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_enrollment_data,
         mock_user,
     ):
         """Integration test: Get enrollment chart data from database."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/charts/enrollment"
+                f"/api/v1/analysis/dashboard/{test_version.id}/charts/enrollment"
             )
 
         # Enrollment chart may return 200 or 404
@@ -1326,12 +1330,12 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_cost_breakdown_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get cost breakdown pie chart data."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/charts/costs"
+                f"/api/v1/analysis/dashboard/{test_version.id}/charts/costs"
             )
 
         # Cost breakdown may return 200 or 404
@@ -1339,12 +1343,12 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_revenue_breakdown_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get revenue breakdown chart data."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/charts/revenue"
+                f"/api/v1/analysis/dashboard/{test_version.id}/charts/revenue"
             )
 
         # Revenue breakdown may return 200 or 404
@@ -1355,14 +1359,14 @@ class TestDashboardAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_enrollment_data,
         mock_user,
     ):
         """Integration test: Dashboard alerts include capacity warnings."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/alerts"
+                f"/api/v1/analysis/dashboard/{test_version.id}/alerts"
             )
 
         # Alerts may return 200 or 404
@@ -1370,12 +1374,12 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_alerts_variance_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Dashboard alerts include variance warnings."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/alerts"
+                f"/api/v1/analysis/dashboard/{test_version.id}/alerts"
             )
 
         if response.status_code == 200:
@@ -1385,12 +1389,12 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_alerts_margin_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Dashboard alerts include margin warnings."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/alerts"
+                f"/api/v1/analysis/dashboard/{test_version.id}/alerts"
             )
 
         # Alerts endpoint may return 200 or 404
@@ -1398,12 +1402,12 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_recent_activity_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get recent activity log."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/activity"
+                f"/api/v1/analysis/dashboard/{test_version.id}/activity"
             )
 
         # Activity log may return 200 or 404
@@ -1411,10 +1415,10 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_version_comparison_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Compare 2+ budget versions."""
-        version_ids = [test_budget_version.id, uuid.uuid4()]
+        version_ids = [test_version.id, uuid.uuid4()]
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
@@ -1440,12 +1444,12 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_filter_by_date_range_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Dashboard filtering by date range."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/summary",
+                f"/api/v1/analysis/dashboard/{test_version.id}/summary",
                 params={"start_date": "2025-01-01", "end_date": "2025-12-31"},
             )
 
@@ -1454,12 +1458,12 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_filter_by_version_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Dashboard filtering by budget version."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/dashboard/{test_budget_version.id}/summary"
+                f"/api/v1/analysis/dashboard/{test_version.id}/summary"
             )
 
         # Version filter may return 200 or 404
@@ -1467,11 +1471,14 @@ class TestDashboardAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dashboard_missing_data_integration(
-        self, client, db_session, mock_user
+        self, client, db_session, mock_user, organization_id
     ):
         """Integration test: Dashboard handles missing data gracefully."""
         # Create version without data
-        from app.models.configuration import BudgetVersion, BudgetVersionStatus
+        from app.models import Version, VersionStatus
+        # Backward compatibility aliases
+        BudgetVersion = Version
+        BudgetVersionStatus = VersionStatus
 
         empty_version = BudgetVersion(
             id=uuid.uuid4(),
@@ -1479,6 +1486,7 @@ class TestDashboardAPIIntegration:
             fiscal_year=2028,
             academic_year="2027-2028",
             status=BudgetVersionStatus.WORKING,
+            organization_id=organization_id,
             created_by_id=mock_user.id,
         )
         db_session.add(empty_version)
@@ -1527,7 +1535,7 @@ class TestBudgetActualAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_import_actuals_from_odoo_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Import actuals from Odoo."""
         payload = {
@@ -1541,7 +1549,7 @@ class TestBudgetActualAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/analysis/actuals/{test_budget_version.id}/import",
+                f"/api/v1/analysis/actuals/{test_version.id}/import",
                 json=payload,
             )
 
@@ -1550,14 +1558,14 @@ class TestBudgetActualAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_calculate_variance_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Calculate actual vs budget variance."""
         payload = {"period": 6}
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/analysis/actuals/{test_budget_version.id}/calculate-variance",
+                f"/api/v1/analysis/actuals/{test_version.id}/calculate-variance",
                 json=payload,
             )
 
@@ -1566,12 +1574,12 @@ class TestBudgetActualAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_variance_report_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get variance report by account and period."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/analysis/actuals/{test_budget_version.id}/variance"
+                f"/api/v1/analysis/actuals/{test_version.id}/variance"
             )
 
         # Variance report may return 200 or 404
@@ -1579,14 +1587,14 @@ class TestBudgetActualAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_forecast_from_ytd_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Forecast revision based on YTD actuals."""
         payload = {"based_on_ytd": True, "period": 6}
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/analysis/actuals/{test_budget_version.id}/forecast",
+                f"/api/v1/analysis/actuals/{test_version.id}/forecast",
                 json=payload,
             )
 
@@ -1595,11 +1603,14 @@ class TestBudgetActualAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_forecast_approval_workflow_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Forecast revision approval workflow."""
         # Create forecast first
-        from app.models.configuration import BudgetVersion, BudgetVersionStatus
+        from app.models import Version, VersionStatus
+        # Backward compatibility aliases
+        BudgetVersion = Version
+        BudgetVersionStatus = VersionStatus
 
         forecast = BudgetVersion(
             id=uuid.uuid4(),
@@ -1607,7 +1618,8 @@ class TestBudgetActualAPIIntegration:
             fiscal_year=2025,
             academic_year="2024-2025",
             status=BudgetVersionStatus.FORECAST,
-            parent_version_id=test_budget_version.id,
+            parent_version_id=test_version.id,
+            organization_id=test_version.organization_id,
             created_by_id=mock_user.id,
         )
         db_session.add(forecast)
@@ -1623,7 +1635,7 @@ class TestBudgetActualAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_actuals_validation_errors_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Actuals import with validation errors."""
         payload = {
@@ -1636,7 +1648,7 @@ class TestBudgetActualAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/analysis/actuals/{test_budget_version.id}/import",
+                f"/api/v1/analysis/actuals/{test_version.id}/import",
                 json=payload,
             )
 
@@ -1678,11 +1690,11 @@ class TestStrategicPlanningAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_strategic_plan_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Get strategic plan with real database data."""
         # Create strategic plan using correct schema
-        from app.models.strategic import StrategicPlan
+        from app.models import StrategicPlan
 
         plan = StrategicPlan(
             id=uuid.uuid4(),
@@ -1702,11 +1714,11 @@ class TestStrategicPlanningAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_create_strategic_scenario_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Create strategic scenario with database write."""
         # Create strategic plan first using correct schema
-        from app.models.strategic import StrategicPlan
+        from app.models import StrategicPlan
 
         plan = StrategicPlan(
             id=uuid.uuid4(),
@@ -1738,14 +1750,14 @@ class TestStrategicPlanningAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_update_scenario_assumptions_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Update scenario assumptions with database modification."""
         # Create plan and scenario using correct models
-        from app.models.strategic import (
-            ScenarioType,
+        from app.models import (
             StrategicPlan,
             StrategicPlanScenario,  # Correct model name
+            StrategicScenarioType,
         )
 
         plan = StrategicPlan(
@@ -1760,7 +1772,7 @@ class TestStrategicPlanningAPIIntegration:
         scenario = StrategicPlanScenario(
             id=uuid.uuid4(),
             strategic_plan_id=plan.id,
-            scenario_type=ScenarioType.BASE_CASE,  # Use enum
+            scenario_type=StrategicScenarioType.BASE_CASE,  # Use enum
             name="Base Case Scenario",
             enrollment_growth_rate=Decimal("0.04"),
             fee_increase_rate=Decimal("0.03"),
@@ -1786,11 +1798,11 @@ class TestStrategicPlanningAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_add_strategic_initiative_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: Add strategic initiative with database write."""
         # Create strategic plan using correct schema
-        from app.models.strategic import StrategicPlan
+        from app.models import StrategicPlan
 
         plan = StrategicPlan(
             id=uuid.uuid4(),

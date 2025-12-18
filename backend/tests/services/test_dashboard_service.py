@@ -12,9 +12,13 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import BudgetVersion
-from app.services.dashboard_service import DashboardService
+from app.models import Version, VersionStatus
 from app.services.exceptions import NotFoundError
+
+# Backward compatibility aliases
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
+from app.services.insights.dashboard_service import DashboardService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -25,19 +29,19 @@ class TestGetDashboardSummary:
     async def test_get_dashboard_summary_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful dashboard summary retrieval."""
         service = DashboardService(db_session)
-        result = await service.get_dashboard_summary(test_budget_version.id)
+        result = await service.get_dashboard_summary(test_version.id)
 
         assert result is not None
         assert "version_id" in result
         assert "version_name" in result
         assert "fiscal_year" in result
         assert "status" in result
-        assert result["version_id"] == str(test_budget_version.id)
-        assert result["version_name"] == test_budget_version.name
+        assert result["version_id"] == str(test_version.id)
+        assert result["version_name"] == test_version.name
 
     @pytest.mark.asyncio
     async def test_get_dashboard_summary_invalid_version(
@@ -54,11 +58,11 @@ class TestGetDashboardSummary:
     async def test_get_dashboard_summary_contains_metrics(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test dashboard summary contains required metrics."""
         service = DashboardService(db_session)
-        result = await service.get_dashboard_summary(test_budget_version.id)
+        result = await service.get_dashboard_summary(test_version.id)
 
         # Check for required metric fields
         required_fields = [
@@ -83,12 +87,12 @@ class TestGetEnrollmentChartData:
     async def test_get_enrollment_chart_by_level(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test enrollment chart data by level."""
         service = DashboardService(db_session)
         result = await service.get_enrollment_chart_data(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="level",
         )
 
@@ -103,12 +107,12 @@ class TestGetEnrollmentChartData:
     async def test_get_enrollment_chart_by_nationality(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test enrollment chart data by nationality."""
         service = DashboardService(db_session)
         result = await service.get_enrollment_chart_data(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="nationality",
         )
 
@@ -123,12 +127,12 @@ class TestGetEnrollmentChartData:
     async def test_get_enrollment_chart_by_cycle(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test enrollment chart data by cycle."""
         service = DashboardService(db_session)
         result = await service.get_enrollment_chart_data(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="cycle",
         )
 
@@ -155,12 +159,12 @@ class TestGetCostBreakdown:
     async def test_get_cost_breakdown_by_category(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test cost breakdown by category."""
         service = DashboardService(db_session)
         result = await service.get_cost_breakdown(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="category",
         )
 
@@ -173,12 +177,12 @@ class TestGetCostBreakdown:
     async def test_get_cost_breakdown_by_account(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test cost breakdown by account."""
         service = DashboardService(db_session)
         result = await service.get_cost_breakdown(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="account",
         )
 
@@ -190,12 +194,12 @@ class TestGetCostBreakdown:
     async def test_get_cost_breakdown_by_period(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test cost breakdown by period."""
         service = DashboardService(db_session)
         result = await service.get_cost_breakdown(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="period",
         )
 
@@ -222,12 +226,12 @@ class TestGetRevenueBreakdown:
     async def test_get_revenue_breakdown_by_fee_type(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test revenue breakdown by fee type."""
         service = DashboardService(db_session)
         result = await service.get_revenue_breakdown(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="fee_type",
         )
 
@@ -240,12 +244,12 @@ class TestGetRevenueBreakdown:
     async def test_get_revenue_breakdown_by_nationality(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test revenue breakdown by nationality."""
         service = DashboardService(db_session)
         result = await service.get_revenue_breakdown(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="nationality",
         )
 
@@ -257,12 +261,12 @@ class TestGetRevenueBreakdown:
     async def test_get_revenue_breakdown_by_trimester(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test revenue breakdown by trimester."""
         service = DashboardService(db_session)
         result = await service.get_revenue_breakdown(
-            test_budget_version.id,
+            test_version.id,
             breakdown_by="trimester",
         )
 
@@ -288,11 +292,11 @@ class TestGetAlerts:
     async def test_get_alerts_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful alert retrieval."""
         service = DashboardService(db_session)
-        result = await service.get_alerts(test_budget_version.id)
+        result = await service.get_alerts(test_version.id)
 
         assert result is not None
         assert isinstance(result, list)
@@ -320,7 +324,7 @@ class TestGetAlerts:
     async def test_get_alerts_capacity_warning_90_percent(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test capacity warning alert at exactly 90%."""
         service = DashboardService(db_session)
@@ -334,7 +338,7 @@ class TestGetAlerts:
 
         service.get_dashboard_summary = mock_summary
 
-        alerts = await service.get_alerts(test_budget_version.id)
+        alerts = await service.get_alerts(test_version.id)
 
         # Should have capacity warning alert
         capacity_alerts = [a for a in alerts if a["alert_type"] == "capacity_warning"]
@@ -348,7 +352,7 @@ class TestGetAlerts:
     async def test_get_alerts_capacity_critical_95_percent(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test capacity critical alert at exactly 95%."""
         service = DashboardService(db_session)
@@ -362,7 +366,7 @@ class TestGetAlerts:
 
         service.get_dashboard_summary = mock_summary
 
-        alerts = await service.get_alerts(test_budget_version.id)
+        alerts = await service.get_alerts(test_version.id)
 
         # Should have capacity critical alert (not warning)
         capacity_alerts = [a for a in alerts if a["alert_type"] == "capacity_critical"]
@@ -376,7 +380,7 @@ class TestGetAlerts:
     async def test_get_alerts_capacity_critical_above_95_percent(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test capacity critical alert above 95%."""
         service = DashboardService(db_session)
@@ -390,7 +394,7 @@ class TestGetAlerts:
 
         service.get_dashboard_summary = mock_summary
 
-        alerts = await service.get_alerts(test_budget_version.id)
+        alerts = await service.get_alerts(test_version.id)
 
         # Should have capacity critical alert
         capacity_alerts = [a for a in alerts if a["alert_type"] == "capacity_critical"]
@@ -402,7 +406,7 @@ class TestGetAlerts:
     async def test_get_alerts_operating_margin_below_5_percent(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test low operating margin alert below 5%."""
         service = DashboardService(db_session)
@@ -416,7 +420,7 @@ class TestGetAlerts:
 
         service.get_dashboard_summary = mock_summary
 
-        alerts = await service.get_alerts(test_budget_version.id)
+        alerts = await service.get_alerts(test_version.id)
 
         # Should have margin alert
         margin_alerts = [a for a in alerts if a["alert_type"] == "margin_low"]
@@ -430,7 +434,7 @@ class TestGetAlerts:
     async def test_get_alerts_multiple_severity_levels(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test multiple alerts with different severity levels."""
         service = DashboardService(db_session)
@@ -444,7 +448,7 @@ class TestGetAlerts:
 
         service.get_dashboard_summary = mock_summary
 
-        alerts = await service.get_alerts(test_budget_version.id)
+        alerts = await service.get_alerts(test_version.id)
 
         # Should have critical, warning, and info alerts
         critical_alerts = [a for a in alerts if a["severity"] == "critical"]
@@ -459,7 +463,7 @@ class TestGetAlerts:
     async def test_get_alerts_no_alerts_all_ok(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test no alerts when all metrics are healthy."""
         service = DashboardService(db_session)
@@ -473,7 +477,7 @@ class TestGetAlerts:
 
         service.get_dashboard_summary = mock_summary
 
-        alerts = await service.get_alerts(test_budget_version.id)
+        alerts = await service.get_alerts(test_version.id)
 
         # Should only have info alert for version status
         capacity_alerts = [a for a in alerts if "capacity" in a["alert_type"]]
@@ -486,12 +490,12 @@ class TestGetAlerts:
     async def test_get_alerts_version_working_status(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test version status alert for WORKING budget."""
         service = DashboardService(db_session)
 
-        alerts = await service.get_alerts(test_budget_version.id)
+        alerts = await service.get_alerts(test_version.id)
 
         # Should have version draft alert
         version_alerts = [a for a in alerts if a["alert_type"] == "version_draft"]
@@ -503,7 +507,7 @@ class TestGetAlerts:
     async def test_get_alerts_capacity_exactly_at_warning(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test capacity alert at exact warning threshold."""
         service = DashboardService(db_session)
@@ -517,7 +521,7 @@ class TestGetAlerts:
 
         service.get_dashboard_summary = mock_summary
 
-        alerts = await service.get_alerts(test_budget_version.id)
+        alerts = await service.get_alerts(test_version.id)
 
         # Should trigger warning (>=)
         capacity_alerts = [a for a in alerts if "capacity" in a["alert_type"]]
@@ -537,12 +541,12 @@ class TestGetRecentActivity:
     async def test_get_recent_activity_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful recent activity retrieval."""
         service = DashboardService(db_session)
         result = await service.get_recent_activity(
-            budget_version_id=test_budget_version.id
+            version_id=test_version.id
         )
 
         assert result is not None
@@ -552,7 +556,7 @@ class TestGetRecentActivity:
     async def test_get_recent_activity_ordering(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
         organization_id: uuid.UUID,
     ):
@@ -560,7 +564,7 @@ class TestGetRecentActivity:
         # Create multiple budget versions with different timestamps
         from datetime import datetime, timedelta
 
-        from app.models.configuration import BudgetVersionStatus
+        # BudgetVersionStatus imported at module level as alias for VersionStatus
 
         version1 = BudgetVersion(
             id=uuid.uuid4(),
@@ -611,7 +615,7 @@ class TestGetRecentActivity:
         versions = []
         from datetime import datetime, timedelta
 
-        from app.models.configuration import BudgetVersionStatus
+        # BudgetVersionStatus imported at module level as alias for VersionStatus
 
         for i in range(5):
             version = BudgetVersion(
@@ -652,12 +656,12 @@ class TestGetRecentActivity:
     async def test_get_recent_activity_filter_by_version(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
         organization_id: uuid.UUID,
     ):
         """Test recent activity filtered by specific version."""
-        from app.models.configuration import BudgetVersionStatus
+        # BudgetVersionStatus imported at module level as alias for VersionStatus
 
         # Create another version
         other_version = BudgetVersion(
@@ -674,12 +678,12 @@ class TestGetRecentActivity:
 
         service = DashboardService(db_session)
         activities = await service.get_recent_activity(
-            budget_version_id=test_budget_version.id
+            version_id=test_version.id
         )
 
         # All activities should be for the specified version
         for activity in activities:
-            assert activity["version_id"] == str(test_budget_version.id)
+            assert activity["version_id"] == str(test_version.id)
 
     @pytest.mark.asyncio
     async def test_get_recent_activity_submitted_version(
@@ -691,7 +695,7 @@ class TestGetRecentActivity:
         """Test recent activity includes submission activity."""
         from datetime import datetime
 
-        from app.models.configuration import BudgetVersionStatus
+        # BudgetVersionStatus imported at module level as alias for VersionStatus
 
         version = BudgetVersion(
             id=uuid.uuid4(),
@@ -708,7 +712,7 @@ class TestGetRecentActivity:
         await db_session.flush()
 
         service = DashboardService(db_session)
-        activities = await service.get_recent_activity(budget_version_id=version.id)
+        activities = await service.get_recent_activity(version_id=version.id)
 
         # Should have submission activity
         submission_activities = [
@@ -726,7 +730,7 @@ class TestGetRecentActivity:
         """Test recent activity includes approval activity."""
         from datetime import datetime
 
-        from app.models.configuration import BudgetVersionStatus
+        # BudgetVersionStatus imported at module level as alias for VersionStatus
 
         version = BudgetVersion(
             id=uuid.uuid4(),
@@ -745,7 +749,7 @@ class TestGetRecentActivity:
         await db_session.flush()
 
         service = DashboardService(db_session)
-        activities = await service.get_recent_activity(budget_version_id=version.id)
+        activities = await service.get_recent_activity(version_id=version.id)
 
         # Should have approval activity
         approval_activities = [
@@ -766,12 +770,12 @@ class TestGetComparisonData:
     async def test_get_comparison_data_two_versions(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
         organization_id: uuid.UUID,
     ):
         """Test comparison data for two versions."""
-        from app.models.configuration import BudgetVersionStatus
+        # BudgetVersionStatus imported at module level as alias for VersionStatus
 
         # Create second version
         version2 = BudgetVersion(
@@ -788,7 +792,7 @@ class TestGetComparisonData:
 
         service = DashboardService(db_session)
         result = await service.get_comparison_data(
-            version_ids=[test_budget_version.id, version2.id],
+            version_ids=[test_version.id, version2.id],
             metric="summary",
         )
 
@@ -806,7 +810,7 @@ class TestGetComparisonData:
         organization_id: uuid.UUID,
     ):
         """Test comparison data for 3+ versions."""
-        from app.models.configuration import BudgetVersionStatus
+        # BudgetVersionStatus imported at module level as alias for VersionStatus
 
         # Create 4 versions
         versions = []
@@ -839,12 +843,12 @@ class TestGetComparisonData:
     async def test_get_comparison_data_metrics_accuracy(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test comparison data metrics accuracy."""
         service = DashboardService(db_session)
         result = await service.get_comparison_data(
-            version_ids=[test_budget_version.id],
+            version_ids=[test_version.id],
             metric="summary",
         )
 
@@ -864,20 +868,20 @@ class TestGetComparisonData:
     async def test_get_comparison_data_invalid_version_skipped(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test comparison data skips invalid version IDs."""
         service = DashboardService(db_session)
 
         # Include valid and invalid version IDs
         result = await service.get_comparison_data(
-            version_ids=[test_budget_version.id, uuid.uuid4()],
+            version_ids=[test_version.id, uuid.uuid4()],
             metric="summary",
         )
 
         # Should only include valid version
         assert len(result["versions"]) == 1
-        assert result["versions"][0]["id"] == str(test_budget_version.id)
+        assert result["versions"][0]["id"] == str(test_version.id)
 
 
 class TestKPISummary:
@@ -887,15 +891,15 @@ class TestKPISummary:
     async def test_get_kpi_summary_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful KPI summary retrieval."""
         service = DashboardService(db_session)
 
-        result = await service.get_kpi_summary(test_budget_version.id)
+        result = await service.get_kpi_summary(test_version.id)
 
         assert result is not None
-        assert result["version_id"] == str(test_budget_version.id)
+        assert result["version_id"] == str(test_version.id)
         assert "financial_kpis" in result
         assert "operational_kpis" in result
         assert "staffing_kpis" in result
@@ -941,12 +945,12 @@ class TestDashboardWidgets:
     async def test_get_budget_status_widget(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test budget status widget data."""
         service = DashboardService(db_session)
 
-        result = await service.get_budget_status_widget(test_budget_version.id)
+        result = await service.get_budget_status_widget(test_version.id)
 
         assert result is not None
         assert "version_info" in result
@@ -956,7 +960,7 @@ class TestDashboardWidgets:
 
         # Check version info
         version_info = result["version_info"]
-        assert version_info["id"] == str(test_budget_version.id)
+        assert version_info["id"] == str(test_version.id)
         assert "name" in version_info
         assert "fiscal_year" in version_info
         assert "status" in version_info

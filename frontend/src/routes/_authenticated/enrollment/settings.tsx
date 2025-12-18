@@ -1,5 +1,5 @@
 /**
- * Enrollment Settings Page - /enrollment/settings
+ * Enrollment Settings Page - /students/settings
  *
  * Step 1 of the enrollment planning workflow. Configure:
  * - Class size parameters (Min/Target/Max per level)
@@ -15,11 +15,12 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import type { ColumnDef } from '@tanstack/react-table'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { ExcelDataTableLazy, type ClearedCell } from '@/components/ExcelDataTableLazy'
-import { AlertCircle, Save, Settings, BarChart3, CheckCircle, Sliders, History } from 'lucide-react'
+import { ExcelEditableTableLazy } from '@/components/grid/tanstack/ExcelEditableTableLazy'
+import type { CellValueChangedEvent } from '@/components/grid/tanstack/EditableTable'
+import { AlertCircle, Save, Settings, BarChart3, CheckCircle, Sliders, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -27,7 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SummaryCard } from '@/components/SummaryCard'
 import {
   useClassSizeParams,
-  useCreateClassSizeParam,
+  useBatchSaveClassSizeParams,
   useLevels,
   useCycles,
 } from '@/hooks/api/useConfiguration'
@@ -39,14 +40,13 @@ import {
   useResetScenarioMultipliers,
 } from '@/hooks/api/useEnrollmentSettings'
 import { CalibrationStatusBar } from '@/components/enrollment/CalibrationStatusBar'
-import { EntryPointRatesTable } from '@/components/enrollment/EntryPointRatesTable'
-import { IncidentalLateralTable } from '@/components/enrollment/IncidentalLateralTable'
+import { UnifiedLateralTable } from '@/components/enrollment/UnifiedLateralTable'
 import { ScenarioMultipliersTable } from '@/components/enrollment/ScenarioMultipliersTable'
 import { toastMessages } from '@/lib/toast-messages'
 import { toast } from 'sonner'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import { useOrganization } from '@/hooks/api/useOrganization'
-import type { ParameterOverrideUpdate, ScenarioMultiplierUpdate } from '@/types/enrollmentSettings'
+import type { ParameterOverrideUpdate, ScenarioMultiplierUpdate } from '@/types/enrollment-settings'
 
 export const Route = createFileRoute('/_authenticated/enrollment/settings')({
   beforeLoad: requireAuth,
@@ -70,6 +70,7 @@ interface LocalLevelConfig {
   isValid: boolean
   hasExistingConfig: boolean
   isDirty: boolean
+  updated_at: string | null // For optimistic locking
 }
 
 // Default values for class sizes
@@ -90,14 +91,22 @@ function validateClassSizeRow(min: number, target: number, max: number): boolean
 // ============================================================================
 
 function EnrollmentSettingsPage() {
-  const { selectedVersionId } = useBudgetVersion()
+  const { selectedVersionId, selectedVersion } = useVersion()
   const { organizationId, isLoading: orgLoading } = useOrganization()
   const [activeTab, setActiveTab] = useState('class-sizes')
+
+  // Class sizes are read-only when viewing an "actual" version
+  const isActualVersion = selectedVersion?.scenario_type === 'ACTUAL'
 
   // Local state for class size editing
   const [localConfigs, setLocalConfigs] = useState<LocalLevelConfig[]>([])
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+
+  // Ref to prevent useEffect from resetting state during save operations
+  // This fixes the race condition where query invalidation during save
+  // would reset isDirty flags before all configs are saved
+  const savingInProgressRef = useRef(false)
 
   // Class Size Queries
   const {
@@ -121,7 +130,7 @@ function EnrollmentSettingsPage() {
   const resetMultipliersMutation = useResetScenarioMultipliers()
 
   // Class Size Mutations
-  const createMutation = useCreateClassSizeParam()
+  const batchSaveMutation = useBatchSaveClassSizeParams()
 
   // Get cycle code from cycle_id
   const getCycleCode = useCallback(
@@ -133,6 +142,14 @@ function EnrollmentSettingsPage() {
 
   // Initialize local state from API data + all levels with defaults
   useEffect(() => {
+    // CRITICAL: Skip state reset if saving is in progress
+    // This prevents the race condition where query invalidation during save
+    // would reset isDirty flags before all configs are saved
+    if (savingInProgressRef.current) {
+      console.log('[Settings] Skipping state reset - save in progress')
+      return
+    }
+
     if (levelsData && cyclesData) {
       const configs = levelsData.map((level): LocalLevelConfig => {
         const existingConfig = classSizeParamsData?.find((c) => c.level_id === level.id)
@@ -153,6 +170,7 @@ function EnrollmentSettingsPage() {
           isValid: validateClassSizeRow(min, target, max),
           hasExistingConfig: !!existingConfig,
           isDirty: false,
+          updated_at: existingConfig?.updated_at ?? null,
         }
       })
 
@@ -206,14 +224,14 @@ function EnrollmentSettingsPage() {
 
   // Handle cell value changes for class sizes
   const onCellValueChanged = useCallback((event: CellValueChangedEvent<LocalLevelConfig>) => {
-    const { data, colDef, newValue } = event
-    if (!data || !colDef.field) return
+    const { data, field, newValue } = event
+    if (!data || !field) return
 
     setLocalConfigs((prev) =>
       prev.map((config) => {
         if (config.level_id !== data.level_id) return config
 
-        const updated = { ...config, [colDef.field!]: newValue, isDirty: true }
+        const updated = { ...config, [field]: newValue, isDirty: true }
 
         // Recalculate validation
         updated.isValid = validateClassSizeRow(
@@ -229,22 +247,23 @@ function EnrollmentSettingsPage() {
   }, [])
 
   /**
-   * Handle paste from clipboard (Ctrl+V)
-   * Updates local state with pasted values
+   * Handle cell clear (Delete key)
+   * Resets cleared cells to defaults
    */
-  const handlePaste = useCallback(
-    async (
-      updates: Array<{ rowId: string; field: string; newValue: string; originalData: unknown }>
-    ) => {
+  const handleCellsCleared = useCallback(
+    (cells: Array<{ rowId: string; field: string; oldValue: unknown }>) => {
       setLocalConfigs((prev) =>
         prev.map((config) => {
-          const update = updates.find((u) => u.rowId === config.level_id)
-          if (!update) return config
+          const clearedCell = cells.find((c) => c.rowId === config.level_id)
+          if (!clearedCell) return config
 
-          const numericValue = parseFloat(update.newValue)
-          if (isNaN(numericValue)) return config
+          // Reset to default values based on field
+          let defaultValue = 0
+          if (clearedCell.field === 'min_class_size') defaultValue = DEFAULT_MIN_SIZE
+          if (clearedCell.field === 'target_class_size') defaultValue = DEFAULT_TARGET_SIZE
+          if (clearedCell.field === 'max_class_size') defaultValue = DEFAULT_MAX_SIZE
 
-          const updated = { ...config, [update.field]: numericValue, isDirty: true }
+          const updated = { ...config, [clearedCell.field]: defaultValue, isDirty: true }
 
           // Recalculate validation
           updated.isValid = validateClassSizeRow(
@@ -261,40 +280,9 @@ function EnrollmentSettingsPage() {
     []
   )
 
-  /**
-   * Handle cell clear (Delete key)
-   * Resets cleared cells to defaults
-   */
-  const handleCellsCleared = useCallback((cells: ClearedCell[]) => {
-    setLocalConfigs((prev) =>
-      prev.map((config) => {
-        const clearedCell = cells.find((c) => c.rowId === config.level_id)
-        if (!clearedCell) return config
-
-        // Reset to default values based on field
-        let defaultValue = 0
-        if (clearedCell.field === 'min_class_size') defaultValue = DEFAULT_MIN_SIZE
-        if (clearedCell.field === 'target_class_size') defaultValue = DEFAULT_TARGET_SIZE
-        if (clearedCell.field === 'max_class_size') defaultValue = DEFAULT_MAX_SIZE
-
-        const updated = { ...config, [clearedCell.field]: defaultValue, isDirty: true }
-
-        // Recalculate validation
-        updated.isValid = validateClassSizeRow(
-          updated.min_class_size,
-          updated.target_class_size,
-          updated.max_class_size
-        )
-
-        return updated
-      })
-    )
-    setHasUnsavedChanges(true)
-  }, [])
-
-  // Handle save for class sizes
+  // Handle save for class sizes - batch save with optimistic locking
   const handleSaveClassSizes = async () => {
-    if (!selectedVersionId || !statistics.allValid) return
+    if (!selectedVersionId || !statistics.allValid || isActualVersion) return
 
     const dirtyConfigs = localConfigs.filter((c) => c.isDirty)
 
@@ -310,50 +298,112 @@ function EnrollmentSettingsPage() {
     }
 
     setIsSaving(true)
+    // CRITICAL: Set ref to prevent useEffect from resetting state during save
+    // This fixes the race condition where query invalidation during save
+    // would reset isDirty flags before all configs are saved
+    savingInProgressRef.current = true
+    console.log('[Settings] Starting batch save - blocking state reset')
 
     try {
-      // Save each dirty config
-      let savedCount = 0
-      for (const config of dirtyConfigs) {
-        await createMutation.mutateAsync({
-          budget_version_id: selectedVersionId,
+      // Build batch request with optimistic locking
+      const batchRequest = {
+        version_id: selectedVersionId,
+        entries: dirtyConfigs.map((config) => ({
           level_id: config.level_id,
-          cycle_id: null,
           min_class_size: config.min_class_size,
           target_class_size: config.target_class_size,
           max_class_size: config.max_class_size,
           notes: config.notes,
-        })
-        savedCount++
+          updated_at: config.updated_at, // For optimistic locking
+        })),
       }
 
-      console.log(`[Settings] Successfully saved ${savedCount} class size configurations`)
+      const result = await batchSaveMutation.mutateAsync(batchRequest)
 
-      // Mark all as saved
-      setLocalConfigs((prev) =>
-        prev.map((c) => ({
-          ...c,
-          isDirty: false,
-          hasExistingConfig: c.hasExistingConfig || c.isDirty,
-        }))
+      console.log(
+        `[Settings] Batch save complete: created=${result.created_count}, updated=${result.updated_count}, conflicts=${result.conflict_count}`
       )
-      setHasUnsavedChanges(false)
-      toastMessages.success.updated('Class size parameters')
+
+      // Handle conflicts if any
+      if (result.conflict_count > 0) {
+        const conflictEntries = result.entries.filter((e) => e.status === 'conflict')
+        console.warn('[Settings] Conflicts detected:', conflictEntries)
+
+        // Update local state with new updated_at values for successful entries
+        setLocalConfigs((prev) =>
+          prev.map((config) => {
+            const entry = result.entries.find((e) => e.level_id === config.level_id)
+            if (!entry) return config
+
+            if (entry.status === 'conflict') {
+              // Keep dirty flag for conflicts so user can retry after refresh
+              return config
+            }
+
+            return {
+              ...config,
+              isDirty: false,
+              hasExistingConfig: true,
+              updated_at: entry.updated_at ?? config.updated_at,
+            }
+          })
+        )
+
+        // Show conflict dialog
+        toast.error(
+          `${result.conflict_count} record(s) were modified by another user. Please refresh and try again.`,
+          {
+            duration: 5000,
+            action: {
+              label: 'Refresh',
+              onClick: () => window.location.reload(),
+            },
+          }
+        )
+      } else {
+        // All succeeded - update local state
+        setLocalConfigs((prev) =>
+          prev.map((config) => {
+            const entry = result.entries.find((e) => e.level_id === config.level_id)
+            if (!entry) return config
+
+            return {
+              ...config,
+              isDirty: false,
+              hasExistingConfig: true,
+              updated_at: entry.updated_at ?? config.updated_at,
+            }
+          })
+        )
+        setHasUnsavedChanges(false)
+      }
     } catch (error) {
-      console.error('[Settings] Failed to save class size parameters:', error)
+      console.error('[Settings] Failed to batch save class size parameters:', error)
       toastMessages.error.custom('Failed to save class size parameters')
     } finally {
-      // Always reset isSaving regardless of success or failure
-      console.log('[Settings] Resetting isSaving to false')
+      // Always reset flags regardless of success or failure
+      console.log('[Settings] Save complete - allowing state reset')
+      savingInProgressRef.current = false
       setIsSaving(false)
     }
   }
 
   // Calibration handlers
   const handleRecalibrate = useCallback(() => {
-    if (!organizationId) return
-    calibrateMutation.mutate({ organizationId, request: { force: true } })
-  }, [organizationId, calibrateMutation])
+    if (!organizationId || !selectedVersionId) {
+      toast.error('Please select a budget version before calibrating')
+      return
+    }
+    // Pass version_id to determine target academic year
+    // For Budget 2026 (fiscal_year=2026), calibration targets 2026-2027
+    calibrateMutation.mutate({
+      organizationId,
+      request: {
+        version_id: selectedVersionId,
+        force: true,
+      },
+    })
+  }, [organizationId, selectedVersionId, calibrateMutation])
 
   const handleUpdateOverride = useCallback(
     (update: ParameterOverrideUpdate) => {
@@ -384,122 +434,168 @@ function EnrollmentSettingsPage() {
     resetMultipliersMutation.mutate({ organizationId })
   }, [organizationId, resetMultipliersMutation])
 
-  // Column definitions for class sizes
-  const columnDefs: ColDef<LocalLevelConfig>[] = useMemo(
+  // Helper to get cell class based on validation/dirty state
+  const getCellClassName = useCallback(
+    (data: LocalLevelConfig | undefined, isEditable: boolean): string => {
+      if (!data) return ''
+      const classes: string[] = []
+      if (!data.isValid && isEditable) classes.push('bg-terracotta-50')
+      else if (data.isDirty && isEditable) classes.push('bg-gold-50')
+      return classes.join(' ')
+    },
+    []
+  )
+
+  // Column definitions for class sizes (TanStack Table format)
+  // Improved column widths and styling for better readability
+  const columnDefs: ColumnDef<LocalLevelConfig, unknown>[] = useMemo(
     () => [
       {
-        field: 'cycle_code',
-        headerName: 'Cycle',
-        width: 90,
-        editable: false,
-        cellClass: 'font-medium text-text-secondary',
+        id: 'cycle_code',
+        accessorKey: 'cycle_code',
+        header: 'Cycle',
+        size: 80,
+        meta: { editable: false },
+        cell: (info) => (
+          <span className="font-medium text-muted-foreground px-1">
+            {info.getValue() as string}
+          </span>
+        ),
       },
       {
-        field: 'level_code',
-        headerName: 'Level',
-        width: 90,
-        editable: false,
-        cellClass: 'font-medium',
+        id: 'level_code',
+        accessorKey: 'level_code',
+        header: 'Level',
+        size: 80,
+        meta: { editable: false },
+        cell: (info) => (
+          <span className="font-semibold text-foreground px-1">{info.getValue() as string}</span>
+        ),
       },
       {
-        field: 'level_name',
-        headerName: 'Name',
-        flex: 1,
-        minWidth: 150,
-        editable: false,
+        id: 'level_name',
+        accessorKey: 'level_name',
+        header: 'Name',
+        size: 250,
+        minSize: 200,
+        meta: { editable: false },
+        cell: (info) => <span className="text-foreground px-1">{info.getValue() as string}</span>,
       },
       {
-        field: 'min_class_size',
-        headerName: 'Min Size',
-        width: 110,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
+        id: 'min_class_size',
+        accessorKey: 'min_class_size',
+        header: () => <span className="block text-right w-full">Min</span>,
+        size: 70,
+        meta: {
+          editable: !isActualVersion,
+          editorType: 'number' as const,
           min: 1,
           max: 50,
           precision: 0,
+          align: 'right',
         },
-        cellStyle: (params) => {
-          if (!params.data?.isValid) {
-            return { backgroundColor: 'var(--color-status-error-bg)' }
-          }
-          if (params.data?.isDirty) {
-            return { backgroundColor: 'var(--color-status-warning-bg)' }
-          }
-          return null
-        },
-      },
-      {
-        field: 'target_class_size',
-        headerName: 'Target Size',
-        width: 120,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 1,
-          max: 50,
-          precision: 0,
-        },
-        cellStyle: (params) => {
-          if (!params.data?.isValid) {
-            return { backgroundColor: 'var(--color-status-error-bg)' }
-          }
-          if (params.data?.isDirty) {
-            return { backgroundColor: 'var(--color-status-warning-bg)' }
-          }
-          return null
-        },
-      },
-      {
-        field: 'max_class_size',
-        headerName: 'Max Size',
-        width: 110,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
-          min: 1,
-          max: 50,
-          precision: 0,
-        },
-        cellStyle: (params) => {
-          if (!params.data?.isValid) {
-            return { backgroundColor: 'var(--color-status-error-bg)' }
-          }
-          if (params.data?.isDirty) {
-            return { backgroundColor: 'var(--color-status-warning-bg)' }
-          }
-          return null
-        },
-      },
-      {
-        field: 'notes',
-        headerName: 'Notes',
-        flex: 1,
-        minWidth: 150,
-        editable: true,
-        cellStyle: (params) => {
-          if (params.data?.isDirty) {
-            return { backgroundColor: 'var(--color-status-warning-bg)' }
-          }
-          return null
-        },
-      },
-      {
-        headerName: 'Valid',
-        width: 80,
-        editable: false,
-        cellRenderer: (params: { data?: LocalLevelConfig }) => {
-          if (!params.data) return null
-          return params.data.isValid ? (
-            <span className="text-success-600 font-bold">✓</span>
-          ) : (
-            <span className="text-error-600 font-bold">⚠</span>
+        cell: (info) => {
+          const data = info.row.original
+          return (
+            <div
+              className={`text-right tabular-nums px-2 ${getCellClassName(data, !isActualVersion)}`}
+            >
+              {info.getValue() as number}
+            </div>
           )
         },
-        cellClass: 'text-center',
+      },
+      {
+        id: 'target_class_size',
+        accessorKey: 'target_class_size',
+        header: () => <span className="block text-right w-full">Target</span>,
+        size: 80,
+        meta: {
+          editable: !isActualVersion,
+          editorType: 'number' as const,
+          min: 1,
+          max: 50,
+          precision: 0,
+          align: 'right',
+        },
+        cell: (info) => {
+          const data = info.row.original
+          return (
+            <div
+              className={`text-right tabular-nums font-medium px-2 ${getCellClassName(data, !isActualVersion)}`}
+            >
+              {info.getValue() as number}
+            </div>
+          )
+        },
+      },
+      {
+        id: 'max_class_size',
+        accessorKey: 'max_class_size',
+        header: () => <span className="block text-right w-full">Max</span>,
+        size: 70,
+        meta: {
+          editable: !isActualVersion,
+          editorType: 'number' as const,
+          min: 1,
+          max: 50,
+          precision: 0,
+          align: 'right',
+        },
+        cell: (info) => {
+          const data = info.row.original
+          return (
+            <div
+              className={`text-right tabular-nums px-2 ${getCellClassName(data, !isActualVersion)}`}
+            >
+              {info.getValue() as number}
+            </div>
+          )
+        },
+      },
+      {
+        id: 'notes',
+        accessorKey: 'notes',
+        header: 'Notes',
+        size: 170,
+        meta: {
+          editable: !isActualVersion,
+          editorType: 'text' as const,
+        },
+        cell: (info) => {
+          const data = info.row.original
+          const value = info.getValue() as string | null
+          return (
+            <div className={`px-2 ${getCellClassName(data, !isActualVersion)}`}>
+              {value ? (
+                <span className="text-foreground">{value}</span>
+              ) : (
+                <span className="text-muted-foreground/50">—</span>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: 'valid',
+        header: '',
+        size: 50,
+        meta: { editable: false },
+        cell: (info) => {
+          const data = info.row.original
+          return (
+            <div className="flex items-center justify-center">
+              {data.isValid ? (
+                <CheckCircle className="h-4 w-4 text-sage-600" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-terracotta-500" />
+              )}
+            </div>
+          )
+        },
       },
     ],
-    []
+    [getCellClassName, isActualVersion]
   )
 
   const isClassSizesLoading = paramsLoading || levelsLoading
@@ -569,20 +665,34 @@ function EnrollmentSettingsPage() {
                 />
               </div>
 
+              {/* Read-Only Banner for Actual Versions */}
+              {isActualVersion && (
+                <div className="flex items-center gap-2 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Info className="h-4 w-4 text-blue-600" />
+                  <p className="text-sm text-blue-800">
+                    You are viewing an <strong>Actual</strong> version. Class size parameters are
+                    read-only. To make changes, select a Budget or Forecast version.
+                  </p>
+                </div>
+              )}
+
               {/* Action Bar */}
               <div className="flex justify-between items-center">
                 <p className="text-sm text-muted-foreground">
-                  Edit cells directly. Changes are saved when you click "Save Changes". Validation:
-                  Min &lt; Target ≤ Max
+                  {isActualVersion
+                    ? 'Viewing actual data (read-only). Select a budget version to edit.'
+                    : 'Edit cells directly. Changes are saved when you click "Save Changes". Validation: Min < Target ≤ Max'}
                 </p>
                 <Button
                   onClick={handleSaveClassSizes}
-                  disabled={!hasUnsavedChanges || !statistics.allValid || isSaving}
+                  disabled={
+                    isActualVersion || !hasUnsavedChanges || !statistics.allValid || isSaving
+                  }
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? 'Saving...' : 'Save Changes'}
-                  {hasUnsavedChanges && (
-                    <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-800">
+                  {hasUnsavedChanges && !isActualVersion && (
+                    <Badge variant="secondary" className="ml-2 bg-gold-100 text-gold-800">
                       Unsaved
                     </Badge>
                   )}
@@ -591,44 +701,40 @@ function EnrollmentSettingsPage() {
 
               {/* Validation Error Banner */}
               {!statistics.allValid && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-red-600" />
-                  <p className="text-sm text-red-700">
+                <div className="flex items-center gap-2 p-3 bg-terracotta-50 border border-terracotta-200 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-terracotta-600" />
+                  <p className="text-sm text-terracotta-700">
                     Some rows have invalid values. Min must be less than Target, and Target must be
                     ≤ Max.
                   </p>
                 </div>
               )}
 
-              {/* Data Grid */}
-              <ExcelDataTableLazy<LocalLevelConfig>
+              {/* Data Grid - TanStack Table */}
+              <ExcelEditableTableLazy<LocalLevelConfig>
                 rowData={localConfigs}
                 columnDefs={columnDefs}
+                getRowId={(data) => data.level_id}
                 loading={isClassSizesLoading}
                 error={paramsError}
-                pagination={false}
                 onCellValueChanged={onCellValueChanged}
-                domLayout="autoHeight"
-                defaultColDef={{
-                  sortable: true,
-                  resizable: true,
-                }}
-                getRowId={(params) => params.data.level_id}
-                // Excel-like clipboard support
-                onPaste={handlePaste}
                 onCellsCleared={handleCellsCleared}
-                rowIdGetter={(data) => data.level_id}
                 tableLabel="Class Size Parameters"
-                showStatusBar={true}
+                showSelectionStats={true}
+                enableClipboard={true}
+                enableFillDown={!isActualVersion}
+                enableClear={!isActualVersion}
+                compact={false}
+                moduleColor="sage"
               />
             </TabsContent>
 
             {/* Calibration Tab */}
             <TabsContent value="calibration" className="space-y-6">
               {!organizationId ? (
-                <div className="flex items-center gap-2 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-amber-600" />
-                  <p className="text-sm text-amber-800">
+                <div className="flex items-center gap-2 p-4 bg-terracotta-50 border border-terracotta-200 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-terracotta-600" />
+                  <p className="text-sm text-terracotta-800">
                     Organization information not available. Please ensure a valid budget version is
                     selected.
                   </p>
@@ -638,9 +744,9 @@ function EnrollmentSettingsPage() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
               ) : settingsError ? (
-                <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-red-600" />
-                  <p className="text-sm text-red-700">
+                <div className="flex items-center gap-2 p-4 bg-terracotta-50 border border-terracotta-200 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-terracotta-600" />
+                  <p className="text-sm text-terracotta-700">
                     Failed to load calibration settings. Please try refreshing the page.
                   </p>
                 </div>
@@ -655,11 +761,11 @@ function EnrollmentSettingsPage() {
 
                   {/* Data Sufficiency Warning */}
                   {!settingsData.calibration_status.has_sufficient_data && (
-                    <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                      <div className="text-sm text-amber-800">
+                    <div className="flex items-start gap-2 p-3 bg-terracotta-50 border border-terracotta-200 rounded-lg">
+                      <AlertCircle className="h-4 w-4 text-terracotta-600 mt-0.5" />
+                      <div className="text-sm text-terracotta-800">
                         <p className="font-medium">Insufficient Historical Data</p>
-                        <p className="text-amber-700">
+                        <p className="text-terracotta-700">
                           At least 2 years of enrollment data are needed for reliable calibration.
                           Using document defaults instead.
                         </p>
@@ -667,18 +773,13 @@ function EnrollmentSettingsPage() {
                     </div>
                   )}
 
-                  {/* Sub-Tabs for Configuration Sections */}
-                  <Tabs defaultValue="entry-points" className="space-y-4">
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="entry-points" className="gap-2">
-                        <History className="h-4 w-4" />
-                        <span className="hidden sm:inline">Entry Point Rates</span>
-                        <span className="sm:hidden">Entry Points</span>
-                      </TabsTrigger>
-                      <TabsTrigger value="incidental" className="gap-2">
+                  {/* Sub-Tabs: Lateral Rates (unified) and Scenario Multipliers */}
+                  <Tabs defaultValue="lateral-rates" className="space-y-4">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="lateral-rates" className="gap-2">
                         <BarChart3 className="h-4 w-4" />
-                        <span className="hidden sm:inline">Incidental Lateral</span>
-                        <span className="sm:hidden">Incidental</span>
+                        <span className="hidden sm:inline">Lateral Entry Rates</span>
+                        <span className="sm:hidden">Lateral Rates</span>
                       </TabsTrigger>
                       <TabsTrigger value="scenarios" className="gap-2">
                         <Sliders className="h-4 w-4" />
@@ -687,46 +788,23 @@ function EnrollmentSettingsPage() {
                       </TabsTrigger>
                     </TabsList>
 
-                    {/* Entry Point Rates Tab */}
-                    <TabsContent value="entry-points">
-                      <Card>
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            <History className="h-5 w-5 text-purple-600" />
-                            Entry Point Rates
-                          </CardTitle>
-                          <CardDescription>
-                            Percentage-based lateral entry for major intake grades (MS, GS, CP,
-                            6ème, 2nde)
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <EntryPointRatesTable
-                            rates={settingsData.entry_point_rates}
-                            onUpdate={handleUpdateOverride}
-                            disabled={
-                              updateOverrideMutation.isPending || calibrateMutation.isPending
-                            }
-                          />
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-
-                    {/* Incidental Lateral Tab */}
-                    <TabsContent value="incidental">
+                    {/* Unified Lateral Rates Tab */}
+                    <TabsContent value="lateral-rates">
                       <Card>
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg flex items-center gap-2">
                             <BarChart3 className="h-5 w-5 text-blue-600" />
-                            Incidental Lateral Entry
+                            Lateral Entry Rates
                           </CardTitle>
                           <CardDescription>
-                            Fixed lateral entry values for intermediate grades
+                            Unified percentage-based lateral entry for all 14 grades. Rates derived
+                            from weighted historical analysis (70% N-1 + 30% N-2).
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
-                          <IncidentalLateralTable
-                            entries={settingsData.incidental_lateral}
+                          <UnifiedLateralTable
+                            entryPointRates={settingsData.entry_point_rates}
+                            incidentalLateral={settingsData.incidental_lateral}
                             onUpdate={handleUpdateOverride}
                             disabled={
                               updateOverrideMutation.isPending || calibrateMutation.isPending

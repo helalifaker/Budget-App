@@ -1,6 +1,10 @@
 import { memo, useEffect, useMemo, useState, useCallback } from 'react'
-import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
-import { DataTableLazy } from '@/components/DataTableLazy'
+import type { ColumnDef } from '@tanstack/react-table'
+import {
+  EditableTable,
+  type CellValueChangedEvent,
+  type EditableColumnMeta,
+} from '@/components/grid/tanstack'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, CheckCircle, Save } from 'lucide-react'
 import {
@@ -40,7 +44,7 @@ export const NationalityDistributionPanel = memo(function NationalityDistributio
   versionId,
   disabled,
 }: NationalityDistributionPanelProps) {
-  const { data: enrollmentData, isLoading, error } = useEnrollmentWithDistribution(versionId)
+  const { data: enrollmentData, isLoading } = useEnrollmentWithDistribution(versionId)
   const { data: levelsData } = useLevels()
   const saveMutation = useBulkUpsertDistributions()
 
@@ -84,42 +88,90 @@ export const NationalityDistributionPanel = memo(function NationalityDistributio
 
   const allValid = useMemo(() => rows.every((r) => r.isValid), [rows])
 
-  const columnDefs: ColDef<LocalDistribution>[] = useMemo(
+  const columnDefs: ColumnDef<LocalDistribution, unknown>[] = useMemo(
     () => [
-      { field: 'cycle_code', headerName: 'Cycle', width: 100 },
-      { field: 'level_code', headerName: 'Level', width: 100 },
-      { field: 'level_name', headerName: 'Name', flex: 1 },
       {
-        field: 'french_pct',
-        headerName: 'French %',
-        width: 120,
-        editable: !disabled,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 0, max: 100, precision: 2 },
+        accessorKey: 'cycle_code',
+        header: 'Cycle',
+        size: 100,
+        meta: {
+          editable: false,
+        } satisfies EditableColumnMeta,
       },
       {
-        field: 'saudi_pct',
-        headerName: 'Saudi %',
-        width: 120,
-        editable: !disabled,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 0, max: 100, precision: 2 },
+        accessorKey: 'level_code',
+        header: 'Level',
+        size: 100,
+        meta: {
+          editable: false,
+        } satisfies EditableColumnMeta,
       },
       {
-        field: 'other_pct',
-        headerName: 'Other %',
-        width: 120,
-        editable: !disabled,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 0, max: 100, precision: 2 },
+        accessorKey: 'level_name',
+        header: 'Name',
+        size: 200,
+        meta: {
+          editable: false,
+        } satisfies EditableColumnMeta,
       },
       {
-        field: 'sum',
-        headerName: 'Total',
-        width: 100,
-        cellRenderer: (params: { data: LocalDistribution }) => {
-          const sum = params.data?.sum ?? 0
-          const isValid = params.data?.isValid
+        accessorKey: 'french_pct',
+        header: 'French %',
+        size: 120,
+        cell: ({ getValue }) => {
+          const value = getValue() as number
+          return value?.toFixed(2) ?? '0.00'
+        },
+        meta: {
+          editable: !disabled,
+          editorType: 'number',
+          min: 0,
+          max: 100,
+          precision: 2,
+          align: 'right',
+        } satisfies EditableColumnMeta,
+      },
+      {
+        accessorKey: 'saudi_pct',
+        header: 'Saudi %',
+        size: 120,
+        cell: ({ getValue }) => {
+          const value = getValue() as number
+          return value?.toFixed(2) ?? '0.00'
+        },
+        meta: {
+          editable: !disabled,
+          editorType: 'number',
+          min: 0,
+          max: 100,
+          precision: 2,
+          align: 'right',
+        } satisfies EditableColumnMeta,
+      },
+      {
+        accessorKey: 'other_pct',
+        header: 'Other %',
+        size: 120,
+        cell: ({ getValue }) => {
+          const value = getValue() as number
+          return value?.toFixed(2) ?? '0.00'
+        },
+        meta: {
+          editable: !disabled,
+          editorType: 'number',
+          min: 0,
+          max: 100,
+          precision: 2,
+          align: 'right',
+        } satisfies EditableColumnMeta,
+      },
+      {
+        accessorKey: 'sum',
+        header: 'Total',
+        size: 100,
+        cell: ({ row }) => {
+          const sum = row.original.sum ?? 0
+          const isValid = row.original.isValid
           return (
             <span className={isValid ? 'text-green-600' : 'text-red-600'}>
               {sum.toFixed(1)}%
@@ -131,15 +183,18 @@ export const NationalityDistributionPanel = memo(function NationalityDistributio
             </span>
           )
         },
+        meta: {
+          editable: false,
+          align: 'right',
+        } satisfies EditableColumnMeta,
       },
     ],
     [disabled]
   )
 
   const onCellValueChanged = useCallback((event: CellValueChangedEvent<LocalDistribution>) => {
-    const { data, colDef, newValue } = event
-    if (!data || !colDef.field) return
-    const field = colDef.field as 'french_pct' | 'saudi_pct' | 'other_pct'
+    const { data, field, newValue } = event
+    if (!data || !field) return
     if (!['french_pct', 'saudi_pct', 'other_pct'].includes(field)) return
 
     setRows((prev) =>
@@ -186,16 +241,13 @@ export const NationalityDistributionPanel = memo(function NationalityDistributio
           Save Distributions
         </Button>
       </div>
-      <DataTableLazy
+      <EditableTable<LocalDistribution>
         rowData={rows}
         columnDefs={columnDefs}
         loading={isLoading}
-        error={error}
         onCellValueChanged={onCellValueChanged}
-        domLayout="autoHeight"
-        pagination={false}
-        defaultColDef={{ resizable: true }}
-        getRowId={(p) => p.data.level_id}
+        getRowId={(row) => row.level_id}
+        height={400}
       />
     </div>
   )

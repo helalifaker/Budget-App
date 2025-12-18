@@ -9,7 +9,7 @@ import { ChangeLogViewer } from './ChangeLogViewer'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog'
 
 export interface ChangeLogDialogProps {
-  budgetVersionId: string
+  versionId: string
   moduleCode?: string
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -18,7 +18,7 @@ export interface ChangeLogDialogProps {
 /**
  * Dialog for viewing change log
  *
- * @param budgetVersionId - Current budget version
+ * @param versionId - Current version
  * @param moduleCode - Optional module filter
  * @param open - Dialog open state
  * @param onOpenChange - Callback when dialog state changes
@@ -26,14 +26,14 @@ export interface ChangeLogDialogProps {
  * @example
  * ```typescript
  * <ChangeLogDialog
- *   budgetVersionId={budgetVersionId}
+ *   versionId={versionId}
  *   open={showLog}
  *   onOpenChange={setShowLog}
  * />
  * ```
  */
 export function ChangeLogDialog({
-  budgetVersionId,
+  versionId,
   moduleCode,
   open,
   onOpenChange,
@@ -48,7 +48,7 @@ export function ChangeLogDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ChangeLogViewer budgetVersionId={budgetVersionId} moduleCode={moduleCode} />
+        <ChangeLogViewer versionId={versionId} moduleCode={moduleCode} />
       </DialogContent>
     </Dialog>
   )

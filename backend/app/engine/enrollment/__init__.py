@@ -1,87 +1,173 @@
 """
-Enrollment Engine - Enrollment projection calculations (Module 7)
+Enrollment Module - Student Enrollment and Class Structure Engines
 
-This module provides pure calculation functions for enrollment planning,
-including growth projections, capacity validation, and retention modeling.
+This module contains calculation engines for enrollment projections,
+calibration, and class structure planning.
+
+Sub-modules:
+- projection: Enrollment projection calculations (retention + lateral entry)
+- calibration: Historical rate calibration and lateral optimization
+
+Part of the 10-module engine structure matching frontend.
 """
 
-from app.engine.enrollment.calculator import (
-    apply_retention_model,
-    calculate_attrition,
-    calculate_enrollment_projection,
+from app.engine.enrollment.calibration import (
+    GRADE_DISPLAY_NAMES,
+    CalibrationResult,
+    ClassSizeConfig,
+    GradeCalibrationResult,
+    GradeOptimizationInput,
+    GradeOptimizationResult,
+    GradeProgressionData,
+    HistoricalEnrollmentYear,
+    NewStudentsSummary,
+    NewStudentsSummaryRow,
+    OptimizationDecision,
+    build_new_students_summary,
+    calculate_base_classes,
+    calculate_fill_capacities,
+    calculate_grade_progression,
+    calculate_new_class_threshold,
+    calculate_weighted_progression,
+    calibrate_from_historical,
+    calibrate_grade,
+    compare_with_defaults,
+    derive_lateral_rate,
+    get_default_effective_rates,
+    is_entry_point_grade,
+    make_optimization_decision,
+    optimize_grade_lateral_entry,
+    optimize_ps_entry,
 )
-from app.engine.enrollment.fiscal_year_proration import (
-    calculate_fiscal_year_weighted_enrollment,
-    calculate_proration_by_grade,
-    get_school_years_for_fiscal_year,
-)
-from app.engine.enrollment.models import (
+from app.engine.enrollment.projection import (
+    CYCLE_RETENTION_RATES,
+    DOCUMENT_LATERAL_DEFAULTS,
+    EFIR_MAX_CAPACITY,
+    ENTRY_POINT_GRADES,
+    GRADE_SEQUENCE,
+    GRADE_TO_CYCLE,
+    UNIFIED_LATERAL_DEFAULTS,
+    CapacityExceededError,
+    EngineEffectiveRates,
     EnrollmentGrowthScenario,
     EnrollmentInput,
     EnrollmentProjection,
     EnrollmentProjectionResult,
-    RetentionModel,
-)
-from app.engine.enrollment.projection_engine import (
-    GRADE_SEQUENCE,
-    GRADE_TO_CYCLE,
-    calculate_lateral_with_rates,
-    get_effective_retention_with_rates,
-    project_enrollment,
-    project_multi_year,
-    validate_projection_input,
-)
-from app.engine.enrollment.projection_models import (
-    DOCUMENT_LATERAL_DEFAULTS,
-    ENTRY_POINT_GRADES,
-    EngineEffectiveRates,
+    FiscalYearProration,
     GlobalOverrides,
     GradeOverride,
     GradeProjection,
+    GradeProjectionComponents,
+    InvalidGrowthRateError,
     LevelOverride,
     ProjectionInput,
     ProjectionResult,
+    RetentionModel,
     ScenarioParams,
-)
-from app.engine.enrollment.validators import (
+    apply_capacity_constraint,
+    apply_retention_model,
+    calculate_attrition,
+    calculate_divisions,
+    calculate_enrollment_projection,
+    calculate_fiscal_year_weighted_enrollment,
+    calculate_lateral_with_rates,
+    calculate_multi_level_total,
+    calculate_proration_by_grade,
+    get_effective_class_size,
+    get_effective_lateral_entry,
+    get_effective_lateral_multiplier,
+    get_effective_max_divisions,
+    get_effective_retention,
+    get_effective_retention_with_rates,
+    project_enrollment,
+    project_multi_year,
+    project_single_year,
+    validate_attrition_rate,
     validate_capacity,
     validate_growth_rate,
+    validate_projection_input,
+    validate_retention_rate,
+    validate_total_capacity,
 )
 
 __all__ = [
     # Constants
+    "CYCLE_RETENTION_RATES",
     "DOCUMENT_LATERAL_DEFAULTS",
+    "EFIR_MAX_CAPACITY",
     "ENTRY_POINT_GRADES",
+    "GRADE_DISPLAY_NAMES",
     "GRADE_SEQUENCE",
     "GRADE_TO_CYCLE",
-    # New projection engine
+    "UNIFIED_LATERAL_DEFAULTS",
+    # Models - Calibration
+    "CalibrationResult",
+    # Models - Projection
+    "CapacityExceededError",
+    "ClassSizeConfig",
     "EngineEffectiveRates",
-    # Legacy calculator
     "EnrollmentGrowthScenario",
     "EnrollmentInput",
     "EnrollmentProjection",
     "EnrollmentProjectionResult",
+    "FiscalYearProration",
     "GlobalOverrides",
+    "GradeCalibrationResult",
+    "GradeOptimizationInput",
+    "GradeOptimizationResult",
     "GradeOverride",
+    "GradeProgressionData",
     "GradeProjection",
+    "GradeProjectionComponents",
+    "HistoricalEnrollmentYear",
+    "InvalidGrowthRateError",
     "LevelOverride",
+    "NewStudentsSummary",
+    "NewStudentsSummaryRow",
+    "OptimizationDecision",
     "ProjectionInput",
     "ProjectionResult",
     "RetentionModel",
     "ScenarioParams",
+    # Projection functions
+    "apply_capacity_constraint",
     "apply_retention_model",
+    # Calibration functions
+    "build_new_students_summary",
     "calculate_attrition",
+    "calculate_base_classes",
+    "calculate_divisions",
     "calculate_enrollment_projection",
-    # Fiscal year proration
+    "calculate_fill_capacities",
     "calculate_fiscal_year_weighted_enrollment",
+    "calculate_grade_progression",
     "calculate_lateral_with_rates",
+    "calculate_multi_level_total",
+    "calculate_new_class_threshold",
     "calculate_proration_by_grade",
+    "calculate_weighted_progression",
+    "calibrate_from_historical",
+    "calibrate_grade",
+    "compare_with_defaults",
+    "derive_lateral_rate",
+    "get_default_effective_rates",
+    "get_effective_class_size",
+    "get_effective_lateral_entry",
+    "get_effective_lateral_multiplier",
+    "get_effective_max_divisions",
+    "get_effective_retention",
     "get_effective_retention_with_rates",
-    "get_school_years_for_fiscal_year",
+    "is_entry_point_grade",
+    "make_optimization_decision",
+    "optimize_grade_lateral_entry",
+    "optimize_ps_entry",
     "project_enrollment",
     "project_multi_year",
-    # Validators
+    "project_single_year",
+    "validate_attrition_rate",
     "validate_capacity",
     "validate_growth_rate",
     "validate_projection_input",
+    "validate_retention_rate",
+    "validate_total_capacity",
 ]

@@ -13,7 +13,7 @@ import { Badge } from './ui/badge'
 
 export interface CellHistoryDialogProps {
   cellId: string
-  budgetVersionId: string
+  versionId: string
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -22,7 +22,7 @@ export interface CellHistoryDialogProps {
  * Dialog for displaying cell change history
  *
  * @param cellId - Cell ID
- * @param budgetVersionId - Budget version ID
+ * @param versionId - Budget version ID
  * @param open - Dialog open state
  * @param onOpenChange - State change handler
  */

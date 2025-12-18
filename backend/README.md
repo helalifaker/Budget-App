@@ -8,73 +8,78 @@ FastAPI 0.123 + Python 3.14.0 backend for the EFIR Budget Planning Application, 
 
 **⚠️ CRITICAL: If you are an AI agent working on backend code, read this section FIRST.**
 
-### Relevant Agents for Backend
+### Agent System (9 Agents)
 
-| Agent | Responsibility | Boundaries |
-|-------|---------------|------------|
-| `backend-engine-agent` | **Pure calculation engines** (DHG, enrollment, revenue, costs, KPI) | ✅ CAN: Implement calculation logic<br>❌ CANNOT: Modify database schema, create API endpoints, build UI |
-| `backend-api-specialist` | **FastAPI routes, endpoints, request/response schemas** | ✅ CAN: Create FastAPI routes, validate requests<br>❌ CANNOT: Implement calculation logic (must call `backend-engine-agent`), modify database, build UI |
-| `database-supabase-agent` | **Database schema, migrations, RLS policies** | ✅ CAN: Create tables, migrations, RLS policies<br>❌ CANNOT: Implement calculation logic, create APIs, build UI |
+This codebase uses a 9-agent orchestration system. For backend work:
+
+| Agent | Use For | Key Rules |
+|-------|---------|-----------|
+| `product-architect-agent` | Business rules, formulas (SOURCE OF TRUTH) | Consult before implementing any calculation |
+| `Plan` | Architecture decisions, implementation planning | Use for schema design, major features |
+| `Explore` | Fast codebase exploration | Find files, patterns, existing implementations |
+| `performance-agent` | Profiling, optimization | Query tuning, caching strategies |
+| `qa-validation-agent` | Tests (unit, integration) | 80%+ coverage requirement |
+| `general-purpose` | Complex multi-step research | Code search, dependency analysis |
 
 ### Agent Boundary Rules
 
 **CRITICAL ENFORCEMENT:**
 
-1. **`backend-engine-agent` MUST:**
-   - Implement pure calculation functions (no side effects)
+1. **Calculation Engines** (`app/engine/`):
+   - Implement pure functions (no side effects, no database access)
    - Use Pydantic models for input/output validation
    - Follow formulas exactly as specified by `product-architect-agent`
-   - Be fully testable (no database access, no API calls)
+   - Be fully testable (no API calls, no external dependencies)
 
-2. **`backend-api-specialist` MUST:**
-   - Call `backend-engine-agent` for all calculations (NEVER implement calculation logic)
+2. **API Endpoints** (`app/api/v1/`):
+   - Call engine functions via service layer for all calculations
    - Use FastAPI dependency injection for services
    - Validate requests with Pydantic schemas
    - Return proper HTTP status codes and error messages
 
-3. **`database-supabase-agent` MUST:**
+3. **Database Changes**:
    - Create Alembic migrations for all schema changes
-   - Implement RLS policies in collaboration with `security-rls-agent`
-   - Never modify calculation logic or create API endpoints
+   - Use `Plan` agent for schema design decisions
+   - Follow naming conventions in `AGENTS.md`
 
 ### Backend Code Organization
 
 **Calculation Engines** (`backend/app/engine/`):
-- **Owner**: `backend-engine-agent`
+
 - **Pattern**: Pure functions with Pydantic input/output models
 - **Example**: `app/engine/dhg/calculate_dhg_hours()` - no database, no API, pure calculation
 
 **API Endpoints** (`backend/app/api/v1/`):
-- **Owner**: `backend-api-specialist`
+
 - **Pattern**: FastAPI routes that call engine functions via services
-- **Example**: `app/api/v1/calculations/dhg.py` - calls `backend-engine-agent` via service layer
+- **Example**: `app/api/v1/calculations/dhg.py` - calls engine via service layer
 
 **Database Models** (`backend/app/models/`):
-- **Owner**: `database-supabase-agent`
+
 - **Pattern**: SQLAlchemy ORM models with proper relationships
-- **Migrations**: `backend/alembic/versions/` (10 migrations as of December 2025)
+- **Migrations**: `backend/alembic/versions/` (25+ migrations as of December 2025)
 
 **Services** (`backend/app/services/`):
-- **Owner**: `backend-api-specialist` (orchestrates engine calls)
+
 - **Pattern**: Business logic layer between API and engines
-- **Example**: `EnrollmentService.calculate()` calls `backend-engine-agent` functions
+- **Example**: `EnrollmentService.calculate()` orchestrates engine function calls
 
 ### Agent Workflow Examples
 
 **Example 1: Implementing DHG Calculation**
 ```
 1. product-architect-agent → Provides DHG formula and business rules
-2. backend-engine-agent → Implements pure calculation function
-3. backend-api-specialist → Creates FastAPI endpoint that calls engine
+2. Implement pure calculation function in engine/
+3. Create FastAPI endpoint that calls engine via service
 4. qa-validation-agent → Writes tests for engine and API
 ```
 
 **Example 2: Adding Database Table**
 ```
-1. system-architect-agent → Approves schema design
-2. database-supabase-agent → Creates SQLAlchemy model and Alembic migration
-3. backend-api-specialist → Creates CRUD endpoints (if needed)
-4. security-rls-agent → Adds RLS policies (collaborates with database-supabase-agent)
+1. Plan agent → Design schema, approve architecture
+2. Create SQLAlchemy model and Alembic migration
+3. Create CRUD endpoints (if needed)
+4. Add RLS policies in migration
 ```
 
 **See [Agent Orchestration Guide](../.claude/AGENT_ORCHESTRATION.md) for complete workflow patterns.**

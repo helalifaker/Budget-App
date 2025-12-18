@@ -11,7 +11,7 @@ import {
   ImportPreviewResponse,
   ImportResultResponse,
   ImportHistoryEntry,
-} from '@/services/historicalImport'
+} from '@/services/historical-import'
 
 /**
  * Query keys for historical import

@@ -13,12 +13,12 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import (
+from app.models import (
     AcademicLevel,
     FeeCategory,
     NationalityType,
 )
-from app.services.fee_structure_service import FeeStructureService
+from app.services.settings.fee_structure_service import FeeStructureService
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -37,18 +37,18 @@ class TestGetFeeStructure:
 
     @pytest.mark.asyncio
     async def test_get_fee_structure_empty(
-        self, db_session: AsyncSession, test_budget_version
+        self, db_session: AsyncSession, test_version
     ):
         """Test retrieving fees when none exist."""
         service = FeeStructureService(db_session)
-        fees = await service.get_fee_structure(test_budget_version.id)
+        fees = await service.get_fee_structure(test_version.id)
         assert fees == []
 
     @pytest.mark.asyncio
     async def test_get_fee_structure_returns_all_for_version(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -62,7 +62,7 @@ class TestGetFeeStructure:
         french_nat = nationality_types["FRENCH"]
 
         fee = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -71,7 +71,7 @@ class TestGetFeeStructure:
         )
 
         # Retrieve all fees
-        fees = await service.get_fee_structure(test_budget_version.id)
+        fees = await service.get_fee_structure(test_version.id)
         assert len(fees) >= 1
         assert any(f.id == fee.id for f in fees)
 
@@ -81,12 +81,12 @@ class TestGetFeeByCriteria:
 
     @pytest.mark.asyncio
     async def test_get_fee_by_criteria_not_found(
-        self, db_session: AsyncSession, test_budget_version
+        self, db_session: AsyncSession, test_version
     ):
         """Test retrieving fee with non-matching criteria returns None."""
         service = FeeStructureService(db_session)
         fee = await service.get_fee_by_criteria(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=uuid.uuid4(),
             nationality_type_id=uuid.uuid4(),
             fee_category_id=uuid.uuid4(),
@@ -97,7 +97,7 @@ class TestGetFeeByCriteria:
     async def test_get_fee_by_criteria_annual_fee(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -111,7 +111,7 @@ class TestGetFeeByCriteria:
 
         # Create annual registration fee
         created = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=registration_cat.id,
@@ -121,7 +121,7 @@ class TestGetFeeByCriteria:
 
         # Retrieve by criteria
         fee = await service.get_fee_by_criteria(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=registration_cat.id,
@@ -134,7 +134,7 @@ class TestGetFeeByCriteria:
     async def test_get_fee_by_criteria_trimester_fee(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -148,7 +148,7 @@ class TestGetFeeByCriteria:
 
         # Create T1 tuition fee
         created = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -158,7 +158,7 @@ class TestGetFeeByCriteria:
 
         # Retrieve T1 fee
         fee_t1 = await service.get_fee_by_criteria(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -169,7 +169,7 @@ class TestGetFeeByCriteria:
 
         # T2 should not be found
         fee_t2 = await service.get_fee_by_criteria(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -183,18 +183,18 @@ class TestGetFeesByLevel:
 
     @pytest.mark.asyncio
     async def test_get_fees_by_level_empty(
-        self, db_session: AsyncSession, test_budget_version
+        self, db_session: AsyncSession, test_version
     ):
         """Test retrieving fees for level with no fees."""
         service = FeeStructureService(db_session)
-        fees = await service.get_fees_by_level(test_budget_version.id, uuid.uuid4())
+        fees = await service.get_fees_by_level(test_version.id, uuid.uuid4())
         assert fees == []
 
     @pytest.mark.asyncio
     async def test_get_fees_by_level_returns_all(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -209,14 +209,14 @@ class TestGetFeesByLevel:
 
         # Create multiple fees for PS level
         await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
             amount_sar=Decimal("50000.00"),
         )
         await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=registration_cat.id,
@@ -224,7 +224,7 @@ class TestGetFeesByLevel:
         )
 
         # Retrieve fees for PS level
-        fees = await service.get_fees_by_level(test_budget_version.id, ps_level.id)
+        fees = await service.get_fees_by_level(test_version.id, ps_level.id)
         assert len(fees) >= 2
 
 
@@ -235,7 +235,7 @@ class TestUpsertFeeStructure:
     async def test_create_annual_fee(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -248,7 +248,7 @@ class TestUpsertFeeStructure:
         french_nat = nationality_types["FRENCH"]
 
         fee = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=registration_cat.id,
@@ -258,7 +258,7 @@ class TestUpsertFeeStructure:
         )
 
         assert fee.id is not None
-        assert fee.budget_version_id == test_budget_version.id
+        assert fee.version_id == test_version.id
         assert fee.level_id == ps_level.id
         assert fee.nationality_type_id == french_nat.id
         assert fee.fee_category_id == registration_cat.id
@@ -270,7 +270,7 @@ class TestUpsertFeeStructure:
     async def test_create_trimester_fee(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -284,7 +284,7 @@ class TestUpsertFeeStructure:
 
         # Create T1 fee (40%)
         fee_t1 = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -294,7 +294,7 @@ class TestUpsertFeeStructure:
 
         # Create T2 fee (30%)
         fee_t2 = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -304,7 +304,7 @@ class TestUpsertFeeStructure:
 
         # Create T3 fee (30%)
         fee_t3 = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -321,7 +321,7 @@ class TestUpsertFeeStructure:
     async def test_update_existing_fee(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -335,7 +335,7 @@ class TestUpsertFeeStructure:
 
         # Create initial fee
         fee1 = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -344,7 +344,7 @@ class TestUpsertFeeStructure:
 
         # Update the same fee
         fee2 = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -365,7 +365,7 @@ class TestDeleteFeeStructure:
     async def test_delete_fee_structure(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -379,7 +379,7 @@ class TestDeleteFeeStructure:
 
         # Create fee
         fee = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -392,7 +392,7 @@ class TestDeleteFeeStructure:
 
         # Should not be found anymore
         found = await service.get_fee_by_criteria(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -407,7 +407,7 @@ class TestFeeStructureBusinessRules:
     async def test_different_nationality_different_fees(
         self,
         db_session: AsyncSession,
-        test_budget_version,
+        test_version,
         academic_levels: dict[str, AcademicLevel],
         fee_categories: dict[str, FeeCategory],
         nationality_types: dict[str, NationalityType],
@@ -422,7 +422,7 @@ class TestFeeStructureBusinessRules:
 
         # French student fee
         fee_french = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=french_nat.id,
             fee_category_id=tuition_cat.id,
@@ -431,7 +431,7 @@ class TestFeeStructureBusinessRules:
 
         # Saudi student fee (different rate)
         fee_saudi = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=ps_level.id,
             nationality_type_id=saudi_nat.id,
             fee_category_id=tuition_cat.id,

@@ -30,23 +30,23 @@ export const TAB_DESCRIPTIONS: Record<string, string> = {
   '/command-center': 'Your budget planning hub. Quick access to all modules and recent activity.',
   '/dashboard': 'Overview of your budget planning progress and key metrics.',
 
-  // Enrollment Module
-  '/enrollment': 'Manage student enrollment projections and class structure.',
-  '/enrollment/planning': 'Enter enrollment projections by grade level for the budget year.',
-  '/enrollment/class-structure': 'Configure classes per level based on enrollment numbers.',
-  '/enrollment/validation': 'Review and validate your enrollment plan before proceeding.',
-  '/enrollment/settings': 'Configure class size parameters and enrollment rules.',
+  // Students Module (Enrollment)
+  '/students': 'Manage student enrollment projections and class structure.',
+  '/students/planning': 'Enter enrollment projections by grade level for the budget year.',
+  '/students/class-structure': 'Configure classes per level based on enrollment numbers.',
+  '/students/validation': 'Review and validate your enrollment plan before proceeding.',
+  '/students/settings': 'Configure class size parameters and enrollment rules.',
 
-  // Workforce Module
-  '/workforce': 'Manage employees, salaries, and teaching hour allocations.',
-  '/workforce/employees': 'View and manage staff roster, contracts, and employment details.',
-  '/workforce/salaries': 'Configure salary grids and compensation structures.',
-  '/workforce/aefe-positions': 'Manage AEFE detached and funded positions.',
-  '/workforce/dhg': 'Plan teaching hours by subject and level (DHG).',
-  '/workforce/dhg/planning': 'Plan teaching hours by subject and level (DHG).',
-  '/workforce/dhg/requirements': 'Calculate FTE requirements based on DHG hours.',
-  '/workforce/dhg/gap-analysis': 'Compare available staff against requirements (TRMD).',
-  '/workforce/settings': 'Configure subject hours and teacher cost parameters.',
+  // Teachers Module (Workforce)
+  '/teachers': 'Manage employees, salaries, and teaching hour allocations.',
+  '/teachers/employees': 'View and manage staff roster, contracts, and employment details.',
+  '/teachers/salaries': 'Configure salary grids and compensation structures.',
+  '/teachers/aefe-positions': 'Manage AEFE detached and funded positions.',
+  '/teachers/dhg': 'Plan teaching hours by subject and level (DHG).',
+  '/teachers/dhg/planning': 'Plan teaching hours by subject and level (DHG).',
+  '/teachers/dhg/requirements': 'Calculate FTE requirements based on DHG hours.',
+  '/teachers/dhg/gap-analysis': 'Compare available staff against requirements (TRMD).',
+  '/teachers/settings': 'Configure subject hours and teacher cost parameters.',
 
   // Finance Module
   '/finance': 'Plan revenue, costs, and view financial consolidation.',
@@ -57,24 +57,24 @@ export const TAB_DESCRIPTIONS: Record<string, string> = {
   '/finance/statements': 'View consolidated financial statements (PCG/IFRS formats).',
   '/finance/settings': 'Configure fee structures and financial parameters.',
 
-  // Analysis Module
-  '/analysis': 'Analyze KPIs, view dashboards, and compare variances.',
-  '/analysis/kpis': 'Monitor key performance indicators across all budget areas.',
-  '/analysis/dashboards': 'Visual dashboards showing budget health and trends.',
-  '/analysis/variance': 'Compare budget versus actual performance by period.',
+  // Insights Module (Analysis)
+  '/insights': 'Analyze KPIs, view dashboards, and compare variances.',
+  '/insights/kpis': 'Monitor key performance indicators across all budget areas.',
+  '/insights/dashboards': 'Visual dashboards showing budget health and trends.',
+  '/insights/variance': 'Compare budget versus actual performance by period.',
 
   // Strategic Module
   '/strategic': 'Develop long-term financial projections and strategic plans.',
 
-  // Configuration Module
-  '/configuration': 'System-wide settings, version management, and data imports.',
-  '/configuration/versions': 'Manage budget versions and fiscal year configurations.',
-  '/configuration/class-sizes': 'Configure class size parameters by cycle.',
-  '/configuration/subject-hours': 'Define teaching hours by subject and level.',
-  '/configuration/teacher-costs': 'Configure teacher cost rates by category.',
-  '/configuration/fees': 'Configure fee structures and tuition rates.',
-  '/configuration/uploads': 'Import historical data and external files.',
-  '/configuration/system': 'Configure system-wide application settings.',
+  // Settings Module (Configuration)
+  '/settings': 'System-wide settings, version management, and data imports.',
+  '/settings/versions': 'Manage versions and fiscal year configurations.',
+  '/settings/class-sizes': 'Configure class size parameters by cycle.',
+  '/settings/subject-hours': 'Define teaching hours by subject and level.',
+  '/settings/teacher-costs': 'Configure teacher cost rates by category.',
+  '/settings/fees': 'Configure fee structures and tuition rates.',
+  '/settings/uploads': 'Import historical data and external files.',
+  '/settings/system': 'Configure system-wide application settings.',
 
   // Admin (legacy route)
   '/admin/historical-import': 'Import historical data from Excel files.',

@@ -19,14 +19,20 @@ from sqlalchemy.pool import NullPool
 
 from app.core.logging import logger
 
-# Load environment variables from .env.local (development) or .env (production)
-# Use override=True to ensure backend-specific values take precedence over root .env files
-# and any previously exported OS environment variables
+# Load environment variables from .env.local (development) or .env (production).
+#
+# In normal runtime we use override=True so backend-specific values take precedence over
+# root-level .env files and any previously exported OS environment variables.
+#
+# In pytest runs, conftest.py deliberately sets key env vars (e.g., TEST_DATABASE_URL) before
+# importing app modules; avoid overriding those via dotenv.
 env_file = Path(__file__).parent.parent / ".env.local"
+_is_pytest = bool(os.getenv("PYTEST_CURRENT_TEST") or os.getenv("PYTEST_RUNNING"))
+_dotenv_override = not _is_pytest
 if env_file.exists():
-    load_dotenv(env_file, override=True)
+    load_dotenv(env_file, override=_dotenv_override)
 else:
-    load_dotenv(override=True)  # Load from .env if .env.local doesn't exist
+    load_dotenv(override=_dotenv_override)  # Load from .env if .env.local doesn't exist
 
 # Database URL configuration
 # Priority order:
@@ -142,7 +148,6 @@ else:
             pool_timeout=30,  # Wait max 30s for a connection from pool
             connect_args={
                 "statement_cache_size": 0,
-                "prepared_statement_name_func": unique_stmt_name,
                 "server_settings": {"jit": "off"},
                 "timeout": 30,  # Connection timeout (asyncpg)
                 "command_timeout": 60,  # Query timeout (asyncpg)
@@ -158,7 +163,6 @@ else:
             pool_pre_ping=False,
             connect_args={
                 "statement_cache_size": 0,
-                "prepared_statement_name_func": unique_stmt_name,
                 "server_settings": {"jit": "off"},
                 "timeout": 30,  # Connection timeout (asyncpg)
                 "command_timeout": 60,  # Query timeout (asyncpg)

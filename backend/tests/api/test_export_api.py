@@ -426,6 +426,84 @@ class TestExportBudgetCSV:
             assert "account_code" in lines[0]
 
 
+class TestExportAdditionalCoverage:
+    """Additional tests to achieve 100% coverage."""
+
+    def test_export_budget_excel_with_null_version_attribute(
+        self, client, mock_user
+    ):
+        """Test Excel export when consolidation.version is None (line 116)."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.openpyxl") as mock_openpyxl:
+            mock_wb = MagicMock()
+            mock_ws = MagicMock()
+            mock_wb.active = mock_ws
+            mock_openpyxl.Workbook.return_value = mock_wb
+            mock_openpyxl.styles = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_consolidation = MagicMock()
+                # Set version to None to test fallback (line 116)
+                mock_consolidation.version = None
+                mock_consolidation.total_revenue = Decimal("1000000")
+                mock_consolidation.total_personnel_costs = Decimal("500000")
+                mock_consolidation.total_operating_costs = Decimal("200000")
+                mock_consolidation.total_capex = Decimal("100000")
+                mock_consolidation.net_result = Decimal("200000")
+                mock_service.get_consolidation.return_value = mock_consolidation
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/excel")
+
+                # Should still succeed with version_id as fallback
+                assert response.status_code == 200
+
+    def test_export_pdf_with_null_version_status(
+        self, client, mock_user
+    ):
+        """Test PDF export when consolidation.version.status doesn't exist (line 385)."""
+        version_id = uuid.uuid4()
+
+        with patch("app.api.v1.export.reportlab") as mock_reportlab:
+            mock_lib = MagicMock()
+            mock_lib.colors = MagicMock()
+            mock_lib.pagesizes.A4 = (595, 842)
+            mock_lib.units.cm = 28.35
+            mock_lib.styles.ParagraphStyle = MagicMock()
+            mock_lib.styles.getSampleStyleSheet = MagicMock(
+                return_value={
+                    "Heading1": MagicMock(),
+                    "Heading2": MagicMock(),
+                    "Normal": MagicMock(),
+                }
+            )
+            mock_reportlab.lib = mock_lib
+            mock_reportlab.platypus = MagicMock()
+
+            with patch(
+                "app.api.v1.export.ConsolidationService"
+            ) as mock_service_class:
+                mock_service = AsyncMock()
+                mock_consolidation = MagicMock()
+                # Set version to None to trigger fallback logic
+                mock_consolidation.version = None
+                mock_consolidation.total_revenue = Decimal("1000000")
+                mock_consolidation.total_personnel_costs = Decimal("500000")
+                mock_consolidation.total_operating_costs = Decimal("200000")
+                mock_consolidation.total_capex = Decimal("100000")
+                mock_consolidation.net_result = Decimal("200000")
+                mock_service.get_consolidation.return_value = mock_consolidation
+                mock_service_class.return_value = mock_service
+
+                response = client.get(f"/api/v1/export/budget/{version_id}/pdf")
+
+                assert response.status_code == 200
+
+
 class TestExportEdgeCases:
     """Tests for edge cases and error conditions."""
 

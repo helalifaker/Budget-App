@@ -29,7 +29,8 @@ Your technology stack is **remarkably up-to-date** with most packages at or very
 |---------|----------------|----------------|---------|-------|
 | **@tanstack/react-query** | 5.90.11 | 5.90.11 | ✅ Current | Latest stable version |
 | **@tanstack/react-router** | 1.139.12 | 1.139.14 | 🟡 Minor behind | 2 patch versions behind |
-| **ag-grid-community** | 34.3.1 | 34.3.1 | ✅ Current | Latest stable version |
+| **@tanstack/react-table** | 8.21.3 | 8.21.3 | ✅ Current | Grid/table foundation (replaces AG Grid) |
+| **@tanstack/react-virtual** | 3.13.13 | 3.13.13 | ✅ Current | Table virtualization |
 | **recharts** | 3.4.1 | 3.5.1 | 🟡 Minor behind | 1 minor version behind |
 | **@radix-ui/react-*** | Various | Various | ✅ Current | shadcn/ui dependencies |
 | **react-hook-form** | 7.67.0 | Latest | ✅ Current | Actively maintained |
@@ -292,4 +293,3 @@ pip install --upgrade fastapi pydantic uvicorn sqlalchemy
 
 **Last Updated:** January 2025  
 **Next Review:** April 2025 (quarterly review recommended)
-

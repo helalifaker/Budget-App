@@ -4,6 +4,9 @@
 **Status**: Phases 1-3 Complete | Phases 4-6 Remaining
 **Purpose**: Actionable, step-by-step implementation guide
 
+> **Schema naming (Phase 3+)**: Use `version_id` (not `budget_version_id`) and `settings_versions` (not `budget_versions`).
+> Tables are prefixed under the single `efir_budget` schema (`ref_*`, `settings_*`, `students_*`, `teachers_*`, `finance_*`, `insights_*`, `admin_*`).
+
 > **📌 IMPORTANT UPDATE (Dec 2, 2025)**:
 >
 > A new **[FOCUSED_ENHANCEMENT_ROADMAP.md](./FOCUSED_ENHANCEMENT_ROADMAP.md)** has been created for production-ready enhancements.
@@ -187,7 +190,7 @@ class KPICalculation(BaseModel, VersionedMixin):
     )
     
     __table_args__ = (
-        UniqueConstraint("budget_version_id", "kpi_definition_id", name="kpi_calculation_unique"),
+        UniqueConstraint("version_id", "kpi_definition_id", name="kpi_calculation_unique"),
         CheckConstraint("calculated_value >= 0", name="kpi_value_non_negative"),
     )
 ```
@@ -195,7 +198,7 @@ class KPICalculation(BaseModel, VersionedMixin):
 **Acceptance Criteria**:
 - [ ] Model inherits `VersionedMixin` for budget version tracking
 - [ ] Foreign key to `KPIDefinition`
-- [ ] Unique constraint on (budget_version_id, kpi_definition_id)
+- [ ] Unique constraint on (version_id, kpi_definition_id)
 - [ ] JSONB field for calculation metadata
 - [ ] Relationship to `KPIDefinition`
 
@@ -705,7 +708,7 @@ class BudgetVariance(BaseModel, VersionedMixin):
     )
     
     __table_args__ = (
-        UniqueConstraint("budget_version_id", "account_code", "period", name="budget_variance_unique"),
+        UniqueConstraint("version_id", "account_code", "period", name="budget_variance_unique"),
         Index("idx_budget_variances_period", "period"),
         Index("idx_budget_variances_account", "account_code"),
     )
@@ -779,7 +782,7 @@ class ForecastRevision(BaseModel, VersionedMixin):
     )
     
     __table_args__ = (
-        UniqueConstraint("budget_version_id", "account_code", name="forecast_revision_unique"),
+        UniqueConstraint("version_id", "account_code", name="forecast_revision_unique"),
     )
 ```
 
@@ -1129,7 +1132,7 @@ class StrategicInitiative(BaseModel):
 
 ### Task 4.6: Add RLS Policies
 
-**File**: `docs/DATABASE/sql/rls_policies.sql` (append)
+**File**: `docs/database/sql/rls_policies.sql` (append)
 
 **Policy Pattern** (same as existing):
 - Admin: Full access
@@ -1228,7 +1231,7 @@ services/
 ```python
 async def calculate_dhg_subject_hours(
     class_structure_id: UUID,
-    budget_version_id: UUID,
+    version_id: UUID,
     db: AsyncSession
 ) -> list[DHGSubjectHours]:
     """
@@ -1274,7 +1277,7 @@ async def calculate_dhg_subject_hours(
 ```python
 async def calculate_teacher_requirements(
     dhg_subject_hours: list[DHGSubjectHours],
-    budget_version_id: UUID,
+    version_id: UUID,
     db: AsyncSession
 ) -> list[DHGTeacherRequirement]:
     """
@@ -1323,13 +1326,13 @@ async def calculate_teacher_requirements(
 **Function**: `calculate_trmd_gap_analysis()`
 
 **Input**:
-- `budget_version_id: UUID` - Budget version
+- `version_id: UUID` - Version id
 - `db: AsyncSession` - Database session
 
 **Logic**:
 ```python
 async def calculate_trmd_gap_analysis(
-    budget_version_id: UUID,
+    version_id: UUID,
     db: AsyncSession
 ) -> dict:
     """
@@ -1376,7 +1379,7 @@ async def calculate_trmd_gap_analysis(
 **Logic**:
 ```python
 async def calculate_revenue_from_enrollment(
-    budget_version_id: UUID,
+    version_id: UUID,
     db: AsyncSession
 ) -> list[RevenuePlan]:
     """
@@ -1429,7 +1432,7 @@ async def calculate_revenue_from_enrollment(
 **Logic**:
 ```python
 async def calculate_personnel_costs(
-    budget_version_id: UUID,
+    version_id: UUID,
     db: AsyncSession
 ) -> list[PersonnelCostPlan]:
     """
@@ -1489,7 +1492,7 @@ async def calculate_personnel_costs(
 **Logic**:
 ```python
 async def aggregate_budget_data(
-    budget_version_id: UUID,
+    version_id: UUID,
     db: AsyncSession
 ) -> list[BudgetConsolidation]:
     """
@@ -1539,7 +1542,7 @@ async def aggregate_budget_data(
 **Logic**:
 ```python
 async def generate_income_statement(
-    budget_version_id: UUID,
+    version_id: UUID,
     format: StatementFormat,
     db: AsyncSession
 ) -> FinancialStatement:
@@ -1763,10 +1766,10 @@ async def calculate_dhg_hours(
 ### Task 9.1: Module Documentation
 
 **Files**:
-- `docs/MODULES/Module_15_Statistical_Analysis.md`
-- `docs/MODULES/Module_16_Dashboards.md`
-- `docs/MODULES/Module_17_Budget_Vs_Actual.md`
-- `docs/MODULES/Module_18_Strategic_Plan.md`
+- `docs/modules/Module_15_Statistical_Analysis.md`
+- `docs/modules/Module_16_Dashboards.md`
+- `docs/modules/Module_17_Budget_Vs_Actual.md`
+- `docs/modules/Module_18_Strategic_Plan.md`
 
 ### Task 9.2: User Documentation
 
@@ -1831,7 +1834,5 @@ async def calculate_dhg_hours(
 **Total Estimated Duration**: 58-87 days
 
 **Last Updated**: 2025-12-01
-
-
 
 

@@ -474,7 +474,7 @@ function FeaturesSection() {
     {
       icon: Globe,
       title: 'Global Context',
-      description: 'Your budget version follows you everywhere. Select once, work seamlessly.',
+      description: 'Your version follows you everywhere. Select once, work seamlessly.',
       color: 'gold',
     },
     {

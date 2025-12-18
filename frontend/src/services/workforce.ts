@@ -13,12 +13,9 @@ import type {
   EmployeeUpdate,
   EmployeeSalary,
   EmployeeSalaryCreate,
-  EmployeeSalaryUpdate,
-  SalaryBreakdown,
   EOSProvision,
   EOSCalculation,
   EOSCalculationRequest,
-  EOSSummary,
   AEFEPosition,
   AEFEPositionSummary,
   AEFEPositionUpdate,
@@ -38,25 +35,28 @@ export const workforceApi = {
   // ==============================================================================
   employees: {
     /**
-     * List all employees for a budget version.
+     * List all employees for a version.
      * Includes both Base 100 (existing) and Planned (placeholder) employees.
      */
-    getAll: async (budgetVersionId: string, filters?: EmployeeFilters) => {
-      const params = new URLSearchParams({ version_id: budgetVersionId })
+    getAll: async (versionId: string, filters?: EmployeeFilters) => {
+      // Build query params for filters (not version_id - that goes in path)
+      const params = new URLSearchParams()
 
       if (filters?.category) params.append('category', filters.category)
       if (filters?.nationality) params.append('nationality', filters.nationality)
       if (filters?.cycle_id) params.append('cycle_id', filters.cycle_id)
       if (filters?.subject_id) params.append('subject_id', filters.subject_id)
-      if (filters?.is_active !== undefined) params.append('is_active', String(filters.is_active))
+      if (filters?.is_active !== undefined)
+        params.append('include_inactive', String(!filters.is_active))
       if (filters?.is_placeholder !== undefined)
         params.append('is_placeholder', String(filters.is_placeholder))
       if (filters?.search) params.append('search', filters.search)
 
+      const queryString = params.toString()
       return withServiceErrorHandling(
         apiRequest<EmployeeBulkResponse>({
           method: 'GET',
-          url: `/workforce/employees?${params.toString()}`,
+          url: `/workforce/employees/${versionId}${queryString ? `?${queryString}` : ''}`,
         }),
         'workforce: get employees'
       )
@@ -65,11 +65,11 @@ export const workforceApi = {
     /**
      * Get a single employee by ID.
      */
-    getById: async (employeeId: string) => {
+    getById: async (versionId: string, employeeId: string) => {
       return withServiceErrorHandling(
         apiRequest<Employee>({
           method: 'GET',
-          url: `/workforce/employees/${employeeId}`,
+          url: `/workforce/employees/${versionId}/${employeeId}`,
         }),
         'workforce: get employee'
       )
@@ -146,22 +146,9 @@ export const workforceApi = {
       return withServiceErrorHandling(
         apiRequest<EmployeeSalary | null>({
           method: 'GET',
-          url: `/workforce/employees/${employeeId}/salaries/current`,
+          url: `/workforce/employees/${employeeId}/salary`,
         }),
         'workforce: get current salary'
-      )
-    },
-
-    /**
-     * Get salary history for an employee.
-     */
-    getHistory: async (employeeId: string) => {
-      return withServiceErrorHandling(
-        apiRequest<EmployeeSalary[]>({
-          method: 'GET',
-          url: `/workforce/employees/${employeeId}/salaries`,
-        }),
-        'workforce: get salary history'
       )
     },
 
@@ -173,7 +160,7 @@ export const workforceApi = {
       return withServiceErrorHandling(
         apiRequest<EmployeeSalary>({
           method: 'POST',
-          url: `/workforce/employees/${data.employee_id}/salaries`,
+          url: `/workforce/employees/${data.employee_id}/salary`,
           data,
         }),
         'workforce: create salary'
@@ -181,27 +168,28 @@ export const workforceApi = {
     },
 
     /**
-     * Update an existing salary record.
+     * Get salary history for an employee.
+     * Returns all salary records ordered by effective date (most recent first).
      */
-    update: async (salaryId: string, data: EmployeeSalaryUpdate) => {
+    getHistory: async (employeeId: string) => {
       return withServiceErrorHandling(
-        apiRequest<EmployeeSalary>({
-          method: 'PUT',
-          url: `/workforce/salaries/${salaryId}`,
-          data,
+        apiRequest<EmployeeSalary[]>({
+          method: 'GET',
+          url: `/workforce/employees/${employeeId}/salary/history`,
         }),
-        'workforce: update salary'
+        'workforce: get salary history'
       )
     },
 
     /**
-     * Get salary breakdown with GOSI calculations.
+     * Get salary breakdown for an employee (alias for getCurrent).
+     * The current salary includes GOSI breakdown already.
      */
     getBreakdown: async (employeeId: string) => {
       return withServiceErrorHandling(
-        apiRequest<SalaryBreakdown>({
+        apiRequest<EmployeeSalary | null>({
           method: 'GET',
-          url: `/workforce/employees/${employeeId}/salary-breakdown`,
+          url: `/workforce/employees/${employeeId}/salary`,
         }),
         'workforce: get salary breakdown'
       )
@@ -228,7 +216,25 @@ export const workforceApi = {
     },
 
     /**
-     * Get EOS provision for an employee.
+     * Calculate and save EOS provision for an employee.
+     */
+    calculateAndSave: async (employeeId: string, versionId: string, asOfDate: string) => {
+      return withServiceErrorHandling(
+        apiRequest<EOSProvision>({
+          method: 'POST',
+          url: `/workforce/employees/${employeeId}/eos`,
+          data: {
+            version_id: versionId,
+            employee_id: employeeId,
+            as_of_date: asOfDate,
+          },
+        }),
+        'workforce: calculate and save EOS provision'
+      )
+    },
+
+    /**
+     * Get current EOS provision for an employee.
      */
     getProvision: async (employeeId: string) => {
       return withServiceErrorHandling(
@@ -241,51 +247,33 @@ export const workforceApi = {
     },
 
     /**
-     * Calculate and save EOS provision for an employee.
+     * Calculate EOS for all eligible employees in a version.
+     * Excludes AEFE employees (Detached and Funded).
      */
-    calculateAndSave: async (employeeId: string, budgetVersionId: string, asOfDate: string) => {
-      return withServiceErrorHandling(
-        apiRequest<EOSProvision>({
-          method: 'POST',
-          url: `/workforce/employees/${employeeId}/eos`,
-          data: {
-            budget_version_id: budgetVersionId,
-            employee_id: employeeId,
-            as_of_date: asOfDate,
-          },
-        }),
-        'workforce: calculate and save EOS provision'
-      )
-    },
-
-    /**
-     * Calculate EOS for all employees in a budget version.
-     */
-    calculateAll: async (budgetVersionId: string, asOfDate: string) => {
+    calculateAll: async (versionId: string, asOfDate: string) => {
       return withServiceErrorHandling(
         apiRequest<{ calculated_count: number; total_provision_sar: number }>({
           method: 'POST',
-          url: '/workforce/eos/calculate-all',
-          data: {
-            budget_version_id: budgetVersionId,
-            as_of_date: asOfDate,
-          },
+          url: `/workforce/eos/calculate-all/${versionId}?as_of_date=${asOfDate}`,
         }),
         'workforce: calculate all EOS'
       )
     },
 
     /**
-     * Get EOS summary for a budget version.
+     * Get EOS provision summary for a version.
      */
-    getSummary: async (budgetVersionId: string, asOfDate?: string) => {
-      const params = new URLSearchParams({ version_id: budgetVersionId })
-      if (asOfDate) params.append('as_of_date', asOfDate)
-
+    getSummary: async (versionId: string, asOfDate?: string) => {
+      const params = asOfDate ? `?as_of_date=${asOfDate}` : ''
       return withServiceErrorHandling(
-        apiRequest<EOSSummary>({
+        apiRequest<{
+          version_id: string
+          employee_count: number
+          total_provision_sar: number
+          as_of_date: string | null
+        }>({
           method: 'GET',
-          url: `/workforce/eos/summary?${params.toString()}`,
+          url: `/workforce/eos/summary/${versionId}${params}`,
         }),
         'workforce: get EOS summary'
       )
@@ -297,13 +285,13 @@ export const workforceApi = {
   // ==============================================================================
   aefe: {
     /**
-     * Get all AEFE positions for a budget version.
+     * Get all AEFE positions for a version.
      */
-    getAll: async (budgetVersionId: string) => {
+    getAll: async (versionId: string) => {
       return withServiceErrorHandling(
         apiRequest<AEFEPosition[]>({
           method: 'GET',
-          url: `/workforce/aefe-positions?version_id=${budgetVersionId}`,
+          url: `/workforce/aefe-positions/${versionId}`,
         }),
         'workforce: get AEFE positions'
       )
@@ -312,11 +300,11 @@ export const workforceApi = {
     /**
      * Get AEFE positions summary (filled/vacant counts, costs).
      */
-    getSummary: async (budgetVersionId: string) => {
+    getSummary: async (versionId: string) => {
       return withServiceErrorHandling(
         apiRequest<AEFEPositionSummary>({
           method: 'GET',
-          url: `/workforce/aefe-positions/summary?version_id=${budgetVersionId}`,
+          url: `/workforce/aefe-positions/${versionId}/summary`,
         }),
         'workforce: get AEFE summary'
       )
@@ -338,13 +326,22 @@ export const workforceApi = {
 
     /**
      * Assign an employee to an AEFE position.
+     * Backend expects query params: ?employee_id=...&cycle_id=...&subject_id=...
      */
-    assignEmployee: async (positionId: string, employeeId: string) => {
+    assignEmployee: async (
+      positionId: string,
+      employeeId: string,
+      cycleId?: string,
+      subjectId?: string
+    ) => {
+      const params = new URLSearchParams({ employee_id: employeeId })
+      if (cycleId) params.append('cycle_id', cycleId)
+      if (subjectId) params.append('subject_id', subjectId)
+
       return withServiceErrorHandling(
         apiRequest<AEFEPosition>({
           method: 'POST',
-          url: `/workforce/aefe-positions/${positionId}/assign`,
-          data: { employee_id: employeeId },
+          url: `/workforce/aefe-positions/${positionId}/assign?${params.toString()}`,
         }),
         'workforce: assign employee to AEFE position'
       )
@@ -365,7 +362,7 @@ export const workforceApi = {
 
     /**
      * Initialize 28 AEFE positions (24 Detached + 4 Funded).
-     * Call this when creating a new budget version.
+     * Call this when creating a new version.
      */
     initialize: async (data: InitializeAEFEPositionsRequest) => {
       return withServiceErrorHandling(
@@ -379,22 +376,14 @@ export const workforceApi = {
     },
 
     /**
-     * Update PRRD rate for all detached positions.
+     * Update PRRD rate for all detached positions in a version.
+     * Funded positions are not affected.
      */
-    updatePRRDRate: async (
-      budgetVersionId: string,
-      prrdAmountEur: number,
-      exchangeRate: number
-    ) => {
+    updatePRRDRate: async (versionId: string, prrdAmountEur: number, exchangeRate: number) => {
       return withServiceErrorHandling(
         apiRequest<{ updated_count: number; total_prrd_sar: number }>({
-          method: 'POST',
-          url: '/workforce/aefe-positions/update-prrd',
-          data: {
-            budget_version_id: budgetVersionId,
-            prrd_amount_eur: prrdAmountEur,
-            exchange_rate_eur_sar: exchangeRate,
-          },
+          method: 'PUT',
+          url: `/workforce/aefe-positions/${versionId}/prrd-rate?prrd_amount_eur=${prrdAmountEur}&exchange_rate_eur_sar=${exchangeRate}`,
         }),
         'workforce: update PRRD rate'
       )
@@ -409,11 +398,11 @@ export const workforceApi = {
      * Get workforce summary for dashboard.
      * Includes employee counts, FTE totals, payroll, EOS provisions.
      */
-    get: async (budgetVersionId: string) => {
+    get: async (versionId: string) => {
       return withServiceErrorHandling(
         apiRequest<WorkforceSummary>({
           method: 'GET',
-          url: `/workforce/summary?version_id=${budgetVersionId}`,
+          url: `/workforce/summary/${versionId}`,
         }),
         'workforce: get summary'
       )

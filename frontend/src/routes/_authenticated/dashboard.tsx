@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useDashboardSummary, useRecentActivity, useSystemAlerts } from '@/hooks/api/useAnalysis'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import {
   Users,
   School,
@@ -30,7 +30,7 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
 })
 
 function DashboardPage() {
-  const { selectedVersionId } = useBudgetVersion()
+  const { selectedVersionId } = useVersion()
 
   const { data: summary, isLoading: summaryLoading } = useDashboardSummary(selectedVersionId)
   const { data: activities } = useRecentActivity(10)
@@ -249,7 +249,7 @@ function DashboardPage() {
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Link to="/configuration/versions">
+                  <Link to="/settings/versions">
                     <Button variant="outline" className="w-full justify-start">
                       <FileText className="w-4 h-4 mr-2" />
                       Create New Version

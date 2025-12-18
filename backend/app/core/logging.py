@@ -3,16 +3,47 @@ Structured logging configuration using structlog.
 
 This module configures structured logging with JSON output for production,
 correlation IDs for request tracing, and proper log level management.
+
+Configuration via environment variables:
+    LOG_LEVEL: Set logging verbosity (DEBUG, INFO, WARNING, ERROR). Default: INFO
+    LOG_HEALTH_CHECKS: Set to "true" to log health check requests. Default: false
 """
 
 import errno
 import logging
+import os
 import uuid
 from typing import Any
 
 import structlog
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
+
+# Environment configuration
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_HEALTH_CHECKS = os.getenv("LOG_HEALTH_CHECKS", "false").lower() == "true"
+
+# Map string log levels to logging constants
+LOG_LEVEL_MAP = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "WARN": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
+# Get numeric log level (default to INFO if invalid)
+NUMERIC_LOG_LEVEL = LOG_LEVEL_MAP.get(LOG_LEVEL, logging.INFO)
+
+# Health check paths to optionally filter from logs
+HEALTH_CHECK_PATHS = frozenset({
+    "/",
+    "/health",
+    "/health/",
+    "/health/live",
+    "/health/ready",
+})
 
 # Client disconnect errors - expected behavior, not application errors
 # These occur when clients close connections before server responds
@@ -43,13 +74,16 @@ def configure_logging() -> structlog.BoundLogger:
     """
     Configure structlog with production-grade settings.
 
+    Respects LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR).
+    Default is INFO for clean terminal output.
+
     Returns:
         Configured structlog logger instance
     """
     # Configure stdlib logging to work with structlog
     logging.basicConfig(
         format="%(message)s",
-        level=logging.INFO,
+        level=NUMERIC_LOG_LEVEL,
     )
 
     # Configure structlog processors
@@ -67,7 +101,7 @@ def configure_logging() -> structlog.BoundLogger:
             # Render as JSON for structured logging
             structlog.processors.JSONRenderer(),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+        wrapper_class=structlog.make_filtering_bound_logger(NUMERIC_LOG_LEVEL),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(),
         cache_logger_on_first_use=True,
@@ -102,6 +136,10 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         # Generate unique correlation ID for this request
         correlation_id = str(uuid.uuid4())
 
+        # Check if this is a health check (skip logging if LOG_HEALTH_CHECKS=false)
+        is_health_check = request.url.path in HEALTH_CHECK_PATHS
+        should_log = LOG_HEALTH_CHECKS or not is_health_check
+
         # Bind correlation ID and request metadata to context
         structlog.contextvars.bind_contextvars(
             correlation_id=correlation_id,
@@ -110,12 +148,13 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             client_host=request.client.host if request.client else None,
         )
 
-        # Log request start
-        logger.info(
-            "request_started",
-            user_agent=request.headers.get("user-agent"),
-            content_type=request.headers.get("content-type"),
-        )
+        # Log request start (skip for health checks if disabled)
+        if should_log:
+            logger.info(
+                "request_started",
+                user_agent=request.headers.get("user-agent"),
+                content_type=request.headers.get("content-type"),
+            )
 
         try:
             # Process request
@@ -129,11 +168,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
                     headers=dict(getattr(response, "headers", {})),
                 )
 
-            # Log successful completion
-            logger.info(
-                "request_completed",
-                status_code=response.status_code,
-            )
+            # Log successful completion (skip for health checks if disabled)
+            if should_log:
+                logger.info(
+                    "request_completed",
+                    status_code=response.status_code,
+                )
 
             # Add correlation ID to response headers
             response.headers["X-Correlation-ID"] = correlation_id

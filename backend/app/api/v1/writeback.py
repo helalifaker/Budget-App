@@ -6,7 +6,7 @@ collaborative editing in AG Grid with optimistic locking and undo/redo:
 
 - PUT /cells/{cell_id} - Update single cell with optimistic locking
 - POST /cells/batch - Batch update multiple cells
-- GET /cells/changes/{budget_version_id} - Get change history
+- GET /cells/changes/{version_id} - Get change history
 - POST /cells/undo - Undo changes in a session
 - POST /cells/{cell_id}/comments - Add comment to cell
 - POST /cells/{cell_id}/lock - Lock cell to prevent edits
@@ -31,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import PlannerDep, UserDep
-from app.schemas.writeback import (
+from app.schemas.admin.writeback import (
     BatchUpdateRequest,
     BatchUpdateResponse,
     CellChangeResponse,
@@ -48,15 +48,15 @@ from app.schemas.writeback import (
     UndoResponse,
     UnlockRequest,
 )
+from app.services.admin.writeback_service import WritebackService
 from app.services.exceptions import (
     CellLockedError,
     NotFoundError,
     ValidationError,
     VersionConflictError,
 )
-from app.services.writeback_service import WritebackService
 
-router = APIRouter(prefix="/api/v1/writeback", tags=["writeback"])
+router = APIRouter(prefix="/writeback", tags=["writeback"])
 
 
 def get_writeback_service(
@@ -338,7 +338,7 @@ async def batch_update_cells(
 
 
 @router.get(
-    "/cells/changes/{budget_version_id}",
+    "/cells/changes/{version_id}",
     response_model=list[CellChangeResponse],
     summary="Get change history",
     description="Get change history for a budget version. "
@@ -350,7 +350,7 @@ async def batch_update_cells(
     },
 )
 async def get_change_history(
-    budget_version_id: Annotated[UUID, Path(description="Budget version UUID")],
+    version_id: Annotated[UUID, Path(description="Budget version UUID")],
     module_code: Annotated[str | None, Query(description="Filter by module code")] = None,
     entity_id: Annotated[UUID | None, Query(description="Filter by entity ID")] = None,
     field_name: Annotated[str | None, Query(description="Filter by field name")] = None,
@@ -366,7 +366,7 @@ async def get_change_history(
     Changes are ordered by changed_at descending (most recent first).
 
     Args:
-        budget_version_id: Budget version to query
+        version_id: Budget version to query
         module_code: Optional filter by module
         entity_id: Optional filter by entity
         field_name: Optional filter by field
@@ -380,7 +380,7 @@ async def get_change_history(
     """
     try:
         return await writeback_service.get_change_history(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             module_code=module_code,
             entity_id=entity_id,
             field_name=field_name,
@@ -699,7 +699,7 @@ async def health_check() -> dict:
         "endpoints": {
             "update_cell": "PUT /cells/{cell_id}",
             "batch_update": "POST /cells/batch",
-            "change_history": "GET /cells/changes/{budget_version_id}",
+            "change_history": "GET /cells/changes/{version_id}",
             "undo": "POST /cells/undo",
             "add_comment": "POST /cells/{cell_id}/comments",
             "lock_cell": "POST /cells/{cell_id}/lock",

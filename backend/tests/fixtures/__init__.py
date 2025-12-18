@@ -6,11 +6,11 @@ Organized by domain:
 - Planning fixtures (enrollment, classes, DHG, allocations)
 - Consolidation fixtures (revenue, costs, CapEx)
 - Analysis fixtures (KPIs, dashboards)
-- Budget version fixtures
+- Version fixtures
 
 Usage:
     from tests.fixtures import (
-        mock_budget_version,
+        mock_version,
         mock_enrollment_plan,
         mock_dhg_subject_hours,
     )
@@ -26,23 +26,25 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import (
+from app.models import (
     AcademicCycle,
     AcademicLevel,
-    BudgetVersion,
-    BudgetVersionStatus,
+    ClassStructure,
+    EnrollmentPlan,
     FeeCategory,
     FeeStructure,
     Subject,
     SubjectHoursMatrix,
     TeacherCategory,
     TeacherCostParam,
-)
-from app.models.planning import (
-    ClassStructure,
-    EnrollmentPlan,
+    Version,
+    VersionStatus,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility aliases
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
 
 # ==============================================================================
 # Test User ID (matches auth.users created in conftest.py)
@@ -473,13 +475,13 @@ async def mock_teacher_cost_params(
 
 
 # ==============================================================================
-# Budget Version Fixtures
+# Version Fixtures
 # ==============================================================================
 
 
 @pytest.fixture
-async def mock_budget_version(db_session: AsyncSession) -> BudgetVersion:
-    """Create test budget version in WORKING status."""
+async def mock_version(db_session: AsyncSession) -> BudgetVersion:
+    """Create test version in WORKING status."""
     version = BudgetVersion(
         id=uuid.uuid4(),
         name="Test Budget 2024",
@@ -495,8 +497,8 @@ async def mock_budget_version(db_session: AsyncSession) -> BudgetVersion:
 
 
 @pytest.fixture
-async def mock_budget_version_submitted(db_session: AsyncSession) -> BudgetVersion:
-    """Create test budget version in SUBMITTED status."""
+async def mock_version_submitted(db_session: AsyncSession) -> BudgetVersion:
+    """Create test version in SUBMITTED status."""
     version = BudgetVersion(
         id=uuid.uuid4(),
         name="Test Budget 2024 Submitted",
@@ -520,7 +522,7 @@ async def mock_budget_version_submitted(db_session: AsyncSession) -> BudgetVersi
 @pytest.fixture
 async def mock_enrollment_plan(
     db_session: AsyncSession,
-    mock_budget_version: BudgetVersion,
+    mock_version: BudgetVersion,
     mock_academic_levels: list[AcademicLevel],
 ) -> list[EnrollmentPlan]:
     """
@@ -563,7 +565,7 @@ async def mock_enrollment_plan(
             for nationality, count in nationalities.items():
                 enrollment = EnrollmentPlan(
                     id=uuid.uuid4(),
-                    budget_version_id=mock_budget_version.id,
+                    version_id=mock_version.id,
                     level_id=level_map[level_code].id,
                     nationality=nationality,
                     student_count=count,
@@ -583,7 +585,7 @@ async def mock_enrollment_plan(
 @pytest.fixture
 async def mock_class_structure(
     db_session: AsyncSession,
-    mock_budget_version: BudgetVersion,
+    mock_version: BudgetVersion,
     mock_academic_levels: list[AcademicLevel],
 ) -> list[ClassStructure]:
     """
@@ -625,7 +627,7 @@ async def mock_class_structure(
         if level_code in level_map:
             cs = ClassStructure(
                 id=uuid.uuid4(),
-                budget_version_id=mock_budget_version.id,
+                version_id=mock_version.id,
                 level_id=level_map[level_code].id,
                 num_classes=data["num_classes"],
                 total_students=data["total_students"],

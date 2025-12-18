@@ -66,17 +66,13 @@ interface ModuleLayoutProps {
  * Determine settings path based on active module
  */
 function useSettingsConfig() {
-  const { activeModule } = useActiveModule()
+  const { activeModule, definition } = useActiveModule()
 
-  // Settings paths by module (Phase 4 routes)
-  const settingsPathMap: Record<string, string | undefined> = {
-    enrollment: '/enrollment/settings',
-    workforce: '/workforce/settings',
-    finance: '/finance/settings',
-  }
+  // Use the hasSettings property from ModuleContext
+  const showSettings = definition?.hasSettings ?? false
 
-  const showSettings = Boolean(settingsPathMap[activeModule ?? ''])
-  const settingsPath = settingsPathMap[activeModule ?? '']
+  // Settings path follows the pattern: /{module}/settings
+  const settingsPath = showSettings && activeModule ? `/${activeModule}/settings` : undefined
 
   return { showSettings, settingsPath }
 }

@@ -14,8 +14,10 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-from app.models.configuration import BudgetVersion
-from app.models.planning import RevenuePlan
+from app.models import RevenuePlan, Version
+
+# Backward compatibility alias
+BudgetVersion = Version
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,7 +82,7 @@ class TestPlanningUniques:
 
         rp1 = RevenuePlan(
             id=uuid4(),
-            budget_version_id=version.id,
+            version_id=version.id,
             account_code="70110",
             description="Tuition T1",
             category="tuition",
@@ -92,7 +94,7 @@ class TestPlanningUniques:
 
         rp2 = RevenuePlan(
             id=uuid4(),
-            budget_version_id=version.id,
+            version_id=version.id,
             account_code="70110",  # duplicate account_code for same version
             description="Tuition T1 duplicate",
             category="tuition",

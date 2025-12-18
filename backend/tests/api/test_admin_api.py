@@ -15,7 +15,7 @@ import io
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from app.services.historical_import_service import (
+from app.services.admin.historical_import_service import (
     ImportPreviewResult,
     ImportResult,
 )
@@ -206,7 +206,7 @@ class TestImportEndpoint:
     @pytest.mark.asyncio
     async def test_import_success(self, mock_import_service, sample_csv_content):
         """Test successful import."""
-        from app.services.historical_import_service import ImportResultStatus
+        from app.services.admin.historical_import_service import ImportResultStatus
 
         mock_import_service.import_data.return_value = ImportResult(
             fiscal_year=2024,
@@ -244,7 +244,7 @@ class TestImportEndpoint:
         self, mock_import_service, sample_csv_content
     ):
         """Test import with overwrite flag."""
-        from app.services.historical_import_service import ImportResultStatus
+        from app.services.admin.historical_import_service import ImportResultStatus
 
         mock_import_service.import_data.return_value = ImportResult(
             fiscal_year=2024,
@@ -280,7 +280,7 @@ class TestImportEndpoint:
         self, mock_import_service, sample_csv_content
     ):
         """Test import with partial success."""
-        from app.services.historical_import_service import ImportResultStatus
+        from app.services.admin.historical_import_service import ImportResultStatus
 
         mock_import_service.import_data.return_value = ImportResult(
             fiscal_year=2024,

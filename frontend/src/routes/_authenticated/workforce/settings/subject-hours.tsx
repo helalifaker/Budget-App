@@ -6,7 +6,7 @@
  * - Primary: 24h/week standard teaching load
  * - Subject-specific hours by level
  *
- * @module /workforce/settings/subject-hours
+ * @module /teachers/settings/subject-hours
  */
 
 import { createFileRoute } from '@tanstack/react-router'
@@ -102,7 +102,7 @@ function SubjectHoursSettingsPage() {
               <li>• Language section hours (anglophone, etc.)</li>
             </ul>
             <p className="mt-4 text-xs text-text-tertiary">
-              Note: This will migrate from /configuration/subject-hours
+              Note: This will migrate from /settings/subject-hours
             </p>
           </CardContent>
         </Card>

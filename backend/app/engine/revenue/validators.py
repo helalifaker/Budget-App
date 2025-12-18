@@ -15,7 +15,7 @@ Business Rules:
 
 from decimal import Decimal
 
-from app.engine.revenue.models import (
+from .models import (
     FeeCategory,
     TrimesterDistribution,
     TuitionInput,

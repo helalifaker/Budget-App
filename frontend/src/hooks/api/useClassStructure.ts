@@ -62,9 +62,41 @@ export function useUpdateClassStructure() {
     }) => classStructureApi.update(id, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: classStructureKeys.list(data.budget_version_id),
+        queryKey: classStructureKeys.list(data.version_id),
       })
       toastMessages.success.updated(entityNames.classStructure)
+    },
+    onError: (error) => {
+      handleAPIErrorToast(error)
+    },
+  })
+}
+
+export function useBulkUpdateClassStructure() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      versionId,
+      updates,
+    }: {
+      versionId: string
+      updates: Array<{
+        id: string
+        total_students?: number
+        number_of_classes?: number
+        avg_class_size?: number
+        requires_atsem?: boolean
+        atsem_count?: number
+        calculation_method?: string
+        notes?: string | null
+      }>
+    }) => classStructureApi.updateBulk(versionId, updates),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: classStructureKeys.list(variables.versionId),
+      })
+      toastMessages.success.updated('Class structures')
     },
     onError: (error) => {
       handleAPIErrorToast(error)

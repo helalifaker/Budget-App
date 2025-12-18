@@ -27,7 +27,7 @@ import { PageContainer } from '@/components/layout/PageContainer'
  * - Persistent across page reloads
  */
 export function EnrollmentPlanningPage() {
-  const budgetVersionId = useBudgetVersion()
+  const versionId = useBudgetVersion()
   const [showChangeLog, setShowChangeLog] = useState(false)
 
   // Mock data - replace with actual hooks
@@ -52,11 +52,7 @@ export function EnrollmentPlanningPage() {
               - Disabled when no operations available
               - Shows loading spinner during operations
             */}
-            <UndoRedoToolbar
-              budgetVersionId={budgetVersionId}
-              moduleCode="enrollment"
-              className="shadow-sm"
-            />
+            <UndoRedoToolbar versionId={versionId} moduleCode="enrollment" className="shadow-sm" />
 
             {/*
               Change Log Button
@@ -80,7 +76,7 @@ export function EnrollmentPlanningPage() {
           - Conflict detection
         */}
         <EnhancedDataTable
-          budgetVersionId={budgetVersionId}
+          versionId={versionId}
           moduleCode="enrollment"
           data={enrollmentData}
           columns={columns}
@@ -94,7 +90,7 @@ export function EnrollmentPlanningPage() {
           - Click "Annuler" button to undo a session
         */}
         <ChangeLogDialog
-          budgetVersionId={budgetVersionId}
+          versionId={versionId}
           moduleCode="enrollment"
           open={showChangeLog}
           onOpenChange={setShowChangeLog}
@@ -187,14 +183,14 @@ export function EnrollmentPlanningPage() {
  *    import { ChangeLogDialog } from '@/components/ChangeLogDialog'
  *
  * 2. ✅ Add toolbar to page header
- *    <UndoRedoToolbar budgetVersionId={id} moduleCode="your-module" />
+ *    <UndoRedoToolbar versionId={id} moduleCode="your-module" />
  *
  * 3. ✅ Add change log button and dialog
  *    <Button onClick={() => setShowLog(true)}>Historique</Button>
  *    <ChangeLogDialog open={showLog} onOpenChange={setShowLog} ... />
  *
  * 4. ✅ Use EnhancedDataTable for editable grids
- *    <EnhancedDataTable budgetVersionId={id} moduleCode="your-module" ... />
+ *    <EnhancedDataTable versionId={id} moduleCode="your-module" ... />
  *
  * 5. ✅ Ensure backend session_id is set for all batch operations
  *    const sessionId = crypto.randomUUID()
@@ -209,7 +205,7 @@ export function EnrollmentPlanningPage() {
  * The system relies on Phase 3.2 backend endpoints:
  *
  * 1. Fetch Change History:
- *    GET /api/v1/writeback/cells/changes/{budgetVersionId}?module_code=enrollment&limit=100
+ *    GET /api/v1/writeback/cells/changes/{versionId}?module_code=enrollment&limit=100
  *
  * 2. Undo Session:
  *    POST /api/v1/writeback/cells/undo

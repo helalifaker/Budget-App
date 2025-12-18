@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { ScenarioChart } from '@/components/charts/ScenarioChart'
-import { useBudgetVersions } from '@/hooks/api/useBudgetVersions'
+import { useVersions } from '@/hooks/api/useVersions'
 import {
   useStrategicPlans,
   useStrategicPlan,
@@ -44,7 +44,7 @@ import { toastMessages } from '@/lib/toast-messages'
 
 const createPlanSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  base_version_id: z.string().uuid('Select a budget version'),
+  base_version_id: z.string().uuid('Select a version'),
   years_count: z.number().min(1).max(5),
 })
 
@@ -72,7 +72,7 @@ function StrategicPlanningPage() {
 
   const { data: plans, isLoading: plansLoading } = useStrategicPlans()
   const { data: selectedPlan } = useStrategicPlan(selectedPlanId)
-  const { data: budgetVersions } = useBudgetVersions()
+  const { data: budgetVersions } = useVersions()
   const { data: projections } = useStrategicProjections(selectedPlanId, selectedScenarioId)
 
   const createMutation = useCreateStrategicPlan()

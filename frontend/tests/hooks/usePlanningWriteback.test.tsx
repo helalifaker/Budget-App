@@ -26,11 +26,11 @@ vi.mock('sonner', () => ({
 
 describe('usePlanningWriteback', () => {
   let queryClient: QueryClient
-  const budgetVersionId = 'budget-version-123'
+  const versionId = 'budget-version-123'
   const mockCellData: CellData[] = [
     {
       id: 'cell-1',
-      budget_version_id: budgetVersionId,
+      version_id: versionId,
       module_code: 'enrollment',
       entity_id: 'entity-1',
       field_name: 'student_count',
@@ -44,7 +44,7 @@ describe('usePlanningWriteback', () => {
     },
     {
       id: 'cell-2',
-      budget_version_id: budgetVersionId,
+      version_id: versionId,
       module_code: 'enrollment',
       entity_id: 'entity-1',
       field_name: 'student_count',
@@ -71,7 +71,7 @@ describe('usePlanningWriteback', () => {
     vi.clearAllMocks()
 
     // Pre-populate cache with cell data
-    queryClient.setQueryData(['cells', budgetVersionId], mockCellData)
+    queryClient.setQueryData(['cells', versionId], mockCellData)
   })
 
   afterEach(() => {
@@ -84,7 +84,7 @@ describe('usePlanningWriteback', () => {
 
   describe('updateCell', () => {
     it('should optimistically update cell value before server response', async () => {
-      const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => usePlanningWriteback(versionId), { wrapper })
 
       // Mock successful API response with delay to ensure optimistic update happens first
       vi.mocked(apiRequest).mockImplementation(
@@ -113,7 +113,7 @@ describe('usePlanningWriteback', () => {
 
       // Wait for optimistic update to be applied (onMutate is async due to cancelQueries)
       await waitFor(() => {
-        const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+        const cacheData = queryClient.getQueryData<CellData[]>(['cells', versionId])
         expect(cacheData?.[0].value_numeric).toBe(200)
         expect(cacheData?.[0].version).toBe(2) // Version incremented optimistically
       })
@@ -136,7 +136,7 @@ describe('usePlanningWriteback', () => {
     })
 
     it('should rollback optimistic update on version conflict', async () => {
-      const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => usePlanningWriteback(versionId), { wrapper })
 
       // Mock version conflict error
       const conflictError = {
@@ -165,7 +165,7 @@ describe('usePlanningWriteback', () => {
 
       // Wait for rollback
       await waitFor(() => {
-        const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+        const cacheData = queryClient.getQueryData<CellData[]>(['cells', versionId])
         expect(cacheData?.[0].value_numeric).toBe(100) // Rolled back to original
         expect(cacheData?.[0].version).toBe(1) // Version rolled back
       })
@@ -178,7 +178,7 @@ describe('usePlanningWriteback', () => {
     })
 
     it('should handle locked cell error', async () => {
-      const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => usePlanningWriteback(versionId), { wrapper })
 
       // Mock locked cell error
       const lockedError = {
@@ -205,7 +205,7 @@ describe('usePlanningWriteback', () => {
 
       // Wait for rollback
       await waitFor(() => {
-        const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+        const cacheData = queryClient.getQueryData<CellData[]>(['cells', versionId])
         expect(cacheData?.[0].value_numeric).toBe(100) // Rolled back
       })
 
@@ -217,7 +217,7 @@ describe('usePlanningWriteback', () => {
     })
 
     it('should update isUpdating flag during mutation', async () => {
-      const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => usePlanningWriteback(versionId), { wrapper })
 
       // Mock slow API response
       vi.mocked(apiRequest).mockImplementation(
@@ -264,7 +264,7 @@ describe('usePlanningWriteback', () => {
 
   describe('batchUpdate', () => {
     it('should optimistically update multiple cells', async () => {
-      const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => usePlanningWriteback(versionId), { wrapper })
 
       // Mock successful batch response with delay
       vi.mocked(apiRequest).mockImplementation(
@@ -293,7 +293,7 @@ describe('usePlanningWriteback', () => {
 
       // Wait for optimistic updates to be applied (onMutate is async)
       await waitFor(() => {
-        const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+        const cacheData = queryClient.getQueryData<CellData[]>(['cells', versionId])
         expect(cacheData?.[0].value_numeric).toBe(200)
         expect(cacheData?.[1].value_numeric).toBe(250)
       })
@@ -319,7 +319,7 @@ describe('usePlanningWriteback', () => {
     })
 
     it('should show warning when conflicts are detected', async () => {
-      const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => usePlanningWriteback(versionId), { wrapper })
 
       // Mock batch response with conflicts
       vi.mocked(apiRequest).mockResolvedValue({
@@ -352,7 +352,7 @@ describe('usePlanningWriteback', () => {
     })
 
     it('should rollback all updates on batch conflict error', async () => {
-      const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => usePlanningWriteback(versionId), { wrapper })
 
       // Mock batch conflict error
       const batchConflictError = {
@@ -388,7 +388,7 @@ describe('usePlanningWriteback', () => {
 
       // Wait for rollback
       await waitFor(() => {
-        const cacheData = queryClient.getQueryData<CellData[]>(['cells', budgetVersionId])
+        const cacheData = queryClient.getQueryData<CellData[]>(['cells', versionId])
         expect(cacheData?.[0].value_numeric).toBe(100) // Rolled back
         expect(cacheData?.[1].value_numeric).toBe(150) // Rolled back
       })
@@ -403,7 +403,7 @@ describe('usePlanningWriteback', () => {
 
   describe('cache invalidation', () => {
     it('should invalidate change history after successful update', async () => {
-      const { result } = renderHook(() => usePlanningWriteback(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => usePlanningWriteback(versionId), { wrapper })
 
       // Mock successful API response
       vi.mocked(apiRequest).mockResolvedValue({
@@ -425,7 +425,7 @@ describe('usePlanningWriteback', () => {
       })
 
       // Verify change history was invalidated
-      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['cell-changes', budgetVersionId] })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['cell-changes', versionId] })
     })
   })
 })

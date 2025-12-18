@@ -58,7 +58,7 @@ This document defines the complete documentation governance system for the EFIR 
 ├── frontend/                           # Frontend-specific docs
 └── .claude/                           # Agent system
     ├── AGENT_ORCHESTRATION.md
-    └── agents/                         # 14 agent configs
+    └── agents/                         # 9 agent configs
 ```
 
 ---
@@ -101,7 +101,7 @@ This document defines the complete documentation governance system for the EFIR 
 
 **Examples**:
 - `foundation/EFIR_Budget_App_PRD_v1.2.md`
-- `docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md`
+- `docs/modules/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md`
 - `docs/developer-guides/DEVELOPER_GUIDE.md`
 
 ---
@@ -199,9 +199,9 @@ This document defines the complete documentation governance system for the EFIR 
 - Completed test coverage expansion
 - Updated coverage metrics to 88.88%
 
-### [2025-12-05 09:00] - backend-api-specialist
-- Implemented new API endpoints
-- Updated API documentation
+### [2025-12-05 09:00] - frontend-ui-agent
+- Implemented new UI components
+- Updated component documentation
 
 ---
 
@@ -288,7 +288,7 @@ This document defines the complete documentation governance system for the EFIR 
 
 ### Quarterly (First Monday of Q1/Q2/Q3/Q4)
 **Time**: 2-3 hours
-**Responsibility**: efir-master-agent + tech lead
+**Responsibility**: documentation-training-agent + tech lead
 
 **Checklist**:
 - [ ] Full documentation audit (all files reviewed)
@@ -325,11 +325,12 @@ Templates are located in `docs/templates/`. Available templates:
 | Agent | Creates | Location | Format |
 |-------|---------|----------|--------|
 | qa-validation-agent | Coverage reports | docs/agent-work/ | YYYY-MM-DD_agent-{N}_coverage-{scope}.md |
-| efir-master-agent | Coordination reports | docs/agent-work/ | YYYY-MM-DD_master-agent_{purpose}.md |
-| backend-*-agent | Implementation reports | docs/agent-work/ | YYYY-MM-DD_{agent}_{implementation}.md |
-| system-architect-agent | ADRs | docs/technical-decisions/ | {DECISION}_ADR.md |
+| Plan | ADRs, Implementation plans | docs/technical-decisions/, docs/planning/ | ADR-{NN}_{DECISION}.md |
+| frontend-ui-agent | Implementation reports | docs/agent-work/ | YYYY-MM-DD_frontend-ui_{implementation}.md |
+| performance-agent | Performance reports | docs/agent-work/ | YYYY-MM-DD_performance_{scope}.md |
 | documentation-training-agent | Guides | docs/user-guides/ or docs/developer-guides/ | {NAME}_GUIDE.md |
-| product-architect-agent | Module specs | docs/MODULES/ | MODULE_{NN}_{NAME}.md |
+| product-architect-agent | Module specs | docs/modules/ | MODULE_{NN}_{NAME}.md |
+| general-purpose | Research reports | docs/agent-work/ | YYYY-MM-DD_research_{topic}.md |
 
 ---
 

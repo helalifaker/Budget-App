@@ -14,11 +14,13 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import BudgetVersion, FeeStructure
-from app.models.planning import EnrollmentPlan
+from app.models import EnrollmentPlan, FeeStructure, Version
 from app.services.exceptions import ValidationError
-from app.services.revenue_service import RevenueService
+from app.services.revenue.revenue_service import RevenueService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility alias
+BudgetVersion = Version
 
 
 class TestRevenueServiceCRUD:
@@ -28,12 +30,12 @@ class TestRevenueServiceCRUD:
     async def test_get_revenue_plan_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving empty revenue plan."""
         service = RevenueService(db_session)
 
-        result = await service.get_revenue_plan(test_budget_version.id)
+        result = await service.get_revenue_plan(test_version.id)
 
         assert result == []
 
@@ -41,14 +43,14 @@ class TestRevenueServiceCRUD:
     async def test_create_revenue_entry_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test creating a revenue entry."""
         service = RevenueService(db_session)
 
         result = await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             description="Scolarité Trimestre 1",
             category="tuition",
@@ -68,7 +70,7 @@ class TestRevenueServiceCRUD:
     async def test_create_revenue_entry_update_existing(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test creating revenue entry updates existing entry with same account code."""
@@ -76,7 +78,7 @@ class TestRevenueServiceCRUD:
 
         # Create first entry
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             description="Original",
             category="tuition",
@@ -86,7 +88,7 @@ class TestRevenueServiceCRUD:
 
         # Create second entry with same account code
         result = await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             description="Updated",
             category="tuition",
@@ -95,7 +97,7 @@ class TestRevenueServiceCRUD:
         )
 
         # Should update, not create new
-        all_entries = await service.get_revenue_plan(test_budget_version.id)
+        all_entries = await service.get_revenue_plan(test_version.id)
         tuition_entries = [e for e in all_entries if e.account_code == "70110"]
 
         assert len(tuition_entries) == 1
@@ -106,7 +108,7 @@ class TestRevenueServiceCRUD:
     async def test_get_revenue_by_account(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test retrieving revenue by account code."""
@@ -114,7 +116,7 @@ class TestRevenueServiceCRUD:
 
         # Create entry
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70200",
             description="DAI Revenue",
             category="fees",
@@ -123,7 +125,7 @@ class TestRevenueServiceCRUD:
         )
 
         result = await service.get_revenue_by_account(
-            test_budget_version.id,
+            test_version.id,
             "70200",
         )
 
@@ -135,13 +137,13 @@ class TestRevenueServiceCRUD:
     async def test_get_revenue_by_account_not_found(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving non-existent revenue returns None."""
         service = RevenueService(db_session)
 
         result = await service.get_revenue_by_account(
-            test_budget_version.id,
+            test_version.id,
             "70999",  # Non-existent
         )
 
@@ -151,7 +153,7 @@ class TestRevenueServiceCRUD:
     async def test_delete_revenue_entry(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test deleting a revenue entry."""
@@ -159,7 +161,7 @@ class TestRevenueServiceCRUD:
 
         # Create entry
         entry = await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70300",
             description="Test entry",
             category="other",
@@ -174,7 +176,7 @@ class TestRevenueServiceCRUD:
 
         # Verify deleted
         deleted = await service.get_revenue_by_account(
-            test_budget_version.id,
+            test_version.id,
             "70300",
         )
         assert deleted is None
@@ -187,7 +189,7 @@ class TestRevenueServiceAccountValidation:
     async def test_valid_account_codes(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test that valid revenue account codes (70-77) are accepted."""
@@ -206,7 +208,7 @@ class TestRevenueServiceAccountValidation:
 
         for code in valid_codes:
             result = await service.create_revenue_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code=code,
                 description=f"Revenue {code}",
                 category="other",
@@ -219,7 +221,7 @@ class TestRevenueServiceAccountValidation:
     async def test_invalid_account_code_expense(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test that expense account codes (60-68) are rejected."""
@@ -227,7 +229,7 @@ class TestRevenueServiceAccountValidation:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.create_revenue_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="64110",  # Personnel expense
                 description="Invalid",
                 category="tuition",
@@ -241,7 +243,7 @@ class TestRevenueServiceAccountValidation:
     async def test_invalid_account_code_asset(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test that asset account codes are rejected."""
@@ -252,7 +254,7 @@ class TestRevenueServiceAccountValidation:
         for code in invalid_codes:
             with pytest.raises(ValidationError):
                 await service.create_revenue_entry(
-                    version_id=test_budget_version.id,
+                    version_id=test_version.id,
                     account_code=code,
                     description="Invalid",
                     category="other",
@@ -268,7 +270,7 @@ class TestRevenueServiceCalculation:
     async def test_calculate_revenue_no_enrollment(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test calculation fails without enrollment data."""
@@ -276,7 +278,7 @@ class TestRevenueServiceCalculation:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.calculate_revenue_from_enrollment(
-                budget_version_id=test_budget_version.id,
+                version_id=test_version.id,
                 user_id=test_user_id,
             )
 
@@ -286,7 +288,7 @@ class TestRevenueServiceCalculation:
     async def test_calculate_revenue_no_fee_structure(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_user_id: uuid.UUID,
     ):
@@ -295,7 +297,7 @@ class TestRevenueServiceCalculation:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.calculate_revenue_from_enrollment(
-                budget_version_id=test_budget_version.id,
+                version_id=test_version.id,
                 user_id=test_user_id,
             )
 
@@ -305,7 +307,7 @@ class TestRevenueServiceCalculation:
     async def test_calculate_revenue_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_fee_structure: list[FeeStructure],
         test_user_id: uuid.UUID,
@@ -314,7 +316,7 @@ class TestRevenueServiceCalculation:
         service = RevenueService(db_session)
 
         result = await service.calculate_revenue_from_enrollment(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             user_id=test_user_id,
         )
 
@@ -327,7 +329,7 @@ class TestRevenueServiceCalculation:
     async def test_calculate_revenue_trimester_distribution(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_fee_structure: list[FeeStructure],
         test_user_id: uuid.UUID,
@@ -336,7 +338,7 @@ class TestRevenueServiceCalculation:
         service = RevenueService(db_session)
 
         result = await service.calculate_revenue_from_enrollment(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             user_id=test_user_id,
         )
 
@@ -361,12 +363,12 @@ class TestRevenueServiceSummary:
     async def test_get_revenue_summary_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test summary for version with no revenue."""
         service = RevenueService(db_session)
 
-        summary = await service.get_revenue_summary(test_budget_version.id)
+        summary = await service.get_revenue_summary(test_version.id)
 
         assert summary["total_revenue"] == Decimal("0")
         assert summary["entry_count"] == 0
@@ -377,7 +379,7 @@ class TestRevenueServiceSummary:
     async def test_get_revenue_summary_with_entries(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test summary with multiple revenue entries."""
@@ -385,7 +387,7 @@ class TestRevenueServiceSummary:
 
         # Create tuition entries
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             description="T1 Tuition",
             category="tuition",
@@ -395,7 +397,7 @@ class TestRevenueServiceSummary:
             user_id=test_user_id,
         )
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70120",
             description="T2 Tuition",
             category="tuition",
@@ -405,7 +407,7 @@ class TestRevenueServiceSummary:
             user_id=test_user_id,
         )
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70130",
             description="T3 Tuition",
             category="tuition",
@@ -417,7 +419,7 @@ class TestRevenueServiceSummary:
 
         # Create fee entry
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70200",
             description="DAI",
             category="fees",
@@ -426,7 +428,7 @@ class TestRevenueServiceSummary:
             user_id=test_user_id,
         )
 
-        summary = await service.get_revenue_summary(test_budget_version.id)
+        summary = await service.get_revenue_summary(test_version.id)
 
         assert summary["total_revenue"] == Decimal("1100000.00")
         assert summary["entry_count"] == 4
@@ -446,7 +448,7 @@ class TestRevenueServiceRealEFIRData:
     async def test_realistic_tuition_revenue(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test with realistic EFIR tuition amounts."""
@@ -460,7 +462,7 @@ class TestRevenueServiceRealEFIRData:
         t3 = total_tuition * Decimal("0.30")
 
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             description="Scolarité Trimestre 1",
             category="tuition",
@@ -470,7 +472,7 @@ class TestRevenueServiceRealEFIRData:
             user_id=test_user_id,
         )
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70120",
             description="Scolarité Trimestre 2",
             category="tuition",
@@ -480,7 +482,7 @@ class TestRevenueServiceRealEFIRData:
             user_id=test_user_id,
         )
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70130",
             description="Scolarité Trimestre 3",
             category="tuition",
@@ -492,7 +494,7 @@ class TestRevenueServiceRealEFIRData:
 
         # DAI revenue: ~1,800 students × 3,000 SAR = ~5.4M SAR
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70200",
             description="Droit Annuel d'Inscription (DAI)",
             category="fees",
@@ -501,7 +503,7 @@ class TestRevenueServiceRealEFIRData:
             user_id=test_user_id,
         )
 
-        summary = await service.get_revenue_summary(test_budget_version.id)
+        summary = await service.get_revenue_summary(test_version.id)
 
         # Total should be ~59.4M SAR
         assert summary["total_revenue"] == Decimal("59400000.00")
@@ -512,7 +514,7 @@ class TestRevenueServiceRealEFIRData:
     async def test_fee_categories_by_nationality(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test different fee handling for French, Saudi, Other nationalities."""
@@ -524,7 +526,7 @@ class TestRevenueServiceRealEFIRData:
 
         # Create separate entries for tracking nationality-based revenue
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70111",
             description="Scolarité T1 - Français",
             category="tuition_french",
@@ -533,7 +535,7 @@ class TestRevenueServiceRealEFIRData:
             user_id=test_user_id,
         )
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70112",
             description="Scolarité T1 - Saoudien",
             category="tuition_saudi",
@@ -542,7 +544,7 @@ class TestRevenueServiceRealEFIRData:
             user_id=test_user_id,
         )
         await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70113",
             description="Scolarité T1 - Autres",
             category="tuition_other",
@@ -551,7 +553,7 @@ class TestRevenueServiceRealEFIRData:
             user_id=test_user_id,
         )
 
-        summary = await service.get_revenue_summary(test_budget_version.id)
+        summary = await service.get_revenue_summary(test_version.id)
 
         # French should be majority
         french_revenue = summary["revenue_by_category"].get("tuition_french", Decimal("0"))
@@ -567,14 +569,14 @@ class TestRevenueServiceEdgeCases:
     async def test_zero_revenue_entry(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test creating zero revenue entry."""
         service = RevenueService(db_session)
 
         result = await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70500",
             description="Zero revenue",
             category="other",
@@ -588,7 +590,7 @@ class TestRevenueServiceEdgeCases:
     async def test_large_revenue_amounts(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test handling large revenue amounts."""
@@ -598,7 +600,7 @@ class TestRevenueServiceEdgeCases:
         large_amount = Decimal("100000000.00")
 
         result = await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70600",
             description="Large revenue",
             category="other",
@@ -608,14 +610,14 @@ class TestRevenueServiceEdgeCases:
 
         assert result.amount_sar == large_amount
 
-        summary = await service.get_revenue_summary(test_budget_version.id)
+        summary = await service.get_revenue_summary(test_version.id)
         assert summary["total_revenue"] == large_amount
 
     @pytest.mark.asyncio
     async def test_decimal_precision(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test decimal precision is maintained."""
@@ -624,7 +626,7 @@ class TestRevenueServiceEdgeCases:
         precise_amount = Decimal("1234567.89")
 
         result = await service.create_revenue_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70700",
             description="Precise amount",
             category="other",
@@ -645,7 +647,10 @@ class TestRevenueServiceEdgeCases:
         service = RevenueService(db_session)
 
         # Create two versions
-        from app.models.configuration import BudgetVersion, BudgetVersionStatus
+        from app.models import Version, VersionStatus
+        # Backward compatibility aliases
+        BudgetVersion = Version
+        BudgetVersionStatus = VersionStatus
         version1 = BudgetVersion(
             id=uuid.uuid4(),
             name="Version 1",

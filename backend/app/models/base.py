@@ -259,31 +259,33 @@ class SoftDeleteMixin:
 
 class VersionedMixin:
     """
-    Mixin for tables that belong to a specific budget version.
+    Mixin for tables that belong to a specific version.
 
     Most planning and configuration data is versioned to support
     multiple budget scenarios and historical tracking.
+
+    Note: Column renamed from budget_version_id to version_id for consistency.
     """
 
     @declared_attr
-    def budget_version_id(cls):
-        """Foreign key to budget version."""
+    def version_id(cls):
+        """Foreign key to version."""
         return Column(
             PortableUUID,
-            ForeignKey(get_fk_target("efir_budget", "budget_versions", "id"), ondelete="CASCADE"),
+            ForeignKey(get_fk_target("efir_budget", "settings_versions", "id"), ondelete="CASCADE"),
             nullable=False,
             index=True,
-            comment="Budget version this record belongs to",
+            comment="Version this record belongs to",
         )
 
     @declared_attr
-    def budget_version(cls):
-        """Relationship to budget version."""
+    def version(cls):
+        """Relationship to version."""
         return relationship(
-            "BudgetVersion",
-            foreign_keys=[cls.budget_version_id],
+            "Version",
+            foreign_keys=[cls.version_id],
             lazy="select",
-            # No back_populates - BudgetVersion doesn't have relationships to all versioned tables
+            # No back_populates - Version doesn't have relationships to all versioned tables
         )
 
 

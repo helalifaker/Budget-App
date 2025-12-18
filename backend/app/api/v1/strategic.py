@@ -25,19 +25,19 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.dependencies.auth import UserDep
-from app.models.strategic import (
+from app.models import (
     ProjectionCategory,
     StrategicPlan,
     StrategicPlanScenario,
 )
+from app.services.admin.strategic_service import StrategicService
 from app.services.exceptions import (
     BusinessRuleError,
     NotFoundError,
     ValidationError,
 )
-from app.services.strategic_service import StrategicService
 
-router = APIRouter(prefix="/api/v1/strategic", tags=["strategic"])
+router = APIRouter(prefix="/strategic", tags=["strategic"])
 
 
 # ============================================================================

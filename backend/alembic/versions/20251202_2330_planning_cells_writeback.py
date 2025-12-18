@@ -1,7 +1,7 @@
 """planning_cells_writeback
 
-Revision ID: 009_planning_cells_writeback
-Revises: bfc62faea07a
+Revision ID: 010_planning_cells_writeback
+Revises: 009_materialized_views_kpi_dashboard
 Create Date: 2025-12-02 23:30:00.000000
 
 Creates cell-level writeback schema for real-time collaboration:
@@ -42,8 +42,8 @@ from collections.abc import Sequence
 from alembic import op
 
 # Revision identifiers, used by Alembic.
-revision: str = "009_planning_cells_writeback"
-down_revision: str | None = "bfc62faea07a"
+revision: str = "010_planning_cells_writeback"
+down_revision: str | None = "009_materialized_views_kpi_dashboard"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -23,9 +23,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import UserDep
-from app.engine.eos import EOSInput, TerminationReason, calculate_eos
-from app.models.personnel import AEFEPositionType, EmployeeCategory, EmployeeNationality
-from app.schemas.personnel import (
+from app.engine.workforce.eos import EOSInput, TerminationReason, calculate_eos
+from app.models import AEFEPositionType, EmployeeCategory, EmployeeNationality
+from app.schemas.workforce.personnel import (
     AEFEPositionResponse,
     AEFEPositionUpdate,
     EmployeeBulkResponse,
@@ -42,11 +42,11 @@ from app.schemas.personnel import (
     PlaceholderEmployeeCreate,
     WorkforceSummaryResponse,
 )
-from app.services.aefe_service import AEFEService
-from app.services.employee_service import EmployeeService
 from app.services.exceptions import NotFoundError, ValidationError
+from app.services.workforce.aefe_service import AEFEService
+from app.services.workforce.employee_service import EmployeeService
 
-router = APIRouter(prefix="/api/v1/workforce", tags=["workforce"])
+router = APIRouter(prefix="/workforce", tags=["workforce"])
 
 
 # ==============================================================================
@@ -122,8 +122,8 @@ async def get_employees(
         EmployeeBulkResponse with employee list and counts
     """
     try:
-        employees = await employee_service.get_by_budget_version(
-            budget_version_id=version_id,
+        employees = await employee_service.get_by_version(
+            version_id=version_id,
             include_inactive=include_inactive,
             category=category,
             is_placeholder=is_placeholder,
@@ -171,7 +171,7 @@ async def get_employee(
         employee = await employee_service.get_by_id(employee_id, raise_if_not_found=True)
         # employee is guaranteed to be non-None due to raise_if_not_found=True
         assert employee is not None  # Type narrowing for mypy
-        if employee.budget_version_id != version_id:
+        if employee.version_id != version_id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Employee not found in this budget version",
@@ -210,11 +210,11 @@ async def create_employee(
         Created employee with generated code
     """
     try:
-        # Convert Pydantic model to dict, excluding budget_version_id
-        data = employee_data.model_dump(exclude={"budget_version_id"})
+        # Convert Pydantic model to dict, excluding version_id
+        data = employee_data.model_dump(exclude={"version_id"})
 
         employee = await employee_service.create_employee(
-            budget_version_id=employee_data.budget_version_id,
+            version_id=employee_data.version_id,
             data=data,
             user_id=user.user_id,
         )
@@ -334,7 +334,7 @@ async def create_placeholder_employee(
     """
     try:
         employee = await employee_service.create_placeholder(
-            budget_version_id=placeholder_data.budget_version_id,
+            version_id=placeholder_data.version_id,
             category=placeholder_data.category,
             cycle_id=placeholder_data.cycle_id,
             subject_id=placeholder_data.subject_id,
@@ -442,6 +442,38 @@ async def get_employee_salary(
         )
 
 
+@router.get(
+    "/employees/{employee_id}/salary/history",
+    response_model=list[EmployeeSalaryResponse],
+    summary="Get salary history for an employee",
+)
+async def get_salary_history(
+    employee_id: uuid.UUID,
+    employee_service: EmployeeService = Depends(get_employee_service),
+    user: UserDep = ...,
+):
+    """
+    Get all salary records for an employee ordered by effective date.
+
+    Args:
+        employee_id: Employee UUID
+        employee_service: Employee service
+        user: Current authenticated user
+
+    Returns:
+        List of salary records (most recent first)
+    """
+    try:
+        salaries = await employee_service.get_salary_history(employee_id)
+        return [EmployeeSalaryResponse.model_validate(s) for s in salaries]
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
 @router.post(
     "/employees/{employee_id}/salary",
     response_model=EmployeeSalaryResponse,
@@ -475,7 +507,7 @@ async def add_employee_salary(
     try:
         salary = await employee_service.add_salary(
             employee_id=employee_id,
-            budget_version_id=salary_data.budget_version_id,
+            version_id=salary_data.version_id,
             basic_salary_sar=salary_data.basic_salary_sar,
             housing_allowance_sar=salary_data.housing_allowance_sar,
             transport_allowance_sar=salary_data.transport_allowance_sar,
@@ -580,6 +612,40 @@ async def calculate_eos_preview(
         )
 
 
+@router.get(
+    "/employees/{employee_id}/eos",
+    response_model=EOSProvisionResponse | None,
+    summary="Get current EOS provision for an employee",
+)
+async def get_eos_provision(
+    employee_id: uuid.UUID,
+    employee_service: EmployeeService = Depends(get_employee_service),
+    user: UserDep = ...,
+):
+    """
+    Get the most recent EOS provision for an employee.
+
+    Args:
+        employee_id: Employee UUID
+        employee_service: Employee service
+        user: Current authenticated user
+
+    Returns:
+        EOS provision or None if none exists
+    """
+    try:
+        provision = await employee_service.get_eos_provision(employee_id)
+        if provision:
+            return EOSProvisionResponse.model_validate(provision)
+        return None
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
 @router.post(
     "/employees/{employee_id}/eos",
     response_model=EOSProvisionResponse,
@@ -612,7 +678,7 @@ async def calculate_employee_eos_provision(
     try:
         provision = await employee_service.calculate_eos_provision(
             employee_id=employee_id,
-            budget_version_id=eos_data.budget_version_id,
+            version_id=eos_data.version_id,
             as_of_date=eos_data.as_of_date,
             user_id=user.user_id,
         )
@@ -627,9 +693,127 @@ async def calculate_employee_eos_provision(
         )
 
 
+@router.post(
+    "/eos/calculate-all/{version_id}",
+    summary="Calculate EOS for all eligible employees",
+)
+async def calculate_all_eos(
+    version_id: uuid.UUID,
+    as_of_date: date = Query(default=None, description="Date for calculation"),
+    employee_service: EmployeeService = Depends(get_employee_service),
+    user: UserDep = ...,
+):
+    """
+    Calculate EOS provision for all eligible employees in a budget version.
+
+    Excludes AEFE employees (Detached and Funded) as they are not eligible for EOS.
+
+    Args:
+        version_id: Budget version UUID
+        as_of_date: Date for calculation (defaults to today)
+        employee_service: Employee service
+        user: Current authenticated user
+
+    Returns:
+        Dictionary with calculated_count and total_provision_sar
+    """
+    try:
+        result = await employee_service.calculate_all_eos(
+            version_id=version_id,
+            as_of_date=as_of_date or date.today(),
+            user_id=user.user_id,
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.get(
+    "/eos/summary/{version_id}",
+    summary="Get EOS provision summary",
+)
+async def get_eos_summary(
+    version_id: uuid.UUID,
+    as_of_date: date = Query(default=None, description="Filter by date"),
+    employee_service: EmployeeService = Depends(get_employee_service),
+    user: UserDep = ...,
+):
+    """
+    Get EOS provision summary statistics for a budget version.
+
+    Includes:
+    - Employee count with EOS provisions
+    - Total provision amount in SAR
+
+    Args:
+        version_id: Budget version UUID
+        as_of_date: Filter by as_of_date (optional)
+        employee_service: Employee service
+        user: Current authenticated user
+
+    Returns:
+        Summary dictionary
+    """
+    try:
+        return await employee_service.get_eos_summary(version_id, as_of_date)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
 # ==============================================================================
 # AEFE Position Endpoints
 # ==============================================================================
+
+
+@router.put(
+    "/aefe-positions/{version_id}/prrd-rate",
+    summary="Update PRRD rate for all detached positions",
+)
+async def update_prrd_rate(
+    version_id: uuid.UUID,
+    prrd_amount_eur: Decimal = Query(..., description="PRRD amount in EUR"),
+    exchange_rate_eur_sar: Decimal = Query(..., description="EUR to SAR exchange rate"),
+    aefe_service: AEFEService = Depends(get_aefe_service),
+    user: UserDep = ...,
+):
+    """
+    Update PRRD rate for all detached positions in a budget version.
+
+    This updates the PRRD amount and exchange rate for all 24 detached positions.
+    Funded positions (4) are not affected as they have zero cost.
+
+    Args:
+        version_id: Budget version UUID
+        prrd_amount_eur: PRRD amount in EUR
+        exchange_rate_eur_sar: EUR to SAR exchange rate
+        aefe_service: AEFE service
+        user: Current authenticated user
+
+    Returns:
+        Dictionary with updated_count and total_prrd_sar
+    """
+    try:
+        positions = await aefe_service.update_prrd_rates(
+            version_id=version_id,
+            prrd_amount_eur=prrd_amount_eur,
+            exchange_rate_eur_sar=exchange_rate_eur_sar,
+            user_id=user.user_id,
+        )
+        total_prrd_sar = sum(p.prrd_amount_sar or Decimal("0") for p in positions)
+        return {
+            "updated_count": len(positions),
+            "total_prrd_sar": total_prrd_sar,
+        }
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.message)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.post(
@@ -662,7 +846,7 @@ async def initialize_aefe_positions(
     """
     try:
         positions = await aefe_service.initialize_positions(
-            budget_version_id=init_request.budget_version_id,
+            version_id=init_request.version_id,
             academic_year=init_request.academic_year,
             prrd_amount_eur=init_request.prrd_amount_eur,
             exchange_rate_eur_sar=init_request.exchange_rate_eur_sar,
@@ -708,7 +892,7 @@ async def get_aefe_positions(
     """
     try:
         positions = await aefe_service.get_positions_by_version(
-            budget_version_id=version_id,
+            version_id=version_id,
             position_type=position_type,
             filled_only=filled_only,
         )

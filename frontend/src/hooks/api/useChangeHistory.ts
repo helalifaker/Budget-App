@@ -9,13 +9,13 @@ import { CellChange, ChangeHistoryFilters } from '@/types/writeback'
  * Provides access to the audit trail of all cell modifications, supporting
  * undo/redo functionality and change tracking across users.
  *
- * @param budgetVersionId - Budget version ID
+ * @param versionId - Version ID
  * @param filters - Optional filters (module, entity, field)
  * @returns Change history with pagination controls
  *
  * @example
  * ```typescript
- * const { changes, isLoading, loadMore, hasMore } = useChangeHistory(budgetVersionId, {
+ * const { changes, isLoading, loadMore, hasMore } = useChangeHistory(versionId, {
  *   module_code: 'enrollment',
  *   entity_id: '123',
  *   limit: 50
@@ -33,13 +33,13 @@ import { CellChange, ChangeHistoryFilters } from '@/types/writeback'
  * {hasMore && <button onClick={loadMore}>Load More</button>}
  * ```
  */
-export function useChangeHistory(budgetVersionId: string, filters?: ChangeHistoryFilters) {
+export function useChangeHistory(versionId: string, filters?: ChangeHistoryFilters) {
   const [offset, setOffset] = useState(0)
   const limit = filters?.limit || 100
 
   // Query for fetching change history
   const query = useQuery({
-    queryKey: ['cell-changes', budgetVersionId, filters, offset],
+    queryKey: ['cell-changes', versionId, filters, offset],
     queryFn: async (): Promise<CellChange[]> => {
       // Build query params
       const params = new URLSearchParams()
@@ -59,12 +59,12 @@ export function useChangeHistory(budgetVersionId: string, filters?: ChangeHistor
 
       const response = await apiRequest<CellChange[]>({
         method: 'GET',
-        url: `/writeback/cells/changes/${budgetVersionId}?${params.toString()}`,
+        url: `/writeback/cells/changes/${versionId}?${params.toString()}`,
       })
 
       return response
     },
-    enabled: !!budgetVersionId,
+    enabled: !!versionId,
     staleTime: 30 * 1000, // 30 seconds (change history is relatively static)
     gcTime: 5 * 60 * 1000, // 5 minutes cache
   })
@@ -151,13 +151,13 @@ export function useCellHistory(cellId: string, limit = 50) {
  *
  * Provides a feed of recent activity for dashboards and audit trails.
  *
- * @param budgetVersionId - Budget version ID
+ * @param versionId - Budget version ID
  * @param limit - Maximum number of changes to fetch (default: 20)
  * @returns Recent changes with auto-refresh
  *
  * @example
  * ```typescript
- * const { recentChanges, isLoading } = useRecentChanges(budgetVersionId, 20);
+ * const { recentChanges, isLoading } = useRecentChanges(versionId, 20);
  *
  * // Render activity feed
  * <ActivityFeed>
@@ -167,17 +167,17 @@ export function useCellHistory(cellId: string, limit = 50) {
  * </ActivityFeed>
  * ```
  */
-export function useRecentChanges(budgetVersionId: string, limit = 20) {
+export function useRecentChanges(versionId: string, limit = 20) {
   const query = useQuery({
-    queryKey: ['recent-changes', budgetVersionId, limit],
+    queryKey: ['recent-changes', versionId, limit],
     queryFn: async (): Promise<CellChange[]> => {
       const response = await apiRequest<CellChange[]>({
         method: 'GET',
-        url: `/writeback/cells/changes/${budgetVersionId}?limit=${limit}&offset=0`,
+        url: `/writeback/cells/changes/${versionId}?limit=${limit}&offset=0`,
       })
       return response
     },
-    enabled: !!budgetVersionId,
+    enabled: !!versionId,
     staleTime: 10 * 1000, // 10 seconds (more frequent refresh for activity feed)
     gcTime: 2 * 60 * 1000, // 2 minutes cache
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds

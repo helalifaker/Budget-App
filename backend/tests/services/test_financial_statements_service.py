@@ -13,18 +13,21 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import BudgetVersion
-from app.models.consolidation import (
+from app.models import (
     BudgetConsolidation,
     ConsolidationCategory,
     FinancialStatement,
     LineType,
     StatementFormat,
     StatementType,
+    Version,
 )
+from app.services.consolidation.financial_statements_service import FinancialStatementsService
 from app.services.exceptions import ValidationError
-from app.services.financial_statements_service import FinancialStatementsService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility alias
+BudgetVersion = Version
 
 
 class TestGetIncomeStatement:
@@ -34,15 +37,15 @@ class TestGetIncomeStatement:
     async def test_get_income_statement_pcg_format(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test generating income statement in PCG format."""
         # Create consolidation data
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -54,8 +57,8 @@ class TestGetIncomeStatement:
         )
         expense = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="personnel_cost_plans",
+            version_id=test_version.id,
+            source_table="finance_personnel_cost_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.PERSONNEL_TEACHING,
@@ -69,26 +72,26 @@ class TestGetIncomeStatement:
         await db_session.flush()
 
         service = FinancialStatementsService(db_session)
-        result = await service.get_income_statement(test_budget_version.id, format="pcg")
+        result = await service.get_income_statement(test_version.id, format="pcg")
 
         assert result is not None
         assert result.statement_type == StatementType.INCOME_STATEMENT
         assert result.statement_format == StatementFormat.FRENCH_PCG
-        assert result.budget_version_id == test_budget_version.id
+        assert result.version_id == test_version.id
 
     @pytest.mark.asyncio
     async def test_get_income_statement_ifrs_format(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test generating income statement in IFRS format."""
         # Create consolidation data
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -102,7 +105,7 @@ class TestGetIncomeStatement:
         await db_session.flush()
 
         service = FinancialStatementsService(db_session)
-        result = await service.get_income_statement(test_budget_version.id, format="ifrs")
+        result = await service.get_income_statement(test_version.id, format="ifrs")
 
         assert result is not None
         assert result.statement_type == StatementType.INCOME_STATEMENT
@@ -112,13 +115,13 @@ class TestGetIncomeStatement:
     async def test_get_income_statement_invalid_format(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test invalid format raises ValidationError."""
         service = FinancialStatementsService(db_session)
 
         with pytest.raises(ValidationError) as exc_info:
-            await service.get_income_statement(test_budget_version.id, format="invalid")
+            await service.get_income_statement(test_version.id, format="invalid")
 
         assert "Invalid format" in str(exc_info.value)
 
@@ -126,14 +129,14 @@ class TestGetIncomeStatement:
     async def test_get_income_statement_existing(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test retrieval of existing income statement."""
         # Create existing statement
         existing_statement = FinancialStatement(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             statement_type=StatementType.INCOME_STATEMENT,
             statement_format=StatementFormat.FRENCH_PCG,
             statement_name="Compte de résultat 2024-2025",
@@ -145,7 +148,7 @@ class TestGetIncomeStatement:
         await db_session.flush()
 
         service = FinancialStatementsService(db_session)
-        result = await service.get_income_statement(test_budget_version.id, format="pcg")
+        result = await service.get_income_statement(test_version.id, format="pcg")
 
         assert result.id == existing_statement.id
 
@@ -153,11 +156,11 @@ class TestGetIncomeStatement:
     async def test_get_income_statement_empty_consolidation(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test income statement generation with no consolidation data."""
         service = FinancialStatementsService(db_session)
-        result = await service.get_income_statement(test_budget_version.id, format="pcg")
+        result = await service.get_income_statement(test_version.id, format="pcg")
 
         assert result is not None
         assert result.total_amount_sar == Decimal("0.00")
@@ -170,15 +173,15 @@ class TestGetBalanceSheet:
     async def test_get_balance_sheet_generates_both_parts(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test balance sheet generates assets and liabilities."""
         # Create CapEx consolidation for assets
         capex = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="capex_plans",
+            version_id=test_version.id,
+            source_table="finance_capex_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.CAPEX_EQUIPMENT,
@@ -192,7 +195,7 @@ class TestGetBalanceSheet:
         await db_session.flush()
 
         service = FinancialStatementsService(db_session)
-        result = await service.get_balance_sheet(test_budget_version.id)
+        result = await service.get_balance_sheet(test_version.id)
 
         assert "assets" in result
         assert "liabilities" in result
@@ -203,13 +206,13 @@ class TestGetBalanceSheet:
     async def test_get_balance_sheet_existing(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieval of existing balance sheet."""
         # Create existing statements
         assets = FinancialStatement(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             statement_type=StatementType.BALANCE_SHEET_ASSETS,
             statement_format=StatementFormat.FRENCH_PCG,
             statement_name="Bilan - Actif 2024-2025",
@@ -219,7 +222,7 @@ class TestGetBalanceSheet:
         )
         liabilities = FinancialStatement(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             statement_type=StatementType.BALANCE_SHEET_LIABILITIES,
             statement_format=StatementFormat.FRENCH_PCG,
             statement_name="Bilan - Passif 2024-2025",
@@ -231,7 +234,7 @@ class TestGetBalanceSheet:
         await db_session.flush()
 
         service = FinancialStatementsService(db_session)
-        result = await service.get_balance_sheet(test_budget_version.id)
+        result = await service.get_balance_sheet(test_version.id)
 
         assert result["assets"].id == assets.id
         assert result["liabilities"].id == liabilities.id
@@ -244,15 +247,15 @@ class TestCalculateStatementLines:
     async def test_calculate_income_statement_lines(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test income statement line calculation."""
         # Create consolidation data
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -267,7 +270,7 @@ class TestCalculateStatementLines:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.INCOME_STATEMENT,
             StatementFormat.FRENCH_PCG,
         )
@@ -282,14 +285,14 @@ class TestCalculateStatementLines:
     async def test_calculate_balance_sheet_assets_lines(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test balance sheet assets line calculation."""
         capex = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="capex_plans",
+            version_id=test_version.id,
+            source_table="finance_capex_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.CAPEX_EQUIPMENT,
@@ -304,7 +307,7 @@ class TestCalculateStatementLines:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.BALANCE_SHEET_ASSETS,
             StatementFormat.FRENCH_PCG,
         )
@@ -319,13 +322,13 @@ class TestCalculateStatementLines:
     async def test_calculate_balance_sheet_liabilities_lines(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test balance sheet liabilities line calculation."""
         capex = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="capex_plans",
+            version_id=test_version.id,
+            source_table="finance_capex_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.CAPEX_EQUIPMENT,
@@ -333,14 +336,14 @@ class TestCalculateStatementLines:
             account_name="Equipment",
             amount_sar=Decimal("250000.00"),
             is_revenue=False,
-            created_by_id=test_budget_version.created_by_id,
+            created_by_id=test_version.created_by_id,
         )
         db_session.add(capex)
         await db_session.flush()
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.BALANCE_SHEET_LIABILITIES,
             StatementFormat.FRENCH_PCG,
         )
@@ -358,12 +361,12 @@ class TestCalculateStatementLines:
     async def test_calculate_cash_flow_lines(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test cash flow statement line calculation."""
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.CASH_FLOW,
             StatementFormat.FRENCH_PCG,
         )
@@ -377,14 +380,14 @@ class TestCalculateStatementLines:
     async def test_cash_flow_totals_and_signs(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Cash flow subtotals should reflect operating and investing cash movements."""
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -396,7 +399,7 @@ class TestCalculateStatementLines:
         )
         expense = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             source_table="operating_costs",
             source_count=1,
             is_calculated=True,
@@ -409,8 +412,8 @@ class TestCalculateStatementLines:
         )
         capex = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="capex_plans",
+            version_id=test_version.id,
+            source_table="finance_capex_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.CAPEX_EQUIPMENT,
@@ -425,7 +428,7 @@ class TestCalculateStatementLines:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.CASH_FLOW,
             StatementFormat.FRENCH_PCG,
         )
@@ -449,15 +452,15 @@ class TestGetPeriodTotals:
     async def test_get_period_totals_p1(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test P1 (Jan-Jun) period totals."""
         # Create consolidation data
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -469,8 +472,8 @@ class TestGetPeriodTotals:
         )
         expense = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="personnel_cost_plans",
+            version_id=test_version.id,
+            source_table="finance_personnel_cost_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.PERSONNEL_TEACHING,
@@ -484,7 +487,7 @@ class TestGetPeriodTotals:
         await db_session.flush()
 
         service = FinancialStatementsService(db_session)
-        result = await service.get_period_totals(test_budget_version.id, "p1")
+        result = await service.get_period_totals(test_version.id, "p1")
 
         assert "total_revenue" in result
         assert "total_expenses" in result
@@ -499,11 +502,11 @@ class TestGetPeriodTotals:
     async def test_get_period_totals_summer(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test summer period totals."""
         service = FinancialStatementsService(db_session)
-        result = await service.get_period_totals(test_budget_version.id, "summer")
+        result = await service.get_period_totals(test_version.id, "summer")
 
         assert result["total_revenue"] == Decimal("0.00")
         assert result["total_expenses"] == Decimal("0.00")
@@ -512,11 +515,11 @@ class TestGetPeriodTotals:
     async def test_get_period_totals_p2(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test P2 (Sep-Dec) period totals."""
         service = FinancialStatementsService(db_session)
-        result = await service.get_period_totals(test_budget_version.id, "p2")
+        result = await service.get_period_totals(test_version.id, "p2")
 
         assert "total_revenue" in result
         assert "operating_result" in result
@@ -525,15 +528,15 @@ class TestGetPeriodTotals:
     async def test_get_period_totals_annual(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test annual period totals."""
         # Create revenue
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_OTHER,
@@ -547,7 +550,7 @@ class TestGetPeriodTotals:
         await db_session.flush()
 
         service = FinancialStatementsService(db_session)
-        result = await service.get_period_totals(test_budget_version.id, "annual")
+        result = await service.get_period_totals(test_version.id, "annual")
 
         assert result["total_revenue"] == Decimal("100000.00")
 
@@ -555,13 +558,13 @@ class TestGetPeriodTotals:
     async def test_get_period_totals_invalid_period(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test invalid period raises ValidationError."""
         service = FinancialStatementsService(db_session)
 
         with pytest.raises(ValidationError) as exc_info:
-            await service.get_period_totals(test_budget_version.id, "invalid")
+            await service.get_period_totals(test_version.id, "invalid")
 
         assert "Invalid period" in str(exc_info.value)
 
@@ -573,7 +576,7 @@ class TestIncomeStatementCalculation:
     async def test_income_statement_revenue_total(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test revenue total calculation in income statement."""
@@ -581,8 +584,8 @@ class TestIncomeStatementCalculation:
         revenues = [
             BudgetConsolidation(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
-                source_table="revenue_plans",
+                version_id=test_version.id,
+                source_table="finance_revenue_plans",
                 source_count=1,
             is_calculated=True,
                 consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -594,8 +597,8 @@ class TestIncomeStatementCalculation:
             ),
             BudgetConsolidation(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
-                source_table="revenue_plans",
+                version_id=test_version.id,
+                source_table="finance_revenue_plans",
                 source_count=1,
             is_calculated=True,
                 consolidation_category=ConsolidationCategory.REVENUE_FEES,
@@ -611,7 +614,7 @@ class TestIncomeStatementCalculation:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.INCOME_STATEMENT,
             StatementFormat.FRENCH_PCG,
         )
@@ -629,7 +632,7 @@ class TestIncomeStatementCalculation:
     async def test_income_statement_expense_total(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test expense total calculation in income statement."""
@@ -637,8 +640,8 @@ class TestIncomeStatementCalculation:
         expenses = [
             BudgetConsolidation(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
-                source_table="personnel_cost_plans",
+                version_id=test_version.id,
+                source_table="finance_personnel_cost_plans",
                 source_count=1,
             is_calculated=True,
                 consolidation_category=ConsolidationCategory.PERSONNEL_TEACHING,
@@ -650,8 +653,8 @@ class TestIncomeStatementCalculation:
             ),
             BudgetConsolidation(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
-                source_table="operating_cost_plans",
+                version_id=test_version.id,
+                source_table="finance_operating_cost_plans",
                 source_count=1,
             is_calculated=True,
                 consolidation_category=ConsolidationCategory.OPERATING_OTHER,
@@ -667,7 +670,7 @@ class TestIncomeStatementCalculation:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.INCOME_STATEMENT,
             StatementFormat.FRENCH_PCG,
         )
@@ -685,15 +688,15 @@ class TestIncomeStatementCalculation:
     async def test_income_statement_operating_result(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test operating result calculation."""
         # Create revenue and expense
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -705,8 +708,8 @@ class TestIncomeStatementCalculation:
         )
         expense = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="personnel_cost_plans",
+            version_id=test_version.id,
+            source_table="finance_personnel_cost_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.PERSONNEL_TEACHING,
@@ -721,7 +724,7 @@ class TestIncomeStatementCalculation:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.INCOME_STATEMENT,
             StatementFormat.FRENCH_PCG,
         )
@@ -743,14 +746,14 @@ class TestStatementLineFormatting:
     async def test_line_numbers_sequential(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test line numbers are sequential."""
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -765,7 +768,7 @@ class TestStatementLineFormatting:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.INCOME_STATEMENT,
             StatementFormat.FRENCH_PCG,
         )
@@ -778,14 +781,14 @@ class TestStatementLineFormatting:
     async def test_indent_levels_correct(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test indent levels are correct."""
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -800,7 +803,7 @@ class TestStatementLineFormatting:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.INCOME_STATEMENT,
             StatementFormat.FRENCH_PCG,
         )
@@ -822,14 +825,14 @@ class TestStatementLineFormatting:
     async def test_bold_formatting(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test bold formatting on headers and totals."""
         revenue = BudgetConsolidation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
-            source_table="revenue_plans",
+            version_id=test_version.id,
+            source_table="finance_revenue_plans",
             source_count=1,
             is_calculated=True,
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
@@ -844,7 +847,7 @@ class TestStatementLineFormatting:
 
         service = FinancialStatementsService(db_session)
         lines = await service.calculate_statement_lines(
-            test_budget_version.id,
+            test_version.id,
             StatementType.INCOME_STATEMENT,
             StatementFormat.FRENCH_PCG,
         )

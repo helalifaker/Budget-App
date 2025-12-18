@@ -2,9 +2,9 @@ import { apiRequest } from '@/lib/api-client'
 import type { KPI, VarianceReport, DashboardSummary, Activity, SystemAlert } from '@/types/api'
 import { withServiceErrorHandling } from './utils'
 
-export const analysisService = {
+export const analysisApi = {
   /**
-   * Get KPIs for a budget version
+   * Get KPIs for a version
    */
   getKPIs: async (versionId: string): Promise<KPI[]> => {
     return withServiceErrorHandling(

@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
-from app.services.cascade_service import (
+from app.services.admin.cascade_service import (
     CALCULATION_ORDER,
     CASCADE_DEPENDENCIES,
     CascadeResult,
@@ -225,7 +225,7 @@ class TestCascadeService:
     @pytest.mark.asyncio
     async def test_recalculate_from_dhg(self, service, sample_version_id):
         """Test recalculation from dhg."""
-        with patch("app.services.cost_service.CostService") as MockCostsService:
+        with patch("app.services.costs.cost_service.CostService") as MockCostsService:
             mock_costs_service = AsyncMock()
             MockCostsService.return_value = mock_costs_service
             mock_costs_service.calculate = AsyncMock()
@@ -238,8 +238,8 @@ class TestCascadeService:
     @pytest.mark.asyncio
     async def test_recalculate_from_class_structure(self, service, sample_version_id):
         """Test recalculation from class_structure."""
-        with patch("app.services.dhg_service.DHGService") as MockDHGService, \
-             patch("app.services.cost_service.CostService") as MockCostsService:
+        with patch("app.services.workforce.dhg_service.DHGService") as MockDHGService, \
+             patch("app.services.costs.cost_service.CostService") as MockCostsService:
 
             mock_dhg_service = AsyncMock()
             MockDHGService.return_value = mock_dhg_service
@@ -263,10 +263,10 @@ class TestCascadeService:
     @pytest.mark.asyncio
     async def test_recalculate_from_enrollment(self, service, sample_version_id):
         """Test recalculation from enrollment (full cascade)."""
-        with patch("app.services.class_structure_service.ClassStructureService") as MockClassService, \
-             patch("app.services.dhg_service.DHGService") as MockDHGService, \
-             patch("app.services.revenue_service.RevenueService") as MockRevenueService, \
-             patch("app.services.cost_service.CostService") as MockCostsService:
+        with patch("app.services.enrollment.class_structure_service.ClassStructureService") as MockClassService, \
+             patch("app.services.workforce.dhg_service.DHGService") as MockDHGService, \
+             patch("app.services.revenue.revenue_service.RevenueService") as MockRevenueService, \
+             patch("app.services.costs.cost_service.CostService") as MockCostsService:
 
             for MockService in [MockClassService, MockDHGService, MockRevenueService, MockCostsService]:
                 mock_instance = AsyncMock()
@@ -284,7 +284,7 @@ class TestCascadeService:
     @pytest.mark.asyncio
     async def test_recalculate_handles_service_error(self, service, sample_version_id):
         """Test recalculation handles service errors gracefully."""
-        with patch("app.services.cost_service.CostService") as MockCostsService:
+        with patch("app.services.costs.cost_service.CostService") as MockCostsService:
             mock_costs_service = AsyncMock()
             MockCostsService.return_value = mock_costs_service
             mock_costs_service.calculate = AsyncMock(
@@ -300,8 +300,8 @@ class TestCascadeService:
     @pytest.mark.asyncio
     async def test_recalculate_steps_specific_list(self, service, sample_version_id):
         """Test recalculating specific steps."""
-        with patch("app.services.dhg_service.DHGService") as MockDHGService, \
-             patch("app.services.revenue_service.RevenueService") as MockRevenueService:
+        with patch("app.services.workforce.dhg_service.DHGService") as MockDHGService, \
+             patch("app.services.revenue.revenue_service.RevenueService") as MockRevenueService:
 
             mock_dhg_service = AsyncMock()
             MockDHGService.return_value = mock_dhg_service
@@ -332,8 +332,8 @@ class TestCascadeService:
     @pytest.mark.asyncio
     async def test_recalculate_steps_partial_failure(self, service, sample_version_id):
         """Test recalculating when some steps fail."""
-        with patch("app.services.dhg_service.DHGService") as MockDHGService, \
-             patch("app.services.cost_service.CostService") as MockCostsService:
+        with patch("app.services.workforce.dhg_service.DHGService") as MockDHGService, \
+             patch("app.services.costs.cost_service.CostService") as MockCostsService:
 
             mock_dhg_service = AsyncMock()
             MockDHGService.return_value = mock_dhg_service

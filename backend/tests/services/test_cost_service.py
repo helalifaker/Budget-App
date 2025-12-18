@@ -14,15 +14,18 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import (
+from app.models import (
     AcademicCycle,
-    BudgetVersion,
+    EnrollmentPlan,
     TeacherCategory,
+    Version,
 )
-from app.models.planning import EnrollmentPlan
-from app.services.cost_service import CostService
+from app.services.costs.cost_service import CostService
 from app.services.exceptions import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility alias
+BudgetVersion = Version
 
 
 class TestCostServicePersonnelCRUD:
@@ -32,12 +35,12 @@ class TestCostServicePersonnelCRUD:
     async def test_get_personnel_costs_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving empty personnel costs."""
         service = CostService(db_session)
 
-        result = await service.get_personnel_costs(test_budget_version.id)
+        result = await service.get_personnel_costs(test_version.id)
 
         assert result == []
 
@@ -45,7 +48,7 @@ class TestCostServicePersonnelCRUD:
     async def test_create_personnel_cost_entry(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         teacher_categories: dict[str, TeacherCategory],
         test_user_id: uuid.UUID,
     ):
@@ -53,7 +56,7 @@ class TestCostServicePersonnelCRUD:
         service = CostService(db_session)
 
         result = await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64110",
             description="Teaching Staff - Secondary",
             fte_count=Decimal("10.5"),
@@ -74,7 +77,7 @@ class TestCostServicePersonnelCRUD:
     async def test_create_personnel_cost_invalid_account(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test creating personnel cost with invalid account code."""
@@ -82,7 +85,7 @@ class TestCostServicePersonnelCRUD:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.create_personnel_cost_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="70110",  # Revenue account, not personnel
                 description="Invalid",
                 fte_count=Decimal("1"),
@@ -96,7 +99,7 @@ class TestCostServicePersonnelCRUD:
     async def test_get_personnel_cost_by_account(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test retrieving personnel cost by account code."""
@@ -104,7 +107,7 @@ class TestCostServicePersonnelCRUD:
 
         # Create entry
         await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64120",
             description="Admin Staff",
             fte_count=Decimal("5"),
@@ -113,7 +116,7 @@ class TestCostServicePersonnelCRUD:
         )
 
         result = await service.get_personnel_cost_by_account(
-            test_budget_version.id,
+            test_version.id,
             "64120",
         )
 
@@ -124,7 +127,7 @@ class TestCostServicePersonnelCRUD:
     async def test_delete_personnel_cost_entry(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test deleting a personnel cost entry."""
@@ -132,7 +135,7 @@ class TestCostServicePersonnelCRUD:
 
         # Create entry
         entry = await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64130",
             description="Support Staff",
             fte_count=Decimal("3"),
@@ -153,12 +156,12 @@ class TestCostServiceOperatingCRUD:
     async def test_get_operating_costs_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving empty operating costs."""
         service = CostService(db_session)
 
-        result = await service.get_operating_costs(test_budget_version.id)
+        result = await service.get_operating_costs(test_version.id)
 
         assert result == []
 
@@ -166,14 +169,14 @@ class TestCostServiceOperatingCRUD:
     async def test_create_operating_cost_entry(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test creating an operating cost entry."""
         service = CostService(db_session)
 
         result = await service.create_operating_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="60610",
             description="Student Supplies",
             category="supplies",
@@ -191,7 +194,7 @@ class TestCostServiceOperatingCRUD:
     async def test_create_operating_cost_invalid_account(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test creating operating cost with invalid account code."""
@@ -200,7 +203,7 @@ class TestCostServiceOperatingCRUD:
         # 64xxx is personnel, not operating
         with pytest.raises(ValidationError) as exc_info:
             await service.create_operating_cost_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="64110",
                 description="Invalid",
                 category="supplies",
@@ -214,7 +217,7 @@ class TestCostServiceOperatingCRUD:
     async def test_valid_operating_account_codes(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test that valid operating account codes are accepted."""
@@ -232,7 +235,7 @@ class TestCostServiceOperatingCRUD:
 
         for code, description in valid_codes:
             result = await service.create_operating_cost_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code=code,
                 description=description,
                 category="other",
@@ -245,7 +248,7 @@ class TestCostServiceOperatingCRUD:
     async def test_delete_operating_cost_entry(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test deleting an operating cost entry."""
@@ -253,7 +256,7 @@ class TestCostServiceOperatingCRUD:
 
         # Create entry
         entry = await service.create_operating_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="60700",
             description="Test",
             category="other",
@@ -274,7 +277,7 @@ class TestCostServiceCalculation:
     async def test_calculate_operating_costs_no_enrollment(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test operating cost calculation fails without enrollment."""
@@ -286,7 +289,7 @@ class TestCostServiceCalculation:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.calculate_operating_costs(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 cost_drivers=cost_drivers,
                 user_id=test_user_id,
             )
@@ -297,7 +300,7 @@ class TestCostServiceCalculation:
     async def test_calculate_operating_costs_enrollment_driven(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_user_id: uuid.UUID,
     ):
@@ -309,7 +312,7 @@ class TestCostServiceCalculation:
         }
 
         result = await service.calculate_operating_costs(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             cost_drivers=cost_drivers,
             user_id=test_user_id,
         )
@@ -325,7 +328,7 @@ class TestCostServiceCalculation:
     async def test_calculate_operating_costs_facility_driven(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_user_id: uuid.UUID,
     ):
@@ -338,7 +341,7 @@ class TestCostServiceCalculation:
         }
 
         result = await service.calculate_operating_costs(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             cost_drivers=cost_drivers,
             user_id=test_user_id,
         )
@@ -351,7 +354,7 @@ class TestCostServiceCalculation:
     async def test_calculate_operating_costs_fixed(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_user_id: uuid.UUID,
     ):
@@ -363,7 +366,7 @@ class TestCostServiceCalculation:
         }
 
         result = await service.calculate_operating_costs(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             cost_drivers=cost_drivers,
             user_id=test_user_id,
         )
@@ -378,12 +381,12 @@ class TestCostServiceSummary:
     async def test_get_cost_summary_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test summary for version with no costs."""
         service = CostService(db_session)
 
-        summary = await service.get_cost_summary(test_budget_version.id)
+        summary = await service.get_cost_summary(test_version.id)
 
         assert summary["total_cost"] == Decimal("0")
         assert summary["total_personnel_cost"] == Decimal("0")
@@ -395,7 +398,7 @@ class TestCostServiceSummary:
     async def test_get_cost_summary_with_entries(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test summary with multiple cost entries."""
@@ -403,7 +406,7 @@ class TestCostServiceSummary:
 
         # Create personnel costs
         await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64110",
             description="Teaching Staff",
             fte_count=Decimal("20"),
@@ -411,7 +414,7 @@ class TestCostServiceSummary:
             user_id=test_user_id,
         )
         await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64120",
             description="Admin Staff",
             fte_count=Decimal("5"),
@@ -421,7 +424,7 @@ class TestCostServiceSummary:
 
         # Create operating costs
         await service.create_operating_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="60610",
             description="Supplies",
             category="supplies",
@@ -429,7 +432,7 @@ class TestCostServiceSummary:
             user_id=test_user_id,
         )
         await service.create_operating_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="61520",
             description="Maintenance",
             category="maintenance",
@@ -437,7 +440,7 @@ class TestCostServiceSummary:
             user_id=test_user_id,
         )
 
-        summary = await service.get_cost_summary(test_budget_version.id)
+        summary = await service.get_cost_summary(test_version.id)
 
         # Personnel: (20 × 200000) + (5 × 150000) = 4,750,000
         expected_personnel = Decimal("4750000.00")
@@ -458,7 +461,7 @@ class TestCostServiceRealEFIRData:
     async def test_realistic_personnel_costs(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         teacher_categories: dict[str, TeacherCategory],
         academic_cycles: dict[str, AcademicCycle],
         test_user_id: uuid.UUID,
@@ -469,7 +472,7 @@ class TestCostServiceRealEFIRData:
         # AEFE Detached Teachers (PRRD in EUR)
         # ~10 teachers × 41,863 EUR × 4.05 SAR/EUR = ~1,695,000 SAR
         await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64110",
             description="AEFE Detached Teachers (PRRD)",
             fte_count=Decimal("10"),
@@ -483,7 +486,7 @@ class TestCostServiceRealEFIRData:
         # Local Secondary Teachers
         # ~15 teachers × 180,000 SAR = 2,700,000 SAR
         await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64111",
             description="Local Teachers - Secondary",
             fte_count=Decimal("15"),
@@ -498,7 +501,7 @@ class TestCostServiceRealEFIRData:
         # Local Primary Teachers
         # ~20 teachers × 160,000 SAR = 3,200,000 SAR
         await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64112",
             description="Local Teachers - Primary",
             fte_count=Decimal("20"),
@@ -510,7 +513,7 @@ class TestCostServiceRealEFIRData:
             user_id=test_user_id,
         )
 
-        summary = await service.get_cost_summary(test_budget_version.id)
+        summary = await service.get_cost_summary(test_version.id)
 
         # Total: ~7.6M SAR
         assert summary["total_personnel_cost"] > Decimal("7000000")
@@ -520,7 +523,7 @@ class TestCostServiceRealEFIRData:
     async def test_realistic_operating_costs(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test with realistic EFIR operating cost structure."""
@@ -538,7 +541,7 @@ class TestCostServiceRealEFIRData:
 
         for account, desc, category, amount in operating_costs:
             await service.create_operating_cost_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code=account,
                 description=desc,
                 category=category,
@@ -546,7 +549,7 @@ class TestCostServiceRealEFIRData:
                 user_id=test_user_id,
             )
 
-        summary = await service.get_cost_summary(test_budget_version.id)
+        summary = await service.get_cost_summary(test_version.id)
 
         # Total: 2.3M SAR
         assert summary["total_operating_cost"] == Decimal("2300000")
@@ -560,7 +563,7 @@ class TestCostServiceDHGCalculation:
     async def test_calculate_personnel_costs_from_dhg_no_allocations(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test DHG calculation fails when no allocations exist."""
@@ -569,7 +572,7 @@ class TestCostServiceDHGCalculation:
         # Attempt calculation without any allocations
         with pytest.raises(ValidationError) as exc_info:
             await service.calculate_personnel_costs_from_dhg(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 user_id=test_user_id,
             )
 
@@ -584,7 +587,7 @@ class TestCostServiceDeletion:
     async def test_delete_personnel_cost_entry(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test deleting a personnel cost entry."""
@@ -592,7 +595,7 @@ class TestCostServiceDeletion:
 
         # Create entry
         entry = await service.create_personnel_cost_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64110",
             description="Test Personnel Entry",
             fte_count=Decimal("1"),
@@ -606,5 +609,5 @@ class TestCostServiceDeletion:
         assert result is True
 
         # Verify it's deleted (soft delete, so check deleted_at)
-        costs = await service.get_personnel_costs(test_budget_version.id)
+        costs = await service.get_personnel_costs(test_version.id)
         assert len([c for c in costs if c.id == entry.id]) == 0

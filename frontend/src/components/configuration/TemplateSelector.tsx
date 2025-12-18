@@ -107,11 +107,11 @@ export function TemplateSelector({
 
           <div className="space-y-4 py-4">
             {/* Warning about existing data */}
-            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
+            <div className="flex items-start gap-3 p-3 bg-terracotta-50 border border-terracotta-200 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-terracotta-600 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-amber-800">Existing data</p>
-                <p className="text-amber-700">
+                <p className="font-medium text-terracotta-800">Existing data</p>
+                <p className="text-terracotta-700">
                   If you already have hours configured, they will be preserved unless you check the
                   "Overwrite" option below.
                 </p>

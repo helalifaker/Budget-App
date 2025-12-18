@@ -378,7 +378,7 @@ engine = create_async_engine(
 ## Documentation
 
 - API Documentation: `/docs/API.md`
-- Module Specifications: `/docs/MODULES/`
+- Module Specifications: `/docs/modules/`
 - Testing Guide: `/docs/TESTING.md` (this file)
 
 ## References

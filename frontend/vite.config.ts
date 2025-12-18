@@ -56,11 +56,6 @@ export default defineConfig({
               return 'tanstack'
             }
 
-            // AG Grid (heavy - lazy load on demand)
-            if (id.includes('ag-grid')) {
-              return 'ag-grid'
-            }
-
             // Charts (heavy - lazy load on demand)
             if (id.includes('recharts')) {
               return 'charts'
@@ -187,15 +182,13 @@ export default defineConfig({
       'react-dom',
       '@tanstack/react-query',
       '@tanstack/react-router',
+      '@tanstack/react-table',
+      '@tanstack/react-virtual',
       'react-error-boundary',
       'sonner',
       'framer-motion', // Pre-bundle to avoid HMR issues
     ],
-    exclude: [
-      'ag-grid-community', // Lazy load
-      'ag-grid-react',
-      // Note: recharts is NOT excluded - let Vite handle it and its dependencies (es-toolkit)
-    ],
+    // Note: recharts is NOT excluded - let Vite handle it and its dependencies (es-toolkit)
     // Force proper ES module resolution
     esbuildOptions: {
       target: 'esnext',

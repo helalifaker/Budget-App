@@ -17,7 +17,7 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from app.services.historical_import_service import (
+from app.services.admin.historical_import_service import (
     DHG_COLUMNS,
     ENROLLMENT_COLUMNS,
     FINANCIAL_COLUMNS,

@@ -58,11 +58,11 @@ export interface StepProgress {
 // ==============================================================================
 
 /**
- * Overall planning progress for a budget version
+ * Overall planning progress for a version
  */
 export interface PlanningProgressResponse {
-  /** Budget version UUID */
-  budget_version_id: string
+  /** Version UUID */
+  version_id: string
   /** Overall completion percentage (0-100) */
   overall_progress: number
   /** Number of completed steps (0-6) */
@@ -99,7 +99,7 @@ export const STEP_METADATA: Record<string, StepMetadata> = {
     step_number: 1,
     title: 'Enrollment Planning',
     description: 'Project student enrollment by level and nationality',
-    route: '/enrollment/planning',
+    route: '/students/planning',
     icon: 'Users',
     prerequisite_steps: [],
   },
@@ -108,7 +108,7 @@ export const STEP_METADATA: Record<string, StepMetadata> = {
     step_number: 2,
     title: 'Class Structure',
     description: 'Calculate number of classes from enrollment',
-    route: '/enrollment/class-structure',
+    route: '/students/class-structure',
     icon: 'Grid3x3',
     prerequisite_steps: ['enrollment'],
   },

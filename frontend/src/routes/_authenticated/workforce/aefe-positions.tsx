@@ -7,12 +7,13 @@
  * - Position-to-employee assignment
  * - PRRD rate and EUR/SAR exchange rate configuration
  *
- * @module /workforce/aefe-positions
+ * @module /teachers/aefe-positions
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
 import { useState, useMemo, useCallback } from 'react'
+import type { ColumnDef, CellContext } from '@tanstack/react-table'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -44,7 +45,7 @@ import {
   UserPlus,
   Sparkles,
 } from 'lucide-react'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import {
   useAEFEPositions,
   useAEFESummary,
@@ -55,8 +56,7 @@ import {
 } from '@/hooks/api/useWorkforce'
 import type { AEFEPosition, AEFEPositionUpdate } from '@/types/workforce'
 import { AEFE_POSITION_TYPE_LABELS, EMPLOYEE_CATEGORY_LABELS } from '@/types/workforce'
-import type { ColDef, ICellRendererParams, ValueFormatterParams } from 'ag-grid-community'
-import { DataTableLazy as DataTable } from '@/components/DataTableLazy'
+import { TanStackDataTable } from '@/components/grid/tanstack'
 
 export const Route = createFileRoute('/_authenticated/workforce/aefe-positions')({
   beforeLoad: requireAuth,
@@ -70,10 +70,10 @@ export const Route = createFileRoute('/_authenticated/workforce/aefe-positions')
 interface InitializeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  budgetVersionId: string
+  versionId: string
 }
 
-function InitializeDialog({ open, onOpenChange, budgetVersionId }: InitializeDialogProps) {
+function InitializeDialog({ open, onOpenChange, versionId }: InitializeDialogProps) {
   const [academicYear, setAcademicYear] = useState('2025-2026')
   const [prrdAmountEur, setPrrdAmountEur] = useState(41863)
   const [exchangeRate, setExchangeRate] = useState(4.05)
@@ -83,7 +83,7 @@ function InitializeDialog({ open, onOpenChange, budgetVersionId }: InitializeDia
   const handleInitialize = async () => {
     try {
       await initializeMutation.mutateAsync({
-        budget_version_id: budgetVersionId,
+        version_id: versionId,
         academic_year: academicYear,
         prrd_amount_eur: prrdAmountEur,
         exchange_rate_eur_sar: exchangeRate,
@@ -106,7 +106,7 @@ function InitializeDialog({ open, onOpenChange, budgetVersionId }: InitializeDia
             Initialize AEFE Positions
           </DialogTitle>
           <DialogDescription>
-            Create 28 AEFE positions (24 Detached + 4 Funded) for this budget version.
+            Create 28 AEFE positions (24 Detached + 4 Funded) for this version.
           </DialogDescription>
         </DialogHeader>
 
@@ -181,13 +181,13 @@ interface AssignDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   position: AEFEPosition | null
-  budgetVersionId: string
+  versionId: string
 }
 
-function AssignDialog({ open, onOpenChange, position, budgetVersionId }: AssignDialogProps) {
+function AssignDialog({ open, onOpenChange, position, versionId }: AssignDialogProps) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('')
 
-  const { data: employeesData } = useEmployees(budgetVersionId)
+  const { data: employeesData } = useEmployees(versionId)
   const assignMutation = useAssignEmployeeToAEFE()
 
   // Filter to AEFE employees only
@@ -205,7 +205,7 @@ function AssignDialog({ open, onOpenChange, position, budgetVersionId }: AssignD
       await assignMutation.mutateAsync({
         positionId: position.id,
         employeeId: selectedEmployeeId,
-        budgetVersionId,
+        versionId,
       })
       onOpenChange(false)
       setSelectedEmployeeId('')
@@ -282,15 +282,10 @@ interface EditPositionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   position: AEFEPosition | null
-  budgetVersionId: string
+  versionId: string
 }
 
-function EditPositionDialog({
-  open,
-  onOpenChange,
-  position,
-  budgetVersionId,
-}: EditPositionDialogProps) {
+function EditPositionDialog({ open, onOpenChange, position, versionId }: EditPositionDialogProps) {
   const [prrdAmountEur, setPrrdAmountEur] = useState(position?.prrd_amount_eur || 41863)
   const [exchangeRate, setExchangeRate] = useState(position?.exchange_rate_eur_sar || 4.05)
   const [notes, setNotes] = useState(position?.notes || '')
@@ -319,7 +314,7 @@ function EditPositionDialog({
       await updateMutation.mutateAsync({
         positionId: position.id,
         data,
-        budgetVersionId,
+        versionId,
       })
       onOpenChange(false)
     } catch {
@@ -416,7 +411,7 @@ function EditPositionDialog({
 // ============================================================================
 
 function AEFEPositionsPage() {
-  const { selectedVersionId } = useBudgetVersion()
+  const { selectedVersionId } = useVersion()
 
   // Dialog states
   const [initDialogOpen, setInitDialogOpen] = useState(false)
@@ -467,24 +462,26 @@ function AEFEPositionsPage() {
     setEditDialogOpen(true)
   }, [])
 
-  // AG Grid Column Definitions
-  const columnDefs = useMemo<ColDef<AEFEPosition>[]>(
+  // Column definitions
+  const columnDefs = useMemo<ColumnDef<AEFEPosition, unknown>[]>(
     () => [
       {
-        headerName: '#',
-        field: 'position_number',
-        width: 70,
-        pinned: 'left',
-        cellRenderer: (params: ICellRendererParams<AEFEPosition>) => (
-          <span className="font-mono font-medium">{params.value}</span>
+        id: 'position_number',
+        accessorKey: 'position_number',
+        header: '#',
+        size: 70,
+        meta: { pinned: 'left' as const },
+        cell: ({ getValue }: CellContext<AEFEPosition, unknown>) => (
+          <span className="font-mono font-medium">{getValue() as number}</span>
         ),
       },
       {
-        headerName: 'Type',
-        field: 'position_type',
-        width: 150,
-        cellRenderer: (params: ICellRendererParams<AEFEPosition>) => {
-          const type = params.value as 'DETACHED' | 'FUNDED'
+        id: 'position_type',
+        accessorKey: 'position_type',
+        header: 'Type',
+        size: 150,
+        cell: ({ getValue }: CellContext<AEFEPosition, unknown>) => {
+          const type = getValue() as 'DETACHED' | 'FUNDED'
           return (
             <Badge variant={type === 'DETACHED' ? 'default' : 'secondary'}>
               {AEFE_POSITION_TYPE_LABELS[type]}
@@ -493,11 +490,12 @@ function AEFEPositionsPage() {
         },
       },
       {
-        headerName: 'Status',
-        field: 'is_filled',
-        width: 110,
-        cellRenderer: (params: ICellRendererParams<AEFEPosition>) => {
-          const isFilled = params.value as boolean
+        id: 'is_filled',
+        accessorKey: 'is_filled',
+        header: 'Status',
+        size: 110,
+        cell: ({ getValue }: CellContext<AEFEPosition, unknown>) => {
+          const isFilled = getValue() as boolean
           return (
             <Badge variant={isFilled ? 'outline' : 'destructive'} className="gap-1">
               {isFilled ? (
@@ -514,12 +512,13 @@ function AEFEPositionsPage() {
         },
       },
       {
-        headerName: 'Assigned Employee',
-        field: 'employee_name',
-        flex: 1,
-        minWidth: 200,
-        cellRenderer: (params: ICellRendererParams<AEFEPosition>) => {
-          const name = params.value as string | null
+        id: 'employee_name',
+        accessorKey: 'employee_name',
+        header: 'Assigned Employee',
+        size: 200,
+        minSize: 200,
+        cell: ({ getValue }: CellContext<AEFEPosition, unknown>) => {
+          const name = getValue() as string | null
           if (!name) {
             return <span className="text-muted-foreground italic">Not assigned</span>
           }
@@ -527,48 +526,53 @@ function AEFEPositionsPage() {
         },
       },
       {
-        headerName: 'PRRD (EUR)',
-        field: 'prrd_amount_eur',
-        width: 130,
-        type: 'numericColumn',
-        valueFormatter: (params: ValueFormatterParams) => {
-          const pos = params.data as AEFEPosition
-          if (pos.position_type === 'FUNDED') return '-'
-          return params.value ? params.value.toLocaleString() : '0'
+        id: 'prrd_amount_eur',
+        accessorKey: 'prrd_amount_eur',
+        header: 'PRRD (EUR)',
+        size: 130,
+        cell: ({ getValue, row }: CellContext<AEFEPosition, unknown>) => {
+          if (row.original.position_type === 'FUNDED') return '-'
+          const value = getValue() as number | undefined
+          return (
+            <span className="block text-right tabular-nums">
+              {value ? value.toLocaleString() : '0'}
+            </span>
+          )
         },
-        cellStyle: { textAlign: 'right' },
       },
       {
-        headerName: 'PRRD (SAR)',
-        field: 'prrd_amount_sar',
-        width: 140,
-        type: 'numericColumn',
-        valueFormatter: (params: ValueFormatterParams) => {
-          const pos = params.data as AEFEPosition
-          if (pos.position_type === 'FUNDED') return '-'
-          return params.value ? params.value.toLocaleString() : '0'
+        id: 'prrd_amount_sar',
+        accessorKey: 'prrd_amount_sar',
+        header: 'PRRD (SAR)',
+        size: 140,
+        cell: ({ getValue, row }: CellContext<AEFEPosition, unknown>) => {
+          if (row.original.position_type === 'FUNDED') return '-'
+          const value = getValue() as number | undefined
+          return (
+            <span className="block text-right tabular-nums">
+              {value ? value.toLocaleString() : '0'}
+            </span>
+          )
         },
-        cellStyle: { textAlign: 'right' },
       },
       {
-        headerName: 'Rate',
-        field: 'exchange_rate_eur_sar',
-        width: 80,
-        type: 'numericColumn',
-        valueFormatter: (params: ValueFormatterParams) => {
-          const pos = params.data as AEFEPosition
-          if (pos.position_type === 'FUNDED') return '-'
-          return params.value?.toFixed(2) || '-'
+        id: 'exchange_rate_eur_sar',
+        accessorKey: 'exchange_rate_eur_sar',
+        header: 'Rate',
+        size: 80,
+        cell: ({ getValue, row }: CellContext<AEFEPosition, unknown>) => {
+          if (row.original.position_type === 'FUNDED') return '-'
+          const value = getValue() as number | undefined
+          return <span className="block text-right tabular-nums">{value?.toFixed(2) || '-'}</span>
         },
-        cellStyle: { textAlign: 'right' },
       },
       {
-        headerName: 'Actions',
-        width: 160,
-        pinned: 'right',
-        cellRenderer: (params: ICellRendererParams<AEFEPosition>) => {
-          const position = params.data
-          if (!position) return null
+        id: 'actions',
+        header: 'Actions',
+        size: 160,
+        meta: { pinned: 'right' as const },
+        cell: ({ row }: CellContext<AEFEPosition, unknown>) => {
+          const position = row.original
           return (
             <div className="flex items-center gap-1">
               <Button
@@ -613,9 +617,9 @@ function AEFEPositionsPage() {
           <CardContent className="flex items-center gap-4 py-6">
             <AlertCircle className="h-8 w-8 text-amber-600" />
             <div>
-              <p className="font-medium text-amber-800">No Budget Version Selected</p>
+              <p className="font-medium text-amber-800">No Version Selected</p>
               <p className="text-sm text-amber-700">
-                Please select a budget version from the header to manage AEFE positions.
+                Please select a version from the header to manage AEFE positions.
               </p>
             </div>
           </CardContent>
@@ -717,7 +721,7 @@ function AEFEPositionsPage() {
                 Initialize AEFE Positions
               </h3>
               <p className="text-sm text-text-secondary text-center max-w-md mb-4">
-                Create the 28 AEFE positions for this budget version:
+                Create the 28 AEFE positions for this version:
               </p>
               <ul className="text-sm text-text-secondary space-y-1 mb-6">
                 <li>• 24 Detached positions - School pays PRRD (~41,863 EUR/year)</li>
@@ -741,17 +745,12 @@ function AEFEPositionsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DataTable
+              <TanStackDataTable<AEFEPosition>
                 columnDefs={columnDefs}
                 rowData={rowData}
-                rowHeight={40}
-                headerHeight={44}
-                domLayout="autoHeight"
-                defaultColDef={{
-                  sortable: true,
-                  resizable: true,
-                }}
-                getRowId={(params) => params.data.id}
+                getRowId={(data) => data.id}
+                nativeColumns={true}
+                tableLabel="AEFE Position Assignments Grid"
               />
             </CardContent>
           </Card>
@@ -762,19 +761,19 @@ function AEFEPositionsPage() {
       <InitializeDialog
         open={initDialogOpen}
         onOpenChange={setInitDialogOpen}
-        budgetVersionId={selectedVersionId}
+        versionId={selectedVersionId}
       />
       <AssignDialog
         open={assignDialogOpen}
         onOpenChange={setAssignDialogOpen}
         position={selectedPosition}
-        budgetVersionId={selectedVersionId}
+        versionId={selectedVersionId}
       />
       <EditPositionDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         position={selectedPosition}
-        budgetVersionId={selectedVersionId}
+        versionId={selectedVersionId}
       />
     </PageContainer>
   )

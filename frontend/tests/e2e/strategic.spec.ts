@@ -1,9 +1,5 @@
 import { test, expect, Page } from '@playwright/test'
-import {
-  setupBudgetVersionMocks,
-  setupStrategicMocks,
-  resetMockData,
-} from './helpers/api-mock.helper'
+import { setupVersionMocks, setupStrategicMocks, resetMockData } from './helpers/api-mock.helper'
 
 /**
  * E2E Test Suite: 5-Year Strategic Planning
@@ -21,7 +17,7 @@ async function waitForPageLoad(page: Page): Promise<void> {
 test.describe('5-Year Strategic Planning', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupStrategicMocks(page)
 
     // Login
@@ -180,7 +176,7 @@ test.describe('5-Year Strategic Planning', () => {
 test.describe('Strategic Plan Validation', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupStrategicMocks(page)
 
     await page.goto('/login')

@@ -1,11 +1,7 @@
 import { test, expect, Page } from '@playwright/test'
 // AxeBuilder is available for future axe-core accessibility testing
 // import AxeBuilder from '@axe-core/playwright'
-import {
-  setupBudgetVersionMocks,
-  setupEnrollmentMocks,
-  resetMockData,
-} from './helpers/api-mock.helper'
+import { setupVersionMocks, setupEnrollmentMocks, resetMockData } from './helpers/api-mock.helper'
 
 /**
  * E2E Test Suite: Accessibility (a11y) Testing
@@ -24,7 +20,7 @@ async function waitForPageLoad(page: Page): Promise<void> {
 // Helper to login with mocks
 async function loginWithMocks(page: Page): Promise<void> {
   resetMockData()
-  await setupBudgetVersionMocks(page)
+  await setupVersionMocks(page)
   await setupEnrollmentMocks(page)
 
   await page.goto('/login')

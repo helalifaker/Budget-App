@@ -96,12 +96,12 @@ function getHelpContentForStep(stepId: StepProgress['step_id']) {
       overview:
         'Project student enrollment by academic level and nationality type. This is the PRIMARY DRIVER for all downstream calculations - everything else depends on accurate enrollment data.',
       prerequisites: [
-        'Budget version in "Draft" or "Working" state',
+        'Version in "Draft" or "Working" state',
         'Academic levels configured in Configuration → Class Sizes',
         'Nationality types defined in system configuration',
       ],
       instructions: [
-        'Select your budget version from the dropdown',
+        'Select your version from the dropdown',
         'Click "Add Enrollment" button',
         'Choose academic level (e.g., CP, CE1, 6ème, etc.)',
         'Select nationality type (French, Saudi, Other)',

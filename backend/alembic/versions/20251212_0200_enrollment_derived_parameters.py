@@ -7,8 +7,8 @@ This migration adds tables for:
 
 These tables support the dynamic lateral entry calculation engine.
 
-Revision ID: 018_enrollment_derived_parameters
-Revises: 017_enrollment_projection_tables
+Revision ID: 019_enrollment_derived_parameters
+Revises: 018_add_organizations
 Create Date: 2025-12-12
 """
 
@@ -19,8 +19,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "018_enrollment_derived_parameters"
-down_revision = "017a_organizations"
+revision = "019_enrollment_derived_parameters"
+down_revision = "018_add_organizations"
 branch_labels = None
 depends_on = None
 

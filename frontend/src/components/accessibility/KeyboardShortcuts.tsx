@@ -448,17 +448,17 @@ export function useKeyboardShortcuts(customShortcuts?: KeyboardShortcut[]) {
             return
           case 'e':
             event.preventDefault()
-            navigate({ to: '/enrollment/planning' })
+            navigate({ to: '/enrollment/projections' })
             announce('Navigated to Enrollment Planning')
             return
           case 'd':
             event.preventDefault()
-            navigate({ to: '/planning/dhg' })
+            navigate({ to: '/workforce/dhg' })
             announce('Navigated to DHG Workforce Planning')
             return
           case 'b':
             event.preventDefault()
-            navigate({ to: '/finance/consolidation' })
+            navigate({ to: '/consolidation/rollup' })
             announce('Navigated to Budget Consolidation')
             return
         }

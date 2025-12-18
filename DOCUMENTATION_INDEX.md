@@ -16,7 +16,7 @@ Welcome to the EFIR Budget Planning Application documentation. This index provid
 
 **Developing?** Essential references:
 - [CLAUDE.md](CLAUDE.md) - **Primary development reference** (commands, patterns, rules)
-- [docs/MODULES/](docs/MODULES/) - All 18 module specifications
+- [docs/modules/](docs/modules/) - All 18 module specifications
 - [.claude/AGENT_ORCHESTRATION.md](.claude/AGENT_ORCHESTRATION.md) - Agent system guide
 
 ---
@@ -44,32 +44,32 @@ Core specifications and requirements that define EFIR.
 Detailed specifications for each of the 18 modules across 5 layers.
 
 **Configuration Layer (Modules 1-6)**:
-- [MODULE_01: System Configuration](docs/MODULES/MODULE_01_SYSTEM_CONFIGURATION.md) - Academic cycles, levels, subjects
-- [MODULE_02: Class Size Parameters](docs/MODULES/MODULE_02_CLASS_SIZE_PARAMETERS.md) - Min/max/target class sizes
-- [MODULE_03: Subject Hours Configuration](docs/MODULES/MODULE_03_SUBJECT_HOURS_CONFIGURATION.md) - Hours per subject
-- [MODULE_04: Teacher Cost Parameters](docs/MODULES/MODULE_04_TEACHER_COST_PARAMETERS.md) - Teacher salary configurations
-- [MODULE_05: Fee Structure Configuration](docs/MODULES/MODULE_05_FEE_STRUCTURE_CONFIGURATION.md) - Tuition fees
-- [MODULE_06: Timetable Constraints](docs/MODULES/MODULE_06_TIMETABLE_CONSTRAINTS.md) - Scheduling rules
+- [MODULE_01: System Configuration](docs/modules/MODULE_01_SYSTEM_CONFIGURATION.md) - Academic cycles, levels, subjects
+- [MODULE_02: Class Size Parameters](docs/modules/MODULE_02_CLASS_SIZE_PARAMETERS.md) - Min/max/target class sizes
+- [MODULE_03: Subject Hours Configuration](docs/modules/MODULE_03_SUBJECT_HOURS_CONFIGURATION.md) - Hours per subject
+- [MODULE_04: Teacher Cost Parameters](docs/modules/MODULE_04_TEACHER_COST_PARAMETERS.md) - Teacher salary configurations
+- [MODULE_05: Fee Structure Configuration](docs/modules/MODULE_05_FEE_STRUCTURE_CONFIGURATION.md) - Tuition fees
+- [MODULE_06: Timetable Constraints](docs/modules/MODULE_06_TIMETABLE_CONSTRAINTS.md) - Scheduling rules
 
 **Planning Layer (Modules 7-12)**:
-- [MODULE_07: Enrollment Planning](docs/MODULES/MODULE_07_ENROLLMENT_PLANNING.md) - Student projections
-- [MODULE_08: DHG Workforce Planning](docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md) ⭐ **Core calculation**
-- [MODULE_09: Facility Planning](docs/MODULES/MODULE_09_FACILITY_PLANNING.md) - Classroom allocation
-- [MODULE_10: Revenue Planning](docs/MODULES/MODULE_10_REVENUE_PLANNING.md) - Fee-based revenue projections
-- [MODULE_11: Cost Planning](docs/MODULES/MODULE_11_COST_PLANNING.md) - Personnel and operational costs
-- [MODULE_12: CapEx Planning](docs/MODULES/MODULE_12_CAPEX_PLANNING.md) - Capital expenditure planning
+- [MODULE_07: Enrollment Planning](docs/modules/MODULE_07_ENROLLMENT_PLANNING.md) - Student projections
+- [MODULE_08: DHG Workforce Planning](docs/modules/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md) ⭐ **Core calculation**
+- [MODULE_09: Facility Planning](docs/modules/MODULE_09_FACILITY_PLANNING.md) - Classroom allocation
+- [MODULE_10: Revenue Planning](docs/modules/MODULE_10_REVENUE_PLANNING.md) - Fee-based revenue projections
+- [MODULE_11: Cost Planning](docs/modules/MODULE_11_COST_PLANNING.md) - Personnel and operational costs
+- [MODULE_12: CapEx Planning](docs/modules/MODULE_12_CAPEX_PLANNING.md) - Capital expenditure planning
 
 **Consolidation Layer (Modules 13-14)**:
-- [MODULE_13: Budget Consolidation](docs/MODULES/MODULE_13_BUDGET_CONSOLIDATION.md) - Multi-module aggregation
-- [MODULE_14: Financial Statements](docs/MODULES/MODULE_14_FINANCIAL_STATEMENTS.md) - PCG/IFRS statements
+- [MODULE_13: Budget Consolidation](docs/modules/MODULE_13_BUDGET_CONSOLIDATION.md) - Multi-module aggregation
+- [MODULE_14: Financial Statements](docs/modules/MODULE_14_FINANCIAL_STATEMENTS.md) - PCG/IFRS statements
 
 **Analysis Layer (Modules 15-17)**:
-- [MODULE_15: KPIs & Statistical Analysis](docs/MODULES/MODULE_15_STATISTICAL_ANALYSIS.md) - Key performance indicators
-- [MODULE_16: Dashboard Configuration](docs/MODULES/MODULE_16_DASHBOARD_CONFIGURATION.md) - Analytics dashboards
-- [MODULE_17: Budget vs Actual](docs/MODULES/MODULE_17_BUDGET_VS_ACTUAL.md) - Variance analysis
+- [MODULE_15: KPIs & Statistical Analysis](docs/modules/MODULE_15_STATISTICAL_ANALYSIS.md) - Key performance indicators
+- [MODULE_16: Dashboard Configuration](docs/modules/MODULE_16_DASHBOARD_CONFIGURATION.md) - Analytics dashboards
+- [MODULE_17: Budget vs Actual](docs/modules/MODULE_17_BUDGET_VS_ACTUAL.md) - Variance analysis
 
 **Strategic Layer (Module 18)**:
-- [MODULE_18: 5-Year Strategic Planning](docs/MODULES/MODULE_18_STRATEGIC_PLANNING.md) - Long-term planning
+- [MODULE_18: 5-Year Strategic Planning](docs/modules/MODULE_18_STRATEGIC_PLANNING.md) - Long-term planning
 
 ---
 
@@ -186,25 +186,23 @@ Backend and frontend specific documentation.
 
 ---
 
-### Agent System (15 documents)
+### Agent System (10 documents)
 
-14 specialized agents + orchestration guide.
+9 specialized agents + orchestration guide.
 
 - [.claude/AGENT_ORCHESTRATION.md](.claude/AGENT_ORCHESTRATION.md) ⭐ - Master orchestration guide
-- [.claude/agents/backend-api-specialist.md](.claude/agents/backend-api-specialist.md) - FastAPI specialist
-- [.claude/agents/backend-engine-agent.md](.claude/agents/backend-engine-agent.md) - Calculation engines
-- [.claude/agents/data-migration-agent.md](.claude/agents/data-migration-agent.md) - Data imports
-- [.claude/agents/database-supabase-agent.md](.claude/agents/database-supabase-agent.md) - Database & RLS
-- [.claude/agents/documentation-training-agent.md](.claude/agents/documentation-training-agent.md) - Documentation
-- [.claude/agents/efir-master-agent.md](.claude/agents/efir-master-agent.md) - Orchestrator
-- [.claude/agents/frontend-ui-agent.md](.claude/agents/frontend-ui-agent.md) - React UI
-- [.claude/agents/governance-versioning-agent.md](.claude/agents/governance-versioning-agent.md) - Budget lifecycle
-- [.claude/agents/performance-agent.md](.claude/agents/performance-agent.md) - Performance optimization
 - [.claude/agents/product-architect-agent.md](.claude/agents/product-architect-agent.md) - Business rules (SOURCE OF TRUTH)
+- [.claude/agents/frontend-ui-agent.md](.claude/agents/frontend-ui-agent.md) - React UI
+- [.claude/agents/performance-agent.md](.claude/agents/performance-agent.md) - Performance optimization
 - [.claude/agents/qa-validation-agent.md](.claude/agents/qa-validation-agent.md) - Testing & QA
-- [.claude/agents/reporting-statements-agent.md](.claude/agents/reporting-statements-agent.md) - PCG/IFRS statements
-- [.claude/agents/security-rls-agent.md](.claude/agents/security-rls-agent.md) - Security & auth
-- [.claude/agents/system-architect-agent.md](.claude/agents/system-architect-agent.md) - Architecture
+- [.claude/agents/documentation-training-agent.md](.claude/agents/documentation-training-agent.md) - Documentation
+
+**Built-in Agents** (no configuration files):
+
+- `Plan` - Architecture decisions and implementation planning
+- `Explore` - Fast codebase exploration
+- `general-purpose` - Complex multi-step tasks
+- `claude-code-guide` - Claude Code CLI guidance
 
 ---
 
@@ -238,7 +236,7 @@ Historical documents organized by type.
 1. [Developer Guide](docs/developer-guides/DEVELOPER_GUIDE.md) ⭐ - **Start here**
 2. [CLAUDE.md](CLAUDE.md) - **Daily reference** (commands, patterns, standards)
 3. [API Documentation](docs/developer-guides/API_DOCUMENTATION.md) - API reference
-4. [Module Specifications](docs/MODULES/) - Business logic reference
+4. [Module Specifications](docs/modules/) - Business logic reference
 5. [Backend README](backend/README.md) - Backend setup
 6. [Frontend README](frontend/README.md) - Frontend setup
 
@@ -246,7 +244,7 @@ Historical documents organized by type.
 1. [CLAUDE.md](CLAUDE.md) ⭐ - **Primary reference** (1000+ lines)
 2. [Agent Orchestration](.claude/AGENT_ORCHESTRATION.md) - Agent system rules
 3. [Agent Documentation Standards](docs/AGENT_DOCUMENTATION_STANDARDS.md) - Where to create docs
-4. [Module Specifications](docs/MODULES/) - Business rules (**SOURCE OF TRUTH**)
+4. [Module Specifications](docs/modules/) - Business rules (**SOURCE OF TRUTH**)
 5. [Individual Agent Configs](.claude/agents/) - Your specific agent file
 
 ### For Project Managers
@@ -268,18 +266,18 @@ Historical documents organized by type.
 ### By Topic
 
 **Budget Planning Workflow**:
-[MODULE_07](docs/MODULES/MODULE_07_ENROLLMENT_PLANNING.md) (Enrollment) →
-[MODULE_08](docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md) (DHG) →
-[MODULE_11](docs/MODULES/MODULE_11_COST_PLANNING.md) (Costs) →
-[MODULE_13](docs/MODULES/MODULE_13_BUDGET_CONSOLIDATION.md) (Consolidation)
+[MODULE_07](docs/modules/MODULE_07_ENROLLMENT_PLANNING.md) (Enrollment) →
+[MODULE_08](docs/modules/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md) (DHG) →
+[MODULE_11](docs/modules/MODULE_11_COST_PLANNING.md) (Costs) →
+[MODULE_13](docs/modules/MODULE_13_BUDGET_CONSOLIDATION.md) (Consolidation)
 
 **Financial Reporting**:
-- [MODULE_14](docs/MODULES/MODULE_14_FINANCIAL_STATEMENTS.md) (PCG/IFRS Statements)
-- [MODULE_15](docs/MODULES/MODULE_15_STATISTICAL_ANALYSIS.md) (KPIs)
-- [MODULE_16](docs/MODULES/MODULE_16_DASHBOARD_CONFIGURATION.md) (Dashboards)
+- [MODULE_14](docs/modules/MODULE_14_FINANCIAL_STATEMENTS.md) (PCG/IFRS Statements)
+- [MODULE_15](docs/modules/MODULE_15_STATISTICAL_ANALYSIS.md) (KPIs)
+- [MODULE_16](docs/modules/MODULE_16_DASHBOARD_CONFIGURATION.md) (Dashboards)
 
 **Configuration**:
-[MODULE_01-06](docs/MODULES/) - System config, class sizes, subject hours, teacher costs, fees, timetable
+[MODULE_01-06](docs/modules/) - System config, class sizes, subject hours, teacher costs, fees, timetable
 
 **Testing**:
 - [docs/testing/](docs/testing/) - Test coverage and strategy
@@ -300,7 +298,7 @@ Historical documents organized by type.
 - **Root .md files**: Only 3 essential files (README.md, CLAUDE.md, DOCUMENTATION_INDEX.md)
 - **Foundation docs** (foundation/): Core specifications (PRD, TSD, Requirements, etc.)
 - **User/Developer guides** (docs/): Organized by audience and type
-- **Module specs** (docs/MODULES/): All 18 module specifications
+- **Module specs** (docs/modules/): All 18 module specifications
 - **Backend/Frontend docs** (backend/, frontend/): Component-specific documentation
 - **Agent configs** (.claude/): Agent system documentation
 - **Archive** (docs/archive/): Historical documentation
@@ -352,8 +350,8 @@ See [docs/templates/](docs/templates/) for:
 | **Agent system** | [.claude/AGENT_ORCHESTRATION.md](.claude/AGENT_ORCHESTRATION.md) |
 | **Setup guide** | [docs/developer-guides/DEVELOPER_GUIDE.md](docs/developer-guides/DEVELOPER_GUIDE.md) |
 | **API reference** | [docs/developer-guides/API_DOCUMENTATION.md](docs/developer-guides/API_DOCUMENTATION.md) |
-| **Business rules** | [docs/MODULES/](docs/MODULES/) (18 module specs) |
-| **DHG calculation** | [MODULE_08](docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md) |
+| **Business rules** | [docs/modules/](docs/modules/) (18 module specs) |
+| **DHG calculation** | [MODULE_08](docs/modules/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md) |
 | **Current status** | [docs/status/CURRENT_STATUS.md](docs/status/CURRENT_STATUS.md) |
 
 ### Where Agents Create Documentation
@@ -361,11 +359,12 @@ See [docs/templates/](docs/templates/) for:
 | Agent | Document Type | Location |
 |-------|---------------|----------|
 | qa-validation-agent | Coverage reports | `docs/agent-work/` |
-| efir-master-agent | Coordination reports | `docs/agent-work/` |
-| backend-*-agent | Implementation reports | `docs/agent-work/` |
-| system-architect-agent | ADRs | `docs/technical-decisions/` |
+| Plan | ADRs, Implementation plans | `docs/technical-decisions/`, `docs/planning/` |
+| frontend-ui-agent | Implementation reports | `docs/agent-work/` |
+| performance-agent | Performance reports | `docs/agent-work/` |
 | documentation-training-agent | User/Dev guides | `docs/user-guides/` or `docs/developer-guides/` |
-| product-architect-agent | Module specs | `docs/MODULES/` |
+| product-architect-agent | Module specs | `docs/modules/` |
+| general-purpose | Research reports | `docs/agent-work/` |
 
 **See [docs/AGENT_DOCUMENTATION_STANDARDS.md](docs/AGENT_DOCUMENTATION_STANDARDS.md) for complete agent rules.**
 

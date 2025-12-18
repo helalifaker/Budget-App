@@ -14,7 +14,17 @@ import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /** Module accent color type for left border */
-export type ModuleAccent = 'gold' | 'sage' | 'terracotta' | 'slate' | 'wine' | 'none'
+export type ModuleAccent =
+  | 'gold'
+  | 'sage'
+  | 'terracotta'
+  | 'slate'
+  | 'wine'
+  | 'orange'
+  | 'teal'
+  | 'blue'
+  | 'purple'
+  | 'none'
 
 interface SummaryCardProps {
   title: string
@@ -39,6 +49,10 @@ const accentColorMap: Record<ModuleAccent, string> = {
   terracotta: 'from-terracotta-400 to-terracotta-600',
   slate: 'from-efir-slate-400 to-efir-slate-600',
   wine: 'from-wine-400 to-wine-600',
+  orange: 'from-orange-400 to-orange-600',
+  teal: 'from-teal-400 to-teal-600',
+  blue: 'from-blue-400 to-blue-600',
+  purple: 'from-purple-400 to-purple-600',
   none: '',
 }
 

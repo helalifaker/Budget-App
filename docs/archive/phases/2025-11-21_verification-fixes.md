@@ -71,7 +71,7 @@ These issues were claimed to be "not fixed" but verification proved they were al
 **Issue**: Policy named `budget_versions_manager_select` but grants to both managers and viewers
 
 **Fix Applied**:
-- **File**: `docs/DATABASE/sql/rls_policies.sql`
+- **File**: `docs/database/sql/rls_policies.sql`
 - **Action**: Renamed policy to `budget_versions_read_all`
 - **Added**: Clarifying comments explaining dual-role access
 - **Result**: Policy name now accurately reflects its function
@@ -207,7 +207,7 @@ Consider adding more classes.
    - Added verification confirmation section
    - Verified all documented fixes are accurate
 
-3. **`docs/DATABASE/sql/rls_policies.sql`**
+3. **`docs/database/sql/rls_policies.sql`**
    - Renamed `budget_versions_manager_select` → `budget_versions_read_all`
    - Added clarifying comments
 
@@ -299,7 +299,7 @@ Consider adding more classes.
 
 4. **Apply RLS Policies**:
    ```bash
-   psql $DATABASE_URL -f docs/DATABASE/sql/rls_policies.sql
+   psql $DATABASE_URL -f docs/database/sql/rls_policies.sql
    ```
 
 ### Phase 4 Preparation:

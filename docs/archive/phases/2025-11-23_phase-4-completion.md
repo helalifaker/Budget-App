@@ -112,7 +112,7 @@ Implemented 8 model classes across 3 modules:
 
 ### ✅ 3. Row Level Security (RLS) Policies
 
-**File**: `/docs/DATABASE/sql/rls_policies.sql` (updated)
+**File**: `/docs/database/sql/rls_policies.sql` (updated)
 
 **Policy Coverage**:
 - All 8 Analysis Layer tables
@@ -138,20 +138,20 @@ Implemented 8 model classes across 3 modules:
 ### ✅ 4. Module Documentation
 
 **Files Created**:
-1. `/docs/MODULES/MODULE_15_STATISTICAL_ANALYSIS.md` (523 lines)
+1. `/docs/modules/MODULE_15_STATISTICAL_ANALYSIS.md` (523 lines)
    - KPI definitions and calculation patterns
    - Example KPIs: student-teacher ratio, revenue per student, H/E ratio
    - Calculation examples with real EFIR data
    - Business rules and validation logic
 
-2. `/docs/MODULES/MODULE_16_DASHBOARD_CONFIGURATION.md` (740 lines)
+2. `/docs/modules/MODULE_16_DASHBOARD_CONFIGURATION.md` (740 lines)
    - Dashboard and widget architecture
    - 12×12 grid layout system
    - System templates vs user dashboards
    - Widget configuration examples (KPI card, chart, gauge, table)
    - User preferences and customization
 
-3. `/docs/MODULES/MODULE_17_BUDGET_VS_ACTUAL.md` (704 lines)
+3. `/docs/modules/MODULE_17_BUDGET_VS_ACTUAL.md` (704 lines)
    - Actual data import from Odoo GL
    - Variance calculation methodology
    - Variance status determination logic

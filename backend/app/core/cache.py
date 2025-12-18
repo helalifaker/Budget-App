@@ -263,14 +263,14 @@ def cache_dhg_calculation(ttl: str = "1h") -> Callable[[F], F]:
 
     Example:
         @cache_dhg_calculation(ttl="1h")
-        async def calculate_dhg(budget_version_id: str, level_id: str) -> dict:
+        async def calculate_dhg(version_id: str, level_id: str) -> dict:
             # Expensive DHG calculation
             return result
     """
     if not REDIS_ENABLED:
         return lambda f: f
 
-    return cache(ttl=ttl, key="dhg:{budget_version_id}:{level_id}")
+    return cache(ttl=ttl, key="dhg:{version_id}:{level_id}")
 
 
 def cache_kpi_dashboard(ttl: str = "5m") -> Callable[[F], F]:
@@ -288,7 +288,7 @@ def cache_kpi_dashboard(ttl: str = "5m") -> Callable[[F], F]:
     if not REDIS_ENABLED:
         return lambda f: f
 
-    return cache(ttl=ttl, key="kpi:dashboard:{budget_version_id}")
+    return cache(ttl=ttl, key="kpi:dashboard:{version_id}")
 
 
 def cache_revenue_projection(ttl: str = "30m") -> Callable[[F], F]:
@@ -304,7 +304,7 @@ def cache_revenue_projection(ttl: str = "30m") -> Callable[[F], F]:
     if not REDIS_ENABLED:
         return lambda f: f
 
-    return cache(ttl=ttl, key="revenue:{budget_version_id}")
+    return cache(ttl=ttl, key="revenue:{version_id}")
 
 
 def cache_class_structure(ttl: str = "1h") -> Callable[[F], F]:
@@ -320,7 +320,7 @@ def cache_class_structure(ttl: str = "1h") -> Callable[[F], F]:
     if not REDIS_ENABLED:
         return lambda f: f
 
-    return cache(ttl=ttl, key="class_structure:{budget_version_id}:{level_id}")
+    return cache(ttl=ttl, key="class_structure:{version_id}:{level_id}")
 
 
 def cache_cost_calculation(ttl: str = "30m") -> Callable[[F], F]:
@@ -336,7 +336,7 @@ def cache_cost_calculation(ttl: str = "30m") -> Callable[[F], F]:
     if not REDIS_ENABLED:
         return lambda f: f
 
-    return cache(ttl=ttl, key="costs:{budget_version_id}:{cost_category}")
+    return cache(ttl=ttl, key="costs:{version_id}:{cost_category}")
 
 
 def cache_capex_calculation(ttl: str = "1h") -> Callable[[F], F]:
@@ -352,7 +352,7 @@ def cache_capex_calculation(ttl: str = "1h") -> Callable[[F], F]:
     if not REDIS_ENABLED:
         return lambda f: f
 
-    return cache(ttl=ttl, key="capex:{budget_version_id}")
+    return cache(ttl=ttl, key="capex:{version_id}")
 
 
 def cache_consolidation(ttl: str = "10m") -> Callable[[F], F]:
@@ -368,7 +368,7 @@ def cache_consolidation(ttl: str = "10m") -> Callable[[F], F]:
     if not REDIS_ENABLED:
         return lambda f: f
 
-    return cache(ttl=ttl, key="consolidation:{budget_version_id}")
+    return cache(ttl=ttl, key="consolidation:{version_id}")
 
 
 # ============================================================================
@@ -421,19 +421,19 @@ class CacheInvalidator:
     - When costs change → invalidate consolidation, KPIs
 
     Example:
-        await CacheInvalidator.invalidate(budget_version_id, "enrollment")
+        await CacheInvalidator.invalidate(version_id, "enrollment")
         # This will cascade to: class_structure, revenue, dhg, costs, consolidation, KPIs
     """
 
     @classmethod
     async def invalidate(
-        cls, budget_version_id: str, entity: str, _visited: set[str] | None = None
+        cls, version_id: str, entity: str, _visited: set[str] | None = None
     ) -> int:
         """
         Invalidate entity cache and all dependent caches recursively.
 
         Args:
-            budget_version_id: UUID of budget version
+            version_id: UUID of budget version
             entity: Entity type (e.g., 'enrollment', 'dhg_calculations')
             _visited: Internal tracking set to prevent duplicate processing
 
@@ -442,7 +442,7 @@ class CacheInvalidator:
 
         Example:
             deleted = await CacheInvalidator.invalidate(
-                budget_version_id="abc-123",
+                version_id="abc-123",
                 entity="enrollment"
             )
             # Returns: 15 (deleted 15 cache keys across all dependents)
@@ -457,7 +457,7 @@ class CacheInvalidator:
             logger.debug(
                 "cache_invalidation_skipped_duplicate",
                 entity=entity,
-                budget_version_id=budget_version_id,
+                version_id=version_id,
             )
             return 0
 
@@ -483,12 +483,12 @@ class CacheInvalidator:
         cache_prefix = ENTITY_TO_CACHE_PREFIX.get(entity, entity)
 
         # Invalidate this entity's cache
-        # Cache keys are stored as: {cache_prefix}:{budget_version_id}:*
+        # Cache keys are stored as: {cache_prefix}:{version_id}:*
         # Example: dhg:abc-123:level-6eme or revenue:abc-123
-        pattern = f"{cache_prefix}:{budget_version_id}*"
+        pattern = f"{cache_prefix}:{version_id}*"
         logger.info(
             "cache_invalidation_started",
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             entity=entity,
             cache_prefix=cache_prefix,
             pattern=pattern,
@@ -501,7 +501,7 @@ class CacheInvalidator:
 
         logger.info(
             "cache_invalidation_direct",
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             entity=entity,
             cache_prefix=cache_prefix,
             deleted_keys=deleted_count,
@@ -510,13 +510,13 @@ class CacheInvalidator:
         # Recursively invalidate dependents (passing _visited to prevent duplicates)
         dependents = CACHE_DEPENDENCY_GRAPH.get(entity, [])
         for dependent in dependents:
-            dependent_deleted = await cls.invalidate(budget_version_id, dependent, _visited)
+            dependent_deleted = await cls.invalidate(version_id, dependent, _visited)
             deleted_count += dependent_deleted
 
         return deleted_count
 
     @classmethod
-    def invalidate_background(cls, budget_version_id: str, entity: str) -> None:
+    def invalidate_background(cls, version_id: str, entity: str) -> None:
         """
         Fire-and-forget cache invalidation.
 
@@ -528,7 +528,7 @@ class CacheInvalidator:
         will eventually expire via TTL (graceful degradation).
 
         Args:
-            budget_version_id: UUID of budget version
+            version_id: UUID of budget version
             entity: Entity type to invalidate (e.g., 'enrollment')
 
         Example:
@@ -541,10 +541,10 @@ class CacheInvalidator:
         async def _background_invalidate() -> None:
             """Wrapper to handle exceptions in background task."""
             try:
-                deleted = await cls.invalidate(budget_version_id, entity)
+                deleted = await cls.invalidate(version_id, entity)
                 logger.debug(
                     "cache_invalidation_background_complete",
-                    budget_version_id=budget_version_id,
+                    version_id=version_id,
                     entity=entity,
                     deleted_keys=deleted,
                 )
@@ -552,7 +552,7 @@ class CacheInvalidator:
                 # Log but don't raise - cache will expire via TTL
                 logger.warning(
                     "cache_invalidation_background_failed",
-                    budget_version_id=budget_version_id,
+                    version_id=version_id,
                     entity=entity,
                     error=str(exc),
                 )
@@ -564,26 +564,26 @@ class CacheInvalidator:
             loop.create_task(_background_invalidate())  # noqa: RUF006
             logger.debug(
                 "cache_invalidation_background_scheduled",
-                budget_version_id=budget_version_id,
+                version_id=version_id,
                 entity=entity,
             )
         except RuntimeError:
             # No event loop running - skip invalidation (graceful degradation)
             logger.warning(
                 "cache_invalidation_skipped_no_loop",
-                budget_version_id=budget_version_id,
+                version_id=version_id,
                 entity=entity,
             )
 
     @classmethod
-    async def invalidate_all(cls, budget_version_id: str) -> int:
+    async def invalidate_all(cls, version_id: str) -> int:
         """
         Invalidate ALL caches for a budget version.
 
         Use this when a budget version is deleted or major structural changes occur.
 
         Args:
-            budget_version_id: UUID of budget version
+            version_id: UUID of budget version
 
         Returns:
             Number of cache keys deleted
@@ -595,7 +595,7 @@ class CacheInvalidator:
             logger.debug(
                 "cache_invalidation_all_skipped",
                 reason="redis_disabled",
-                budget_version_id=budget_version_id,
+                version_id=version_id,
             )
             return 0
 
@@ -605,11 +605,11 @@ class CacheInvalidator:
             logger.warning(
                 "cache_invalidation_all_skipped",
                 reason="redis_unavailable",
-                budget_version_id=budget_version_id,
+                version_id=version_id,
                 error=str(exc),
             )
             return 0
-        pattern = f"*:{budget_version_id}:*"
+        pattern = f"*:{version_id}:*"
 
         deleted_count = 0
         async for key in client.scan_iter(match=pattern):
@@ -618,7 +618,7 @@ class CacheInvalidator:
 
         logger.info(
             "cache_invalidation_all",
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             deleted_keys=deleted_count,
         )
 
@@ -660,6 +660,171 @@ class CacheInvalidator:
         logger.info("cache_invalidation_pattern", pattern=pattern, deleted_keys=deleted_count)
 
         return deleted_count
+
+
+# ============================================================================
+# Calibration Cache (Direct Key Invalidation - O(1))
+# ============================================================================
+# Unlike CacheInvalidator which uses SCAN (O(N) and slow), this uses
+# deterministic keys with direct deletion for O(1) invalidation.
+
+# All scenario codes for effective rates cache
+ENROLLMENT_SCENARIOS = ["base", "conservative", "optimistic", "worst_case", "best_case"]
+
+
+async def get_cached_calibration_data(
+    organization_id: str, data_type: str, scenario_code: str | None = None
+) -> str | None:
+    """
+    Get cached calibration data by deterministic key.
+
+    Args:
+        organization_id: UUID string of the organization
+        data_type: Type of data ("effective", "history")
+        scenario_code: For effective rates, the scenario code
+
+    Returns:
+        Cached JSON string or None if not found
+    """
+    if not REDIS_ENABLED or not _cache_initialized:
+        return None
+
+    try:
+        client = await get_redis_client()
+        # Both "effective" and "settings" use scenario_code in the key
+        if data_type in ("effective", "settings") and scenario_code:
+            cache_key = f"calibration:{data_type}:{organization_id}:{scenario_code}"
+        else:
+            cache_key = f"calibration:{data_type}:{organization_id}"
+
+        return await client.get(cache_key)
+    except Exception as exc:
+        logger.warning(
+            "cache_get_failed",
+            data_type=data_type,
+            organization_id=organization_id,
+            error=str(exc),
+        )
+        return None
+
+
+async def set_cached_calibration_data(
+    organization_id: str,
+    data_type: str,
+    data: str,
+    ttl_seconds: int = 14400,  # 4 hours default
+    scenario_code: str | None = None,
+) -> bool:
+    """
+    Set cached calibration data with deterministic key.
+
+    Args:
+        organization_id: UUID string of the organization
+        data_type: Type of data ("effective", "history", "settings")
+        data: JSON string to cache
+        ttl_seconds: Cache TTL in seconds (default: 4 hours)
+        scenario_code: For effective/settings, the scenario code
+
+    Returns:
+        True if cached successfully, False otherwise
+    """
+    if not REDIS_ENABLED or not _cache_initialized:
+        return False
+
+    try:
+        client = await get_redis_client()
+        # Both "effective" and "settings" use scenario_code in the key
+        if data_type in ("effective", "settings") and scenario_code:
+            cache_key = f"calibration:{data_type}:{organization_id}:{scenario_code}"
+        else:
+            cache_key = f"calibration:{data_type}:{organization_id}"
+
+        await client.set(cache_key, data, ex=ttl_seconds)
+        logger.debug(
+            "cache_set_success",
+            cache_key=cache_key,
+            ttl_seconds=ttl_seconds,
+        )
+        return True
+    except Exception as exc:
+        logger.warning(
+            "cache_set_failed",
+            data_type=data_type,
+            organization_id=organization_id,
+            error=str(exc),
+        )
+        return False
+
+
+async def invalidate_calibration_cache(
+    organization_id: str, invalidate_effective: bool = True
+) -> int:
+    """
+    Invalidate calibration cache using direct key deletion (O(1)).
+
+    Unlike CacheInvalidator.invalidate() which uses SCAN (O(N) and can take 2-6s),
+    this uses deterministic cache keys and deletes them directly.
+
+    Args:
+        organization_id: UUID string of the organization
+        invalidate_effective: Also invalidate effective rates cache (default: True)
+
+    Returns:
+        Number of keys deleted
+
+    Example:
+        # After user updates override settings
+        await invalidate_calibration_cache(str(org_id))
+    """
+    if not REDIS_ENABLED or not _cache_initialized:
+        logger.debug(
+            "calibration_cache_invalidation_skipped",
+            reason="redis_disabled_or_not_initialized",
+            organization_id=organization_id,
+        )
+        return 0
+
+    try:
+        client = await get_redis_client()
+    except Exception as exc:
+        logger.warning(
+            "calibration_cache_invalidation_failed",
+            reason="redis_unavailable",
+            organization_id=organization_id,
+            error=str(exc),
+        )
+        return 0
+
+    # Build list of keys to delete
+    keys_to_delete = []
+
+    if invalidate_effective:
+        # Delete all scenario-specific effective rates
+        for scenario in ENROLLMENT_SCENARIOS:
+            keys_to_delete.append(f"calibration:effective:{organization_id}:{scenario}")
+        # Also delete enrollment settings cache (uses same cache but "settings" data_type)
+        for scenario in ENROLLMENT_SCENARIOS:
+            keys_to_delete.append(f"calibration:settings:{organization_id}:{scenario}")
+
+    if not keys_to_delete:
+        return 0
+
+    # Delete all keys concurrently
+    delete_results = await asyncio.gather(
+        *[client.delete(key) for key in keys_to_delete],
+        return_exceptions=True,
+    )
+
+    deleted_count = sum(1 for r in delete_results if isinstance(r, int) and r > 0)
+
+    logger.info(
+        "calibration_cache_invalidated",
+        organization_id=organization_id,
+        keys_attempted=len(keys_to_delete),
+        keys_deleted=deleted_count,
+    )
+
+    return deleted_count
 
 
 # ============================================================================
@@ -727,12 +892,12 @@ async def get_cache_stats() -> dict[str, Any]:
 # ============================================================================
 
 
-async def warm_cache(budget_version_id: str, entities: list[str]) -> None:
+async def warm_cache(version_id: str, entities: list[str]) -> None:
     """
     Pre-warm cache for specific entities (placeholder for future optimization).
 
     Args:
-        budget_version_id: UUID of budget version
+        version_id: UUID of budget version
         entities: List of entity types to pre-cache
 
     Note:
@@ -743,7 +908,7 @@ async def warm_cache(budget_version_id: str, entities: list[str]) -> None:
         logger.debug(
             "cache_warming_skipped",
             reason="no_entities",
-            budget_version_id=budget_version_id,
+            version_id=version_id,
         )
         return
 
@@ -751,7 +916,7 @@ async def warm_cache(budget_version_id: str, entities: list[str]) -> None:
         logger.debug(
             "cache_warming_skipped",
             reason="redis_disabled",
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             entities=entities,
         )
         return
@@ -762,19 +927,19 @@ async def warm_cache(budget_version_id: str, entities: list[str]) -> None:
         logger.warning(
             "cache_warming_skipped",
             reason="redis_unavailable",
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             error=str(exc),
         )
         return
 
     for entity in entities:
         cache_prefix = ENTITY_TO_CACHE_PREFIX.get(entity, entity)
-        key = f"warm:{cache_prefix}:{budget_version_id}"
+        key = f"warm:{cache_prefix}:{version_id}"
         # Store a simple marker with short TTL to indicate warm-up attempted
         await client.set(key, "1", ex=300)
         logger.info(
             "cache_warm_marker_set",
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             entity=entity,
             key=key,
         )

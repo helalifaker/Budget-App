@@ -1,40 +1,52 @@
 /**
- * Class Structure Page - /enrollment/class-structure
+ * Class Structure Page - /students/class-structure
  *
  * Manages number of classes per level with average class sizes.
  * Navigation handled by ModuleLayout (WorkflowTabs + ModuleHeader).
  *
- * Phase 6 Migration: Removed PlanningPageWrapper, uses ModuleLayout
+ * Phase 6 Migration: Migrated from AG Grid to TanStack Table
  */
 
 import { createFileRoute } from '@tanstack/react-router'
 import { requireAuth } from '@/lib/auth-guard'
 import { useEffect, useMemo, useCallback, useState } from 'react'
-import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
-import { ExcelDataTableLazy, type ClearedCell } from '@/components/ExcelDataTableLazy'
+import type { ColumnDef } from '@tanstack/react-table'
+import { ExcelEditableTableLazy } from '@/components/grid/tanstack/ExcelEditableTableLazy'
+import type { CellValueChangedEvent } from '@/components/grid/tanstack/EditableTable'
 import { Button } from '@/components/ui/button'
 import { Calculator } from 'lucide-react'
 import {
   useClassStructures,
   useUpdateClassStructure,
   useCalculateClassStructure,
+  useBulkUpdateClassStructure,
 } from '@/hooks/api/useClassStructure'
+import { useEnrollmentSummary } from '@/hooks/api/useEnrollment'
 import { useLevels } from '@/hooks/api/useConfiguration'
-import { useBudgetVersions } from '@/hooks/api/useBudgetVersions'
+import { useVersions } from '@/hooks/api/useVersions'
 import { ClassStructure } from '@/types/api'
 import { toastMessages } from '@/lib/toast-messages'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import { HistoricalToggle } from '@/components/planning/HistoricalToggle'
-import { createHistoricalColumns } from '@/components/grid/HistoricalColumns'
+import { createHistoricalColumnsTanStack } from '@/components/grid/tanstack/HistoricalColumnsTanStack'
 import { useClassesWithHistory } from '@/hooks/api/useHistorical'
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip'
+import type { HistoricalComparison } from '@/types/historical'
 
 export const Route = createFileRoute('/_authenticated/enrollment/class-structure')({
   beforeLoad: requireAuth,
   component: ClassStructurePage,
 })
 
+/**
+ * Extended type for rows with historical data
+ */
+interface ClassStructureWithHistory extends ClassStructure {
+  history?: HistoricalComparison | null
+}
+
 function ClassStructurePage() {
-  const { selectedVersionId } = useBudgetVersion()
+  const { selectedVersionId } = useVersion()
   const [rowData, setRowData] = useState<ClassStructure[]>([])
   const [showHistorical, setShowHistorical] = useState(false)
 
@@ -44,7 +56,7 @@ function ClassStructurePage() {
     error: classStructuresError,
   } = useClassStructures(selectedVersionId)
   const { data: levelsData } = useLevels()
-  const { data: budgetVersions } = useBudgetVersions()
+  const { data: budgetVersions } = useVersions()
 
   // Historical data query - only enabled when toggle is ON
   const { data: historicalData, isLoading: historicalLoading } = useClassesWithHistory(
@@ -54,6 +66,13 @@ function ClassStructurePage() {
     }
   )
 
+  // Check if enrollment data exists for the selected version
+  const { data: enrollmentSummary, isLoading: enrollmentSummaryLoading } =
+    useEnrollmentSummary(selectedVersionId)
+
+  // Derived state: does enrollment data exist?
+  const hasEnrollmentData = (enrollmentSummary?.total_students ?? 0) > 0
+
   // Get current fiscal year from selected budget version
   const currentFiscalYear = useMemo(() => {
     if (!selectedVersionId || !budgetVersions?.items) return new Date().getFullYear()
@@ -62,6 +81,7 @@ function ClassStructurePage() {
   }, [selectedVersionId, budgetVersions])
 
   const updateMutation = useUpdateClassStructure()
+  const bulkUpdateMutation = useBulkUpdateClassStructure()
   const calculateMutation = useCalculateClassStructure()
 
   useEffect(() => {
@@ -94,7 +114,7 @@ function ClassStructurePage() {
   )
 
   // Merge row data with historical data when available
-  const mergedRowData = useMemo(() => {
+  const mergedRowData = useMemo((): ClassStructureWithHistory[] => {
     if (!showHistorical || !historicalData?.rows) {
       return rowData
     }
@@ -108,10 +128,10 @@ function ClassStructurePage() {
     })
   }, [rowData, showHistorical, historicalData])
 
-  // Historical columns for class count comparison
+  // Historical columns for class count comparison (TanStack format)
   const historicalColumns = useMemo(() => {
     if (!showHistorical) return []
-    return createHistoricalColumns({
+    return createHistoricalColumnsTanStack<ClassStructureWithHistory>({
       historyField: 'history',
       currentFiscalYear,
       isCurrency: false,
@@ -119,111 +139,124 @@ function ClassStructurePage() {
     })
   }, [showHistorical, currentFiscalYear])
 
-  const columnDefs: ColDef<ClassStructure>[] = useMemo(
+  // TanStack Table column definitions
+  const columnDefs: ColumnDef<ClassStructureWithHistory, unknown>[] = useMemo(
     () => [
       {
-        field: 'level_id',
-        headerName: 'Level',
-        flex: 1,
-        valueFormatter: (params) => getLevelName(params.value),
+        id: 'level_id',
+        accessorKey: 'level_id',
+        header: 'Level',
+        size: 150,
+        meta: {
+          editable: false,
+        },
+        cell: (info) => getLevelName(info.getValue() as string),
       },
       {
-        field: 'number_of_classes',
-        headerName: 'Number of Classes',
-        flex: 1,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
+        id: 'number_of_classes',
+        accessorKey: 'number_of_classes',
+        header: 'Number of Classes',
+        size: 150,
+        meta: {
+          editable: true,
+          editorType: 'number' as const,
           min: 0,
           max: 50,
+          precision: 0,
         },
       },
       {
-        field: 'avg_class_size',
-        headerName: 'Avg Class Size',
-        flex: 1,
-        editable: true,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: {
+        id: 'avg_class_size',
+        accessorKey: 'avg_class_size',
+        header: 'Avg Class Size',
+        size: 150,
+        meta: {
+          editable: true,
+          editorType: 'number' as const,
           min: 1,
           max: 100,
+          precision: 0,
         },
       },
       {
-        headerName: 'Total Students',
-        flex: 1,
-        valueGetter: (params) => {
-          const data = params.data as ClassStructure
-          return data.number_of_classes * data.avg_class_size
+        id: 'total_students',
+        header: 'Total Students',
+        size: 150,
+        meta: {
+          editable: false,
+        },
+        accessorFn: (row) => row.number_of_classes * row.avg_class_size,
+        cell: (info) => {
+          const value = info.getValue() as number
+          return <span className="font-medium">{value.toLocaleString()}</span>
         },
       },
       // Spread historical columns when enabled
-      ...(showHistorical ? historicalColumns : []),
+      ...historicalColumns,
     ],
-    [getLevelName, showHistorical, historicalColumns]
+    [getLevelName, historicalColumns]
   )
 
-  const onCellValueChanged = async (params: CellValueChangedEvent) => {
-    const classStructure = params.data
-    const field = params.column?.getColId()
-
-    try {
-      await updateMutation.mutateAsync({
-        id: classStructure.id,
-        data: {
-          [field]: params.newValue,
-        },
-      })
-    } catch {
-      // Error toast is handled by the mutation
-      // Revert the change
-      params.node.setDataValue(params.column, params.oldValue)
-    }
-  }
-
   /**
-   * Handle paste from clipboard (Ctrl+V)
-   * Batch updates all pasted cells to the backend
+   * Handle cell value changes
+   * Updates backend and handles revert on error
    */
-  const handlePaste = async (
-    updates: Array<{ rowId: string; field: string; newValue: string; originalData: unknown }>
-  ) => {
-    // Process updates sequentially to avoid race conditions
-    for (const update of updates) {
+  const onCellValueChanged = useCallback(
+    async (event: CellValueChangedEvent<ClassStructureWithHistory>) => {
+      const { data, field, newValue, revertValue } = event
+
       try {
-        const numericValue = parseFloat(update.newValue)
-        if (!isNaN(numericValue)) {
-          await updateMutation.mutateAsync({
-            id: update.rowId,
-            data: {
-              [update.field]: numericValue,
-            },
-          })
-        }
+        await updateMutation.mutateAsync({
+          id: data.id,
+          data: {
+            [field]: newValue,
+          },
+        })
       } catch {
-        // Error toast handled by mutation
+        // Error toast is handled by the mutation
+        // Revert the change
+        revertValue()
       }
-    }
-  }
+    },
+    [updateMutation]
+  )
 
   /**
    * Handle cell clear (Delete key)
-   * Resets cleared cells to null/0
+   * Resets cleared cells to 0
    */
-  const handleCellsCleared = async (cells: ClearedCell[]) => {
-    for (const cell of cells) {
+  const handleCellsCleared = useCallback(
+    async (cells: Array<{ rowId: string; field: string; oldValue: unknown }>) => {
+      if (!selectedVersionId || cells.length === 0) return
+
+      // Group updates by rowId to merge multiple field clears for same row
+      const updatesMap = new Map<string, Record<string, unknown>>()
+
+      for (const cell of cells) {
+        if (!updatesMap.has(cell.rowId)) {
+          updatesMap.set(cell.rowId, { id: cell.rowId })
+        }
+        const update = updatesMap.get(cell.rowId)!
+        // Reset to 0 for numeric fields
+        // Note: We assume all editable fields here are numeric based on columnDefs
+        update[cell.field] = 0
+      }
+
+      const updates = Array.from(updatesMap.values()) as Array<
+        { id: string } & Record<string, unknown>
+      >
+
       try {
-        await updateMutation.mutateAsync({
-          id: cell.rowId,
-          data: {
-            [cell.field]: 0, // Reset to 0 for numeric fields
-          },
+        await bulkUpdateMutation.mutateAsync({
+          versionId: selectedVersionId,
+          updates,
         })
       } catch {
         // Error toast handled by mutation
       }
-    }
-  }
+    },
+    [bulkUpdateMutation, selectedVersionId]
+  )
 
   return (
     <div className="p-6 space-y-4">
@@ -236,33 +269,49 @@ function ClassStructurePage() {
           isLoading={historicalLoading}
           currentFiscalYear={currentFiscalYear}
         />
-        <Button
-          data-testid="calculate-button"
-          variant="outline"
-          onClick={handleCalculateFromEnrollment}
-          disabled={!selectedVersionId || calculateMutation.isPending}
-        >
-          <Calculator className="h-4 w-4 mr-2" />
-          Calculate from Enrollment
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={!hasEnrollmentData && selectedVersionId ? 0 : undefined}>
+                <Button
+                  data-testid="calculate-button"
+                  variant="outline"
+                  onClick={handleCalculateFromEnrollment}
+                  disabled={
+                    !selectedVersionId ||
+                    calculateMutation.isPending ||
+                    !hasEnrollmentData ||
+                    enrollmentSummaryLoading
+                  }
+                >
+                  <Calculator className="h-4 w-4 mr-2" />
+                  Calculate from Enrollment
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {!hasEnrollmentData && selectedVersionId && !enrollmentSummaryLoading && (
+              <TooltipContent>
+                <p>Veuillez d'abord saisir les effectifs dans la page Planification</p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Content */}
       {selectedVersionId ? (
-        <ExcelDataTableLazy<ClassStructure>
+        <ExcelEditableTableLazy<ClassStructureWithHistory>
           rowData={mergedRowData}
           columnDefs={columnDefs}
+          getRowId={(row) => row.id}
           loading={classStructuresLoading || (showHistorical && historicalLoading)}
           error={classStructuresError}
-          pagination={true}
-          paginationPageSize={50}
           onCellValueChanged={onCellValueChanged}
-          // Excel-like clipboard support
-          onPaste={handlePaste}
           onCellsCleared={handleCellsCleared}
-          rowIdGetter={(data) => data.id}
           tableLabel="Class Structure Grid"
-          showStatusBar={true}
+          showSelectionStats={true}
+          enableRowSelection={true}
+          showCheckboxColumn={true}
         />
       ) : (
         <div className="text-center py-12 text-text-secondary">

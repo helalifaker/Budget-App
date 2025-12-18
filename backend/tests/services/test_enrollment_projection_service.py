@@ -18,8 +18,8 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from app.models.enrollment_projection import EnrollmentScenario
-from app.services.enrollment_projection_service import EnrollmentProjectionService
+from app.models import EnrollmentScenario
+from app.services.enrollment.enrollment_projection_service import EnrollmentProjectionService
 from app.services.exceptions import NotFoundError, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -221,7 +221,13 @@ class TestGetAllScenariosMocked:
         mock_session.execute.return_value = mock_result
 
         service = EnrollmentProjectionService(mock_session)
-        scenarios = await service.get_all_scenarios()
+
+        # Patch reference_cache.is_loaded to force DB query path
+        with patch(
+            "app.services.enrollment_projection_service.reference_cache"
+        ) as mock_cache:
+            mock_cache.is_loaded = False
+            scenarios = await service.get_all_scenarios()
 
         assert len(scenarios) == 3
         mock_session.execute.assert_called_once()
@@ -262,7 +268,7 @@ class TestGetOrCreateConfigMocked:
 
         mock_config = MagicMock()
         mock_config.id = uuid.uuid4()
-        mock_config.budget_version_id = uuid.uuid4()
+        mock_config.version_id = uuid.uuid4()
         mock_config.scenario = MagicMock(code="base")
 
         # Phase 11 added .unique() to the query chain for joinedload deduplication
@@ -273,7 +279,7 @@ class TestGetOrCreateConfigMocked:
         mock_session.execute.return_value = mock_result
 
         service = EnrollmentProjectionService(mock_session)
-        config = await service.get_or_create_config(mock_config.budget_version_id)
+        config = await service.get_or_create_config(mock_config.version_id)
 
         assert config.id == mock_config.id
 
@@ -422,7 +428,14 @@ class TestGetAllScenariosIntegration:
     ):
         """Test that scenarios are returned sorted by sort_order."""
         service = EnrollmentProjectionService(db_session)
-        scenarios = await service.get_all_scenarios()
+
+        # Patch reference_cache.is_loaded to force DB query path
+        # (prevents interference from global cache state in test suite)
+        with patch(
+            "app.services.enrollment_projection_service.reference_cache"
+        ) as mock_cache:
+            mock_cache.is_loaded = False
+            scenarios = await service.get_all_scenarios()
 
         assert len(scenarios) == 3
         assert scenarios[0].code == "worst_case"

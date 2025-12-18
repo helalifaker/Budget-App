@@ -194,7 +194,7 @@ class SoftDeleteMixin:
 
 ```sql
 -- Restore a soft-deleted budget version
-UPDATE efir_budget.budget_versions
+UPDATE efir_budget.settings_versions
 SET deleted_at = NULL, deleted_by = NULL
 WHERE id = 'uuid-here';
 ```
@@ -217,14 +217,14 @@ Budget data is versioned and isolated:
 
 ```sql
 -- Each budget version is a complete snapshot
-SELECT * FROM efir_budget.budget_versions WHERE status = 'approved';
+SELECT * FROM efir_budget.settings_versions WHERE status = 'approved';
 
 -- Roll back to previous version by changing status
-UPDATE efir_budget.budget_versions
+UPDATE efir_budget.settings_versions
 SET status = 'superseded'
 WHERE id = 'current-version-uuid';
 
-UPDATE efir_budget.budget_versions
+UPDATE efir_budget.settings_versions
 SET status = 'approved'
 WHERE id = 'previous-version-uuid';
 ```
@@ -236,7 +236,7 @@ Supabase RLS policies prevent unauthorized data access:
 ```sql
 -- Users can only access their organization's data
 CREATE POLICY "Users can view their organization's data"
-ON efir_budget.budget_versions
+ON efir_budget.settings_versions
 FOR SELECT
 USING (organization_id = auth.jwt()->>'organization_id');
 ```
@@ -305,10 +305,10 @@ async with AsyncSessionLocal() as session:
 
 4. **Validate**: Run data integrity checks
    ```sql
-   -- Check referential integrity
-   SELECT * FROM efir_budget.enrollments e
-   LEFT JOIN efir_budget.budget_versions bv ON e.budget_version_id = bv.id
-   WHERE bv.id IS NULL AND e.deleted_at IS NULL;
+   -- Check referential integrity (example: enrollment facts must reference a valid version)
+   SELECT * FROM efir_budget.students_data d
+   LEFT JOIN efir_budget.settings_versions v ON d.version_id = v.id
+   WHERE v.id IS NULL AND d.deleted_at IS NULL;
    ```
 
 5. **Resume**: Restart application
@@ -356,8 +356,8 @@ async with AsyncSessionLocal() as session:
    ```bash
    # Reference data is stored in migrations, applied automatically
    # Verify with:
-   SELECT COUNT(*) FROM efir_budget.subjects;
-   SELECT COUNT(*) FROM efir_budget.academic_levels;
+   SELECT COUNT(*) FROM efir_budget.ref_subjects;
+   SELECT COUNT(*) FROM efir_budget.ref_academic_levels;
    ```
 
 5. **Update DNS/Environment**:
@@ -463,19 +463,19 @@ pg_restore -d efir_backup_test latest_backup.dump
 
 # 3. Run integrity checks
 psql efir_backup_test << 'EOF'
--- Verify row counts
-SELECT 'budget_versions', COUNT(*) FROM efir_budget.budget_versions
-UNION ALL
-SELECT 'enrollments', COUNT(*) FROM efir_budget.enrollments
-UNION ALL
-SELECT 'subjects', COUNT(*) FROM efir_budget.subjects;
+	-- Verify row counts
+	SELECT 'settings_versions', COUNT(*) FROM efir_budget.settings_versions
+	UNION ALL
+	SELECT 'students_data', COUNT(*) FROM efir_budget.students_data
+	UNION ALL
+	SELECT 'ref_subjects', COUNT(*) FROM efir_budget.ref_subjects;
 
--- Verify referential integrity
-SELECT 'orphaned_enrollments', COUNT(*)
-FROM efir_budget.enrollments e
-LEFT JOIN efir_budget.budget_versions bv ON e.budget_version_id = bv.id
-WHERE bv.id IS NULL;
-EOF
+	-- Verify referential integrity
+	SELECT 'orphaned_students_data', COUNT(*)
+	FROM efir_budget.students_data d
+	LEFT JOIN efir_budget.settings_versions v ON d.version_id = v.id
+	WHERE v.id IS NULL;
+	EOF
 
 # 4. Cleanup
 dropdb efir_backup_test
@@ -551,7 +551,7 @@ sleep 300  # Adjust based on database size
 
 # 4. Verify database
 echo "✅ Verifying database..."
-psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM efir_budget.budget_versions;"
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM efir_budget.settings_versions;"
 
 # 5. Restart application
 echo "🚀 Restarting application..."

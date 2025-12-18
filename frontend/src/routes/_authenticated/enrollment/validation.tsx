@@ -1,5 +1,5 @@
 /**
- * Enrollment Validation Page - /enrollment/validation
+ * Enrollment Validation Page - /students/validation
  *
  * Validates enrollment data before it's used in class structure and subsequent calculations.
  * Shows validation status, warnings, and errors that need to be addressed.
@@ -33,7 +33,7 @@ import {
 import { useEnrollmentWithDistribution } from '@/hooks/api/useEnrollment'
 import { useClassSizeParams, useLevels } from '@/hooks/api/useConfiguration'
 import { useEnrollmentProjectionConfig } from '@/hooks/api/useEnrollmentProjection'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import { Link } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 
@@ -58,7 +58,7 @@ interface ValidationCheck {
 }
 
 function EnrollmentValidationPage() {
-  const { selectedVersionId } = useBudgetVersion()
+  const { selectedVersionId } = useVersion()
 
   // Data queries
   const {
@@ -99,7 +99,7 @@ function EnrollmentValidationPage() {
           : 'All levels have enrollment data',
       action:
         completenessPercent < 100
-          ? { label: 'Complete Enrollment', href: '/enrollment/planning' }
+          ? { label: 'Complete Enrollment', href: '/students/planning' }
           : undefined,
     })
 
@@ -117,9 +117,7 @@ function EnrollmentValidationPage() {
           ? `Configure class sizes for ${totalLevels - configuredParams} more levels`
           : 'All levels have class size parameters',
       action:
-        paramsPercent < 100
-          ? { label: 'Configure Sizes', href: '/enrollment/settings' }
-          : undefined,
+        paramsPercent < 100 ? { label: 'Configure Sizes', href: '/students/settings' } : undefined,
     })
 
     // 3. Capacity Check
@@ -160,7 +158,7 @@ function EnrollmentValidationPage() {
           ? `${levelsWithEnrollment - levelsWithDistribution} levels have mismatched distribution totals`
           : 'All distributions match enrollment totals',
       action:
-        distPercent < 100 ? { label: 'Fix Distribution', href: '/enrollment/planning' } : undefined,
+        distPercent < 100 ? { label: 'Fix Distribution', href: '/students/planning' } : undefined,
     })
 
     // 5. Ready for Class Structure
@@ -178,7 +176,7 @@ function EnrollmentValidationPage() {
         ? 'You can proceed to Class Structure'
         : 'Complete enrollment and configure class sizes first',
       action: isReadyForClassStructure
-        ? { label: 'Go to Class Structure', href: '/enrollment/class-structure' }
+        ? { label: 'Go to Class Structure', href: '/students/class-structure' }
         : undefined,
     })
 

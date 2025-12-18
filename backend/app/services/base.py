@@ -4,6 +4,7 @@ Base service class with common CRUD operations.
 Provides reusable async database operations for all services.
 """
 
+import os
 import uuid
 from datetime import datetime
 from typing import Any, Generic, TypeVar
@@ -13,6 +14,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import BaseModel
 from app.services.exceptions import NotFoundError, ValidationError
+
+
+def _is_test_user_id(user_id: uuid.UUID | None) -> bool:
+    """
+    Check if user_id is a test/E2E user that doesn't exist in auth.users.
+
+    Test UUIDs follow pattern: 00000000-0000-0000-0000-000000000xxx
+    These are used by E2E tests and would violate FK constraints.
+
+    Returns:
+        True if user_id is a test UUID, False otherwise
+    """
+    if user_id is None:
+        return False
+
+    # E2E test mode check (environment variable)
+    skip_auth = os.getenv("SKIP_AUTH_FOR_TESTS", "").lower() == "true"
+    if not skip_auth:
+        return False
+
+    # Check if UUID matches test pattern (first 20 chars are zeros/dashes)
+    user_str = str(user_id)
+    return user_str.startswith("00000000-0000-0000-0000-")
 
 # Generic type for model classes
 ModelType = TypeVar("ModelType", bound=BaseModel)
@@ -200,9 +224,13 @@ class BaseService(Generic[ModelType]):
         try:
             instance = self.model(**data)
 
-            if user_id and hasattr(instance, "created_by_id"):
-                instance.created_by_id = user_id
-                instance.updated_by_id = user_id
+            # Skip setting created_by_id/updated_by_id for test users (violates FK constraint)
+            # Test UUIDs don't exist in auth.users table
+            if user_id and not _is_test_user_id(user_id):
+                if hasattr(instance, "created_by_id"):
+                    instance.created_by_id = user_id
+                if hasattr(instance, "updated_by_id"):
+                    instance.updated_by_id = user_id
 
             self.session.add(instance)
             await self.session.flush()
@@ -246,8 +274,13 @@ class BaseService(Generic[ModelType]):
                 if hasattr(instance, field) and field not in ("id", "created_at", "created_by_id"):
                     setattr(instance, field, value)
 
-            if user_id and hasattr(instance, "updated_by_id"):
+            # Skip setting updated_by_id for test users (violates FK constraint)
+            # Test UUIDs don't exist in auth.users table
+            if user_id and hasattr(instance, "updated_by_id") and not _is_test_user_id(user_id):
                 instance.updated_by_id = user_id
+
+            # Always update timestamp
+            if hasattr(instance, "updated_at"):
                 instance.updated_at = datetime.utcnow()
 
             await self.session.flush()

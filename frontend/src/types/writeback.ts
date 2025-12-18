@@ -31,7 +31,7 @@ export type BatchUpdate = z.infer<typeof BatchUpdateSchema>
 // Cell Data (full cell structure)
 export const CellDataSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   module_code: z.string(),
   entity_id: z.string().uuid(),
   field_name: z.string(),
@@ -212,7 +212,7 @@ export type SubscriptionStatus = 'IDLE' | 'CONNECTING' | 'SUBSCRIBED' | 'CLOSED'
  * Realtime sync options
  */
 export interface RealtimeSyncOptions {
-  budgetVersionId: string
+  versionId: string
   onCellChanged?: (change: RealtimeChange) => void
   onConnectionChange?: (status: SubscriptionStatus) => void
   showNotifications?: boolean
@@ -231,7 +231,7 @@ export interface RealtimeCommentOptions {
  * User presence options
  */
 export interface UserPresenceOptions {
-  budgetVersionId: string
+  versionId: string
   onUserJoin?: (user: PresenceUser) => void
   onUserLeave?: (user: PresenceUser) => void
   broadcastActivity?: boolean

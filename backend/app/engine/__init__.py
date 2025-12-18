@@ -1,14 +1,20 @@
 """
 EFIR Budget Planning Application - Calculation Engines
 
-This package contains pure calculation engines for budget planning modules.
-All engines follow the pure function pattern with explicit Pydantic input/output models.
+Module Structure (10 modules matching frontend):
+- enrollment: Enrollment projection, calibration, class structure
+- workforce: DHG, EOS, GOSI calculations
+- revenue: Tuition, subsidies, other revenue
+- costs: Personnel costs, operating costs (placeholder)
+- investments: CapEx, project cash flow (placeholder)
+- consolidation: Financial statements, budget rollup
+- insights: KPI calculations
+- strategic: Scenario planning, long-term projections (placeholder)
+- settings: Version calculations (placeholder)
+- admin: Import/export calculations (placeholder)
 
-Engines:
-- enrollment: Enrollment projection calculations (Module 7)
-- dhg: Teacher workforce planning (DHG methodology) (Module 9)
-- revenue: Revenue and fee calculations (Module 10)
-- kpi: Key Performance Indicator calculations (Module 15)
+All engines follow the pure function pattern with Pydantic I/O models.
+See engine_golden_rules.md for design principles.
 
 Design Principles:
 - Pure functions: No side effects, no database I/O

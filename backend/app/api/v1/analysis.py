@@ -10,15 +10,13 @@ Provides REST API for:
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import UserDep
-from app.schemas.analysis import (
+from app.schemas.insights import (
     ActivityLogEntry,
-    ActualDataImportRequest,
-    ActualDataImportResponse,
     AlertResponse,
     ChartDataResponse,
     ComparisonResponse,
@@ -39,18 +37,18 @@ from app.schemas.analysis import (
     VarianceReportResponse,
     YearProjectionResponse,
 )
-from app.services.budget_actual_service import BudgetActualService
-from app.services.dashboard_service import DashboardService
+from app.services.admin.materialized_view_service import MaterializedViewService
+from app.services.admin.strategic_service import StrategicService
 from app.services.exceptions import (
     BusinessRuleError,
     NotFoundError,
     ValidationError,
 )
-from app.services.kpi_service import KPIService
-from app.services.materialized_view_service import MaterializedViewService
-from app.services.strategic_service import StrategicService
+from app.services.insights.budget_actual_service import BudgetActualService
+from app.services.insights.dashboard_service import DashboardService
+from app.services.insights.kpi_service import KPIService
 
-router = APIRouter(prefix="/api/v1/analysis", tags=["analysis"])
+router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 
 # ============================================================================
@@ -138,7 +136,7 @@ async def get_all_kpis(
     Optionally filter by category (educational, financial, operational, strategic).
     """
     try:
-        from app.models.analysis import KPICategory
+        from app.models import KPICategory
 
         category_filter = KPICategory(category) if category else None
         kpi_values = await kpi_service.get_all_kpis(version_id, category_filter)
@@ -146,7 +144,7 @@ async def get_all_kpis(
         return [
             KPIValueResponse(
                 id=kv.id,
-                budget_version_id=kv.budget_version_id,
+                version_id=kv.version_id,
                 kpi_code=kv.kpi_definition.code,
                 kpi_name=kv.kpi_definition.name_en,
                 calculated_value=kv.calculated_value,
@@ -188,7 +186,7 @@ async def get_kpi_by_type(
 
         return KPIValueResponse(
             id=kpi_value.id,
-            budget_version_id=kpi_value.budget_version_id,
+            version_id=kpi_value.version_id,
             kpi_code=kpi_value.kpi_definition.code,
             kpi_name=kpi_value.kpi_definition.name_en,
             calculated_value=kpi_value.calculated_value,
@@ -400,27 +398,166 @@ async def get_comparison_data(
 
 @router.post(
     "/actuals/{version_id}/import",
-    response_model=ActualDataImportResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def import_actuals(
     version_id: uuid.UUID,
-    request: ActualDataImportRequest,
+    file: UploadFile = File(..., description="Excel or CSV file with actual data"),
+    period: str = Form(..., description="Period to import (T1, T2, T3, or ANNUAL)"),
     current_user: UserDep = None,
     budget_actual_service: BudgetActualService = Depends(get_budget_actual_service),
     db: AsyncSession = Depends(get_db),
 ):
-    """Import actual financial data from Odoo."""
+    """
+    Import actual financial data from Excel/CSV file.
+
+    The file should contain columns:
+    - account_code: PCG account code
+    - description: Account description (optional)
+    - amount_sar: Amount in SAR
+
+    Args:
+        version_id: Budget version UUID
+        file: Excel (.xlsx) or CSV file with actual data
+        period: Period to import (T1, T2, T3, or ANNUAL)
+        current_user: Current authenticated user
+        budget_actual_service: Budget actual service
+        db: Database session
+
+    Returns:
+        Import result with count and status
+    """
+    import csv
+    import io
+    from datetime import datetime
+
     try:
-        result = await budget_actual_service.import_actuals(
-            version_id, request.odoo_data, request.import_batch_id
+        # Validate file type
+        filename = file.filename or ""
+        if not filename.endswith((".csv", ".xlsx", ".xls")):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File must be CSV or Excel format (.csv, .xlsx, .xls)",
+            )
+
+        # Validate period
+        valid_periods = ["T1", "T2", "T3", "ANNUAL"]
+        if period.upper() not in valid_periods:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Period must be one of: {', '.join(valid_periods)}",
+            )
+
+        # Read file content
+        content = await file.read()
+
+        # Parse data based on file type
+        records = []
+        if filename.endswith(".csv"):
+            # Parse CSV
+            text = content.decode("utf-8")
+            reader = csv.DictReader(io.StringIO(text))
+            for row in reader:
+                record = {
+                    "account_code": row.get("account_code", ""),
+                    "description": row.get("description", ""),
+                    "amount_sar": float(row.get("amount_sar", 0) or 0),
+                    "period": period.upper(),
+                }
+                if record["account_code"]:
+                    records.append(record)
+        else:
+            # Parse Excel
+            try:
+                import openpyxl
+
+                wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True)
+                ws = wb.active
+                if ws is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Excel file has no active worksheet",
+                    )
+
+                # Get headers from first row
+                headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+                headers = [str(h).lower().strip() if h else "" for h in headers]
+
+                # Map common header variations
+                account_col = next(
+                    (i for i, h in enumerate(headers) if h in ["account_code", "account", "code"]),
+                    None,
+                )
+                desc_col = next(
+                    (i for i, h in enumerate(headers) if h in ["description", "desc", "name"]),
+                    None,
+                )
+                amount_col = next(
+                    (i for i, h in enumerate(headers) if h in ["amount_sar", "amount", "value"]),
+                    None,
+                )
+
+                if account_col is None or amount_col is None:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Excel file must have 'account_code' and 'amount_sar' columns",
+                    )
+
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    account_code = str(row[account_col] or "") if account_col < len(row) else ""
+                    description = str(row[desc_col] or "") if desc_col is not None and desc_col < len(row) else ""
+                    try:
+                        amount = float(row[amount_col] or 0) if amount_col < len(row) else 0
+                    except (ValueError, TypeError):
+                        amount = 0
+
+                    if account_code:
+                        records.append({
+                            "account_code": account_code,
+                            "description": description,
+                            "amount_sar": amount,
+                            "period": period.upper(),
+                        })
+
+                wb.close()
+            except ImportError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Excel file support requires openpyxl. Please use CSV format.",
+                )
+
+        if not records:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No valid records found in file",
+            )
+
+        # Import records using the service
+        result = await budget_actual_service.import_actuals_from_file(
+            version_id=version_id,
+            records=records,
+            period=period.upper(),
+            user_id=current_user.user_id if current_user else None,
         )
         await db.commit()
-        return ActualDataImportResponse(**result)
+
+        return {
+            "success": True,
+            "imported_count": result.get("records_imported", len(records)),
+            "period": period.upper(),
+            "import_date": datetime.utcnow().isoformat(),
+        }
+    except HTTPException:
+        raise
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to import file: {e!s}",
+        )
 
 
 @router.post(
@@ -577,7 +714,7 @@ async def get_year_projection(
 ):
     """Get financial projections for a specific year."""
     try:
-        from app.models.strategic import ScenarioType
+        from app.models import ScenarioType
 
         scenario_filter = ScenarioType(scenario_type) if scenario_type else None
         projections = await strategic_service.get_year_projections(
@@ -656,7 +793,7 @@ async def add_initiative(
 ):
     """Add strategic initiative to a plan."""
     try:
-        from app.models.strategic import InitiativeStatus
+        from app.models import InitiativeStatus
 
         initiative = await strategic_service.add_initiative(
             plan_id=plan_id,

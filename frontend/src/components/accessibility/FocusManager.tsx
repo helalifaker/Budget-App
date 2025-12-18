@@ -313,18 +313,6 @@ export function FocusVisibleStyles() {
         box-shadow: 0 0 0 4px rgba(237, 173, 62, 0.25);
       }
 
-      /* AG Grid cell focus enhancement */
-      .ag-cell:focus {
-        outline: 2px solid #edad3e !important;
-        outline-offset: -1px !important;
-        box-shadow: inset 0 0 0 2px rgba(237, 173, 62, 0.4) !important;
-      }
-
-      .ag-cell-focus {
-        border: 2px solid #edad3e !important;
-        background-color: rgba(237, 173, 62, 0.1) !important;
-      }
-
       /* Skip link animations */
       @keyframes slideInFromLeft {
         from {

@@ -48,7 +48,7 @@ class TestEnrollmentEndpoints:
             mock_service.get_enrollment_plan.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     level_id=uuid.uuid4(),
                     nationality_type_id=uuid.uuid4(),
                     student_count=50,
@@ -140,7 +140,7 @@ class TestClassStructureEndpoints:
             mock_service.get_class_structure.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     level_id=uuid.uuid4(),
                     total_students=50,
                     number_of_classes=2,
@@ -445,7 +445,7 @@ class TestEnrollmentEndpointsExpanded:
             mock_service = AsyncMock()
             mock_service.update_enrollment.return_value = MagicMock(
                 id=enrollment_id,
-                budget_version_id=version_id,
+                version_id=version_id,
                 student_count=55,
             )
             mock_svc.return_value = mock_service
@@ -1033,12 +1033,12 @@ class TestEnrollmentAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_enrollment_plan_integration(
-        self, client, db_session, test_budget_version, test_enrollment_data, mock_user
+        self, client, db_session, test_version, test_enrollment_data, mock_user
     ):
         """Integration test: Get enrollment plan with real database data."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/enrollment/{test_budget_version.id}"
+                f"/api/v1/planning/enrollment/{test_version.id}"
             )
 
         # In SQLite test environment, test fixtures may not be visible to API
@@ -1053,7 +1053,7 @@ class TestEnrollmentAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         academic_levels,
         nationality_types,
         mock_user,
@@ -1061,7 +1061,7 @@ class TestEnrollmentAPIIntegration:
     ):
         """Integration test: Create enrollment with database write."""
         payload = {
-            "budget_version_id": str(test_budget_version.id),
+            "version_id": str(test_version.id),
             "level_id": str(academic_levels["CP"].id),
             "nationality_type_id": str(nationality_types["FRENCH"].id),
             "student_count": 75,
@@ -1084,7 +1084,7 @@ class TestEnrollmentAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_enrollment_data,
         mock_user,
         test_user_id,
@@ -1099,7 +1099,7 @@ class TestEnrollmentAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.put(
-                f"/api/v1/planning/enrollment/{test_budget_version.id}/{enrollment.id}",
+                f"/api/v1/planning/enrollment/{test_version.id}/{enrollment.id}",
                 json=payload,
             )
 
@@ -1112,19 +1112,19 @@ class TestEnrollmentAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         academic_levels,
         nationality_types,
         mock_user,
         test_user_id,
     ):
         """Integration test: Delete enrollment from database."""
-        from app.models.planning import EnrollmentPlan
+        from app.models import EnrollmentPlan
 
         # Create enrollment to delete
         enrollment = EnrollmentPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["MS"].id,
             nationality_type_id=nationality_types["OTHER"].id,
             student_count=10,
@@ -1136,7 +1136,7 @@ class TestEnrollmentAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.delete(
-                f"/api/v1/planning/enrollment/{test_budget_version.id}/{enrollment.id}"
+                f"/api/v1/planning/enrollment/{test_version.id}/{enrollment.id}"
             )
 
         # Delete endpoint may return 204 or 404 depending on implementation
@@ -1144,12 +1144,12 @@ class TestEnrollmentAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_enrollment_summary_integration(
-        self, client, db_session, test_budget_version, test_enrollment_data, mock_user
+        self, client, db_session, test_version, test_enrollment_data, mock_user
     ):
         """Integration test: Get enrollment summary with real calculations."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/enrollment/{test_budget_version.id}/summary"
+                f"/api/v1/planning/enrollment/{test_version.id}/summary"
             )
 
         # Summary endpoint may return 200 or 404 depending on implementation
@@ -1157,14 +1157,14 @@ class TestEnrollmentAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_project_enrollment_integration(
-        self, client, db_session, test_budget_version, test_enrollment_data, mock_user
+        self, client, db_session, test_version, test_enrollment_data, mock_user
     ):
         """Integration test: Project enrollment with growth rate."""
         payload = {"years_to_project": 3, "growth_rate": 0.05}
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/planning/enrollment/{test_budget_version.id}/project",
+                f"/api/v1/planning/enrollment/{test_version.id}/project",
                 json=payload,
             )
 
@@ -1176,7 +1176,7 @@ class TestEnrollmentAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         academic_levels,
         nationality_types,
         mock_user,
@@ -1185,7 +1185,7 @@ class TestEnrollmentAPIIntegration:
         """Integration test: Validate enrollment capacity constraints."""
         # Try to create enrollment exceeding capacity (if validation exists)
         payload = {
-            "budget_version_id": str(test_budget_version.id),
+            "version_id": str(test_version.id),
             "level_id": str(academic_levels["GS"].id),
             "nationality_type_id": str(nationality_types["FRENCH"].id),
             "student_count": 2000,  # Exceeds school capacity
@@ -1201,12 +1201,12 @@ class TestEnrollmentAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_enrollment_pagination_integration(
-        self, client, db_session, test_budget_version, test_enrollment_data, mock_user
+        self, client, db_session, test_version, test_enrollment_data, mock_user
     ):
         """Integration test: Enrollment retrieval with pagination."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/enrollment/{test_budget_version.id}?limit=2&offset=0"
+                f"/api/v1/planning/enrollment/{test_version.id}?limit=2&offset=0"
             )
 
         # Pagination may or may not be implemented
@@ -1241,12 +1241,12 @@ class TestClassStructureAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_class_structure_integration(
-        self, client, db_session, test_budget_version, test_class_structure, mock_user
+        self, client, db_session, test_version, test_class_structure, mock_user
     ):
         """Integration test: Get class structure with real database data."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/class-structure/{test_budget_version.id}"
+                f"/api/v1/planning/class-structure/{test_version.id}"
             )
 
         # Endpoint may return 200 or 404
@@ -1257,7 +1257,7 @@ class TestClassStructureAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_enrollment_data,
         test_class_size_params,
         mock_user,
@@ -1267,7 +1267,7 @@ class TestClassStructureAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/planning/class-structure/{test_budget_version.id}/calculate",
+                f"/api/v1/planning/class-structure/{test_version.id}/calculate",
                 json=payload,
             )
 
@@ -1279,7 +1279,7 @@ class TestClassStructureAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_class_structure,
         mock_user,
         test_user_id,
@@ -1294,7 +1294,7 @@ class TestClassStructureAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.put(
-                f"/api/v1/planning/class-structure/{test_budget_version.id}/{structure.id}",
+                f"/api/v1/planning/class-structure/{test_version.id}/{structure.id}",
                 json=payload,
             )
 
@@ -1306,14 +1306,14 @@ class TestClassStructureAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_class_structure,
         mock_user,
     ):
         """Integration test: Class structure includes ATSEM for Maternelle."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/class-structure/{test_budget_version.id}"
+                f"/api/v1/planning/class-structure/{test_version.id}"
             )
 
         if response.status_code == 200:
@@ -1328,7 +1328,7 @@ class TestClassStructureAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_enrollment_data,
         test_class_size_params,
         mock_user,
@@ -1338,7 +1338,7 @@ class TestClassStructureAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/planning/class-structure/{test_budget_version.id}/calculate",
+                f"/api/v1/planning/class-structure/{test_version.id}/calculate",
                 json=payload,
             )
 
@@ -1350,18 +1350,18 @@ class TestClassStructureAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         academic_levels,
         mock_user,
         test_user_id,
     ):
         """Integration test: Delete class structure from database."""
-        from app.models.planning import ClassStructure
+        from app.models import ClassStructure
 
         # Create class structure to delete
         structure = ClassStructure(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["GS"].id,
             total_students=25,
             number_of_classes=1,
@@ -1376,7 +1376,7 @@ class TestClassStructureAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.delete(
-                f"/api/v1/planning/class-structure/{test_budget_version.id}/{structure.id}"
+                f"/api/v1/planning/class-structure/{test_version.id}/{structure.id}"
             )
 
         # Delete endpoint may return 204 or 404
@@ -1384,12 +1384,12 @@ class TestClassStructureAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_class_structure_summary_integration(
-        self, client, db_session, test_budget_version, test_class_structure, mock_user
+        self, client, db_session, test_version, test_class_structure, mock_user
     ):
         """Integration test: Get class structure summary statistics."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/class-structure/{test_budget_version.id}/summary"
+                f"/api/v1/planning/class-structure/{test_version.id}/summary"
             )
 
         # Summary endpoint may return 200 or 404
@@ -1413,7 +1413,7 @@ class TestClassStructureAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         academic_levels,
         mock_user,
         test_user_id,
@@ -1421,7 +1421,7 @@ class TestClassStructureAPIIntegration:
         """Integration test: Validation error for invalid class structure."""
         # Try to create invalid class structure
         payload = {
-            "budget_version_id": str(test_budget_version.id),
+            "version_id": str(test_version.id),
             "level_id": str(academic_levels["CP"].id),
             "total_students": 50,
             "number_of_classes": 0,  # Invalid - zero classes
@@ -1443,12 +1443,12 @@ class TestDHGAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_dhg_subject_hours_integration(
-        self, client, db_session, test_budget_version, test_dhg_data, mock_user
+        self, client, db_session, test_version, test_dhg_data, mock_user
     ):
         """Integration test: Get DHG subject hours with real database data."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/dhg/subject-hours/{test_budget_version.id}"
+                f"/api/v1/planning/dhg/subject-hours/{test_version.id}"
             )
 
         # DHG endpoint may return 200 or 404
@@ -1459,7 +1459,7 @@ class TestDHGAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         test_class_structure,
         test_subject_hours_matrix,
         mock_user,
@@ -1469,7 +1469,7 @@ class TestDHGAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/planning/dhg/subject-hours/{test_budget_version.id}/calculate",
+                f"/api/v1/planning/dhg/subject-hours/{test_version.id}/calculate",
                 json=payload,
             )
 
@@ -1478,12 +1478,12 @@ class TestDHGAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_teacher_requirements_integration(
-        self, client, db_session, test_budget_version, test_dhg_data, mock_user
+        self, client, db_session, test_version, test_dhg_data, mock_user
     ):
         """Integration test: Get teacher requirements with real calculations."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/dhg/teacher-requirements/{test_budget_version.id}"
+                f"/api/v1/planning/dhg/teacher-requirements/{test_version.id}"
             )
 
         # Teacher requirements endpoint may return 200 or 404
@@ -1491,14 +1491,14 @@ class TestDHGAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_calculate_fte_from_hours_integration(
-        self, client, db_session, test_budget_version, test_dhg_data, mock_user
+        self, client, db_session, test_version, test_dhg_data, mock_user
     ):
         """Integration test: Calculate FTE from total hours."""
         payload = {"standard_hours_secondary": 18, "standard_hours_primary": 24}
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/planning/dhg/teacher-requirements/{test_budget_version.id}/calculate-fte",
+                f"/api/v1/planning/dhg/teacher-requirements/{test_version.id}/calculate-fte",
                 json=payload,
             )
 
@@ -1507,12 +1507,12 @@ class TestDHGAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dhg_hsa_calculation_integration(
-        self, client, db_session, test_budget_version, test_dhg_data, mock_user
+        self, client, db_session, test_version, test_dhg_data, mock_user
     ):
         """Integration test: Calculate HSA overtime hours."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/dhg/teacher-requirements/{test_budget_version.id}"
+                f"/api/v1/planning/dhg/teacher-requirements/{test_version.id}"
             )
 
         if response.status_code == 200:
@@ -1523,12 +1523,12 @@ class TestDHGAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_get_trmd_gap_analysis_integration(
-        self, client, db_session, test_budget_version, test_dhg_data, mock_user
+        self, client, db_session, test_version, test_dhg_data, mock_user
     ):
         """Integration test: Get TRMD gap analysis with real data."""
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.get(
-                f"/api/v1/planning/dhg/trmd/{test_budget_version.id}"
+                f"/api/v1/planning/dhg/trmd/{test_version.id}"
             )
 
         # TRMD endpoint may return 200 or 404
@@ -1539,7 +1539,7 @@ class TestDHGAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         subjects,
         teacher_categories,
         mock_user,
@@ -1547,7 +1547,7 @@ class TestDHGAPIIntegration:
     ):
         """Integration test: Create teacher allocation with database write."""
         payload = {
-            "budget_version_id": str(test_budget_version.id),
+            "version_id": str(test_version.id),
             "subject_id": str(subjects["HISTORY"].id),
             "category_id": str(teacher_categories["LOCAL"].id),
             "fte_count": "1.0",
@@ -1557,7 +1557,7 @@ class TestDHGAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/planning/dhg/allocations/{test_budget_version.id}",
+                f"/api/v1/planning/dhg/allocations/{test_version.id}",
                 json=payload,
             )
 
@@ -1569,7 +1569,7 @@ class TestDHGAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         subjects,
         teacher_categories,
         academic_cycles,
@@ -1577,12 +1577,12 @@ class TestDHGAPIIntegration:
         test_user_id,
     ):
         """Integration test: Update teacher allocation with database modification."""
-        from app.models.planning import TeacherAllocation
+        from app.models import TeacherAllocation
 
         # Create allocation to update
         allocation = TeacherAllocation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["ENGLISH"].id,
             cycle_id=academic_cycles["college"].id,
             category_id=teacher_categories["LOCAL"].id,
@@ -1597,7 +1597,7 @@ class TestDHGAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.put(
-                f"/api/v1/planning/dhg/allocations/{test_budget_version.id}/{allocation.id}",
+                f"/api/v1/planning/dhg/allocations/{test_version.id}/{allocation.id}",
                 json=payload,
             )
 
@@ -1609,7 +1609,7 @@ class TestDHGAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         subjects,
         teacher_categories,
         academic_cycles,
@@ -1617,12 +1617,12 @@ class TestDHGAPIIntegration:
         test_user_id,
     ):
         """Integration test: Delete teacher allocation from database."""
-        from app.models.planning import TeacherAllocation
+        from app.models import TeacherAllocation
 
         # Create allocation to delete
         allocation = TeacherAllocation(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             cycle_id=academic_cycles["college"].id,
             category_id=teacher_categories["AEFE_DETACHED"].id,
@@ -1635,7 +1635,7 @@ class TestDHGAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.delete(
-                f"/api/v1/planning/dhg/allocations/{test_budget_version.id}/{allocation.id}"
+                f"/api/v1/planning/dhg/allocations/{test_version.id}/{allocation.id}"
             )
 
         # Delete endpoint may return 204 or 404
@@ -1646,7 +1646,7 @@ class TestDHGAPIIntegration:
         self,
         client,
         db_session,
-        test_budget_version,
+        test_version,
         subjects,
         teacher_categories,
         academic_cycles,
@@ -1655,7 +1655,7 @@ class TestDHGAPIIntegration:
     ):
         """Integration test: Bulk update teacher allocations."""
         # Create allocations to update
-        from app.models.planning import TeacherAllocation
+        from app.models import TeacherAllocation
 
         cycle_ids = [
             academic_cycles["maternelle"].id,
@@ -1665,7 +1665,7 @@ class TestDHGAPIIntegration:
         allocations = [
             TeacherAllocation(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
+                version_id=test_version.id,
                 subject_id=subjects["FRENCH"].id,
                 cycle_id=cycle_ids[i],
                 category_id=teacher_categories["LOCAL"].id,
@@ -1686,7 +1686,7 @@ class TestDHGAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.put(
-                f"/api/v1/planning/dhg/allocations/{test_budget_version.id}/bulk",
+                f"/api/v1/planning/dhg/allocations/{test_version.id}/bulk",
                 json=payload,
             )
 
@@ -1695,7 +1695,7 @@ class TestDHGAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dhg_hsa_limit_validation_integration(
-        self, client, db_session, test_budget_version, test_dhg_data, mock_user
+        self, client, db_session, test_version, test_dhg_data, mock_user
     ):
         """Integration test: Validation error when HSA limit is exceeded."""
         payload = {
@@ -1705,7 +1705,7 @@ class TestDHGAPIIntegration:
 
         with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
             response = client.post(
-                f"/api/v1/planning/dhg/teacher-requirements/{test_budget_version.id}/calculate-fte",
+                f"/api/v1/planning/dhg/teacher-requirements/{test_version.id}/calculate-fte",
                 json=payload,
             )
 
@@ -1714,11 +1714,14 @@ class TestDHGAPIIntegration:
 
     @pytest.mark.asyncio
     async def test_dhg_missing_prerequisites_integration(
-        self, client, db_session, test_budget_version, mock_user
+        self, client, db_session, test_version, mock_user
     ):
         """Integration test: DHG calculation fails without class structure."""
         # Create new version without class structure
-        from app.models.configuration import BudgetVersion, BudgetVersionStatus
+        from app.models import Version, VersionStatus
+        # Backward compatibility aliases
+        BudgetVersion = Version
+        BudgetVersionStatus = VersionStatus
 
         empty_version = BudgetVersion(
             id=uuid.uuid4(),
@@ -1726,6 +1729,7 @@ class TestDHGAPIIntegration:
             fiscal_year=2026,
             academic_year="2025-2026",
             status=BudgetVersionStatus.WORKING,
+            organization_id=test_version.organization_id,
             created_by_id=mock_user.id,
         )
         db_session.add(empty_version)

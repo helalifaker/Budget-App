@@ -7,12 +7,15 @@ Tests all async CRUD operations, business logic validation, and error handling.
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import (
-    BudgetVersionStatus,
+from app.models import (
+    VersionStatus,
 )
-from app.services.configuration_service import ConfigurationService
 from app.services.exceptions import BusinessRuleError, ConflictError, ValidationError
+from app.services.settings.configuration_service import ConfigurationService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility alias
+BudgetVersionStatus = VersionStatus
 
 
 class TestSystemConfigOperations:
@@ -132,20 +135,20 @@ class TestSystemConfigOperations:
         assert config2.value["version"] == 2
 
 
-class TestBudgetVersionOperations:
+class TestVersionOperations:
     """Tests for budget version operations."""
 
     @pytest.mark.asyncio
-    async def test_get_budget_version(
-        self, db_session: AsyncSession, test_budget_version
+    async def test_get_version(
+        self, db_session: AsyncSession, test_version
     ):
         """Test retrieving budget version by ID."""
         service = ConfigurationService(db_session)
-        version = await service.get_budget_version(test_budget_version.id)
+        version = await service.get_version(test_version.id)
 
         assert version is not None
-        assert version.id == test_budget_version.id
-        assert version.fiscal_year == test_budget_version.fiscal_year
+        assert version.id == test_version.id
+        assert version.fiscal_year == test_version.fiscal_year
 
     @pytest.mark.asyncio
     async def test_get_all_budget_versions(
@@ -161,13 +164,13 @@ class TestBudgetVersionOperations:
             fy2 = fiscal_year_factory()
 
         # Get existing versions to count baseline
-        existing_versions = await service.get_all_budget_versions()
+        existing_versions = await service.get_all_versions()
         initial_count = len(existing_versions)
 
         # Create multiple versions (use try/except in case fiscal year already has working version)
         versions_created = 0
         try:
-            await service.create_budget_version(
+            await service.create_version(
                 name=f"Budget {fy1}",
                 fiscal_year=fy1,
                 academic_year=f"{fy1-1}-{fy1}",
@@ -179,7 +182,7 @@ class TestBudgetVersionOperations:
             pass  # Fiscal year may already have a working version
 
         try:
-            await service.create_budget_version(
+            await service.create_version(
                 name=f"Budget {fy2}",
                 fiscal_year=fy2,
                 academic_year=f"{fy2-1}-{fy2}",
@@ -190,12 +193,12 @@ class TestBudgetVersionOperations:
         except Exception:
             pass  # Fiscal year may already have a working version
 
-        versions = await service.get_all_budget_versions()
+        versions = await service.get_all_versions()
         # Either we created some versions, or there were already versions in the db
         assert len(versions) >= initial_count + versions_created or len(versions) >= 2
 
     @pytest.mark.asyncio
-    async def test_get_budget_versions_by_fiscal_year(
+    async def test_get_versions_by_fiscal_year(
         self, db_session: AsyncSession, test_user_id, fiscal_year_factory, organization_id
     ):
         """Test filtering budget versions by fiscal year."""
@@ -203,7 +206,7 @@ class TestBudgetVersionOperations:
         target_year = fiscal_year_factory()
 
         # Create versions for different years
-        await service.create_budget_version(
+        await service.create_version(
             name="Budget 2025",
             fiscal_year=target_year,
             academic_year=f"{target_year-1}-{target_year}",
@@ -211,32 +214,32 @@ class TestBudgetVersionOperations:
             user_id=test_user_id,
         )
 
-        versions = await service.get_all_budget_versions(fiscal_year=target_year)
+        versions = await service.get_all_versions(fiscal_year=target_year)
         assert len(versions) >= 1
         assert all(v.fiscal_year == target_year for v in versions)
 
     @pytest.mark.asyncio
-    async def test_get_budget_versions_by_status(
-        self, db_session: AsyncSession, test_budget_version
+    async def test_get_versions_by_status(
+        self, db_session: AsyncSession, test_version
     ):
         """Test filtering budget versions by status."""
         service = ConfigurationService(db_session)
 
-        versions = await service.get_all_budget_versions(
+        versions = await service.get_all_versions(
             status=BudgetVersionStatus.WORKING
         )
         assert len(versions) >= 1
         assert all(v.status == BudgetVersionStatus.WORKING for v in versions)
 
     @pytest.mark.asyncio
-    async def test_create_budget_version_success(
+    async def test_create_version_success(
         self, db_session: AsyncSession, test_user_id, fiscal_year_factory, organization_id
     ):
         """Test creating a new budget version."""
         service = ConfigurationService(db_session)
         fiscal_year = fiscal_year_factory()
 
-        version = await service.create_budget_version(
+        version = await service.create_version(
             name="Test Budget 2025",
             fiscal_year=fiscal_year,
             academic_year=f"{fiscal_year-1}-{fiscal_year}",
@@ -251,7 +254,7 @@ class TestBudgetVersionOperations:
         assert version.status == BudgetVersionStatus.WORKING
 
     @pytest.mark.asyncio
-    async def test_create_budget_version_duplicate_working_fails(
+    async def test_create_version_duplicate_working_fails(
         self, db_session: AsyncSession, test_user_id, fiscal_year_factory, organization_id
     ):
         """Test creating duplicate working version fails."""
@@ -259,7 +262,7 @@ class TestBudgetVersionOperations:
         fiscal_year = fiscal_year_factory()
 
         # Create first version
-        await service.create_budget_version(
+        await service.create_version(
             name="Budget 2025 V1",
             fiscal_year=fiscal_year,
             academic_year=f"{fiscal_year-1}-{fiscal_year}",
@@ -269,7 +272,7 @@ class TestBudgetVersionOperations:
 
         # Try to create another working version for same year and organization
         with pytest.raises(ConflictError, match="working budget version already exists"):
-            await service.create_budget_version(
+            await service.create_version(
                 name="Budget 2025 V2",
                 fiscal_year=fiscal_year,
                 academic_year=f"{fiscal_year-1}-{fiscal_year}",
@@ -279,13 +282,13 @@ class TestBudgetVersionOperations:
 
     @pytest.mark.asyncio
     async def test_submit_budget_version_success(
-        self, db_session: AsyncSession, test_budget_version, test_user_id
+        self, db_session: AsyncSession, test_version, test_user_id
     ):
         """Test submitting a working budget version."""
         service = ConfigurationService(db_session)
 
         submitted = await service.submit_budget_version(
-            test_budget_version.id, test_user_id
+            test_version.id, test_user_id
         )
 
         assert submitted.status == BudgetVersionStatus.SUBMITTED
@@ -306,7 +309,7 @@ class TestBudgetVersionOperations:
         for attempt in range(max_attempts):
             fiscal_year = fiscal_year_factory()
             try:
-                version = await service.create_budget_version(
+                version = await service.create_version(
                     name=f"Test Version FY{fiscal_year}",
                     fiscal_year=fiscal_year,
                     academic_year=f"{fiscal_year-1}-{fiscal_year}",
@@ -330,17 +333,17 @@ class TestBudgetVersionOperations:
 
     @pytest.mark.asyncio
     async def test_approve_budget_version_success(
-        self, db_session: AsyncSession, test_budget_version, test_user_id
+        self, db_session: AsyncSession, test_version, test_user_id
     ):
         """Test approving a submitted budget version."""
         service = ConfigurationService(db_session)
 
         # Submit first
-        await service.submit_budget_version(test_budget_version.id, test_user_id)
+        await service.submit_budget_version(test_version.id, test_user_id)
 
         # Then approve
         approved = await service.approve_budget_version(
-            test_budget_version.id, test_user_id
+            test_version.id, test_user_id
         )
 
         assert approved.status == BudgetVersionStatus.APPROVED
@@ -360,7 +363,7 @@ class TestBudgetVersionOperations:
         for attempt in range(max_attempts):
             fiscal_year = fiscal_year_factory()
             try:
-                version = await service.create_budget_version(
+                version = await service.create_version(
                     name=f"Test Version FY{fiscal_year}",
                     fiscal_year=fiscal_year,
                     academic_year=f"{fiscal_year-1}-{fiscal_year}",
@@ -381,13 +384,13 @@ class TestBudgetVersionOperations:
 
     @pytest.mark.asyncio
     async def test_supersede_budget_version(
-        self, db_session: AsyncSession, test_budget_version, test_user_id
+        self, db_session: AsyncSession, test_version, test_user_id
     ):
         """Test superseding a budget version."""
         service = ConfigurationService(db_session)
 
         superseded = await service.supersede_budget_version(
-            test_budget_version.id, test_user_id
+            test_version.id, test_user_id
         )
 
         assert superseded.status == BudgetVersionStatus.SUPERSEDED
@@ -440,14 +443,14 @@ class TestClassSizeParamOperations:
 
     @pytest.mark.asyncio
     async def test_get_class_size_params(
-        self, db_session: AsyncSession, test_budget_version, academic_cycles, test_user_id
+        self, db_session: AsyncSession, test_version, academic_cycles, test_user_id
     ):
         """Test retrieving class size parameters."""
         service = ConfigurationService(db_session)
 
         # Create class size param
         await service.upsert_class_size_param(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=None,
             cycle_id=academic_cycles["college"].id,
             min_class_size=20,
@@ -456,18 +459,18 @@ class TestClassSizeParamOperations:
             user_id=test_user_id,
         )
 
-        params = await service.get_class_size_params(test_budget_version.id)
+        params = await service.get_class_size_params(test_version.id)
         assert len(params) >= 1
 
     @pytest.mark.asyncio
     async def test_upsert_class_size_param_create(
-        self, db_session: AsyncSession, test_budget_version, academic_cycles, test_user_id
+        self, db_session: AsyncSession, test_version, academic_cycles, test_user_id
     ):
         """Test creating class size parameter."""
         service = ConfigurationService(db_session)
 
         param = await service.upsert_class_size_param(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=None,
             cycle_id=academic_cycles["maternelle"].id,
             min_class_size=15,
@@ -484,14 +487,14 @@ class TestClassSizeParamOperations:
 
     @pytest.mark.asyncio
     async def test_upsert_class_size_param_update(
-        self, db_session: AsyncSession, test_budget_version, academic_cycles, test_user_id
+        self, db_session: AsyncSession, test_version, academic_cycles, test_user_id
     ):
         """Test updating existing class size parameter."""
         service = ConfigurationService(db_session)
 
         # Create first
         param1 = await service.upsert_class_size_param(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=None,
             cycle_id=academic_cycles["college"].id,
             min_class_size=20,
@@ -502,7 +505,7 @@ class TestClassSizeParamOperations:
 
         # Update same
         param2 = await service.upsert_class_size_param(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=None,
             cycle_id=academic_cycles["college"].id,
             min_class_size=22,
@@ -516,7 +519,7 @@ class TestClassSizeParamOperations:
 
     @pytest.mark.asyncio
     async def test_upsert_class_size_param_invalid_range_fails(
-        self, db_session: AsyncSession, test_budget_version, academic_cycles, test_user_id
+        self, db_session: AsyncSession, test_version, academic_cycles, test_user_id
     ):
         """Test invalid class size range fails validation."""
         service = ConfigurationService(db_session)
@@ -524,7 +527,7 @@ class TestClassSizeParamOperations:
         # min >= target
         with pytest.raises(ValidationError, match="min < target <= max"):
             await service.upsert_class_size_param(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 level_id=None,
                 cycle_id=academic_cycles["college"].id,
                 min_class_size=25,
@@ -535,7 +538,7 @@ class TestClassSizeParamOperations:
 
     @pytest.mark.asyncio
     async def test_upsert_class_size_param_no_level_or_cycle_fails(
-        self, db_session: AsyncSession, test_budget_version, test_user_id
+        self, db_session: AsyncSession, test_version, test_user_id
     ):
         """Test missing level_id and cycle_id fails validation."""
         service = ConfigurationService(db_session)
@@ -544,7 +547,7 @@ class TestClassSizeParamOperations:
             ValidationError, match="Either level_id or cycle_id must be provided"
         ):
             await service.upsert_class_size_param(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 level_id=None,
                 cycle_id=None,
                 min_class_size=20,
@@ -555,7 +558,7 @@ class TestClassSizeParamOperations:
 
     @pytest.mark.asyncio
     async def test_upsert_class_size_param_both_level_and_cycle_fails(
-        self, db_session: AsyncSession, test_budget_version, academic_levels, academic_cycles, test_user_id
+        self, db_session: AsyncSession, test_version, academic_levels, academic_cycles, test_user_id
     ):
         """Test specifying both level_id and cycle_id fails validation."""
         service = ConfigurationService(db_session)
@@ -564,7 +567,7 @@ class TestClassSizeParamOperations:
             ValidationError, match="Cannot specify both level_id and cycle_id"
         ):
             await service.upsert_class_size_param(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 level_id=academic_levels["PS"].id,
                 cycle_id=academic_cycles["maternelle"].id,
                 min_class_size=20,
@@ -579,32 +582,32 @@ class TestSubjectHoursOperations:
 
     @pytest.mark.asyncio
     async def test_get_subject_hours_matrix(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test retrieving subject hours matrix."""
         service = ConfigurationService(db_session)
 
         # Create subject hours entry
         await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("4.5"),
             user_id=test_user_id,
         )
 
-        matrix = await service.get_subject_hours_matrix(test_budget_version.id)
+        matrix = await service.get_subject_hours_matrix(test_version.id)
         assert len(matrix) >= 1
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_create(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test creating subject hours configuration."""
         service = ConfigurationService(db_session)
 
         entry = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["FRENCH"].id,
             level_id=academic_levels["5EME"].id,
             hours_per_week=Decimal("5.0"),
@@ -619,14 +622,14 @@ class TestSubjectHoursOperations:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_update(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test updating existing subject hours configuration."""
         service = ConfigurationService(db_session)
 
         # Create first
         entry1 = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("4.0"),
@@ -635,7 +638,7 @@ class TestSubjectHoursOperations:
 
         # Update same
         entry2 = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("4.5"),
@@ -647,7 +650,7 @@ class TestSubjectHoursOperations:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_invalid_hours_fails(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test invalid hours per week fails validation."""
         service = ConfigurationService(db_session)
@@ -655,7 +658,7 @@ class TestSubjectHoursOperations:
         # Zero hours
         with pytest.raises(ValidationError, match="between 0 and 12"):
             await service.upsert_subject_hours(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 subject_id=subjects["MATH"].id,
                 level_id=academic_levels["6EME"].id,
                 hours_per_week=Decimal("0"),
@@ -665,7 +668,7 @@ class TestSubjectHoursOperations:
         # Excessive hours
         with pytest.raises(ValidationError, match="between 0 and 12"):
             await service.upsert_subject_hours(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 subject_id=subjects["MATH"].id,
                 level_id=academic_levels["6EME"].id,
                 hours_per_week=Decimal("15"),
@@ -690,14 +693,14 @@ class TestTeacherCostParamOperations:
 
     @pytest.mark.asyncio
     async def test_get_teacher_cost_params(
-        self, db_session: AsyncSession, test_budget_version, teacher_categories, test_user_id
+        self, db_session: AsyncSession, test_version, teacher_categories, test_user_id
     ):
         """Test retrieving teacher cost parameters."""
         service = ConfigurationService(db_session)
 
         # Create teacher cost param
         await service.upsert_teacher_cost_param(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             category_id=teacher_categories["AEFE_DETACHED"].id,
             cycle_id=None,
             prrd_contribution_eur=Decimal("41863"),
@@ -709,18 +712,18 @@ class TestTeacherCostParamOperations:
             user_id=test_user_id,
         )
 
-        params = await service.get_teacher_cost_params(test_budget_version.id)
+        params = await service.get_teacher_cost_params(test_version.id)
         assert len(params) >= 1
 
     @pytest.mark.asyncio
     async def test_upsert_teacher_cost_param_create(
-        self, db_session: AsyncSession, test_budget_version, teacher_categories, academic_cycles, test_user_id
+        self, db_session: AsyncSession, test_version, teacher_categories, academic_cycles, test_user_id
     ):
         """Test creating teacher cost parameter."""
         service = ConfigurationService(db_session)
 
         param = await service.upsert_teacher_cost_param(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             category_id=teacher_categories["LOCAL"].id,
             cycle_id=academic_cycles["college"].id,
             prrd_contribution_eur=None,
@@ -738,14 +741,14 @@ class TestTeacherCostParamOperations:
 
     @pytest.mark.asyncio
     async def test_upsert_teacher_cost_param_update(
-        self, db_session: AsyncSession, test_budget_version, teacher_categories, test_user_id
+        self, db_session: AsyncSession, test_version, teacher_categories, test_user_id
     ):
         """Test updating existing teacher cost parameter."""
         service = ConfigurationService(db_session)
 
         # Create first
         param1 = await service.upsert_teacher_cost_param(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             category_id=teacher_categories["AEFE_DETACHED"].id,
             cycle_id=None,
             prrd_contribution_eur=Decimal("41000"),
@@ -759,7 +762,7 @@ class TestTeacherCostParamOperations:
 
         # Update same
         param2 = await service.upsert_teacher_cost_param(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             category_id=teacher_categories["AEFE_DETACHED"].id,
             cycle_id=None,
             prrd_contribution_eur=Decimal("41863"),
@@ -802,14 +805,14 @@ class TestFeeStructureOperations:
 
     @pytest.mark.asyncio
     async def test_get_fee_structure(
-        self, db_session: AsyncSession, test_budget_version, academic_levels, nationality_types, fee_categories, test_user_id
+        self, db_session: AsyncSession, test_version, academic_levels, nationality_types, fee_categories, test_user_id
     ):
         """Test retrieving fee structure."""
         service = ConfigurationService(db_session)
 
         # Create fee structure entry
         await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["6EME"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             fee_category_id=fee_categories["TUITION"].id,
@@ -818,18 +821,18 @@ class TestFeeStructureOperations:
             user_id=test_user_id,
         )
 
-        structure = await service.get_fee_structure(test_budget_version.id)
+        structure = await service.get_fee_structure(test_version.id)
         assert len(structure) >= 1
 
     @pytest.mark.asyncio
     async def test_upsert_fee_structure_create(
-        self, db_session: AsyncSession, test_budget_version, academic_levels, nationality_types, fee_categories, test_user_id
+        self, db_session: AsyncSession, test_version, academic_levels, nationality_types, fee_categories, test_user_id
     ):
         """Test creating fee structure entry."""
         service = ConfigurationService(db_session)
 
         entry = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["5EME"].id,
             nationality_type_id=nationality_types["SAUDI"].id,
             fee_category_id=fee_categories["DAI"].id,
@@ -845,14 +848,14 @@ class TestFeeStructureOperations:
 
     @pytest.mark.asyncio
     async def test_upsert_fee_structure_update(
-        self, db_session: AsyncSession, test_budget_version, academic_levels, nationality_types, fee_categories, test_user_id
+        self, db_session: AsyncSession, test_version, academic_levels, nationality_types, fee_categories, test_user_id
     ):
         """Test updating existing fee structure entry."""
         service = ConfigurationService(db_session)
 
         # Create first
         entry1 = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["6EME"].id,
             nationality_type_id=nationality_types["OTHER"].id,
             fee_category_id=fee_categories["TUITION"].id,
@@ -863,7 +866,7 @@ class TestFeeStructureOperations:
 
         # Update same
         entry2 = await service.upsert_fee_structure(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["6EME"].id,
             nationality_type_id=nationality_types["OTHER"].id,
             fee_category_id=fee_categories["TUITION"].id,

@@ -10,7 +10,7 @@ import { ArrowRight, Undo2, Loader2 } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useChangeHistory } from '@/hooks/api/useChangeHistory'
-import { useUndoRedo } from '@/hooks/useUndoRedo'
+import { useUndoRedo } from '@/hooks/state/useUndoRedo'
 import { Card } from './ui/card'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
@@ -18,27 +18,27 @@ import { ScrollArea } from './ui/scroll-area'
 import { CellChange } from '@/types/writeback'
 
 export interface ChangeLogViewerProps {
-  budgetVersionId: string
+  versionId: string
   moduleCode?: string
 }
 
 /**
  * Change log viewer with session grouping
  *
- * @param budgetVersionId - Current budget version
+ * @param versionId - Current version
  * @param moduleCode - Optional module filter
  *
  * @example
  * ```typescript
- * <ChangeLogViewer budgetVersionId={budgetVersionId} />
+ * <ChangeLogViewer versionId={versionId} />
  * ```
  */
-export function ChangeLogViewer({ budgetVersionId, moduleCode }: ChangeLogViewerProps) {
-  const { changes, isLoading } = useChangeHistory(budgetVersionId, {
+export function ChangeLogViewer({ versionId, moduleCode }: ChangeLogViewerProps) {
+  const { changes, isLoading } = useChangeHistory(versionId, {
     module_code: moduleCode,
     limit: 100,
   })
-  const { undo } = useUndoRedo(budgetVersionId, moduleCode)
+  const { undo } = useUndoRedo(versionId, moduleCode)
 
   // Group changes by session
   const sessionGroups = useMemo(() => {

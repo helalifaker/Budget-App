@@ -13,11 +13,13 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import AcademicLevel, BudgetVersion, NationalityType
-from app.models.planning import EnrollmentPlan
-from app.services.enrollment_service import EnrollmentService
+from app.models import AcademicLevel, EnrollmentPlan, NationalityType, Version
+from app.services.enrollment.enrollment_service import EnrollmentService
 from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility alias
+BudgetVersion = Version
 
 
 class TestEnrollmentServiceCRUD:
@@ -27,25 +29,25 @@ class TestEnrollmentServiceCRUD:
     async def test_get_enrollment_plan_returns_list(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
     ):
-        """Test retrieving enrollment plan for a budget version."""
+        """Test retrieving enrollment plan for a version."""
         service = EnrollmentService(db_session)
 
-        result = await service.get_enrollment_plan(test_budget_version.id)
+        result = await service.get_enrollment_plan(test_version.id)
 
         assert isinstance(result, list)
         assert len(result) == len(test_enrollment_data)
         for enrollment in result:
-            assert enrollment.budget_version_id == test_budget_version.id
+            assert enrollment.version_id == test_version.id
             assert enrollment.deleted_at is None
 
     @pytest.mark.asyncio
     async def test_get_enrollment_plan_empty_version(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving enrollment plan for version with no enrollments."""
         service = EnrollmentService(db_session)
@@ -87,7 +89,7 @@ class TestEnrollmentServiceCRUD:
     async def test_create_enrollment_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_user_id: uuid.UUID,
@@ -96,7 +98,7 @@ class TestEnrollmentServiceCRUD:
         service = EnrollmentService(db_session)
 
         result = await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["MS"].id,  # Use MS which doesn't have enrollment
             nationality_type_id=nationality_types["FRENCH"].id,
             student_count=25,
@@ -108,13 +110,13 @@ class TestEnrollmentServiceCRUD:
         assert result.student_count == 25
         assert result.level_id == academic_levels["MS"].id
         assert result.nationality_type_id == nationality_types["FRENCH"].id
-        assert result.budget_version_id == test_budget_version.id
+        assert result.version_id == test_version.id
 
     @pytest.mark.asyncio
     async def test_create_enrollment_duplicate_raises_error(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_enrollment_data: list[EnrollmentPlan],
@@ -126,7 +128,7 @@ class TestEnrollmentServiceCRUD:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.create_enrollment(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 level_id=existing.level_id,
                 nationality_type_id=existing.nationality_type_id,
                 student_count=10,
@@ -209,7 +211,7 @@ class TestEnrollmentServiceCapacity:
     async def test_create_enrollment_within_capacity(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_user_id: uuid.UUID,
@@ -219,7 +221,7 @@ class TestEnrollmentServiceCapacity:
 
         # Should succeed - well within 1,850 limit
         result = await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["GS"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             student_count=100,
@@ -232,7 +234,7 @@ class TestEnrollmentServiceCapacity:
     async def test_create_enrollment_exceeds_capacity(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_enrollment_data: list[EnrollmentPlan],
@@ -245,7 +247,7 @@ class TestEnrollmentServiceCapacity:
         # Try to add 1750, which would exceed 1,850 (DEFAULT_SCHOOL_CAPACITY)
         with pytest.raises(BusinessRuleError) as exc_info:
             await service.create_enrollment(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 level_id=academic_levels["GS"].id,
                 nationality_type_id=nationality_types["OTHER"].id,
                 student_count=1750,
@@ -280,7 +282,7 @@ class TestEnrollmentServiceCapacity:
     async def test_capacity_at_exact_limit(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_enrollment_data: list[EnrollmentPlan],
@@ -294,7 +296,7 @@ class TestEnrollmentServiceCapacity:
         remaining = 1850 - 130
 
         result = await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["GS"].id,
             nationality_type_id=nationality_types["OTHER"].id,
             student_count=remaining,
@@ -311,7 +313,7 @@ class TestEnrollmentServiceSummary:
     async def test_get_enrollment_summary(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         academic_levels: dict,
         academic_cycles: dict,
@@ -319,7 +321,7 @@ class TestEnrollmentServiceSummary:
         """Test getting enrollment summary statistics."""
         service = EnrollmentService(db_session)
 
-        summary = await service.get_enrollment_summary(test_budget_version.id)
+        summary = await service.get_enrollment_summary(test_version.id)
 
         # Total: 35 + 15 + 80 = 130
         assert summary["total_students"] == 130
@@ -362,7 +364,7 @@ class TestEnrollmentServiceProjection:
     async def test_project_enrollment_base_scenario(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         academic_levels: dict,
         academic_cycles: dict,
@@ -372,7 +374,7 @@ class TestEnrollmentServiceProjection:
         service = EnrollmentService(db_session)
 
         projections = await service.project_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             years_to_project=5,
             growth_scenario="base",
         )
@@ -388,7 +390,7 @@ class TestEnrollmentServiceProjection:
     async def test_project_enrollment_conservative_scenario(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         academic_levels: dict,
         academic_cycles: dict,
@@ -398,7 +400,7 @@ class TestEnrollmentServiceProjection:
         service = EnrollmentService(db_session)
 
         projections = await service.project_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             years_to_project=3,
             growth_scenario="conservative",
         )
@@ -411,7 +413,7 @@ class TestEnrollmentServiceProjection:
     async def test_project_enrollment_optimistic_scenario(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         academic_levels: dict,
         academic_cycles: dict,
@@ -421,7 +423,7 @@ class TestEnrollmentServiceProjection:
         service = EnrollmentService(db_session)
 
         projections = await service.project_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             years_to_project=5,
             growth_scenario="optimistic",
         )
@@ -439,7 +441,7 @@ class TestEnrollmentServiceProjection:
     async def test_project_enrollment_invalid_years(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
     ):
         """Test projection with invalid years raises ValidationError."""
@@ -447,7 +449,7 @@ class TestEnrollmentServiceProjection:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.project_enrollment(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 years_to_project=15,  # Max is 10
                 growth_scenario="base",
             )
@@ -458,7 +460,7 @@ class TestEnrollmentServiceProjection:
     async def test_project_enrollment_invalid_scenario(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
     ):
         """Test projection with invalid scenario raises ValidationError."""
@@ -466,7 +468,7 @@ class TestEnrollmentServiceProjection:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.project_enrollment(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 years_to_project=5,
                 growth_scenario="invalid_scenario",
             )
@@ -477,7 +479,7 @@ class TestEnrollmentServiceProjection:
     async def test_project_enrollment_no_data(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test projection without enrollment data raises BusinessRuleError."""
         service = EnrollmentService(db_session)
@@ -496,7 +498,7 @@ class TestEnrollmentServiceProjection:
     async def test_project_enrollment_with_custom_rates(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         academic_levels: dict,
         academic_cycles: dict,
@@ -511,7 +513,7 @@ class TestEnrollmentServiceProjection:
         }
 
         projections = await service.project_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             years_to_project=5,
             growth_scenario="base",
             custom_growth_rates=custom_rates,
@@ -527,7 +529,7 @@ class TestEnrollmentServiceEdgeCases:
     async def test_create_enrollment_zero_students(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_user_id: uuid.UUID,
@@ -537,7 +539,7 @@ class TestEnrollmentServiceEdgeCases:
 
         # Zero students should be allowed (e.g., for new levels)
         result = await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["CP"].id,
             nationality_type_id=nationality_types["OTHER"].id,
             student_count=0,
@@ -569,7 +571,7 @@ class TestEnrollmentServiceEdgeCases:
     async def test_multiple_enrollments_same_level_different_nationalities(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_user_id: uuid.UUID,
@@ -579,7 +581,7 @@ class TestEnrollmentServiceEdgeCases:
 
         # Create French enrollment for CP
         result1 = await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["CP"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             student_count=30,
@@ -588,7 +590,7 @@ class TestEnrollmentServiceEdgeCases:
 
         # Create Saudi enrollment for CP (should succeed)
         result2 = await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["CP"].id,
             nationality_type_id=nationality_types["SAUDI"].id,
             student_count=20,
@@ -597,7 +599,7 @@ class TestEnrollmentServiceEdgeCases:
 
         # Create Other enrollment for CP (should succeed)
         result3 = await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["CP"].id,
             nationality_type_id=nationality_types["OTHER"].id,
             student_count=10,
@@ -612,7 +614,7 @@ class TestEnrollmentServiceEdgeCases:
     async def test_concurrent_capacity_validation(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_enrollment_data: list[EnrollmentPlan],
@@ -626,7 +628,7 @@ class TestEnrollmentServiceEdgeCases:
 
         # First addition: 1000 students
         await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["CP"].id,
             nationality_type_id=nationality_types["FRENCH"].id,
             student_count=1000,
@@ -635,7 +637,7 @@ class TestEnrollmentServiceEdgeCases:
 
         # Second addition: 500 students (total now 1630)
         await service.create_enrollment(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["CP"].id,
             nationality_type_id=nationality_types["SAUDI"].id,
             student_count=500,
@@ -645,7 +647,7 @@ class TestEnrollmentServiceEdgeCases:
         # Third addition: 300 would exceed (1630 + 300 = 1930 > 1850)
         with pytest.raises(BusinessRuleError) as exc_info:
             await service.create_enrollment(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 level_id=academic_levels["GS"].id,
                 nationality_type_id=nationality_types["OTHER"].id,
                 student_count=300,
@@ -662,7 +664,7 @@ class TestEnrollmentServiceRealEFIRData:
     async def test_realistic_enrollment_distribution(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         academic_levels: dict[str, AcademicLevel],
         nationality_types: dict[str, NationalityType],
         test_user_id: uuid.UUID,
@@ -699,7 +701,7 @@ class TestEnrollmentServiceRealEFIRData:
         for level_code, nationality_code, count in realistic_data:
             if level_code in academic_levels and nationality_code in nationality_types:
                 await service.create_enrollment(
-                    version_id=test_budget_version.id,
+                    version_id=test_version.id,
                     level_id=academic_levels[level_code].id,
                     nationality_type_id=nationality_types[nationality_code].id,
                     student_count=count,
@@ -707,7 +709,7 @@ class TestEnrollmentServiceRealEFIRData:
                 )
                 total_enrolled += count
 
-        summary = await service.get_enrollment_summary(test_budget_version.id)
+        summary = await service.get_enrollment_summary(test_version.id)
 
         assert summary["total_students"] == total_enrolled
         assert summary["total_students"] <= 1850  # Within capacity
@@ -716,7 +718,7 @@ class TestEnrollmentServiceRealEFIRData:
     async def test_french_majority_nationality_distribution(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         academic_levels: dict,
         academic_cycles: dict,
@@ -725,7 +727,7 @@ class TestEnrollmentServiceRealEFIRData:
         """Test that French students are majority (typical EFIR pattern)."""
         service = EnrollmentService(db_session)
 
-        summary = await service.get_enrollment_summary(test_budget_version.id)
+        summary = await service.get_enrollment_summary(test_version.id)
 
         total = summary["total_students"]
         french_count = summary["by_nationality"].get("FRENCH", 0)

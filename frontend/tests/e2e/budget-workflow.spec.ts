@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { setupBudgetVersionMocks, resetMockData } from './helpers/api-mock.helper'
+import { setupVersionMocks, resetMockData } from './helpers/api-mock.helper'
 
 /**
  * E2E Test Suite: Budget Version Workflow
@@ -15,7 +15,7 @@ test.describe('Budget Version Workflow', () => {
     resetMockData()
 
     // Setup API mocking BEFORE any navigation
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
 
     // Login as manager to have full permissions
     await page.goto('/login')
@@ -29,7 +29,7 @@ test.describe('Budget Version Workflow', () => {
     const testName = `Budget 2025 E2E Test ${Date.now()}`
 
     // Step 1: Create new budget version
-    await page.goto('/configuration/versions')
+    await page.goto('/settings/versions')
 
     // Wait for page to load - the create button being visible means page is ready
     // Note: Page title is shown in ModuleHeader, not in h1/h2
@@ -77,7 +77,7 @@ test.describe('Budget Version Workflow', () => {
     // Skip directly to Step 4 to test the version workflow
 
     // Step 4: Submit for approval
-    await page.goto('/configuration/versions')
+    await page.goto('/settings/versions')
 
     // Wait for AG Grid to load with data
     await page.waitForTimeout(1000)
@@ -156,7 +156,7 @@ test.describe('Budget Version Workflow', () => {
     const testName = `Incomplete Budget ${Date.now()}`
 
     // Create version without any planning data
-    await page.goto('/configuration/versions')
+    await page.goto('/settings/versions')
     await page.click('[data-testid="create-version-button"]')
 
     // Wait for dialog to be visible
@@ -189,7 +189,7 @@ test.describe('Budget Version Workflow', () => {
   })
 
   test('version workflow state transitions', async ({ page }) => {
-    await page.goto('/configuration/versions')
+    await page.goto('/settings/versions')
 
     // Wait for AG Grid to load
     await page.waitForTimeout(500)
@@ -218,7 +218,7 @@ test.describe('Budget Version Workflow', () => {
   })
 
   test('copy existing version to create new one', async ({ page }) => {
-    await page.goto('/configuration/versions')
+    await page.goto('/settings/versions')
 
     // Wait for AG Grid to load
     await page.waitForTimeout(500)
@@ -248,7 +248,7 @@ test.describe('Budget Version Workflow', () => {
   })
 
   test('compare two budget versions', async ({ page }) => {
-    await page.goto('/configuration/versions')
+    await page.goto('/settings/versions')
 
     // Select compare mode if available
     const compareButton = page.locator('button:has-text("Compare"), [data-testid="compare-button"]')
@@ -273,7 +273,7 @@ test.describe('Budget Version Permissions', () => {
     // Reset mock data before each test
     resetMockData()
     // Setup API mocking BEFORE any navigation
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
   })
 
   test('regular user cannot approve budgets', async ({ page }) => {
@@ -283,7 +283,7 @@ test.describe('Budget Version Permissions', () => {
     await page.fill('[name="password"]', 'password123')
     await page.click('button[type="submit"]')
 
-    await page.goto('/configuration/versions')
+    await page.goto('/settings/versions')
 
     // Approve button should not exist or be disabled
     const approveButtons = page.locator(
@@ -304,7 +304,7 @@ test.describe('Budget Version Permissions', () => {
     await page.fill('[name="password"]', 'password123')
     await page.click('button[type="submit"]')
 
-    await page.goto('/configuration/versions')
+    await page.goto('/settings/versions')
 
     // Wait for AG Grid to load
     await page.waitForTimeout(500)

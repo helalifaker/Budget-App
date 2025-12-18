@@ -78,11 +78,11 @@ All foundation documents are:
 The **Module Technical Specification** (1,996 lines) in this directory is the comprehensive reference for all 18 modules.
 
 For detailed implementation-focused specifications, see:
-- **[docs/MODULES/](../docs/MODULES/)** - Individual module specifications (MODULE_01 through MODULE_18)
+- **[docs/modules/](../docs/modules/)** - Individual module specifications (MODULE_01 through MODULE_18)
 
 **Key Difference**:
 - **This directory**: High-level overview, business requirements, domain knowledge
-- **docs/MODULES/**: Detailed technical specs, formulas, validation rules, implementation guidance
+- **docs/modules/**: Detailed technical specs, formulas, validation rules, implementation guidance
 
 ---
 
@@ -105,7 +105,7 @@ Foundation documents should **rarely change**. Updates require:
 Foundation documents are referenced by:
 - [CLAUDE.md](../CLAUDE.md) - Primary development reference
 - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Master navigation
-- [docs/MODULES/](../docs/MODULES/) - Module specifications
+- [docs/modules/](../docs/modules/) - Module specifications
 - All 14 agents in [.claude/agents/](../.claude/agents/)
 
 **Important**: When moving or renaming foundation docs, update all cross-references.

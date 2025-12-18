@@ -1,9 +1,5 @@
 import { test, expect, Page } from '@playwright/test'
-import {
-  setupBudgetVersionMocks,
-  setupRevenueMocks,
-  resetMockData,
-} from './helpers/api-mock.helper'
+import { setupVersionMocks, setupRevenueMocks, resetMockData } from './helpers/api-mock.helper'
 
 /**
  * E2E Test Suite: Revenue Planning
@@ -46,7 +42,7 @@ async function waitForPageLoad(page: Page): Promise<void> {
 test.describe('Revenue Planning', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupRevenueMocks(page)
 
     // Login
@@ -60,7 +56,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('revenue planning page loads', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Verify page loaded - check for heading or layout
@@ -75,7 +71,7 @@ test.describe('Revenue Planning', () => {
 
   test('revenue page URL is correct', async ({ page }) => {
     // /planning/revenue redirects to /finance/revenue
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Should be at finance/revenue after redirect
@@ -83,7 +79,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('revenue page displays heading', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Should have a heading element
@@ -94,7 +90,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('revenue page has content structure', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Page should have content structure
@@ -105,7 +101,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('calculate revenue button exists', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Check for calculate button or any action button
@@ -119,7 +115,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('export button exists on revenue page', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Check for export button
@@ -133,7 +129,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('revenue page shows content or empty state', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Should show revenue content, cards, or empty state message
@@ -156,7 +152,7 @@ test.describe('Revenue Planning', () => {
       }
     })
 
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Page body should be visible
@@ -168,7 +164,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('revenue page has navigation elements', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Should have navigation elements
@@ -179,7 +175,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('fee configuration page loads', async ({ page }) => {
-    await page.goto('/configuration/fees')
+    await page.goto('/revenue/settings')
     await waitForPageLoad(page)
 
     // Verify page loaded
@@ -194,7 +190,7 @@ test.describe('Revenue Planning', () => {
 
   test('fee configuration page URL is correct', async ({ page }) => {
     // /configuration/fees redirects to /finance/settings
-    await page.goto('/configuration/fees')
+    await page.goto('/revenue/settings')
     await waitForPageLoad(page)
 
     // Should be at finance/settings after redirect
@@ -202,7 +198,7 @@ test.describe('Revenue Planning', () => {
   })
 
   test('fee configuration page displays heading', async ({ page }) => {
-    await page.goto('/configuration/fees')
+    await page.goto('/revenue/settings')
     await waitForPageLoad(page)
 
     // Should have a heading element
@@ -216,7 +212,7 @@ test.describe('Revenue Planning', () => {
 test.describe('Revenue Validation', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupRevenueMocks(page)
 
     await page.goto('/login')
@@ -229,7 +225,7 @@ test.describe('Revenue Validation', () => {
   })
 
   test('revenue page validates correctly', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Page should load without errors
@@ -241,7 +237,7 @@ test.describe('Revenue Validation', () => {
   })
 
   test('fee configuration validates correctly', async ({ page }) => {
-    await page.goto('/configuration/fees')
+    await page.goto('/revenue/settings')
     await waitForPageLoad(page)
 
     // Page should load without errors
@@ -253,7 +249,7 @@ test.describe('Revenue Validation', () => {
   })
 
   test('revenue notes section exists if version selected', async ({ page }) => {
-    await page.goto('/planning/revenue')
+    await page.goto('/revenue/tuition')
     await waitForPageLoad(page)
 
     // Check for revenue notes or any explanatory content

@@ -1,5 +1,17 @@
-// Budget Versions
+// Versions (with backward compatibility aliases)
 export {
+  useVersions,
+  useVersionById,
+  useCreateVersion,
+  useUpdateVersion,
+  useDeleteVersion,
+  useSubmitVersion,
+  useApproveVersion,
+  useCloneVersion,
+  useRejectVersion,
+  useSupersedeVersion,
+  versionKeys,
+  // Backward compatibility aliases
   useBudgetVersions,
   useBudgetVersion,
   useCreateBudgetVersion,
@@ -8,8 +20,10 @@ export {
   useSubmitBudgetVersion,
   useApproveBudgetVersion,
   useCloneBudgetVersion,
+  useRejectBudgetVersion,
+  useSupersedeBudgetVersion,
   budgetVersionKeys,
-} from './useBudgetVersions'
+} from './useVersions'
 
 // Enrollment
 export {

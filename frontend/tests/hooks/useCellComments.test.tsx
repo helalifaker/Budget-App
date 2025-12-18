@@ -380,7 +380,7 @@ describe('useCellComments', () => {
 
   describe('useUnresolvedComments', () => {
     it('should fetch unresolved comments for a budget version', async () => {
-      const budgetVersionId = 'budget-version-123'
+      const versionId = 'budget-version-123'
       const unresolvedComments: CellComment[] = [
         {
           id: 'comment-1',
@@ -402,7 +402,7 @@ describe('useCellComments', () => {
 
       vi.mocked(apiRequest).mockResolvedValue(unresolvedComments)
 
-      const { result } = renderHook(() => useUnresolvedComments(budgetVersionId), { wrapper })
+      const { result } = renderHook(() => useUnresolvedComments(versionId), { wrapper })
 
       // Wait for data to load
       await waitFor(() => {
@@ -416,7 +416,7 @@ describe('useCellComments', () => {
       // Verify API was called
       expect(apiRequest).toHaveBeenCalledWith({
         method: 'GET',
-        url: `/writeback/versions/${budgetVersionId}/comments/unresolved`,
+        url: `/writeback/versions/${versionId}/comments/unresolved`,
       })
     })
 
@@ -424,10 +424,10 @@ describe('useCellComments', () => {
       // Skip: Testing refetchInterval with fake timers is unreliable in Vitest 4.x + React Query
       // The refetchInterval feature is tested by React Query itself
       vi.useFakeTimers()
-      const budgetVersionId = 'budget-version-123'
+      const versionId = 'budget-version-123'
       vi.mocked(apiRequest).mockResolvedValue([])
 
-      renderHook(() => useUnresolvedComments(budgetVersionId), { wrapper })
+      renderHook(() => useUnresolvedComments(versionId), { wrapper })
 
       // Wait for initial load
       await waitFor(() => {

@@ -31,10 +31,12 @@ describe('API Schema Validation', () => {
         fiscal_year: 2025,
         academic_year: '2024-2025',
         status: 'working',
+        scenario_type: 'BUDGET',
         submitted_at: null,
         approved_at: null,
         is_baseline: false,
         parent_version_id: null,
+        organization_id: '123e4567-e89b-12d3-a456-426614174099',
         created_at: '2025-01-01T00:00:00Z',
         updated_at: '2025-01-01T00:00:00Z',
         notes: null,
@@ -49,10 +51,12 @@ describe('API Schema Validation', () => {
         fiscal_year: 2025,
         academic_year: '2024-2025',
         status: 'submitted',
+        scenario_type: 'BUDGET',
         submitted_at: '2025-02-01T10:00:00Z',
         approved_at: null,
         is_baseline: false,
         parent_version_id: null,
+        organization_id: '123e4567-e89b-12d3-a456-426614174099',
         created_at: '2025-01-01T00:00:00Z',
         updated_at: '2025-02-01T10:00:00Z',
         notes: 'Submitted for review',
@@ -67,10 +71,12 @@ describe('API Schema Validation', () => {
         fiscal_year: 2025,
         academic_year: '2024-2025',
         status: 'approved',
+        scenario_type: 'BUDGET',
         submitted_at: '2025-02-01T10:00:00Z',
         approved_at: '2025-02-15T14:30:00Z',
         is_baseline: true,
         parent_version_id: null,
+        organization_id: '123e4567-e89b-12d3-a456-426614174099',
         created_at: '2025-01-01T00:00:00Z',
         updated_at: '2025-02-15T14:30:00Z',
         notes: 'Approved by Finance Director',
@@ -85,10 +91,12 @@ describe('API Schema Validation', () => {
         fiscal_year: 2025,
         academic_year: '2024-2025',
         status: 'forecast',
+        scenario_type: 'FORECAST',
         submitted_at: null,
         approved_at: null,
         is_baseline: false,
         parent_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        organization_id: '123e4567-e89b-12d3-a456-426614174099',
         created_at: '2025-04-01T00:00:00Z',
         updated_at: '2025-04-01T00:00:00Z',
         notes: 'Q2 Forecast revision',
@@ -103,10 +111,12 @@ describe('API Schema Validation', () => {
         fiscal_year: 2024,
         academic_year: '2023-2024',
         status: 'superseded',
+        scenario_type: 'BUDGET',
         submitted_at: '2024-01-15T10:00:00Z',
         approved_at: '2024-02-01T14:30:00Z',
         is_baseline: false,
         parent_version_id: null,
+        organization_id: '123e4567-e89b-12d3-a456-426614174099',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-12-01T00:00:00Z',
         notes: 'Superseded by Budget 2025',
@@ -310,7 +320,7 @@ describe('API Schema Validation', () => {
     it('should validate class structure with all required fields', () => {
       const mockClassStructure = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         level_id: '123e4567-e89b-12d3-a456-426614174002',
         total_students: 75,
         number_of_classes: 3,
@@ -327,7 +337,7 @@ describe('API Schema Validation', () => {
     it('should validate class structure with ATSEM requirements', () => {
       const mockClassStructure = {
         id: '123e4567-e89b-12d3-a456-426614174003',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         level_id: '123e4567-e89b-12d3-a456-426614174004',
         total_students: 60,
         number_of_classes: 3,
@@ -344,7 +354,7 @@ describe('API Schema Validation', () => {
     it('should reject class structure missing new required fields (schema drift detection)', () => {
       const oldSchemaClassStructure = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         level_id: '123e4567-e89b-12d3-a456-426614174002',
         number_of_classes: 3,
         avg_class_size: 25,
@@ -360,7 +370,7 @@ describe('API Schema Validation', () => {
     it('should validate enrollment data', () => {
       const mockEnrollment = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         level_id: '123e4567-e89b-12d3-a456-426614174002',
         nationality_type_id: '123e4567-e89b-12d3-a456-426614174003',
         student_count: 45,
@@ -375,7 +385,7 @@ describe('API Schema Validation', () => {
     it('should validate teacher cost parameters', () => {
       const mockTeacherCost = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         category_id: '123e4567-e89b-12d3-a456-426614174002',
         cycle_id: '123e4567-e89b-12d3-a456-426614174003',
         prrd_contribution_eur: 41863.0,
@@ -394,7 +404,7 @@ describe('API Schema Validation', () => {
     it('should validate teacher cost with null cycle_id (all cycles)', () => {
       const mockTeacherCost = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         category_id: '123e4567-e89b-12d3-a456-426614174002',
         cycle_id: null,
         prrd_contribution_eur: 0,
@@ -415,7 +425,7 @@ describe('API Schema Validation', () => {
     it('should validate timetable constraints', () => {
       const mockConstraint = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         level_id: '123e4567-e89b-12d3-a456-426614174002',
         total_hours_per_week: 24.0,
         max_hours_per_day: 6.0,
@@ -432,7 +442,7 @@ describe('API Schema Validation', () => {
     it('should validate secondary school timetable constraints', () => {
       const mockConstraint = {
         id: '123e4567-e89b-12d3-a456-426614174003',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         level_id: '123e4567-e89b-12d3-a456-426614174004',
         total_hours_per_week: 30.0,
         max_hours_per_day: 7.0,
@@ -451,7 +461,7 @@ describe('API Schema Validation', () => {
     it('should validate subject hours', () => {
       const mockSubjectHours = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         subject_id: '123e4567-e89b-12d3-a456-426614174002',
         level_id: '123e4567-e89b-12d3-a456-426614174003',
         hours_per_week: 4.5,
@@ -466,7 +476,7 @@ describe('API Schema Validation', () => {
     it('should validate subject hours with split class (dédoublement)', () => {
       const mockSubjectHours = {
         id: '123e4567-e89b-12d3-a456-426614174004',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         subject_id: '123e4567-e89b-12d3-a456-426614174005',
         level_id: '123e4567-e89b-12d3-a456-426614174003',
         hours_per_week: 2.0,
@@ -491,10 +501,12 @@ describe('API Schema Validation', () => {
           fiscal_year: 2025,
           academic_year: '2024-2025',
           status,
+          scenario_type: 'BUDGET',
           submitted_at: null,
           approved_at: null,
           is_baseline: false,
           parent_version_id: null,
+          organization_id: '123e4567-e89b-12d3-a456-426614174099',
           created_at: '2025-01-01T00:00:00Z',
           updated_at: '2025-01-01T00:00:00Z',
           notes: null,
@@ -543,7 +555,7 @@ describe('API Schema Validation', () => {
     it('ClassStructureSchema should require calculation_method field', () => {
       const missingCalculationMethod = {
         id: '123e4567-e89b-12d3-a456-426614174000',
-        budget_version_id: '123e4567-e89b-12d3-a456-426614174001',
+        version_id: '123e4567-e89b-12d3-a456-426614174001',
         level_id: '123e4567-e89b-12d3-a456-426614174002',
         total_students: 75,
         number_of_classes: 3,

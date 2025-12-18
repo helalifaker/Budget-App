@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Edit2, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { EntryPointRate, ParameterOverrideUpdate } from '@/types/enrollmentSettings'
+import type { EntryPointRate, ParameterOverrideUpdate } from '@/types/enrollment-settings'
 
 interface EntryPointRatesTableProps {
   rates: EntryPointRate[]
@@ -63,11 +63,14 @@ export const EntryPointRatesTable = memo(function EntryPointRatesTable({
 
   const startEditing = useCallback((rate: EntryPointRate) => {
     setEditingGrade(rate.grade_code)
+    // Get rate value with fallback chain, ensuring we have a valid number
+    const rateValue = rate.manual_rate ?? rate.derived_rate ?? rate.effective_rate ?? 0
+    const retentionValue =
+      rate.manual_retention ?? rate.derived_retention ?? rate.effective_retention ?? 0
     setEditValues({
-      rate: (rate.manual_rate ?? rate.derived_rate ?? rate.effective_rate * 100).toFixed(1),
-      retention: (
-        (rate.manual_retention ?? rate.derived_retention ?? rate.effective_retention) * 100
-      ).toFixed(1),
+      // Multiply by 100 AFTER the nullish coalescing to convert decimal to percentage
+      rate: (Number(rateValue) * 100).toFixed(1),
+      retention: (Number(retentionValue) * 100).toFixed(1),
     })
   }, [])
 

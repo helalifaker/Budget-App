@@ -60,7 +60,7 @@ describe('useHistorical Hooks', () => {
   })
 
   const mockEnrollmentResponse: EnrollmentWithHistoryResponse = {
-    budget_version_id: testVersionId,
+    version_id: testVersionId,
     fiscal_year: 2024,
     current_fiscal_year: 2024,
     rows: [
@@ -76,7 +76,7 @@ describe('useHistorical Hooks', () => {
   }
 
   const mockClassesResponse: ClassStructureWithHistoryResponse = {
-    budget_version_id: testVersionId,
+    version_id: testVersionId,
     fiscal_year: 2024,
     current_fiscal_year: 2024,
     rows: [
@@ -93,7 +93,7 @@ describe('useHistorical Hooks', () => {
   }
 
   const mockDHGResponse: DHGWithHistoryResponse = {
-    budget_version_id: testVersionId,
+    version_id: testVersionId,
     fiscal_year: 2024,
     current_fiscal_year: 2024,
     rows: [
@@ -112,7 +112,7 @@ describe('useHistorical Hooks', () => {
   }
 
   const mockRevenueResponse: RevenueWithHistoryResponse = {
-    budget_version_id: testVersionId,
+    version_id: testVersionId,
     fiscal_year: 2024,
     current_fiscal_year: 2024,
     rows: [
@@ -128,7 +128,7 @@ describe('useHistorical Hooks', () => {
   }
 
   const mockCostsResponse: CostsWithHistoryResponse = {
-    budget_version_id: testVersionId,
+    version_id: testVersionId,
     fiscal_year: 2024,
     current_fiscal_year: 2024,
     rows: [
@@ -146,7 +146,7 @@ describe('useHistorical Hooks', () => {
   }
 
   const mockCapExResponse: CapExWithHistoryResponse = {
-    budget_version_id: testVersionId,
+    version_id: testVersionId,
     fiscal_year: 2024,
     current_fiscal_year: 2024,
     rows: [

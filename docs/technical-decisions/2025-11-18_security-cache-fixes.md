@@ -92,7 +92,7 @@ Cache invalidation patterns were searching in the wrong order, causing **zero ca
 **Example:**
 - Stored key: `dhg:abc-123:level-6eme`
 - Search pattern: `*:abc-123:*dhg*`
-- Match result: ❌ **FALSE** (entity comes BEFORE budget_version_id in key)
+- Match result: ❌ **FALSE** (entity comes BEFORE version_id in key)
 
 **Impact:**
 - ❌ Enrollment changes didn't invalidate class structure cache
@@ -113,11 +113,11 @@ Cache invalidation patterns were searching in the wrong order, causing **zero ca
 
 **Old pattern (BROKEN):**
 ```python
-pattern = f"*:{budget_version_id}:*{entity}*"
+pattern = f"*:{version_id}:*{entity}*"
 # Example: "*:abc-123:*dhg_calculations*"
-# This searches for: (anything):(budget_version_id):(anything)(entity)(anything)
+# This searches for: (anything):(version_id):(anything)(entity)(anything)
 # But actual key is: dhg:abc-123:level-6eme
-# ❌ NO MATCH because entity ("dhg") comes BEFORE budget_version_id
+# ❌ NO MATCH because entity ("dhg") comes BEFORE version_id
 ```
 
 ### Solution
@@ -147,9 +147,9 @@ ENTITY_TO_CACHE_PREFIX: dict[str, str] = {
 ```python
 # NEW (FIXED)
 cache_prefix = ENTITY_TO_CACHE_PREFIX.get(entity, entity)
-pattern = f"{cache_prefix}:{budget_version_id}*"
+pattern = f"{cache_prefix}:{version_id}*"
 # Example: "dhg:abc-123*"
-# This searches for: (cache_prefix):(budget_version_id)(anything)
+# This searches for: (cache_prefix):(version_id)(anything)
 # Matches: dhg:abc-123:level-6eme ✅
 ```
 
@@ -314,7 +314,7 @@ If `deleted_keys` is consistently 0 after data changes, pattern matching may hav
 
 ### Code Review Checklist
 - [ ] Path patterns with `{param}` use regex matching (not startsWith)
-- [ ] Cache keys follow `{prefix}:{budget_version_id}:*` format
+- [ ] Cache keys follow `{prefix}:{version_id}:*` format
 - [ ] Entity names in dependency graph have cache prefix mappings
 - [ ] Tests verify actual behavior, not just mocks
 - [ ] Integration tests use real request/response cycles

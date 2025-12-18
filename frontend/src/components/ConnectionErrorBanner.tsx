@@ -14,7 +14,7 @@
  */
 
 import { useState } from 'react'
-import { useBackendConnection } from '@/contexts/BackendConnectionProvider'
+import { useBackendConnection } from '@/contexts/useBackendConnection'
 import { cn } from '@/lib/utils'
 import { AlertTriangle, X, Terminal, Copy, Check, RefreshCw } from 'lucide-react'
 

@@ -14,11 +14,11 @@ export async function navigateTo(page: Page, path: string): Promise<void> {
 }
 
 /**
- * Select budget version from selector
+ * Select version from selector
  */
-export async function selectBudgetVersion(page: Page, versionName: string | RegExp): Promise<void> {
+export async function selectVersion(page: Page, versionName: string | RegExp): Promise<void> {
   const versionSelector = page.locator(
-    '[data-testid="version-selector"], select[name="version"], select[name="budget_version_id"]'
+    '[data-testid="version-selector"], select[name="version"], select[name="version_id"]'
   )
 
   if (await versionSelector.isVisible()) {

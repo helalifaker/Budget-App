@@ -1,24 +1,53 @@
 /**
- * Grid Components - Excel-like Data Tables
+ * Grid Components - TanStack Table
  *
- * This module provides premium AG Grid wrappers with Excel-like functionality:
- * - Copy/paste support compatible with Excel
- * - Keyboard navigation (Tab, Enter, Arrow keys)
- * - Selection statistics (Sum, Average, Count)
- * - Undo/redo support
- * - Accessibility features
+ * This module provides premium TanStack Table components with Excel-like functionality:
+ * - TanStackDataTable: Main data grid (auto-virtualizes for large datasets)
+ * - EditableTable: Inline editing support
+ * - ExcelEditableTable: Full Excel-like keyboard navigation and clipboard support
+ *
+ * All components use the EFIR design system for consistent styling.
  */
 
-// Main Excel-like DataTable
-export { ExcelDataTable, type ExcelDataTableProps } from './ExcelDataTable'
+// Re-export all TanStack components from the tanstack subfolder
+export {
+  // Main tables
+  TanStackDataTable,
+  BaseTable,
+  VirtualizedTable,
+  EditableTable,
+  ExcelEditableTableLazy,
 
-// Status bar showing selection stats
-export { ExcelStatusBar } from './ExcelStatusBar'
+  // Types
+  type TanStackDataTableProps,
+  type BaseTableProps,
+  type VirtualizedTableProps,
+  type EditableTableProps,
+  type ExcelEditableTableProps,
+  type CellRendererProps,
+  type EditableTableApi,
+  type CellValueChangedEvent,
+  type EditableColumnMeta,
 
-// Cell renderers
-export { AccountCodeRenderer } from './AccountCodeRenderer'
-export { CurrencyRenderer } from './CurrencyRenderer'
-export { StatusBadgeRenderer } from './StatusBadgeRenderer'
+  // Hooks
+  useTableState,
+  type TableState,
+  type TableStateActions,
+  type UseTableStateOptions,
+  type UseTableStateReturn,
 
-// Accessibility wrapper
-export { AccessibleGridWrapper, type AccessibleGridWrapperRef } from './AccessibleGridWrapper'
+  // Editing components
+  EditableCell,
+  type EditableCellProps,
+
+  // Cell editors
+  TextEditor,
+  NumberEditor,
+  CheckboxEditor,
+  LargeTextEditor,
+  type TextEditorProps,
+  type NumberEditorProps,
+  type CheckboxEditorProps,
+  type LargeTextEditorProps,
+  type EditorType,
+} from './tanstack'

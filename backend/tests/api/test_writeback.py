@@ -74,7 +74,7 @@ def client(mock_user, mock_db_session):
     from app.api.v1.writeback import get_writeback_service
     from app.database import get_db
     from app.dependencies.auth import get_current_user, require_planner
-    from app.services.writeback_service import WritebackService
+    from app.services.admin.writeback_service import WritebackService
 
     async def mock_get_current_user():
         return mock_user
@@ -103,7 +103,7 @@ def sample_cell_id():
 
 
 @pytest.fixture
-def sample_budget_version_id():
+def sample_version_id():
     """Generate a sample budget version UUID."""
     return uuid4()
 
@@ -124,7 +124,7 @@ class TestCellUpdateRequestValidation:
 
     def test_valid_numeric_update(self):
         """Test valid numeric cell update."""
-        from app.schemas.writeback import CellUpdateRequest
+        from app.schemas.admin import CellUpdateRequest
 
         request = CellUpdateRequest(
             value_numeric=Decimal("1234.56"),
@@ -135,7 +135,7 @@ class TestCellUpdateRequestValidation:
 
     def test_valid_text_update(self):
         """Test valid text cell update."""
-        from app.schemas.writeback import CellUpdateRequest
+        from app.schemas.admin import CellUpdateRequest
 
         request = CellUpdateRequest(
             value_text="Budget note",
@@ -146,7 +146,7 @@ class TestCellUpdateRequestValidation:
 
     def test_valid_both_values(self):
         """Test update with both numeric and text values."""
-        from app.schemas.writeback import CellUpdateRequest
+        from app.schemas.admin import CellUpdateRequest
 
         request = CellUpdateRequest(
             value_numeric=Decimal("100.00"),
@@ -158,7 +158,7 @@ class TestCellUpdateRequestValidation:
 
     def test_invalid_no_values(self):
         """Test that update fails without any values."""
-        from app.schemas.writeback import CellUpdateRequest
+        from app.schemas.admin import CellUpdateRequest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
@@ -170,7 +170,7 @@ class TestCellUpdateRequestValidation:
 
     def test_invalid_version_zero(self):
         """Test that version must be >= 1."""
-        from app.schemas.writeback import CellUpdateRequest
+        from app.schemas.admin import CellUpdateRequest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
@@ -178,7 +178,7 @@ class TestCellUpdateRequestValidation:
 
     def test_text_max_length(self):
         """Test text value max length validation."""
-        from app.schemas.writeback import CellUpdateRequest
+        from app.schemas.admin import CellUpdateRequest
         from pydantic import ValidationError
 
         # Should fail with text > 500 chars
@@ -194,7 +194,7 @@ class TestBatchUpdateRequestValidation:
 
     def test_valid_batch_update(self):
         """Test valid batch update request."""
-        from app.schemas.writeback import BatchUpdateRequest, CellUpdate
+        from app.schemas.admin import BatchUpdateRequest, CellUpdate
 
         cell_updates = [
             CellUpdate(
@@ -215,7 +215,7 @@ class TestBatchUpdateRequestValidation:
 
     def test_batch_with_partial_success(self):
         """Test batch update with partial success enabled."""
-        from app.schemas.writeback import BatchUpdateRequest, CellUpdate
+        from app.schemas.admin import BatchUpdateRequest, CellUpdate
 
         request = BatchUpdateRequest(
             updates=[
@@ -231,7 +231,7 @@ class TestBatchUpdateRequestValidation:
 
     def test_empty_batch_fails(self):
         """Test that empty batch update fails."""
-        from app.schemas.writeback import BatchUpdateRequest
+        from app.schemas.admin import BatchUpdateRequest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
@@ -239,7 +239,7 @@ class TestBatchUpdateRequestValidation:
 
     def test_batch_max_size(self):
         """Test batch update max size (1000 cells)."""
-        from app.schemas.writeback import BatchUpdateRequest, CellUpdate
+        from app.schemas.admin import BatchUpdateRequest, CellUpdate
         from pydantic import ValidationError
 
         # Should fail with > 1000 cells
@@ -261,7 +261,7 @@ class TestCommentRequestValidation:
 
     def test_valid_comment(self):
         """Test valid comment request."""
-        from app.schemas.writeback import CommentRequest
+        from app.schemas.admin import CommentRequest
 
         request = CommentRequest(
             comment_text="Verify this with HR department",
@@ -270,7 +270,7 @@ class TestCommentRequestValidation:
 
     def test_empty_comment_fails(self):
         """Test that empty comment fails."""
-        from app.schemas.writeback import CommentRequest
+        from app.schemas.admin import CommentRequest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
@@ -278,7 +278,7 @@ class TestCommentRequestValidation:
 
     def test_comment_max_length(self):
         """Test comment max length (2000 chars)."""
-        from app.schemas.writeback import CommentRequest
+        from app.schemas.admin import CommentRequest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
@@ -290,14 +290,14 @@ class TestLockRequestValidation:
 
     def test_valid_lock_request(self):
         """Test valid lock request."""
-        from app.schemas.writeback import LockRequest
+        from app.schemas.admin import LockRequest
 
         request = LockRequest(lock_reason="Budget approved")
         assert request.lock_reason == "Budget approved"
 
     def test_empty_lock_reason_fails(self):
         """Test that empty lock reason fails."""
-        from app.schemas.writeback import LockRequest
+        from app.schemas.admin import LockRequest
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError):
@@ -441,12 +441,12 @@ class TestBatchUpdateEndpoint:
 
 
 class TestChangeHistoryEndpoint:
-    """Test GET /api/v1/writeback/cells/changes/{budget_version_id} endpoint."""
+    """Test GET /api/v1/writeback/cells/changes/{version_id} endpoint."""
 
-    def test_change_history_structure(self, client, sample_budget_version_id):
+    def test_change_history_structure(self, client, sample_version_id):
         """Test change history endpoint accepts filters."""
         response = client.get(
-            f"/api/v1/writeback/cells/changes/{sample_budget_version_id}",
+            f"/api/v1/writeback/cells/changes/{sample_version_id}",
             params={
                 "module_code": "enrollment",
                 "limit": 50,
@@ -457,11 +457,11 @@ class TestChangeHistoryEndpoint:
         # Either success or internal error (due to mock limitations)
         assert response.status_code in [200, 404, 422, 500]
 
-    def test_change_history_pagination(self, client, sample_budget_version_id):
+    def test_change_history_pagination(self, client, sample_version_id):
         """Test change history pagination limits."""
         # Test max limit
         response = client.get(
-            f"/api/v1/writeback/cells/changes/{sample_budget_version_id}",
+            f"/api/v1/writeback/cells/changes/{sample_version_id}",
             params={"limit": 1001},  # Exceeds max of 1000
         )
 
@@ -642,11 +642,11 @@ class TestResponseSchemas:
 
     def test_cell_update_response(self):
         """Test CellUpdateResponse schema."""
-        from app.schemas.writeback import CellUpdateResponse
+        from app.schemas.admin import CellUpdateResponse
 
         response = CellUpdateResponse(
             id=uuid4(),
-            budget_version_id=uuid4(),
+            version_id=uuid4(),
             module_code="enrollment",
             entity_id=uuid4(),
             field_name="student_count",
@@ -666,7 +666,7 @@ class TestResponseSchemas:
 
     def test_batch_update_response(self):
         """Test BatchUpdateResponse schema."""
-        from app.schemas.writeback import BatchUpdateResponse, ConflictDetail
+        from app.schemas.admin import BatchUpdateResponse, ConflictDetail
 
         response = BatchUpdateResponse(
             session_id=uuid4(),
@@ -691,7 +691,7 @@ class TestResponseSchemas:
 
     def test_undo_response(self):
         """Test UndoResponse schema."""
-        from app.schemas.writeback import UndoResponse
+        from app.schemas.admin import UndoResponse
 
         response = UndoResponse(
             reverted_count=3,
@@ -706,7 +706,7 @@ class TestResponseSchemas:
 
     def test_comment_response(self):
         """Test CommentResponse schema."""
-        from app.schemas.writeback import CommentResponse
+        from app.schemas.admin import CommentResponse
 
         response = CommentResponse(
             id=uuid4(),
@@ -724,7 +724,7 @@ class TestResponseSchemas:
 
     def test_cell_lock_response(self):
         """Test CellLockResponse schema."""
-        from app.schemas.writeback import CellLockResponse
+        from app.schemas.admin import CellLockResponse
 
         response = CellLockResponse(
             id=uuid4(),
@@ -748,7 +748,7 @@ class TestEdgeCases:
 
     def test_decimal_precision(self):
         """Test decimal precision is preserved."""
-        from app.schemas.writeback import CellUpdateRequest
+        from app.schemas.admin import CellUpdateRequest
 
         # Test high precision decimal
         request = CellUpdateRequest(
@@ -760,7 +760,7 @@ class TestEdgeCases:
 
     def test_unicode_text(self):
         """Test unicode text handling."""
-        from app.schemas.writeback import CommentRequest
+        from app.schemas.admin import CommentRequest
 
         # Test French characters
         request = CommentRequest(
@@ -771,7 +771,7 @@ class TestEdgeCases:
 
     def test_large_batch_update(self):
         """Test batch update with maximum allowed cells."""
-        from app.schemas.writeback import BatchUpdateRequest, CellUpdate
+        from app.schemas.admin import BatchUpdateRequest, CellUpdate
 
         # Create 1000 cell updates (max allowed)
         updates = [
@@ -788,7 +788,7 @@ class TestEdgeCases:
 
     def test_session_id_generation(self):
         """Test session_id is auto-generated if not provided."""
-        from app.schemas.writeback import BatchUpdateRequest, CellUpdate
+        from app.schemas.admin import BatchUpdateRequest, CellUpdate
 
         request = BatchUpdateRequest(
             updates=[

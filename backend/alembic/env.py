@@ -6,15 +6,15 @@ import asyncio
 import os
 from logging.config import fileConfig
 
+# Load environment variables
+# Prefer .env.local over .env for local development
+from pathlib import Path
+
 from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-
-# Load environment variables
-# Prefer .env.local over .env for local development
-from pathlib import Path
 
 env_local = Path(__file__).parent.parent / ".env.local"
 env_default = Path(__file__).parent.parent / ".env"

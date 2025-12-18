@@ -31,10 +31,10 @@ from fastapi.responses import StreamingResponse  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from app.database import get_db  # noqa: E402
-from app.services.consolidation_service import ConsolidationService  # noqa: E402
-from app.services.kpi_service import KPIService  # noqa: E402
+from app.services.consolidation.consolidation_service import ConsolidationService  # noqa: E402
+from app.services.insights.kpi_service import KPIService  # noqa: E402
 
-router = APIRouter(prefix="/api/v1/export", tags=["export"])
+router = APIRouter(prefix="/export", tags=["export"])
 
 
 # ==============================================================================
@@ -113,7 +113,7 @@ async def export_budget_excel(
     # Header
     ws["A1"] = "EFIR Budget Consolidation Report"
     ws["A1"].font = Font(bold=True, size=16)
-    ws["A2"] = f"Budget Version: {consolidation.budget_version.name if consolidation.budget_version else version_id}"
+    ws["A2"] = f"Budget Version: {consolidation.version.name if consolidation.version else version_id}"
     ws["A3"] = f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
     # Summary data
@@ -346,7 +346,7 @@ async def export_budget_pdf(
     elements.append(Spacer(1, 12))
 
     # Version info
-    version_name = consolidation.budget_version.name if consolidation.budget_version else str(version_id)
+    version_name = consolidation.version.name if consolidation.version else str(version_id)
     elements.append(Paragraph(f"Budget Version: {version_name}", styles["Normal"]))
     elements.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles["Normal"]))
     elements.append(Spacer(1, 24))
@@ -382,7 +382,7 @@ async def export_budget_pdf(
 
     # Status section
     elements.append(Paragraph("Budget Status", heading_style))
-    status = consolidation.budget_version.status.value if consolidation.budget_version else "UNKNOWN"
+    status = consolidation.version.status.value if consolidation.version else "UNKNOWN"
     elements.append(Paragraph(f"Current Status: {status}", styles["Normal"]))
 
     # Build PDF

@@ -104,8 +104,27 @@ apiClient.interceptors.request.use(
   (config) => {
     if (cachedSession?.access_token) {
       config.headers.Authorization = `Bearer ${cachedSession.access_token}`
-      // Debug: Log token attachment only once per session (only in dev)
-      if (import.meta.env.DEV && !hasLoggedAuthSuccess) {
+
+      // E2E mode: Send role and user info in custom headers
+      // Backend reads these headers to set correct role (instead of hardcoding "planner")
+      if (isE2ETestMode && cachedSession.user) {
+        const userRole =
+          cachedSession.user.app_metadata?.role ||
+          cachedSession.user.user_metadata?.role ||
+          'planner'
+        config.headers['X-E2E-User-Role'] = userRole
+        config.headers['X-E2E-User-Email'] = cachedSession.user.email || ''
+        config.headers['X-E2E-User-Id'] = cachedSession.user.id || ''
+
+        // Debug: Log E2E headers only once per session (only in dev)
+        if (import.meta.env.DEV && !hasLoggedAuthSuccess) {
+          console.log(
+            `[api-client] 🧪 E2E headers attached: role=${userRole}, email=${cachedSession.user.email}`
+          )
+          hasLoggedAuthSuccess = true
+        }
+      } else if (import.meta.env.DEV && !hasLoggedAuthSuccess) {
+        // Normal mode: Just log auth token attachment
         console.log(
           `[api-client] ✅ Adding auth token to request for user: ${cachedSession.user.email}`
         )

@@ -39,16 +39,16 @@ class TestCacheKeyPatterns:
 
     def test_cache_pattern_matches_stored_keys(self):
         """Test that invalidation patterns match actual stored keys."""
-        budget_version_id = "abc-123"
+        version_id = "abc-123"
 
         # Test cases: (entity, cache_prefix, example_key)
         test_cases = [
-            ("dhg_calculations", "dhg", f"dhg:{budget_version_id}:level-6eme"),
-            ("budget_consolidation", "consolidation", f"consolidation:{budget_version_id}"),
-            ("revenue", "revenue", f"revenue:{budget_version_id}"),
-            ("class_structure", "class_structure", f"class_structure:{budget_version_id}:level-5eme"),
-            ("operational_costs", "costs", f"costs:{budget_version_id}:personnel"),
-            ("capex", "capex", f"capex:{budget_version_id}"),
+            ("dhg_calculations", "dhg", f"dhg:{version_id}:level-6eme"),
+            ("budget_consolidation", "consolidation", f"consolidation:{version_id}"),
+            ("revenue", "revenue", f"revenue:{version_id}"),
+            ("class_structure", "class_structure", f"class_structure:{version_id}:level-5eme"),
+            ("operational_costs", "costs", f"costs:{version_id}:personnel"),
+            ("capex", "capex", f"capex:{version_id}"),
         ]
 
         for entity, expected_prefix, example_key in test_cases:
@@ -57,7 +57,7 @@ class TestCacheKeyPatterns:
             assert cache_prefix == expected_prefix, f"Prefix mismatch for {entity}"
 
             # Verify pattern would match the example key
-            pattern = f"{cache_prefix}:{budget_version_id}*"
+            pattern = f"{cache_prefix}:{version_id}*"
             assert example_key.startswith(pattern.rstrip("*")), (
                 f"Pattern '{pattern}' does not match key '{example_key}'"
             )
@@ -76,23 +76,23 @@ class TestCacheKeyPatterns:
 
     def test_no_old_buggy_pattern(self):
         """Ensure we're not using the old buggy pattern format."""
-        budget_version_id = "test-123"
+        version_id = "test-123"
         entity = "dhg_calculations"
 
-        # Old buggy pattern: *:{budget_version_id}:*{entity}*
+        # Old buggy pattern: *:{version_id}:*{entity}*
         # This would try to match: *:test-123:*dhg_calculations*
         # But actual key is: dhg:test-123:level-6eme
 
         # New correct pattern
         cache_prefix = ENTITY_TO_CACHE_PREFIX[entity]
-        new_pattern = f"{cache_prefix}:{budget_version_id}*"
+        new_pattern = f"{cache_prefix}:{version_id}*"
 
         # Verify new pattern matches actual key
-        actual_key = f"dhg:{budget_version_id}:level-6eme"
+        actual_key = f"dhg:{version_id}:level-6eme"
         assert actual_key.startswith(new_pattern.rstrip("*"))
 
         # Verify old pattern would NOT match (showing the bug)
-        old_pattern = f"*:{budget_version_id}:*{entity}*"
+        old_pattern = f"*:{version_id}:*{entity}*"
         # Redis scan patterns with * at start are inefficient and this was the bug
         assert not actual_key.startswith(old_pattern.replace("*", ""))
 
@@ -105,7 +105,7 @@ class TestCacheInvalidation:
     @patch("app.core.cache.get_redis_client")
     async def test_invalidate_single_entity(self, mock_get_redis_client):
         """Test invalidation of a single entity."""
-        budget_version_id = "test-123"
+        version_id = "test-123"
         entity = "revenue"
 
         # Mock Redis client with proper async iterator
@@ -114,8 +114,8 @@ class TestCacheInvalidation:
         async def mock_scan_iter(match):
             """Mock async generator for scan_iter."""
             keys = [
-                f"revenue:{budget_version_id}",
-                f"revenue:{budget_version_id}:period-1",
+                f"revenue:{version_id}",
+                f"revenue:{version_id}:period-1",
             ]
             for key in keys:
                 yield key
@@ -125,7 +125,7 @@ class TestCacheInvalidation:
         mock_get_redis_client.return_value = mock_redis
 
         # Call invalidate
-        deleted_count = await CacheInvalidator.invalidate(budget_version_id, entity)
+        deleted_count = await CacheInvalidator.invalidate(version_id, entity)
 
         # Verify keys were deleted
         assert deleted_count >= 2  # Direct keys + dependents
@@ -135,7 +135,7 @@ class TestCacheInvalidation:
     @patch("app.core.cache.get_redis_client")
     async def test_invalidate_with_entity_name_mismatch(self, mock_get_redis_client):
         """Test invalidation when entity name != cache prefix."""
-        budget_version_id = "test-456"
+        version_id = "test-456"
         entity = "dhg_calculations"  # Entity name
 
         # Mock Redis client with proper async iterator
@@ -144,8 +144,8 @@ class TestCacheInvalidation:
         async def mock_scan_iter(match):
             """Mock async generator for scan_iter."""
             keys = [
-                f"dhg:{budget_version_id}:level-6eme",
-                f"dhg:{budget_version_id}:level-5eme",
+                f"dhg:{version_id}:level-6eme",
+                f"dhg:{version_id}:level-5eme",
             ]
             for key in keys:
                 yield key
@@ -155,7 +155,7 @@ class TestCacheInvalidation:
         mock_get_redis_client.return_value = mock_redis
 
         # Call invalidate
-        deleted_count = await CacheInvalidator.invalidate(budget_version_id, entity)
+        deleted_count = await CacheInvalidator.invalidate(version_id, entity)
 
         # Verify keys were deleted
         assert deleted_count >= 2
@@ -165,7 +165,7 @@ class TestCacheInvalidation:
     @patch("app.core.cache.get_redis_client")
     async def test_cascading_invalidation(self, mock_get_redis_client):
         """Test that invalidation cascades through dependency graph."""
-        budget_version_id = "test-789"
+        version_id = "test-789"
         entity = "enrollment"
 
         # Mock Redis client
@@ -175,21 +175,21 @@ class TestCacheInvalidation:
         async def scan_iter_side_effect(match):
             """Mock async generator that returns keys based on pattern."""
             if "enrollment:" in match:
-                keys = [f"enrollment:{budget_version_id}:level-6eme"]
+                keys = [f"enrollment:{version_id}:level-6eme"]
             elif "class_structure:" in match:
-                keys = [f"class_structure:{budget_version_id}:level-6eme"]
+                keys = [f"class_structure:{version_id}:level-6eme"]
             elif "revenue:" in match:
-                keys = [f"revenue:{budget_version_id}"]
+                keys = [f"revenue:{version_id}"]
             elif "dhg:" in match:
-                keys = [f"dhg:{budget_version_id}:level-6eme"]
+                keys = [f"dhg:{version_id}:level-6eme"]
             elif "facility:" in match:
                 keys = []
             elif "costs:" in match:
-                keys = [f"costs:{budget_version_id}:personnel"]
+                keys = [f"costs:{version_id}:personnel"]
             elif "consolidation:" in match:
-                keys = [f"consolidation:{budget_version_id}"]
+                keys = [f"consolidation:{version_id}"]
             elif "kpi:dashboard:" in match:
-                keys = [f"kpi:dashboard:{budget_version_id}"]
+                keys = [f"kpi:dashboard:{version_id}"]
             elif "statements:" in match:
                 keys = []
             else:
@@ -203,7 +203,7 @@ class TestCacheInvalidation:
         mock_get_redis_client.return_value = mock_redis
 
         # Call invalidate on enrollment (root of dependency tree)
-        deleted_count = await CacheInvalidator.invalidate(budget_version_id, entity)
+        deleted_count = await CacheInvalidator.invalidate(version_id, entity)
 
         # Should invalidate multiple entities through cascade
         assert deleted_count >= 3  # At least enrollment + class_structure + revenue
@@ -213,7 +213,7 @@ class TestCacheInvalidation:
     @patch("app.core.cache.get_redis_client")
     async def test_invalidate_all_for_budget_version(self, mock_get_redis_client):
         """Test invalidation of all caches for a budget version."""
-        budget_version_id = "test-all-123"
+        version_id = "test-all-123"
 
         # Mock Redis client with proper async iterator
         mock_redis = AsyncMock()
@@ -221,10 +221,10 @@ class TestCacheInvalidation:
         async def mock_scan_iter(match):
             """Mock async generator for scan_iter."""
             keys = [
-                f"dhg:{budget_version_id}:level-6eme",
-                f"revenue:{budget_version_id}",
-                f"consolidation:{budget_version_id}",
-                f"kpi:dashboard:{budget_version_id}",
+                f"dhg:{version_id}:level-6eme",
+                f"revenue:{version_id}",
+                f"consolidation:{version_id}",
+                f"kpi:dashboard:{version_id}",
             ]
             for key in keys:
                 yield key
@@ -234,7 +234,7 @@ class TestCacheInvalidation:
         mock_get_redis_client.return_value = mock_redis
 
         # Call invalidate_all
-        deleted_count = await CacheInvalidator.invalidate_all(budget_version_id)
+        deleted_count = await CacheInvalidator.invalidate_all(version_id)
 
         # Verify all keys were deleted
         assert deleted_count == 4
@@ -243,11 +243,11 @@ class TestCacheInvalidation:
     @patch("app.core.cache.REDIS_ENABLED", False)
     async def test_invalidate_when_redis_disabled(self):
         """Test that invalidation gracefully handles disabled Redis."""
-        budget_version_id = "test-disabled-123"
+        version_id = "test-disabled-123"
         entity = "revenue"
 
         # Should return 0 without error
-        deleted_count = await CacheInvalidator.invalidate(budget_version_id, entity)
+        deleted_count = await CacheInvalidator.invalidate(version_id, entity)
         assert deleted_count == 0
 
 
@@ -300,54 +300,54 @@ class TestCachePatternMatching:
 
     def test_dhg_key_pattern(self):
         """Test DHG cache key pattern."""
-        budget_version_id = "test-123"
+        version_id = "test-123"
         cache_prefix = ENTITY_TO_CACHE_PREFIX["dhg_calculations"]
-        pattern = f"{cache_prefix}:{budget_version_id}*"
+        pattern = f"{cache_prefix}:{version_id}*"
 
         # Should match various DHG keys
-        assert f"dhg:{budget_version_id}:level-6eme".startswith(pattern.rstrip("*"))
-        assert f"dhg:{budget_version_id}:level-5eme".startswith(pattern.rstrip("*"))
-        assert f"dhg:{budget_version_id}".startswith(pattern.rstrip("*"))
+        assert f"dhg:{version_id}:level-6eme".startswith(pattern.rstrip("*"))
+        assert f"dhg:{version_id}:level-5eme".startswith(pattern.rstrip("*"))
+        assert f"dhg:{version_id}".startswith(pattern.rstrip("*"))
 
         # Should NOT match other entities
-        assert not f"revenue:{budget_version_id}".startswith(pattern.rstrip("*"))
+        assert not f"revenue:{version_id}".startswith(pattern.rstrip("*"))
 
     def test_consolidation_key_pattern(self):
         """Test budget consolidation cache key pattern."""
-        budget_version_id = "test-456"
+        version_id = "test-456"
         cache_prefix = ENTITY_TO_CACHE_PREFIX["budget_consolidation"]
-        pattern = f"{cache_prefix}:{budget_version_id}*"
+        pattern = f"{cache_prefix}:{version_id}*"
 
         # Should match consolidation keys
-        assert f"consolidation:{budget_version_id}".startswith(pattern.rstrip("*"))
+        assert f"consolidation:{version_id}".startswith(pattern.rstrip("*"))
 
         # Should NOT match other entities
-        assert not f"budget_consolidation:{budget_version_id}".startswith(pattern.rstrip("*"))
+        assert not f"budget_consolidation:{version_id}".startswith(pattern.rstrip("*"))
 
     def test_kpi_dashboard_key_pattern(self):
         """Test KPI dashboard cache key pattern."""
-        budget_version_id = "test-789"
+        version_id = "test-789"
         cache_prefix = ENTITY_TO_CACHE_PREFIX["kpi_dashboard"]
-        pattern = f"{cache_prefix}:{budget_version_id}*"
+        pattern = f"{cache_prefix}:{version_id}*"
 
         # KPI keys use "kpi:dashboard" format
         # Pattern should match "kpi:dashboard:*"
         assert cache_prefix == "kpi:dashboard"
-        assert f"kpi:dashboard:{budget_version_id}".startswith(pattern.rstrip("*"))
+        assert f"kpi:dashboard:{version_id}".startswith(pattern.rstrip("*"))
 
     def test_all_entities_have_valid_patterns(self):
         """Verify all entities produce valid Redis patterns."""
-        budget_version_id = "test-all"
+        version_id = "test-all"
 
         for _entity, cache_prefix in ENTITY_TO_CACHE_PREFIX.items():
-            pattern = f"{cache_prefix}:{budget_version_id}*"
+            pattern = f"{cache_prefix}:{version_id}*"
 
             # Pattern should:
             # 1. Start with the cache prefix
             # 2. Contain the budget version ID
             # 3. End with wildcard
             assert pattern.startswith(cache_prefix)
-            assert budget_version_id in pattern
+            assert version_id in pattern
             assert pattern.endswith("*")
 
             # Should not contain placeholder brackets

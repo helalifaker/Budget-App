@@ -12,18 +12,39 @@ const isE2ETestMode = import.meta.env.VITE_E2E_TEST_MODE === 'true'
 const E2E_SESSION_KEY = 'efir_e2e_mock_session'
 
 // Test users for E2E testing (matches tests/e2e/fixtures/test-data.ts)
+// IDs must be valid UUIDs for backend compatibility
 const TEST_USERS: Record<string, { id: string; email: string; role: string }> = {
-  'admin@efir.local': { id: 'test-admin-id', email: 'admin@efir.local', role: 'Admin' },
+  'admin@efir.local': {
+    id: '00000000-0000-0000-0000-000000000001',
+    email: 'admin@efir.local',
+    role: 'Admin',
+  },
   'manager@efir.local': {
-    id: 'test-manager-id',
+    id: '00000000-0000-0000-0000-000000000002',
     email: 'manager@efir.local',
     role: 'Finance Director',
   },
-  'user@efir.local': { id: 'test-user-id', email: 'user@efir.local', role: 'Viewer' },
-  'hr@efir.local': { id: 'test-hr-id', email: 'hr@efir.local', role: 'HR' },
-  'academic@efir.local': { id: 'test-academic-id', email: 'academic@efir.local', role: 'Academic' },
+  'user@efir.local': {
+    id: '00000000-0000-0000-0000-000000000003',
+    email: 'user@efir.local',
+    role: 'Viewer',
+  },
+  'hr@efir.local': {
+    id: '00000000-0000-0000-0000-000000000004',
+    email: 'hr@efir.local',
+    role: 'HR',
+  },
+  'academic@efir.local': {
+    id: '00000000-0000-0000-0000-000000000005',
+    email: 'academic@efir.local',
+    role: 'Academic',
+  },
   // Additional test users for auth.spec.ts
-  'test@efir.local': { id: 'test-default-id', email: 'test@efir.local', role: 'Finance Director' },
+  'test@efir.local': {
+    id: '00000000-0000-0000-0000-000000000006',
+    email: 'test@efir.local',
+    role: 'Finance Director',
+  },
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -34,19 +55,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // E2E Test Mode: Restore mock session from localStorage if exists
     if (isE2ETestMode) {
-      console.log('[AuthProvider] 🧪 E2E Test Mode enabled - Supabase auth bypassed')
+      if (import.meta.env.DEV) {
+        console.log('[AuthProvider] E2E Test Mode enabled - Supabase auth bypassed')
+      }
       const storedSession = localStorage.getItem(E2E_SESSION_KEY)
       if (storedSession) {
         try {
           const mockSession = JSON.parse(storedSession) as Session
-          console.log(
-            '[AuthProvider] 🧪 Restored mock session from localStorage:',
-            mockSession.user?.email
-          )
+          if (import.meta.env.DEV) {
+            console.log(
+              '[AuthProvider] Restored mock session from localStorage:',
+              mockSession.user?.email
+            )
+          }
           setSession(mockSession)
           setUser(mockSession.user)
         } catch (e) {
-          console.error('[AuthProvider] 🧪 Failed to parse stored mock session:', e)
+          console.error('[AuthProvider] Failed to parse stored mock session:', e)
         }
       }
       setLoading(false)
@@ -63,14 +88,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
 
       // Debug: Log session status
-      if (session) {
-        console.log('[AuthProvider] ✅ Session found on init:', {
-          userId: session.user.id,
-          email: session.user.email,
-          expiresAt: new Date(session.expires_at! * 1000).toISOString(),
-        })
-      } else {
-        console.log('[AuthProvider] ⚠️ No session on init')
+      if (import.meta.env.DEV) {
+        if (session) {
+          console.log('[AuthProvider] Session found on init:', {
+            userId: session.user.id,
+            email: session.user.email,
+            expiresAt: new Date(session.expires_at! * 1000).toISOString(),
+          })
+        } else {
+          console.log('[AuthProvider] No session on init')
+        }
       }
     })
 
@@ -78,10 +105,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AuthProvider] Auth state changed:', event, {
-        hasSession: !!session,
-        userId: session?.user?.id,
-      })
+      if (import.meta.env.DEV) {
+        console.log('[AuthProvider] Auth state changed:', event, {
+          hasSession: !!session,
+          userId: session?.user?.id,
+        })
+      }
 
       // Use session directly from the event (more reliable than calling getSession again)
       setSession(session)
@@ -97,7 +126,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isE2ETestMode) {
       const testUser = TEST_USERS[email]
       if (testUser && password === 'password123') {
-        console.log('[AuthProvider] 🧪 E2E Test Mode - Mock sign-in for:', email)
+        if (import.meta.env.DEV) {
+          console.log('[AuthProvider] E2E Test Mode - Mock sign-in for:', email)
+        }
 
         // Create mock user object matching Supabase User type
         const mockUser = {
@@ -127,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         return { error: null }
       } else {
-        console.error('[AuthProvider] 🧪 E2E Test Mode - Invalid test credentials:', email)
+        console.error('[AuthProvider] E2E Test Mode - Invalid test credentials:', email)
         const testError = new Error('Invalid test credentials') as AuthError
         testError.name = 'AuthError'
         return { error: testError }
@@ -147,14 +178,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Verify session exists after sign-in
     if (data.session) {
-      console.log('[AuthProvider] ✅ Sign-in successful, session:', {
-        userId: data.session.user.id,
-        email: data.session.user.email,
-        expiresAt: new Date(data.session.expires_at! * 1000).toISOString(),
-      })
+      if (import.meta.env.DEV) {
+        console.log('[AuthProvider] Sign-in successful, session:', {
+          userId: data.session.user.id,
+          email: data.session.user.email,
+          expiresAt: new Date(data.session.expires_at! * 1000).toISOString(),
+        })
+      }
       // Session will be updated via onAuthStateChange
     } else {
-      console.warn('[AuthProvider] ⚠️ Sign-in succeeded but no session returned')
+      console.warn('[AuthProvider] Sign-in succeeded but no session returned')
     }
 
     return { error }

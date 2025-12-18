@@ -90,15 +90,15 @@ describe('SettingsReminderCard', () => {
       expect(link).toHaveAttribute('href', '/enrollment/settings')
     })
 
-    it('has amber styling for unconfigured state', () => {
+    it('has warning styling for unconfigured state', () => {
       const { container } = render(
         <TestWrapper>
           <SettingsReminderCard />
         </TestWrapper>
       )
 
-      // Card should have amber border
-      const card = container.querySelector('.border-l-amber-500')
+      // Card should have warning border (semantic color for uncalibrated)
+      const card = container.querySelector('.border-l-warning-500')
       expect(card).toBeInTheDocument()
     })
   })
@@ -136,15 +136,15 @@ describe('SettingsReminderCard', () => {
       expect(screen.getByRole('link', { name: /Review Settings/i })).toBeInTheDocument()
     })
 
-    it('has green styling for configured state', () => {
+    it('has sage styling for configured state', () => {
       const { container } = render(
         <TestWrapper>
           <SettingsReminderCard isCalibrated={true} />
         </TestWrapper>
       )
 
-      // Card should have green border
-      const card = container.querySelector('.border-l-green-500')
+      // Card should have sage border (semantic color for calibrated)
+      const card = container.querySelector('.border-l-sage')
       expect(card).toBeInTheDocument()
     })
   })
@@ -256,9 +256,9 @@ describe('SettingsReminderCard', () => {
         </TestWrapper>
       )
 
-      // CheckCircle2 icon should be present
-      const greenIcon = container.querySelector('.text-green-600')
-      expect(greenIcon).toBeInTheDocument()
+      // CheckCircle2 icon should be present with sage color
+      const sageIcon = container.querySelector('.text-sage')
+      expect(sageIcon).toBeInTheDocument()
     })
 
     it('shows settings icon when not calibrated', () => {
@@ -268,9 +268,9 @@ describe('SettingsReminderCard', () => {
         </TestWrapper>
       )
 
-      // Settings2 icon should be present
-      const amberIcon = container.querySelector('.text-amber-600')
-      expect(amberIcon).toBeInTheDocument()
+      // Settings2 icon should be present with warning color
+      const warningIcon = container.querySelector('.text-warning-600')
+      expect(warningIcon).toBeInTheDocument()
     })
   })
 })

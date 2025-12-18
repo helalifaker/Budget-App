@@ -16,8 +16,8 @@ import type {
   ScenarioMultiplier,
   ScenarioMultiplierUpdate,
   ScenarioCode,
-} from '@/types/enrollmentSettings'
-import { DEFAULT_SCENARIO_MULTIPLIERS } from '@/types/enrollmentSettings'
+} from '@/types/enrollment-settings'
+import { DEFAULT_SCENARIO_MULTIPLIERS } from '@/types/enrollment-settings'
 
 interface ScenarioMultipliersTableProps {
   multipliers: ScenarioMultiplier[]

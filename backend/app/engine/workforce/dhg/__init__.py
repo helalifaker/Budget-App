@@ -1,0 +1,66 @@
+"""
+DHG Engine - Teacher Workforce Planning
+
+This module implements the DHG (Dotation Horaire Globale) methodology
+for calculating teacher workforce requirements in the French education system.
+
+DHG Formula:
+    Total Hours = Sum(Classes x Hours per Subject per Level)
+    Teacher FTE = Total Hours / Standard Hours (18h/week for secondary)
+
+Key Concepts:
+- DHG Hours: Total teaching hours required based on curriculum
+- Standard Hours: 18h/week for secondary, 24h/week for primary
+- HSA: Overtime hours (max 2-4h per teacher)
+- TRMD: Gap analysis (Besoins vs Available positions)
+- AEFE Costs: School contribution for detached teachers
+
+Part of the Workforce module.
+"""
+
+from app.engine.workforce.dhg.calculator import (
+    calculate_dhg_hours,
+    calculate_fte_from_hours,
+    calculate_hsa_allocation,
+    calculate_teacher_requirement,
+    calculate_trmd_gap,
+)
+from app.engine.workforce.dhg.models import (
+    DHGHoursResult,
+    DHGInput,
+    EducationLevel,
+    FTECalculationResult,
+    HSAAllocation,
+    SubjectHours,
+    TeacherRequirement,
+    TRMDGapResult,
+)
+from app.engine.workforce.dhg.validators import (
+    validate_dhg_input,
+    validate_hsa_limits,
+    validate_standard_hours,
+    validate_subject_hours,
+)
+
+__all__ = [
+    # Models
+    "DHGHoursResult",
+    "DHGInput",
+    "EducationLevel",
+    "FTECalculationResult",
+    "HSAAllocation",
+    "SubjectHours",
+    "TRMDGapResult",
+    "TeacherRequirement",
+    # Calculator functions
+    "calculate_dhg_hours",
+    "calculate_fte_from_hours",
+    "calculate_hsa_allocation",
+    "calculate_teacher_requirement",
+    "calculate_trmd_gap",
+    # Validators
+    "validate_dhg_input",
+    "validate_hsa_limits",
+    "validate_standard_hours",
+    "validate_subject_hours",
+]

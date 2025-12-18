@@ -17,52 +17,56 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCommandCenterRouteImport } from './routes/_authenticated.command-center'
 import { Route as AuthenticatedWorkforceIndexRouteImport } from './routes/_authenticated/workforce/index'
 import { Route as AuthenticatedStrategicIndexRouteImport } from './routes/_authenticated/strategic/index'
-import { Route as AuthenticatedFinanceIndexRouteImport } from './routes/_authenticated/finance/index'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedRevenueIndexRouteImport } from './routes/_authenticated/revenue/index'
+import { Route as AuthenticatedInvestmentsIndexRouteImport } from './routes/_authenticated/investments/index'
+import { Route as AuthenticatedInsightsIndexRouteImport } from './routes/_authenticated/insights/index'
 import { Route as AuthenticatedEnrollmentIndexRouteImport } from './routes/_authenticated/enrollment/index'
-import { Route as AuthenticatedConfigurationIndexRouteImport } from './routes/_authenticated/configuration/index'
-import { Route as AuthenticatedAnalysisIndexRouteImport } from './routes/_authenticated/analysis/index'
+import { Route as AuthenticatedCostsIndexRouteImport } from './routes/_authenticated/costs/index'
+import { Route as AuthenticatedConsolidationIndexRouteImport } from './routes/_authenticated/consolidation/index'
 import { Route as AuthenticatedWorkforceSettingsRouteImport } from './routes/_authenticated/workforce/settings'
 import { Route as AuthenticatedWorkforceSalariesRouteImport } from './routes/_authenticated/workforce/salaries'
+import { Route as AuthenticatedWorkforceRequirementsRouteImport } from './routes/_authenticated/workforce/requirements'
+import { Route as AuthenticatedWorkforceGapAnalysisRouteImport } from './routes/_authenticated/workforce/gap-analysis'
 import { Route as AuthenticatedWorkforceEmployeesRouteImport } from './routes/_authenticated/workforce/employees'
+import { Route as AuthenticatedWorkforceDhgRouteImport } from './routes/_authenticated/workforce/dhg'
 import { Route as AuthenticatedWorkforceAefePositionsRouteImport } from './routes/_authenticated/workforce/aefe-positions'
-import { Route as AuthenticatedPlanningRevenueRouteImport } from './routes/_authenticated/planning/revenue'
-import { Route as AuthenticatedPlanningGuideRouteImport } from './routes/_authenticated/planning/guide'
-import { Route as AuthenticatedPlanningEnrollmentRouteImport } from './routes/_authenticated/planning/enrollment'
-import { Route as AuthenticatedPlanningDhgRouteImport } from './routes/_authenticated/planning/dhg'
-import { Route as AuthenticatedPlanningCostsRouteImport } from './routes/_authenticated/planning/costs'
-import { Route as AuthenticatedPlanningClassesRouteImport } from './routes/_authenticated/planning/classes'
-import { Route as AuthenticatedPlanningCapexRouteImport } from './routes/_authenticated/planning/capex'
-import { Route as AuthenticatedFinanceStatementsRouteImport } from './routes/_authenticated/finance/statements'
-import { Route as AuthenticatedFinanceSettingsRouteImport } from './routes/_authenticated/finance/settings'
-import { Route as AuthenticatedFinanceRevenueRouteImport } from './routes/_authenticated/finance/revenue'
-import { Route as AuthenticatedFinanceCostsRouteImport } from './routes/_authenticated/finance/costs'
-import { Route as AuthenticatedFinanceConsolidationRouteImport } from './routes/_authenticated/finance/consolidation'
-import { Route as AuthenticatedFinanceCapexRouteImport } from './routes/_authenticated/finance/capex'
+import { Route as AuthenticatedStrategicTargetsRouteImport } from './routes/_authenticated/strategic/targets'
+import { Route as AuthenticatedStrategicScenariosRouteImport } from './routes/_authenticated/strategic/scenarios'
+import { Route as AuthenticatedStrategicLongTermRouteImport } from './routes/_authenticated/strategic/long-term'
+import { Route as AuthenticatedSettingsVersionsRouteImport } from './routes/_authenticated/settings/versions'
+import { Route as AuthenticatedSettingsSystemRouteImport } from './routes/_authenticated/settings/system'
+import { Route as AuthenticatedRevenueTuitionRouteImport } from './routes/_authenticated/revenue/tuition'
+import { Route as AuthenticatedRevenueSubsidiesRouteImport } from './routes/_authenticated/revenue/subsidies'
+import { Route as AuthenticatedRevenueSettingsRouteImport } from './routes/_authenticated/revenue/settings'
+import { Route as AuthenticatedRevenueOtherRouteImport } from './routes/_authenticated/revenue/other'
+import { Route as AuthenticatedInvestmentsSettingsRouteImport } from './routes/_authenticated/investments/settings'
+import { Route as AuthenticatedInvestmentsProjectsRouteImport } from './routes/_authenticated/investments/projects'
+import { Route as AuthenticatedInvestmentsCashflowRouteImport } from './routes/_authenticated/investments/cashflow'
+import { Route as AuthenticatedInvestmentsCapexRouteImport } from './routes/_authenticated/investments/capex'
+import { Route as AuthenticatedInsightsVarianceRouteImport } from './routes/_authenticated/insights/variance'
+import { Route as AuthenticatedInsightsTrendsRouteImport } from './routes/_authenticated/insights/trends'
+import { Route as AuthenticatedInsightsReportsRouteImport } from './routes/_authenticated/insights/reports'
+import { Route as AuthenticatedInsightsKpisRouteImport } from './routes/_authenticated/insights/kpis'
+import { Route as AuthenticatedInsightsDashboardsRouteImport } from './routes/_authenticated/insights/dashboards'
 import { Route as AuthenticatedEnrollmentValidationRouteImport } from './routes/_authenticated/enrollment/validation'
 import { Route as AuthenticatedEnrollmentSettingsRouteImport } from './routes/_authenticated/enrollment/settings'
-import { Route as AuthenticatedEnrollmentPlanningRouteImport } from './routes/_authenticated/enrollment/planning'
+import { Route as AuthenticatedEnrollmentProjectionsRouteImport } from './routes/_authenticated/enrollment/projections'
 import { Route as AuthenticatedEnrollmentClassStructureRouteImport } from './routes/_authenticated/enrollment/class-structure'
+import { Route as AuthenticatedCostsSettingsRouteImport } from './routes/_authenticated/costs/settings'
+import { Route as AuthenticatedCostsPersonnelRouteImport } from './routes/_authenticated/costs/personnel'
+import { Route as AuthenticatedCostsOverheadRouteImport } from './routes/_authenticated/costs/overhead'
+import { Route as AuthenticatedCostsOperatingRouteImport } from './routes/_authenticated/costs/operating'
 import { Route as AuthenticatedConsolidationStatementsRouteImport } from './routes/_authenticated/consolidation/statements'
+import { Route as AuthenticatedConsolidationRollupRouteImport } from './routes/_authenticated/consolidation/rollup'
+import { Route as AuthenticatedConsolidationExportsRouteImport } from './routes/_authenticated/consolidation/exports'
 import { Route as AuthenticatedConsolidationChecklistRouteImport } from './routes/_authenticated/consolidation/checklist'
-import { Route as AuthenticatedConsolidationBudgetRouteImport } from './routes/_authenticated/consolidation/budget'
-import { Route as AuthenticatedConfigurationVersionsRouteImport } from './routes/_authenticated/configuration/versions'
-import { Route as AuthenticatedConfigurationUploadsRouteImport } from './routes/_authenticated/configuration/uploads'
-import { Route as AuthenticatedConfigurationTimetableRouteImport } from './routes/_authenticated/configuration/timetable'
-import { Route as AuthenticatedConfigurationTeacherCostsRouteImport } from './routes/_authenticated/configuration/teacher-costs'
-import { Route as AuthenticatedConfigurationSystemRouteImport } from './routes/_authenticated/configuration/system'
-import { Route as AuthenticatedConfigurationSubjectHoursRouteImport } from './routes/_authenticated/configuration/subject-hours'
-import { Route as AuthenticatedConfigurationFeesRouteImport } from './routes/_authenticated/configuration/fees'
-import { Route as AuthenticatedConfigurationClassSizesRouteImport } from './routes/_authenticated/configuration/class-sizes'
-import { Route as AuthenticatedAnalysisVarianceRouteImport } from './routes/_authenticated/analysis/variance'
-import { Route as AuthenticatedAnalysisKpisRouteImport } from './routes/_authenticated/analysis/kpis'
-import { Route as AuthenticatedAnalysisDashboardsRouteImport } from './routes/_authenticated/analysis/dashboards'
+import { Route as AuthenticatedAdminUploadsRouteImport } from './routes/_authenticated/admin/uploads'
 import { Route as AuthenticatedAdminHistoricalImportRouteImport } from './routes/_authenticated/admin/historical-import'
+import { Route as AuthenticatedWorkforceSettingsTimetableRouteImport } from './routes/_authenticated/workforce/settings/timetable'
 import { Route as AuthenticatedWorkforceSettingsSubjectHoursRouteImport } from './routes/_authenticated/workforce/settings/subject-hours'
 import { Route as AuthenticatedWorkforceSettingsHsaRatesRouteImport } from './routes/_authenticated/workforce/settings/hsa-rates'
 import { Route as AuthenticatedWorkforceSettingsCostParametersRouteImport } from './routes/_authenticated/workforce/settings/cost-parameters'
-import { Route as AuthenticatedWorkforceDhgRequirementsRouteImport } from './routes/_authenticated/workforce/dhg/requirements'
-import { Route as AuthenticatedWorkforceDhgPlanningRouteImport } from './routes/_authenticated/workforce/dhg/planning'
-import { Route as AuthenticatedWorkforceDhgGapAnalysisRouteImport } from './routes/_authenticated/workforce/dhg/gap-analysis'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -106,10 +110,28 @@ const AuthenticatedStrategicIndexRoute =
     path: '/strategic/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinanceIndexRoute =
-  AuthenticatedFinanceIndexRouteImport.update({
-    id: '/finance/',
-    path: '/finance/',
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedRevenueIndexRoute =
+  AuthenticatedRevenueIndexRouteImport.update({
+    id: '/revenue/',
+    path: '/revenue/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInvestmentsIndexRoute =
+  AuthenticatedInvestmentsIndexRouteImport.update({
+    id: '/investments/',
+    path: '/investments/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInsightsIndexRoute =
+  AuthenticatedInsightsIndexRouteImport.update({
+    id: '/insights/',
+    path: '/insights/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedEnrollmentIndexRoute =
@@ -118,16 +140,15 @@ const AuthenticatedEnrollmentIndexRoute =
     path: '/enrollment/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedConfigurationIndexRoute =
-  AuthenticatedConfigurationIndexRouteImport.update({
-    id: '/configuration/',
-    path: '/configuration/',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedAnalysisIndexRoute =
-  AuthenticatedAnalysisIndexRouteImport.update({
-    id: '/analysis/',
-    path: '/analysis/',
+const AuthenticatedCostsIndexRoute = AuthenticatedCostsIndexRouteImport.update({
+  id: '/costs/',
+  path: '/costs/',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedConsolidationIndexRoute =
+  AuthenticatedConsolidationIndexRouteImport.update({
+    id: '/consolidation/',
+    path: '/consolidation/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedWorkforceSettingsRoute =
@@ -142,10 +163,28 @@ const AuthenticatedWorkforceSalariesRoute =
     path: '/workforce/salaries',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedWorkforceRequirementsRoute =
+  AuthenticatedWorkforceRequirementsRouteImport.update({
+    id: '/workforce/requirements',
+    path: '/workforce/requirements',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedWorkforceGapAnalysisRoute =
+  AuthenticatedWorkforceGapAnalysisRouteImport.update({
+    id: '/workforce/gap-analysis',
+    path: '/workforce/gap-analysis',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedWorkforceEmployeesRoute =
   AuthenticatedWorkforceEmployeesRouteImport.update({
     id: '/workforce/employees',
     path: '/workforce/employees',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedWorkforceDhgRoute =
+  AuthenticatedWorkforceDhgRouteImport.update({
+    id: '/workforce/dhg',
+    path: '/workforce/dhg',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedWorkforceAefePositionsRoute =
@@ -154,82 +193,112 @@ const AuthenticatedWorkforceAefePositionsRoute =
     path: '/workforce/aefe-positions',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedPlanningRevenueRoute =
-  AuthenticatedPlanningRevenueRouteImport.update({
-    id: '/planning/revenue',
-    path: '/planning/revenue',
+const AuthenticatedStrategicTargetsRoute =
+  AuthenticatedStrategicTargetsRouteImport.update({
+    id: '/strategic/targets',
+    path: '/strategic/targets',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedPlanningGuideRoute =
-  AuthenticatedPlanningGuideRouteImport.update({
-    id: '/planning/guide',
-    path: '/planning/guide',
+const AuthenticatedStrategicScenariosRoute =
+  AuthenticatedStrategicScenariosRouteImport.update({
+    id: '/strategic/scenarios',
+    path: '/strategic/scenarios',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedPlanningEnrollmentRoute =
-  AuthenticatedPlanningEnrollmentRouteImport.update({
-    id: '/planning/enrollment',
-    path: '/planning/enrollment',
+const AuthenticatedStrategicLongTermRoute =
+  AuthenticatedStrategicLongTermRouteImport.update({
+    id: '/strategic/long-term',
+    path: '/strategic/long-term',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedPlanningDhgRoute =
-  AuthenticatedPlanningDhgRouteImport.update({
-    id: '/planning/dhg',
-    path: '/planning/dhg',
+const AuthenticatedSettingsVersionsRoute =
+  AuthenticatedSettingsVersionsRouteImport.update({
+    id: '/settings/versions',
+    path: '/settings/versions',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedPlanningCostsRoute =
-  AuthenticatedPlanningCostsRouteImport.update({
-    id: '/planning/costs',
-    path: '/planning/costs',
+const AuthenticatedSettingsSystemRoute =
+  AuthenticatedSettingsSystemRouteImport.update({
+    id: '/settings/system',
+    path: '/settings/system',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedPlanningClassesRoute =
-  AuthenticatedPlanningClassesRouteImport.update({
-    id: '/planning/classes',
-    path: '/planning/classes',
+const AuthenticatedRevenueTuitionRoute =
+  AuthenticatedRevenueTuitionRouteImport.update({
+    id: '/revenue/tuition',
+    path: '/revenue/tuition',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedPlanningCapexRoute =
-  AuthenticatedPlanningCapexRouteImport.update({
-    id: '/planning/capex',
-    path: '/planning/capex',
+const AuthenticatedRevenueSubsidiesRoute =
+  AuthenticatedRevenueSubsidiesRouteImport.update({
+    id: '/revenue/subsidies',
+    path: '/revenue/subsidies',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinanceStatementsRoute =
-  AuthenticatedFinanceStatementsRouteImport.update({
-    id: '/finance/statements',
-    path: '/finance/statements',
+const AuthenticatedRevenueSettingsRoute =
+  AuthenticatedRevenueSettingsRouteImport.update({
+    id: '/revenue/settings',
+    path: '/revenue/settings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinanceSettingsRoute =
-  AuthenticatedFinanceSettingsRouteImport.update({
-    id: '/finance/settings',
-    path: '/finance/settings',
+const AuthenticatedRevenueOtherRoute =
+  AuthenticatedRevenueOtherRouteImport.update({
+    id: '/revenue/other',
+    path: '/revenue/other',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinanceRevenueRoute =
-  AuthenticatedFinanceRevenueRouteImport.update({
-    id: '/finance/revenue',
-    path: '/finance/revenue',
+const AuthenticatedInvestmentsSettingsRoute =
+  AuthenticatedInvestmentsSettingsRouteImport.update({
+    id: '/investments/settings',
+    path: '/investments/settings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinanceCostsRoute =
-  AuthenticatedFinanceCostsRouteImport.update({
-    id: '/finance/costs',
-    path: '/finance/costs',
+const AuthenticatedInvestmentsProjectsRoute =
+  AuthenticatedInvestmentsProjectsRouteImport.update({
+    id: '/investments/projects',
+    path: '/investments/projects',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinanceConsolidationRoute =
-  AuthenticatedFinanceConsolidationRouteImport.update({
-    id: '/finance/consolidation',
-    path: '/finance/consolidation',
+const AuthenticatedInvestmentsCashflowRoute =
+  AuthenticatedInvestmentsCashflowRouteImport.update({
+    id: '/investments/cashflow',
+    path: '/investments/cashflow',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedFinanceCapexRoute =
-  AuthenticatedFinanceCapexRouteImport.update({
-    id: '/finance/capex',
-    path: '/finance/capex',
+const AuthenticatedInvestmentsCapexRoute =
+  AuthenticatedInvestmentsCapexRouteImport.update({
+    id: '/investments/capex',
+    path: '/investments/capex',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInsightsVarianceRoute =
+  AuthenticatedInsightsVarianceRouteImport.update({
+    id: '/insights/variance',
+    path: '/insights/variance',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInsightsTrendsRoute =
+  AuthenticatedInsightsTrendsRouteImport.update({
+    id: '/insights/trends',
+    path: '/insights/trends',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInsightsReportsRoute =
+  AuthenticatedInsightsReportsRouteImport.update({
+    id: '/insights/reports',
+    path: '/insights/reports',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInsightsKpisRoute =
+  AuthenticatedInsightsKpisRouteImport.update({
+    id: '/insights/kpis',
+    path: '/insights/kpis',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedInsightsDashboardsRoute =
+  AuthenticatedInsightsDashboardsRouteImport.update({
+    id: '/insights/dashboards',
+    path: '/insights/dashboards',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedEnrollmentValidationRoute =
@@ -244,10 +313,10 @@ const AuthenticatedEnrollmentSettingsRoute =
     path: '/enrollment/settings',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedEnrollmentPlanningRoute =
-  AuthenticatedEnrollmentPlanningRouteImport.update({
-    id: '/enrollment/planning',
-    path: '/enrollment/planning',
+const AuthenticatedEnrollmentProjectionsRoute =
+  AuthenticatedEnrollmentProjectionsRouteImport.update({
+    id: '/enrollment/projections',
+    path: '/enrollment/projections',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedEnrollmentClassStructureRoute =
@@ -256,10 +325,46 @@ const AuthenticatedEnrollmentClassStructureRoute =
     path: '/enrollment/class-structure',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedCostsSettingsRoute =
+  AuthenticatedCostsSettingsRouteImport.update({
+    id: '/costs/settings',
+    path: '/costs/settings',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedCostsPersonnelRoute =
+  AuthenticatedCostsPersonnelRouteImport.update({
+    id: '/costs/personnel',
+    path: '/costs/personnel',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedCostsOverheadRoute =
+  AuthenticatedCostsOverheadRouteImport.update({
+    id: '/costs/overhead',
+    path: '/costs/overhead',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedCostsOperatingRoute =
+  AuthenticatedCostsOperatingRouteImport.update({
+    id: '/costs/operating',
+    path: '/costs/operating',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedConsolidationStatementsRoute =
   AuthenticatedConsolidationStatementsRouteImport.update({
     id: '/consolidation/statements',
     path: '/consolidation/statements',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedConsolidationRollupRoute =
+  AuthenticatedConsolidationRollupRouteImport.update({
+    id: '/consolidation/rollup',
+    path: '/consolidation/rollup',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedConsolidationExportsRoute =
+  AuthenticatedConsolidationExportsRouteImport.update({
+    id: '/consolidation/exports',
+    path: '/consolidation/exports',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedConsolidationChecklistRoute =
@@ -268,76 +373,10 @@ const AuthenticatedConsolidationChecklistRoute =
     path: '/consolidation/checklist',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedConsolidationBudgetRoute =
-  AuthenticatedConsolidationBudgetRouteImport.update({
-    id: '/consolidation/budget',
-    path: '/consolidation/budget',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedConfigurationVersionsRoute =
-  AuthenticatedConfigurationVersionsRouteImport.update({
-    id: '/configuration/versions',
-    path: '/configuration/versions',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedConfigurationUploadsRoute =
-  AuthenticatedConfigurationUploadsRouteImport.update({
-    id: '/configuration/uploads',
-    path: '/configuration/uploads',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedConfigurationTimetableRoute =
-  AuthenticatedConfigurationTimetableRouteImport.update({
-    id: '/configuration/timetable',
-    path: '/configuration/timetable',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedConfigurationTeacherCostsRoute =
-  AuthenticatedConfigurationTeacherCostsRouteImport.update({
-    id: '/configuration/teacher-costs',
-    path: '/configuration/teacher-costs',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedConfigurationSystemRoute =
-  AuthenticatedConfigurationSystemRouteImport.update({
-    id: '/configuration/system',
-    path: '/configuration/system',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedConfigurationSubjectHoursRoute =
-  AuthenticatedConfigurationSubjectHoursRouteImport.update({
-    id: '/configuration/subject-hours',
-    path: '/configuration/subject-hours',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedConfigurationFeesRoute =
-  AuthenticatedConfigurationFeesRouteImport.update({
-    id: '/configuration/fees',
-    path: '/configuration/fees',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedConfigurationClassSizesRoute =
-  AuthenticatedConfigurationClassSizesRouteImport.update({
-    id: '/configuration/class-sizes',
-    path: '/configuration/class-sizes',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedAnalysisVarianceRoute =
-  AuthenticatedAnalysisVarianceRouteImport.update({
-    id: '/analysis/variance',
-    path: '/analysis/variance',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedAnalysisKpisRoute =
-  AuthenticatedAnalysisKpisRouteImport.update({
-    id: '/analysis/kpis',
-    path: '/analysis/kpis',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedAnalysisDashboardsRoute =
-  AuthenticatedAnalysisDashboardsRouteImport.update({
-    id: '/analysis/dashboards',
-    path: '/analysis/dashboards',
+const AuthenticatedAdminUploadsRoute =
+  AuthenticatedAdminUploadsRouteImport.update({
+    id: '/admin/uploads',
+    path: '/admin/uploads',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAdminHistoricalImportRoute =
@@ -345,6 +384,12 @@ const AuthenticatedAdminHistoricalImportRoute =
     id: '/admin/historical-import',
     path: '/admin/historical-import',
     getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedWorkforceSettingsTimetableRoute =
+  AuthenticatedWorkforceSettingsTimetableRouteImport.update({
+    id: '/timetable',
+    path: '/timetable',
+    getParentRoute: () => AuthenticatedWorkforceSettingsRoute,
   } as any)
 const AuthenticatedWorkforceSettingsSubjectHoursRoute =
   AuthenticatedWorkforceSettingsSubjectHoursRouteImport.update({
@@ -364,24 +409,6 @@ const AuthenticatedWorkforceSettingsCostParametersRoute =
     path: '/cost-parameters',
     getParentRoute: () => AuthenticatedWorkforceSettingsRoute,
   } as any)
-const AuthenticatedWorkforceDhgRequirementsRoute =
-  AuthenticatedWorkforceDhgRequirementsRouteImport.update({
-    id: '/workforce/dhg/requirements',
-    path: '/workforce/dhg/requirements',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedWorkforceDhgPlanningRoute =
-  AuthenticatedWorkforceDhgPlanningRouteImport.update({
-    id: '/workforce/dhg/planning',
-    path: '/workforce/dhg/planning',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
-const AuthenticatedWorkforceDhgGapAnalysisRoute =
-  AuthenticatedWorkforceDhgGapAnalysisRouteImport.update({
-    id: '/workforce/dhg/gap-analysis',
-    path: '/workforce/dhg/gap-analysis',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -390,53 +417,57 @@ export interface FileRoutesByFullPath {
   '/command-center': typeof AuthenticatedCommandCenterRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/admin/historical-import': typeof AuthenticatedAdminHistoricalImportRoute
-  '/analysis/dashboards': typeof AuthenticatedAnalysisDashboardsRoute
-  '/analysis/kpis': typeof AuthenticatedAnalysisKpisRoute
-  '/analysis/variance': typeof AuthenticatedAnalysisVarianceRoute
-  '/configuration/class-sizes': typeof AuthenticatedConfigurationClassSizesRoute
-  '/configuration/fees': typeof AuthenticatedConfigurationFeesRoute
-  '/configuration/subject-hours': typeof AuthenticatedConfigurationSubjectHoursRoute
-  '/configuration/system': typeof AuthenticatedConfigurationSystemRoute
-  '/configuration/teacher-costs': typeof AuthenticatedConfigurationTeacherCostsRoute
-  '/configuration/timetable': typeof AuthenticatedConfigurationTimetableRoute
-  '/configuration/uploads': typeof AuthenticatedConfigurationUploadsRoute
-  '/configuration/versions': typeof AuthenticatedConfigurationVersionsRoute
-  '/consolidation/budget': typeof AuthenticatedConsolidationBudgetRoute
+  '/admin/uploads': typeof AuthenticatedAdminUploadsRoute
   '/consolidation/checklist': typeof AuthenticatedConsolidationChecklistRoute
+  '/consolidation/exports': typeof AuthenticatedConsolidationExportsRoute
+  '/consolidation/rollup': typeof AuthenticatedConsolidationRollupRoute
   '/consolidation/statements': typeof AuthenticatedConsolidationStatementsRoute
+  '/costs/operating': typeof AuthenticatedCostsOperatingRoute
+  '/costs/overhead': typeof AuthenticatedCostsOverheadRoute
+  '/costs/personnel': typeof AuthenticatedCostsPersonnelRoute
+  '/costs/settings': typeof AuthenticatedCostsSettingsRoute
   '/enrollment/class-structure': typeof AuthenticatedEnrollmentClassStructureRoute
-  '/enrollment/planning': typeof AuthenticatedEnrollmentPlanningRoute
+  '/enrollment/projections': typeof AuthenticatedEnrollmentProjectionsRoute
   '/enrollment/settings': typeof AuthenticatedEnrollmentSettingsRoute
   '/enrollment/validation': typeof AuthenticatedEnrollmentValidationRoute
-  '/finance/capex': typeof AuthenticatedFinanceCapexRoute
-  '/finance/consolidation': typeof AuthenticatedFinanceConsolidationRoute
-  '/finance/costs': typeof AuthenticatedFinanceCostsRoute
-  '/finance/revenue': typeof AuthenticatedFinanceRevenueRoute
-  '/finance/settings': typeof AuthenticatedFinanceSettingsRoute
-  '/finance/statements': typeof AuthenticatedFinanceStatementsRoute
-  '/planning/capex': typeof AuthenticatedPlanningCapexRoute
-  '/planning/classes': typeof AuthenticatedPlanningClassesRoute
-  '/planning/costs': typeof AuthenticatedPlanningCostsRoute
-  '/planning/dhg': typeof AuthenticatedPlanningDhgRoute
-  '/planning/enrollment': typeof AuthenticatedPlanningEnrollmentRoute
-  '/planning/guide': typeof AuthenticatedPlanningGuideRoute
-  '/planning/revenue': typeof AuthenticatedPlanningRevenueRoute
+  '/insights/dashboards': typeof AuthenticatedInsightsDashboardsRoute
+  '/insights/kpis': typeof AuthenticatedInsightsKpisRoute
+  '/insights/reports': typeof AuthenticatedInsightsReportsRoute
+  '/insights/trends': typeof AuthenticatedInsightsTrendsRoute
+  '/insights/variance': typeof AuthenticatedInsightsVarianceRoute
+  '/investments/capex': typeof AuthenticatedInvestmentsCapexRoute
+  '/investments/cashflow': typeof AuthenticatedInvestmentsCashflowRoute
+  '/investments/projects': typeof AuthenticatedInvestmentsProjectsRoute
+  '/investments/settings': typeof AuthenticatedInvestmentsSettingsRoute
+  '/revenue/other': typeof AuthenticatedRevenueOtherRoute
+  '/revenue/settings': typeof AuthenticatedRevenueSettingsRoute
+  '/revenue/subsidies': typeof AuthenticatedRevenueSubsidiesRoute
+  '/revenue/tuition': typeof AuthenticatedRevenueTuitionRoute
+  '/settings/system': typeof AuthenticatedSettingsSystemRoute
+  '/settings/versions': typeof AuthenticatedSettingsVersionsRoute
+  '/strategic/long-term': typeof AuthenticatedStrategicLongTermRoute
+  '/strategic/scenarios': typeof AuthenticatedStrategicScenariosRoute
+  '/strategic/targets': typeof AuthenticatedStrategicTargetsRoute
   '/workforce/aefe-positions': typeof AuthenticatedWorkforceAefePositionsRoute
+  '/workforce/dhg': typeof AuthenticatedWorkforceDhgRoute
   '/workforce/employees': typeof AuthenticatedWorkforceEmployeesRoute
+  '/workforce/gap-analysis': typeof AuthenticatedWorkforceGapAnalysisRoute
+  '/workforce/requirements': typeof AuthenticatedWorkforceRequirementsRoute
   '/workforce/salaries': typeof AuthenticatedWorkforceSalariesRoute
   '/workforce/settings': typeof AuthenticatedWorkforceSettingsRouteWithChildren
-  '/analysis': typeof AuthenticatedAnalysisIndexRoute
-  '/configuration': typeof AuthenticatedConfigurationIndexRoute
+  '/consolidation': typeof AuthenticatedConsolidationIndexRoute
+  '/costs': typeof AuthenticatedCostsIndexRoute
   '/enrollment': typeof AuthenticatedEnrollmentIndexRoute
-  '/finance': typeof AuthenticatedFinanceIndexRoute
+  '/insights': typeof AuthenticatedInsightsIndexRoute
+  '/investments': typeof AuthenticatedInvestmentsIndexRoute
+  '/revenue': typeof AuthenticatedRevenueIndexRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
   '/strategic': typeof AuthenticatedStrategicIndexRoute
   '/workforce': typeof AuthenticatedWorkforceIndexRoute
-  '/workforce/dhg/gap-analysis': typeof AuthenticatedWorkforceDhgGapAnalysisRoute
-  '/workforce/dhg/planning': typeof AuthenticatedWorkforceDhgPlanningRoute
-  '/workforce/dhg/requirements': typeof AuthenticatedWorkforceDhgRequirementsRoute
   '/workforce/settings/cost-parameters': typeof AuthenticatedWorkforceSettingsCostParametersRoute
   '/workforce/settings/hsa-rates': typeof AuthenticatedWorkforceSettingsHsaRatesRoute
   '/workforce/settings/subject-hours': typeof AuthenticatedWorkforceSettingsSubjectHoursRoute
+  '/workforce/settings/timetable': typeof AuthenticatedWorkforceSettingsTimetableRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -445,53 +476,57 @@ export interface FileRoutesByTo {
   '/command-center': typeof AuthenticatedCommandCenterRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/admin/historical-import': typeof AuthenticatedAdminHistoricalImportRoute
-  '/analysis/dashboards': typeof AuthenticatedAnalysisDashboardsRoute
-  '/analysis/kpis': typeof AuthenticatedAnalysisKpisRoute
-  '/analysis/variance': typeof AuthenticatedAnalysisVarianceRoute
-  '/configuration/class-sizes': typeof AuthenticatedConfigurationClassSizesRoute
-  '/configuration/fees': typeof AuthenticatedConfigurationFeesRoute
-  '/configuration/subject-hours': typeof AuthenticatedConfigurationSubjectHoursRoute
-  '/configuration/system': typeof AuthenticatedConfigurationSystemRoute
-  '/configuration/teacher-costs': typeof AuthenticatedConfigurationTeacherCostsRoute
-  '/configuration/timetable': typeof AuthenticatedConfigurationTimetableRoute
-  '/configuration/uploads': typeof AuthenticatedConfigurationUploadsRoute
-  '/configuration/versions': typeof AuthenticatedConfigurationVersionsRoute
-  '/consolidation/budget': typeof AuthenticatedConsolidationBudgetRoute
+  '/admin/uploads': typeof AuthenticatedAdminUploadsRoute
   '/consolidation/checklist': typeof AuthenticatedConsolidationChecklistRoute
+  '/consolidation/exports': typeof AuthenticatedConsolidationExportsRoute
+  '/consolidation/rollup': typeof AuthenticatedConsolidationRollupRoute
   '/consolidation/statements': typeof AuthenticatedConsolidationStatementsRoute
+  '/costs/operating': typeof AuthenticatedCostsOperatingRoute
+  '/costs/overhead': typeof AuthenticatedCostsOverheadRoute
+  '/costs/personnel': typeof AuthenticatedCostsPersonnelRoute
+  '/costs/settings': typeof AuthenticatedCostsSettingsRoute
   '/enrollment/class-structure': typeof AuthenticatedEnrollmentClassStructureRoute
-  '/enrollment/planning': typeof AuthenticatedEnrollmentPlanningRoute
+  '/enrollment/projections': typeof AuthenticatedEnrollmentProjectionsRoute
   '/enrollment/settings': typeof AuthenticatedEnrollmentSettingsRoute
   '/enrollment/validation': typeof AuthenticatedEnrollmentValidationRoute
-  '/finance/capex': typeof AuthenticatedFinanceCapexRoute
-  '/finance/consolidation': typeof AuthenticatedFinanceConsolidationRoute
-  '/finance/costs': typeof AuthenticatedFinanceCostsRoute
-  '/finance/revenue': typeof AuthenticatedFinanceRevenueRoute
-  '/finance/settings': typeof AuthenticatedFinanceSettingsRoute
-  '/finance/statements': typeof AuthenticatedFinanceStatementsRoute
-  '/planning/capex': typeof AuthenticatedPlanningCapexRoute
-  '/planning/classes': typeof AuthenticatedPlanningClassesRoute
-  '/planning/costs': typeof AuthenticatedPlanningCostsRoute
-  '/planning/dhg': typeof AuthenticatedPlanningDhgRoute
-  '/planning/enrollment': typeof AuthenticatedPlanningEnrollmentRoute
-  '/planning/guide': typeof AuthenticatedPlanningGuideRoute
-  '/planning/revenue': typeof AuthenticatedPlanningRevenueRoute
+  '/insights/dashboards': typeof AuthenticatedInsightsDashboardsRoute
+  '/insights/kpis': typeof AuthenticatedInsightsKpisRoute
+  '/insights/reports': typeof AuthenticatedInsightsReportsRoute
+  '/insights/trends': typeof AuthenticatedInsightsTrendsRoute
+  '/insights/variance': typeof AuthenticatedInsightsVarianceRoute
+  '/investments/capex': typeof AuthenticatedInvestmentsCapexRoute
+  '/investments/cashflow': typeof AuthenticatedInvestmentsCashflowRoute
+  '/investments/projects': typeof AuthenticatedInvestmentsProjectsRoute
+  '/investments/settings': typeof AuthenticatedInvestmentsSettingsRoute
+  '/revenue/other': typeof AuthenticatedRevenueOtherRoute
+  '/revenue/settings': typeof AuthenticatedRevenueSettingsRoute
+  '/revenue/subsidies': typeof AuthenticatedRevenueSubsidiesRoute
+  '/revenue/tuition': typeof AuthenticatedRevenueTuitionRoute
+  '/settings/system': typeof AuthenticatedSettingsSystemRoute
+  '/settings/versions': typeof AuthenticatedSettingsVersionsRoute
+  '/strategic/long-term': typeof AuthenticatedStrategicLongTermRoute
+  '/strategic/scenarios': typeof AuthenticatedStrategicScenariosRoute
+  '/strategic/targets': typeof AuthenticatedStrategicTargetsRoute
   '/workforce/aefe-positions': typeof AuthenticatedWorkforceAefePositionsRoute
+  '/workforce/dhg': typeof AuthenticatedWorkforceDhgRoute
   '/workforce/employees': typeof AuthenticatedWorkforceEmployeesRoute
+  '/workforce/gap-analysis': typeof AuthenticatedWorkforceGapAnalysisRoute
+  '/workforce/requirements': typeof AuthenticatedWorkforceRequirementsRoute
   '/workforce/salaries': typeof AuthenticatedWorkforceSalariesRoute
   '/workforce/settings': typeof AuthenticatedWorkforceSettingsRouteWithChildren
-  '/analysis': typeof AuthenticatedAnalysisIndexRoute
-  '/configuration': typeof AuthenticatedConfigurationIndexRoute
+  '/consolidation': typeof AuthenticatedConsolidationIndexRoute
+  '/costs': typeof AuthenticatedCostsIndexRoute
   '/enrollment': typeof AuthenticatedEnrollmentIndexRoute
-  '/finance': typeof AuthenticatedFinanceIndexRoute
+  '/insights': typeof AuthenticatedInsightsIndexRoute
+  '/investments': typeof AuthenticatedInvestmentsIndexRoute
+  '/revenue': typeof AuthenticatedRevenueIndexRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
   '/strategic': typeof AuthenticatedStrategicIndexRoute
   '/workforce': typeof AuthenticatedWorkforceIndexRoute
-  '/workforce/dhg/gap-analysis': typeof AuthenticatedWorkforceDhgGapAnalysisRoute
-  '/workforce/dhg/planning': typeof AuthenticatedWorkforceDhgPlanningRoute
-  '/workforce/dhg/requirements': typeof AuthenticatedWorkforceDhgRequirementsRoute
   '/workforce/settings/cost-parameters': typeof AuthenticatedWorkforceSettingsCostParametersRoute
   '/workforce/settings/hsa-rates': typeof AuthenticatedWorkforceSettingsHsaRatesRoute
   '/workforce/settings/subject-hours': typeof AuthenticatedWorkforceSettingsSubjectHoursRoute
+  '/workforce/settings/timetable': typeof AuthenticatedWorkforceSettingsTimetableRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -502,53 +537,57 @@ export interface FileRoutesById {
   '/_authenticated/command-center': typeof AuthenticatedCommandCenterRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/admin/historical-import': typeof AuthenticatedAdminHistoricalImportRoute
-  '/_authenticated/analysis/dashboards': typeof AuthenticatedAnalysisDashboardsRoute
-  '/_authenticated/analysis/kpis': typeof AuthenticatedAnalysisKpisRoute
-  '/_authenticated/analysis/variance': typeof AuthenticatedAnalysisVarianceRoute
-  '/_authenticated/configuration/class-sizes': typeof AuthenticatedConfigurationClassSizesRoute
-  '/_authenticated/configuration/fees': typeof AuthenticatedConfigurationFeesRoute
-  '/_authenticated/configuration/subject-hours': typeof AuthenticatedConfigurationSubjectHoursRoute
-  '/_authenticated/configuration/system': typeof AuthenticatedConfigurationSystemRoute
-  '/_authenticated/configuration/teacher-costs': typeof AuthenticatedConfigurationTeacherCostsRoute
-  '/_authenticated/configuration/timetable': typeof AuthenticatedConfigurationTimetableRoute
-  '/_authenticated/configuration/uploads': typeof AuthenticatedConfigurationUploadsRoute
-  '/_authenticated/configuration/versions': typeof AuthenticatedConfigurationVersionsRoute
-  '/_authenticated/consolidation/budget': typeof AuthenticatedConsolidationBudgetRoute
+  '/_authenticated/admin/uploads': typeof AuthenticatedAdminUploadsRoute
   '/_authenticated/consolidation/checklist': typeof AuthenticatedConsolidationChecklistRoute
+  '/_authenticated/consolidation/exports': typeof AuthenticatedConsolidationExportsRoute
+  '/_authenticated/consolidation/rollup': typeof AuthenticatedConsolidationRollupRoute
   '/_authenticated/consolidation/statements': typeof AuthenticatedConsolidationStatementsRoute
+  '/_authenticated/costs/operating': typeof AuthenticatedCostsOperatingRoute
+  '/_authenticated/costs/overhead': typeof AuthenticatedCostsOverheadRoute
+  '/_authenticated/costs/personnel': typeof AuthenticatedCostsPersonnelRoute
+  '/_authenticated/costs/settings': typeof AuthenticatedCostsSettingsRoute
   '/_authenticated/enrollment/class-structure': typeof AuthenticatedEnrollmentClassStructureRoute
-  '/_authenticated/enrollment/planning': typeof AuthenticatedEnrollmentPlanningRoute
+  '/_authenticated/enrollment/projections': typeof AuthenticatedEnrollmentProjectionsRoute
   '/_authenticated/enrollment/settings': typeof AuthenticatedEnrollmentSettingsRoute
   '/_authenticated/enrollment/validation': typeof AuthenticatedEnrollmentValidationRoute
-  '/_authenticated/finance/capex': typeof AuthenticatedFinanceCapexRoute
-  '/_authenticated/finance/consolidation': typeof AuthenticatedFinanceConsolidationRoute
-  '/_authenticated/finance/costs': typeof AuthenticatedFinanceCostsRoute
-  '/_authenticated/finance/revenue': typeof AuthenticatedFinanceRevenueRoute
-  '/_authenticated/finance/settings': typeof AuthenticatedFinanceSettingsRoute
-  '/_authenticated/finance/statements': typeof AuthenticatedFinanceStatementsRoute
-  '/_authenticated/planning/capex': typeof AuthenticatedPlanningCapexRoute
-  '/_authenticated/planning/classes': typeof AuthenticatedPlanningClassesRoute
-  '/_authenticated/planning/costs': typeof AuthenticatedPlanningCostsRoute
-  '/_authenticated/planning/dhg': typeof AuthenticatedPlanningDhgRoute
-  '/_authenticated/planning/enrollment': typeof AuthenticatedPlanningEnrollmentRoute
-  '/_authenticated/planning/guide': typeof AuthenticatedPlanningGuideRoute
-  '/_authenticated/planning/revenue': typeof AuthenticatedPlanningRevenueRoute
+  '/_authenticated/insights/dashboards': typeof AuthenticatedInsightsDashboardsRoute
+  '/_authenticated/insights/kpis': typeof AuthenticatedInsightsKpisRoute
+  '/_authenticated/insights/reports': typeof AuthenticatedInsightsReportsRoute
+  '/_authenticated/insights/trends': typeof AuthenticatedInsightsTrendsRoute
+  '/_authenticated/insights/variance': typeof AuthenticatedInsightsVarianceRoute
+  '/_authenticated/investments/capex': typeof AuthenticatedInvestmentsCapexRoute
+  '/_authenticated/investments/cashflow': typeof AuthenticatedInvestmentsCashflowRoute
+  '/_authenticated/investments/projects': typeof AuthenticatedInvestmentsProjectsRoute
+  '/_authenticated/investments/settings': typeof AuthenticatedInvestmentsSettingsRoute
+  '/_authenticated/revenue/other': typeof AuthenticatedRevenueOtherRoute
+  '/_authenticated/revenue/settings': typeof AuthenticatedRevenueSettingsRoute
+  '/_authenticated/revenue/subsidies': typeof AuthenticatedRevenueSubsidiesRoute
+  '/_authenticated/revenue/tuition': typeof AuthenticatedRevenueTuitionRoute
+  '/_authenticated/settings/system': typeof AuthenticatedSettingsSystemRoute
+  '/_authenticated/settings/versions': typeof AuthenticatedSettingsVersionsRoute
+  '/_authenticated/strategic/long-term': typeof AuthenticatedStrategicLongTermRoute
+  '/_authenticated/strategic/scenarios': typeof AuthenticatedStrategicScenariosRoute
+  '/_authenticated/strategic/targets': typeof AuthenticatedStrategicTargetsRoute
   '/_authenticated/workforce/aefe-positions': typeof AuthenticatedWorkforceAefePositionsRoute
+  '/_authenticated/workforce/dhg': typeof AuthenticatedWorkforceDhgRoute
   '/_authenticated/workforce/employees': typeof AuthenticatedWorkforceEmployeesRoute
+  '/_authenticated/workforce/gap-analysis': typeof AuthenticatedWorkforceGapAnalysisRoute
+  '/_authenticated/workforce/requirements': typeof AuthenticatedWorkforceRequirementsRoute
   '/_authenticated/workforce/salaries': typeof AuthenticatedWorkforceSalariesRoute
   '/_authenticated/workforce/settings': typeof AuthenticatedWorkforceSettingsRouteWithChildren
-  '/_authenticated/analysis/': typeof AuthenticatedAnalysisIndexRoute
-  '/_authenticated/configuration/': typeof AuthenticatedConfigurationIndexRoute
+  '/_authenticated/consolidation/': typeof AuthenticatedConsolidationIndexRoute
+  '/_authenticated/costs/': typeof AuthenticatedCostsIndexRoute
   '/_authenticated/enrollment/': typeof AuthenticatedEnrollmentIndexRoute
-  '/_authenticated/finance/': typeof AuthenticatedFinanceIndexRoute
+  '/_authenticated/insights/': typeof AuthenticatedInsightsIndexRoute
+  '/_authenticated/investments/': typeof AuthenticatedInvestmentsIndexRoute
+  '/_authenticated/revenue/': typeof AuthenticatedRevenueIndexRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/strategic/': typeof AuthenticatedStrategicIndexRoute
   '/_authenticated/workforce/': typeof AuthenticatedWorkforceIndexRoute
-  '/_authenticated/workforce/dhg/gap-analysis': typeof AuthenticatedWorkforceDhgGapAnalysisRoute
-  '/_authenticated/workforce/dhg/planning': typeof AuthenticatedWorkforceDhgPlanningRoute
-  '/_authenticated/workforce/dhg/requirements': typeof AuthenticatedWorkforceDhgRequirementsRoute
   '/_authenticated/workforce/settings/cost-parameters': typeof AuthenticatedWorkforceSettingsCostParametersRoute
   '/_authenticated/workforce/settings/hsa-rates': typeof AuthenticatedWorkforceSettingsHsaRatesRoute
   '/_authenticated/workforce/settings/subject-hours': typeof AuthenticatedWorkforceSettingsSubjectHoursRoute
+  '/_authenticated/workforce/settings/timetable': typeof AuthenticatedWorkforceSettingsTimetableRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -559,53 +598,57 @@ export interface FileRouteTypes {
     | '/command-center'
     | '/dashboard'
     | '/admin/historical-import'
-    | '/analysis/dashboards'
-    | '/analysis/kpis'
-    | '/analysis/variance'
-    | '/configuration/class-sizes'
-    | '/configuration/fees'
-    | '/configuration/subject-hours'
-    | '/configuration/system'
-    | '/configuration/teacher-costs'
-    | '/configuration/timetable'
-    | '/configuration/uploads'
-    | '/configuration/versions'
-    | '/consolidation/budget'
+    | '/admin/uploads'
     | '/consolidation/checklist'
+    | '/consolidation/exports'
+    | '/consolidation/rollup'
     | '/consolidation/statements'
+    | '/costs/operating'
+    | '/costs/overhead'
+    | '/costs/personnel'
+    | '/costs/settings'
     | '/enrollment/class-structure'
-    | '/enrollment/planning'
+    | '/enrollment/projections'
     | '/enrollment/settings'
     | '/enrollment/validation'
-    | '/finance/capex'
-    | '/finance/consolidation'
-    | '/finance/costs'
-    | '/finance/revenue'
-    | '/finance/settings'
-    | '/finance/statements'
-    | '/planning/capex'
-    | '/planning/classes'
-    | '/planning/costs'
-    | '/planning/dhg'
-    | '/planning/enrollment'
-    | '/planning/guide'
-    | '/planning/revenue'
+    | '/insights/dashboards'
+    | '/insights/kpis'
+    | '/insights/reports'
+    | '/insights/trends'
+    | '/insights/variance'
+    | '/investments/capex'
+    | '/investments/cashflow'
+    | '/investments/projects'
+    | '/investments/settings'
+    | '/revenue/other'
+    | '/revenue/settings'
+    | '/revenue/subsidies'
+    | '/revenue/tuition'
+    | '/settings/system'
+    | '/settings/versions'
+    | '/strategic/long-term'
+    | '/strategic/scenarios'
+    | '/strategic/targets'
     | '/workforce/aefe-positions'
+    | '/workforce/dhg'
     | '/workforce/employees'
+    | '/workforce/gap-analysis'
+    | '/workforce/requirements'
     | '/workforce/salaries'
     | '/workforce/settings'
-    | '/analysis'
-    | '/configuration'
+    | '/consolidation'
+    | '/costs'
     | '/enrollment'
-    | '/finance'
+    | '/insights'
+    | '/investments'
+    | '/revenue'
+    | '/settings'
     | '/strategic'
     | '/workforce'
-    | '/workforce/dhg/gap-analysis'
-    | '/workforce/dhg/planning'
-    | '/workforce/dhg/requirements'
     | '/workforce/settings/cost-parameters'
     | '/workforce/settings/hsa-rates'
     | '/workforce/settings/subject-hours'
+    | '/workforce/settings/timetable'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -614,53 +657,57 @@ export interface FileRouteTypes {
     | '/command-center'
     | '/dashboard'
     | '/admin/historical-import'
-    | '/analysis/dashboards'
-    | '/analysis/kpis'
-    | '/analysis/variance'
-    | '/configuration/class-sizes'
-    | '/configuration/fees'
-    | '/configuration/subject-hours'
-    | '/configuration/system'
-    | '/configuration/teacher-costs'
-    | '/configuration/timetable'
-    | '/configuration/uploads'
-    | '/configuration/versions'
-    | '/consolidation/budget'
+    | '/admin/uploads'
     | '/consolidation/checklist'
+    | '/consolidation/exports'
+    | '/consolidation/rollup'
     | '/consolidation/statements'
+    | '/costs/operating'
+    | '/costs/overhead'
+    | '/costs/personnel'
+    | '/costs/settings'
     | '/enrollment/class-structure'
-    | '/enrollment/planning'
+    | '/enrollment/projections'
     | '/enrollment/settings'
     | '/enrollment/validation'
-    | '/finance/capex'
-    | '/finance/consolidation'
-    | '/finance/costs'
-    | '/finance/revenue'
-    | '/finance/settings'
-    | '/finance/statements'
-    | '/planning/capex'
-    | '/planning/classes'
-    | '/planning/costs'
-    | '/planning/dhg'
-    | '/planning/enrollment'
-    | '/planning/guide'
-    | '/planning/revenue'
+    | '/insights/dashboards'
+    | '/insights/kpis'
+    | '/insights/reports'
+    | '/insights/trends'
+    | '/insights/variance'
+    | '/investments/capex'
+    | '/investments/cashflow'
+    | '/investments/projects'
+    | '/investments/settings'
+    | '/revenue/other'
+    | '/revenue/settings'
+    | '/revenue/subsidies'
+    | '/revenue/tuition'
+    | '/settings/system'
+    | '/settings/versions'
+    | '/strategic/long-term'
+    | '/strategic/scenarios'
+    | '/strategic/targets'
     | '/workforce/aefe-positions'
+    | '/workforce/dhg'
     | '/workforce/employees'
+    | '/workforce/gap-analysis'
+    | '/workforce/requirements'
     | '/workforce/salaries'
     | '/workforce/settings'
-    | '/analysis'
-    | '/configuration'
+    | '/consolidation'
+    | '/costs'
     | '/enrollment'
-    | '/finance'
+    | '/insights'
+    | '/investments'
+    | '/revenue'
+    | '/settings'
     | '/strategic'
     | '/workforce'
-    | '/workforce/dhg/gap-analysis'
-    | '/workforce/dhg/planning'
-    | '/workforce/dhg/requirements'
     | '/workforce/settings/cost-parameters'
     | '/workforce/settings/hsa-rates'
     | '/workforce/settings/subject-hours'
+    | '/workforce/settings/timetable'
   id:
     | '__root__'
     | '/'
@@ -670,53 +717,57 @@ export interface FileRouteTypes {
     | '/_authenticated/command-center'
     | '/_authenticated/dashboard'
     | '/_authenticated/admin/historical-import'
-    | '/_authenticated/analysis/dashboards'
-    | '/_authenticated/analysis/kpis'
-    | '/_authenticated/analysis/variance'
-    | '/_authenticated/configuration/class-sizes'
-    | '/_authenticated/configuration/fees'
-    | '/_authenticated/configuration/subject-hours'
-    | '/_authenticated/configuration/system'
-    | '/_authenticated/configuration/teacher-costs'
-    | '/_authenticated/configuration/timetable'
-    | '/_authenticated/configuration/uploads'
-    | '/_authenticated/configuration/versions'
-    | '/_authenticated/consolidation/budget'
+    | '/_authenticated/admin/uploads'
     | '/_authenticated/consolidation/checklist'
+    | '/_authenticated/consolidation/exports'
+    | '/_authenticated/consolidation/rollup'
     | '/_authenticated/consolidation/statements'
+    | '/_authenticated/costs/operating'
+    | '/_authenticated/costs/overhead'
+    | '/_authenticated/costs/personnel'
+    | '/_authenticated/costs/settings'
     | '/_authenticated/enrollment/class-structure'
-    | '/_authenticated/enrollment/planning'
+    | '/_authenticated/enrollment/projections'
     | '/_authenticated/enrollment/settings'
     | '/_authenticated/enrollment/validation'
-    | '/_authenticated/finance/capex'
-    | '/_authenticated/finance/consolidation'
-    | '/_authenticated/finance/costs'
-    | '/_authenticated/finance/revenue'
-    | '/_authenticated/finance/settings'
-    | '/_authenticated/finance/statements'
-    | '/_authenticated/planning/capex'
-    | '/_authenticated/planning/classes'
-    | '/_authenticated/planning/costs'
-    | '/_authenticated/planning/dhg'
-    | '/_authenticated/planning/enrollment'
-    | '/_authenticated/planning/guide'
-    | '/_authenticated/planning/revenue'
+    | '/_authenticated/insights/dashboards'
+    | '/_authenticated/insights/kpis'
+    | '/_authenticated/insights/reports'
+    | '/_authenticated/insights/trends'
+    | '/_authenticated/insights/variance'
+    | '/_authenticated/investments/capex'
+    | '/_authenticated/investments/cashflow'
+    | '/_authenticated/investments/projects'
+    | '/_authenticated/investments/settings'
+    | '/_authenticated/revenue/other'
+    | '/_authenticated/revenue/settings'
+    | '/_authenticated/revenue/subsidies'
+    | '/_authenticated/revenue/tuition'
+    | '/_authenticated/settings/system'
+    | '/_authenticated/settings/versions'
+    | '/_authenticated/strategic/long-term'
+    | '/_authenticated/strategic/scenarios'
+    | '/_authenticated/strategic/targets'
     | '/_authenticated/workforce/aefe-positions'
+    | '/_authenticated/workforce/dhg'
     | '/_authenticated/workforce/employees'
+    | '/_authenticated/workforce/gap-analysis'
+    | '/_authenticated/workforce/requirements'
     | '/_authenticated/workforce/salaries'
     | '/_authenticated/workforce/settings'
-    | '/_authenticated/analysis/'
-    | '/_authenticated/configuration/'
+    | '/_authenticated/consolidation/'
+    | '/_authenticated/costs/'
     | '/_authenticated/enrollment/'
-    | '/_authenticated/finance/'
+    | '/_authenticated/insights/'
+    | '/_authenticated/investments/'
+    | '/_authenticated/revenue/'
+    | '/_authenticated/settings/'
     | '/_authenticated/strategic/'
     | '/_authenticated/workforce/'
-    | '/_authenticated/workforce/dhg/gap-analysis'
-    | '/_authenticated/workforce/dhg/planning'
-    | '/_authenticated/workforce/dhg/requirements'
     | '/_authenticated/workforce/settings/cost-parameters'
     | '/_authenticated/workforce/settings/hsa-rates'
     | '/_authenticated/workforce/settings/subject-hours'
+    | '/_authenticated/workforce/settings/timetable'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -784,11 +835,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStrategicIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/finance/': {
-      id: '/_authenticated/finance/'
-      path: '/finance'
-      fullPath: '/finance'
-      preLoaderRoute: typeof AuthenticatedFinanceIndexRouteImport
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/revenue/': {
+      id: '/_authenticated/revenue/'
+      path: '/revenue'
+      fullPath: '/revenue'
+      preLoaderRoute: typeof AuthenticatedRevenueIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/investments/': {
+      id: '/_authenticated/investments/'
+      path: '/investments'
+      fullPath: '/investments'
+      preLoaderRoute: typeof AuthenticatedInvestmentsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/insights/': {
+      id: '/_authenticated/insights/'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof AuthenticatedInsightsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/enrollment/': {
@@ -798,18 +870,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEnrollmentIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/configuration/': {
-      id: '/_authenticated/configuration/'
-      path: '/configuration'
-      fullPath: '/configuration'
-      preLoaderRoute: typeof AuthenticatedConfigurationIndexRouteImport
+    '/_authenticated/costs/': {
+      id: '/_authenticated/costs/'
+      path: '/costs'
+      fullPath: '/costs'
+      preLoaderRoute: typeof AuthenticatedCostsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/analysis/': {
-      id: '/_authenticated/analysis/'
-      path: '/analysis'
-      fullPath: '/analysis'
-      preLoaderRoute: typeof AuthenticatedAnalysisIndexRouteImport
+    '/_authenticated/consolidation/': {
+      id: '/_authenticated/consolidation/'
+      path: '/consolidation'
+      fullPath: '/consolidation'
+      preLoaderRoute: typeof AuthenticatedConsolidationIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/workforce/settings': {
@@ -826,11 +898,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkforceSalariesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/workforce/requirements': {
+      id: '/_authenticated/workforce/requirements'
+      path: '/workforce/requirements'
+      fullPath: '/workforce/requirements'
+      preLoaderRoute: typeof AuthenticatedWorkforceRequirementsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/workforce/gap-analysis': {
+      id: '/_authenticated/workforce/gap-analysis'
+      path: '/workforce/gap-analysis'
+      fullPath: '/workforce/gap-analysis'
+      preLoaderRoute: typeof AuthenticatedWorkforceGapAnalysisRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/workforce/employees': {
       id: '/_authenticated/workforce/employees'
       path: '/workforce/employees'
       fullPath: '/workforce/employees'
       preLoaderRoute: typeof AuthenticatedWorkforceEmployeesRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/workforce/dhg': {
+      id: '/_authenticated/workforce/dhg'
+      path: '/workforce/dhg'
+      fullPath: '/workforce/dhg'
+      preLoaderRoute: typeof AuthenticatedWorkforceDhgRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/workforce/aefe-positions': {
@@ -840,95 +933,130 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkforceAefePositionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/planning/revenue': {
-      id: '/_authenticated/planning/revenue'
-      path: '/planning/revenue'
-      fullPath: '/planning/revenue'
-      preLoaderRoute: typeof AuthenticatedPlanningRevenueRouteImport
+    '/_authenticated/strategic/targets': {
+      id: '/_authenticated/strategic/targets'
+      path: '/strategic/targets'
+      fullPath: '/strategic/targets'
+      preLoaderRoute: typeof AuthenticatedStrategicTargetsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/planning/guide': {
-      id: '/_authenticated/planning/guide'
-      path: '/planning/guide'
-      fullPath: '/planning/guide'
-      preLoaderRoute: typeof AuthenticatedPlanningGuideRouteImport
+    '/_authenticated/strategic/scenarios': {
+      id: '/_authenticated/strategic/scenarios'
+      path: '/strategic/scenarios'
+      fullPath: '/strategic/scenarios'
+      preLoaderRoute: typeof AuthenticatedStrategicScenariosRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/planning/enrollment': {
-      id: '/_authenticated/planning/enrollment'
-      path: '/planning/enrollment'
-      fullPath: '/planning/enrollment'
-      preLoaderRoute: typeof AuthenticatedPlanningEnrollmentRouteImport
+    '/_authenticated/strategic/long-term': {
+      id: '/_authenticated/strategic/long-term'
+      path: '/strategic/long-term'
+      fullPath: '/strategic/long-term'
+      preLoaderRoute: typeof AuthenticatedStrategicLongTermRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/planning/dhg': {
-      id: '/_authenticated/planning/dhg'
-      path: '/planning/dhg'
-      fullPath: '/planning/dhg'
-      preLoaderRoute: typeof AuthenticatedPlanningDhgRouteImport
+    '/_authenticated/settings/versions': {
+      id: '/_authenticated/settings/versions'
+      path: '/settings/versions'
+      fullPath: '/settings/versions'
+      preLoaderRoute: typeof AuthenticatedSettingsVersionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/planning/costs': {
-      id: '/_authenticated/planning/costs'
-      path: '/planning/costs'
-      fullPath: '/planning/costs'
-      preLoaderRoute: typeof AuthenticatedPlanningCostsRouteImport
+    '/_authenticated/settings/system': {
+      id: '/_authenticated/settings/system'
+      path: '/settings/system'
+      fullPath: '/settings/system'
+      preLoaderRoute: typeof AuthenticatedSettingsSystemRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/planning/classes': {
-      id: '/_authenticated/planning/classes'
-      path: '/planning/classes'
-      fullPath: '/planning/classes'
-      preLoaderRoute: typeof AuthenticatedPlanningClassesRouteImport
+    '/_authenticated/revenue/tuition': {
+      id: '/_authenticated/revenue/tuition'
+      path: '/revenue/tuition'
+      fullPath: '/revenue/tuition'
+      preLoaderRoute: typeof AuthenticatedRevenueTuitionRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/planning/capex': {
-      id: '/_authenticated/planning/capex'
-      path: '/planning/capex'
-      fullPath: '/planning/capex'
-      preLoaderRoute: typeof AuthenticatedPlanningCapexRouteImport
+    '/_authenticated/revenue/subsidies': {
+      id: '/_authenticated/revenue/subsidies'
+      path: '/revenue/subsidies'
+      fullPath: '/revenue/subsidies'
+      preLoaderRoute: typeof AuthenticatedRevenueSubsidiesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/finance/statements': {
-      id: '/_authenticated/finance/statements'
-      path: '/finance/statements'
-      fullPath: '/finance/statements'
-      preLoaderRoute: typeof AuthenticatedFinanceStatementsRouteImport
+    '/_authenticated/revenue/settings': {
+      id: '/_authenticated/revenue/settings'
+      path: '/revenue/settings'
+      fullPath: '/revenue/settings'
+      preLoaderRoute: typeof AuthenticatedRevenueSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/finance/settings': {
-      id: '/_authenticated/finance/settings'
-      path: '/finance/settings'
-      fullPath: '/finance/settings'
-      preLoaderRoute: typeof AuthenticatedFinanceSettingsRouteImport
+    '/_authenticated/revenue/other': {
+      id: '/_authenticated/revenue/other'
+      path: '/revenue/other'
+      fullPath: '/revenue/other'
+      preLoaderRoute: typeof AuthenticatedRevenueOtherRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/finance/revenue': {
-      id: '/_authenticated/finance/revenue'
-      path: '/finance/revenue'
-      fullPath: '/finance/revenue'
-      preLoaderRoute: typeof AuthenticatedFinanceRevenueRouteImport
+    '/_authenticated/investments/settings': {
+      id: '/_authenticated/investments/settings'
+      path: '/investments/settings'
+      fullPath: '/investments/settings'
+      preLoaderRoute: typeof AuthenticatedInvestmentsSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/finance/costs': {
-      id: '/_authenticated/finance/costs'
-      path: '/finance/costs'
-      fullPath: '/finance/costs'
-      preLoaderRoute: typeof AuthenticatedFinanceCostsRouteImport
+    '/_authenticated/investments/projects': {
+      id: '/_authenticated/investments/projects'
+      path: '/investments/projects'
+      fullPath: '/investments/projects'
+      preLoaderRoute: typeof AuthenticatedInvestmentsProjectsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/finance/consolidation': {
-      id: '/_authenticated/finance/consolidation'
-      path: '/finance/consolidation'
-      fullPath: '/finance/consolidation'
-      preLoaderRoute: typeof AuthenticatedFinanceConsolidationRouteImport
+    '/_authenticated/investments/cashflow': {
+      id: '/_authenticated/investments/cashflow'
+      path: '/investments/cashflow'
+      fullPath: '/investments/cashflow'
+      preLoaderRoute: typeof AuthenticatedInvestmentsCashflowRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/finance/capex': {
-      id: '/_authenticated/finance/capex'
-      path: '/finance/capex'
-      fullPath: '/finance/capex'
-      preLoaderRoute: typeof AuthenticatedFinanceCapexRouteImport
+    '/_authenticated/investments/capex': {
+      id: '/_authenticated/investments/capex'
+      path: '/investments/capex'
+      fullPath: '/investments/capex'
+      preLoaderRoute: typeof AuthenticatedInvestmentsCapexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/insights/variance': {
+      id: '/_authenticated/insights/variance'
+      path: '/insights/variance'
+      fullPath: '/insights/variance'
+      preLoaderRoute: typeof AuthenticatedInsightsVarianceRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/insights/trends': {
+      id: '/_authenticated/insights/trends'
+      path: '/insights/trends'
+      fullPath: '/insights/trends'
+      preLoaderRoute: typeof AuthenticatedInsightsTrendsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/insights/reports': {
+      id: '/_authenticated/insights/reports'
+      path: '/insights/reports'
+      fullPath: '/insights/reports'
+      preLoaderRoute: typeof AuthenticatedInsightsReportsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/insights/kpis': {
+      id: '/_authenticated/insights/kpis'
+      path: '/insights/kpis'
+      fullPath: '/insights/kpis'
+      preLoaderRoute: typeof AuthenticatedInsightsKpisRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/insights/dashboards': {
+      id: '/_authenticated/insights/dashboards'
+      path: '/insights/dashboards'
+      fullPath: '/insights/dashboards'
+      preLoaderRoute: typeof AuthenticatedInsightsDashboardsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/enrollment/validation': {
@@ -945,11 +1073,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEnrollmentSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/enrollment/planning': {
-      id: '/_authenticated/enrollment/planning'
-      path: '/enrollment/planning'
-      fullPath: '/enrollment/planning'
-      preLoaderRoute: typeof AuthenticatedEnrollmentPlanningRouteImport
+    '/_authenticated/enrollment/projections': {
+      id: '/_authenticated/enrollment/projections'
+      path: '/enrollment/projections'
+      fullPath: '/enrollment/projections'
+      preLoaderRoute: typeof AuthenticatedEnrollmentProjectionsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/enrollment/class-structure': {
@@ -959,11 +1087,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEnrollmentClassStructureRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/costs/settings': {
+      id: '/_authenticated/costs/settings'
+      path: '/costs/settings'
+      fullPath: '/costs/settings'
+      preLoaderRoute: typeof AuthenticatedCostsSettingsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/costs/personnel': {
+      id: '/_authenticated/costs/personnel'
+      path: '/costs/personnel'
+      fullPath: '/costs/personnel'
+      preLoaderRoute: typeof AuthenticatedCostsPersonnelRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/costs/overhead': {
+      id: '/_authenticated/costs/overhead'
+      path: '/costs/overhead'
+      fullPath: '/costs/overhead'
+      preLoaderRoute: typeof AuthenticatedCostsOverheadRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/costs/operating': {
+      id: '/_authenticated/costs/operating'
+      path: '/costs/operating'
+      fullPath: '/costs/operating'
+      preLoaderRoute: typeof AuthenticatedCostsOperatingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/consolidation/statements': {
       id: '/_authenticated/consolidation/statements'
       path: '/consolidation/statements'
       fullPath: '/consolidation/statements'
       preLoaderRoute: typeof AuthenticatedConsolidationStatementsRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/consolidation/rollup': {
+      id: '/_authenticated/consolidation/rollup'
+      path: '/consolidation/rollup'
+      fullPath: '/consolidation/rollup'
+      preLoaderRoute: typeof AuthenticatedConsolidationRollupRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/consolidation/exports': {
+      id: '/_authenticated/consolidation/exports'
+      path: '/consolidation/exports'
+      fullPath: '/consolidation/exports'
+      preLoaderRoute: typeof AuthenticatedConsolidationExportsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/consolidation/checklist': {
@@ -973,88 +1143,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConsolidationChecklistRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/consolidation/budget': {
-      id: '/_authenticated/consolidation/budget'
-      path: '/consolidation/budget'
-      fullPath: '/consolidation/budget'
-      preLoaderRoute: typeof AuthenticatedConsolidationBudgetRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/configuration/versions': {
-      id: '/_authenticated/configuration/versions'
-      path: '/configuration/versions'
-      fullPath: '/configuration/versions'
-      preLoaderRoute: typeof AuthenticatedConfigurationVersionsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/configuration/uploads': {
-      id: '/_authenticated/configuration/uploads'
-      path: '/configuration/uploads'
-      fullPath: '/configuration/uploads'
-      preLoaderRoute: typeof AuthenticatedConfigurationUploadsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/configuration/timetable': {
-      id: '/_authenticated/configuration/timetable'
-      path: '/configuration/timetable'
-      fullPath: '/configuration/timetable'
-      preLoaderRoute: typeof AuthenticatedConfigurationTimetableRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/configuration/teacher-costs': {
-      id: '/_authenticated/configuration/teacher-costs'
-      path: '/configuration/teacher-costs'
-      fullPath: '/configuration/teacher-costs'
-      preLoaderRoute: typeof AuthenticatedConfigurationTeacherCostsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/configuration/system': {
-      id: '/_authenticated/configuration/system'
-      path: '/configuration/system'
-      fullPath: '/configuration/system'
-      preLoaderRoute: typeof AuthenticatedConfigurationSystemRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/configuration/subject-hours': {
-      id: '/_authenticated/configuration/subject-hours'
-      path: '/configuration/subject-hours'
-      fullPath: '/configuration/subject-hours'
-      preLoaderRoute: typeof AuthenticatedConfigurationSubjectHoursRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/configuration/fees': {
-      id: '/_authenticated/configuration/fees'
-      path: '/configuration/fees'
-      fullPath: '/configuration/fees'
-      preLoaderRoute: typeof AuthenticatedConfigurationFeesRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/configuration/class-sizes': {
-      id: '/_authenticated/configuration/class-sizes'
-      path: '/configuration/class-sizes'
-      fullPath: '/configuration/class-sizes'
-      preLoaderRoute: typeof AuthenticatedConfigurationClassSizesRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/analysis/variance': {
-      id: '/_authenticated/analysis/variance'
-      path: '/analysis/variance'
-      fullPath: '/analysis/variance'
-      preLoaderRoute: typeof AuthenticatedAnalysisVarianceRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/analysis/kpis': {
-      id: '/_authenticated/analysis/kpis'
-      path: '/analysis/kpis'
-      fullPath: '/analysis/kpis'
-      preLoaderRoute: typeof AuthenticatedAnalysisKpisRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/analysis/dashboards': {
-      id: '/_authenticated/analysis/dashboards'
-      path: '/analysis/dashboards'
-      fullPath: '/analysis/dashboards'
-      preLoaderRoute: typeof AuthenticatedAnalysisDashboardsRouteImport
+    '/_authenticated/admin/uploads': {
+      id: '/_authenticated/admin/uploads'
+      path: '/admin/uploads'
+      fullPath: '/admin/uploads'
+      preLoaderRoute: typeof AuthenticatedAdminUploadsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/admin/historical-import': {
@@ -1063,6 +1156,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/historical-import'
       preLoaderRoute: typeof AuthenticatedAdminHistoricalImportRouteImport
       parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/workforce/settings/timetable': {
+      id: '/_authenticated/workforce/settings/timetable'
+      path: '/timetable'
+      fullPath: '/workforce/settings/timetable'
+      preLoaderRoute: typeof AuthenticatedWorkforceSettingsTimetableRouteImport
+      parentRoute: typeof AuthenticatedWorkforceSettingsRoute
     }
     '/_authenticated/workforce/settings/subject-hours': {
       id: '/_authenticated/workforce/settings/subject-hours'
@@ -1085,27 +1185,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkforceSettingsCostParametersRouteImport
       parentRoute: typeof AuthenticatedWorkforceSettingsRoute
     }
-    '/_authenticated/workforce/dhg/requirements': {
-      id: '/_authenticated/workforce/dhg/requirements'
-      path: '/workforce/dhg/requirements'
-      fullPath: '/workforce/dhg/requirements'
-      preLoaderRoute: typeof AuthenticatedWorkforceDhgRequirementsRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/workforce/dhg/planning': {
-      id: '/_authenticated/workforce/dhg/planning'
-      path: '/workforce/dhg/planning'
-      fullPath: '/workforce/dhg/planning'
-      preLoaderRoute: typeof AuthenticatedWorkforceDhgPlanningRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/workforce/dhg/gap-analysis': {
-      id: '/_authenticated/workforce/dhg/gap-analysis'
-      path: '/workforce/dhg/gap-analysis'
-      fullPath: '/workforce/dhg/gap-analysis'
-      preLoaderRoute: typeof AuthenticatedWorkforceDhgGapAnalysisRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
   }
 }
 
@@ -1113,6 +1192,7 @@ interface AuthenticatedWorkforceSettingsRouteChildren {
   AuthenticatedWorkforceSettingsCostParametersRoute: typeof AuthenticatedWorkforceSettingsCostParametersRoute
   AuthenticatedWorkforceSettingsHsaRatesRoute: typeof AuthenticatedWorkforceSettingsHsaRatesRoute
   AuthenticatedWorkforceSettingsSubjectHoursRoute: typeof AuthenticatedWorkforceSettingsSubjectHoursRoute
+  AuthenticatedWorkforceSettingsTimetableRoute: typeof AuthenticatedWorkforceSettingsTimetableRoute
 }
 
 const AuthenticatedWorkforceSettingsRouteChildren: AuthenticatedWorkforceSettingsRouteChildren =
@@ -1123,6 +1203,8 @@ const AuthenticatedWorkforceSettingsRouteChildren: AuthenticatedWorkforceSetting
       AuthenticatedWorkforceSettingsHsaRatesRoute,
     AuthenticatedWorkforceSettingsSubjectHoursRoute:
       AuthenticatedWorkforceSettingsSubjectHoursRoute,
+    AuthenticatedWorkforceSettingsTimetableRoute:
+      AuthenticatedWorkforceSettingsTimetableRoute,
   }
 
 const AuthenticatedWorkforceSettingsRouteWithChildren =
@@ -1134,50 +1216,53 @@ interface AuthenticatedRouteChildren {
   AuthenticatedCommandCenterRoute: typeof AuthenticatedCommandCenterRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedAdminHistoricalImportRoute: typeof AuthenticatedAdminHistoricalImportRoute
-  AuthenticatedAnalysisDashboardsRoute: typeof AuthenticatedAnalysisDashboardsRoute
-  AuthenticatedAnalysisKpisRoute: typeof AuthenticatedAnalysisKpisRoute
-  AuthenticatedAnalysisVarianceRoute: typeof AuthenticatedAnalysisVarianceRoute
-  AuthenticatedConfigurationClassSizesRoute: typeof AuthenticatedConfigurationClassSizesRoute
-  AuthenticatedConfigurationFeesRoute: typeof AuthenticatedConfigurationFeesRoute
-  AuthenticatedConfigurationSubjectHoursRoute: typeof AuthenticatedConfigurationSubjectHoursRoute
-  AuthenticatedConfigurationSystemRoute: typeof AuthenticatedConfigurationSystemRoute
-  AuthenticatedConfigurationTeacherCostsRoute: typeof AuthenticatedConfigurationTeacherCostsRoute
-  AuthenticatedConfigurationTimetableRoute: typeof AuthenticatedConfigurationTimetableRoute
-  AuthenticatedConfigurationUploadsRoute: typeof AuthenticatedConfigurationUploadsRoute
-  AuthenticatedConfigurationVersionsRoute: typeof AuthenticatedConfigurationVersionsRoute
-  AuthenticatedConsolidationBudgetRoute: typeof AuthenticatedConsolidationBudgetRoute
+  AuthenticatedAdminUploadsRoute: typeof AuthenticatedAdminUploadsRoute
   AuthenticatedConsolidationChecklistRoute: typeof AuthenticatedConsolidationChecklistRoute
+  AuthenticatedConsolidationExportsRoute: typeof AuthenticatedConsolidationExportsRoute
+  AuthenticatedConsolidationRollupRoute: typeof AuthenticatedConsolidationRollupRoute
   AuthenticatedConsolidationStatementsRoute: typeof AuthenticatedConsolidationStatementsRoute
+  AuthenticatedCostsOperatingRoute: typeof AuthenticatedCostsOperatingRoute
+  AuthenticatedCostsOverheadRoute: typeof AuthenticatedCostsOverheadRoute
+  AuthenticatedCostsPersonnelRoute: typeof AuthenticatedCostsPersonnelRoute
+  AuthenticatedCostsSettingsRoute: typeof AuthenticatedCostsSettingsRoute
   AuthenticatedEnrollmentClassStructureRoute: typeof AuthenticatedEnrollmentClassStructureRoute
-  AuthenticatedEnrollmentPlanningRoute: typeof AuthenticatedEnrollmentPlanningRoute
+  AuthenticatedEnrollmentProjectionsRoute: typeof AuthenticatedEnrollmentProjectionsRoute
   AuthenticatedEnrollmentSettingsRoute: typeof AuthenticatedEnrollmentSettingsRoute
   AuthenticatedEnrollmentValidationRoute: typeof AuthenticatedEnrollmentValidationRoute
-  AuthenticatedFinanceCapexRoute: typeof AuthenticatedFinanceCapexRoute
-  AuthenticatedFinanceConsolidationRoute: typeof AuthenticatedFinanceConsolidationRoute
-  AuthenticatedFinanceCostsRoute: typeof AuthenticatedFinanceCostsRoute
-  AuthenticatedFinanceRevenueRoute: typeof AuthenticatedFinanceRevenueRoute
-  AuthenticatedFinanceSettingsRoute: typeof AuthenticatedFinanceSettingsRoute
-  AuthenticatedFinanceStatementsRoute: typeof AuthenticatedFinanceStatementsRoute
-  AuthenticatedPlanningCapexRoute: typeof AuthenticatedPlanningCapexRoute
-  AuthenticatedPlanningClassesRoute: typeof AuthenticatedPlanningClassesRoute
-  AuthenticatedPlanningCostsRoute: typeof AuthenticatedPlanningCostsRoute
-  AuthenticatedPlanningDhgRoute: typeof AuthenticatedPlanningDhgRoute
-  AuthenticatedPlanningEnrollmentRoute: typeof AuthenticatedPlanningEnrollmentRoute
-  AuthenticatedPlanningGuideRoute: typeof AuthenticatedPlanningGuideRoute
-  AuthenticatedPlanningRevenueRoute: typeof AuthenticatedPlanningRevenueRoute
+  AuthenticatedInsightsDashboardsRoute: typeof AuthenticatedInsightsDashboardsRoute
+  AuthenticatedInsightsKpisRoute: typeof AuthenticatedInsightsKpisRoute
+  AuthenticatedInsightsReportsRoute: typeof AuthenticatedInsightsReportsRoute
+  AuthenticatedInsightsTrendsRoute: typeof AuthenticatedInsightsTrendsRoute
+  AuthenticatedInsightsVarianceRoute: typeof AuthenticatedInsightsVarianceRoute
+  AuthenticatedInvestmentsCapexRoute: typeof AuthenticatedInvestmentsCapexRoute
+  AuthenticatedInvestmentsCashflowRoute: typeof AuthenticatedInvestmentsCashflowRoute
+  AuthenticatedInvestmentsProjectsRoute: typeof AuthenticatedInvestmentsProjectsRoute
+  AuthenticatedInvestmentsSettingsRoute: typeof AuthenticatedInvestmentsSettingsRoute
+  AuthenticatedRevenueOtherRoute: typeof AuthenticatedRevenueOtherRoute
+  AuthenticatedRevenueSettingsRoute: typeof AuthenticatedRevenueSettingsRoute
+  AuthenticatedRevenueSubsidiesRoute: typeof AuthenticatedRevenueSubsidiesRoute
+  AuthenticatedRevenueTuitionRoute: typeof AuthenticatedRevenueTuitionRoute
+  AuthenticatedSettingsSystemRoute: typeof AuthenticatedSettingsSystemRoute
+  AuthenticatedSettingsVersionsRoute: typeof AuthenticatedSettingsVersionsRoute
+  AuthenticatedStrategicLongTermRoute: typeof AuthenticatedStrategicLongTermRoute
+  AuthenticatedStrategicScenariosRoute: typeof AuthenticatedStrategicScenariosRoute
+  AuthenticatedStrategicTargetsRoute: typeof AuthenticatedStrategicTargetsRoute
   AuthenticatedWorkforceAefePositionsRoute: typeof AuthenticatedWorkforceAefePositionsRoute
+  AuthenticatedWorkforceDhgRoute: typeof AuthenticatedWorkforceDhgRoute
   AuthenticatedWorkforceEmployeesRoute: typeof AuthenticatedWorkforceEmployeesRoute
+  AuthenticatedWorkforceGapAnalysisRoute: typeof AuthenticatedWorkforceGapAnalysisRoute
+  AuthenticatedWorkforceRequirementsRoute: typeof AuthenticatedWorkforceRequirementsRoute
   AuthenticatedWorkforceSalariesRoute: typeof AuthenticatedWorkforceSalariesRoute
   AuthenticatedWorkforceSettingsRoute: typeof AuthenticatedWorkforceSettingsRouteWithChildren
-  AuthenticatedAnalysisIndexRoute: typeof AuthenticatedAnalysisIndexRoute
-  AuthenticatedConfigurationIndexRoute: typeof AuthenticatedConfigurationIndexRoute
+  AuthenticatedConsolidationIndexRoute: typeof AuthenticatedConsolidationIndexRoute
+  AuthenticatedCostsIndexRoute: typeof AuthenticatedCostsIndexRoute
   AuthenticatedEnrollmentIndexRoute: typeof AuthenticatedEnrollmentIndexRoute
-  AuthenticatedFinanceIndexRoute: typeof AuthenticatedFinanceIndexRoute
+  AuthenticatedInsightsIndexRoute: typeof AuthenticatedInsightsIndexRoute
+  AuthenticatedInvestmentsIndexRoute: typeof AuthenticatedInvestmentsIndexRoute
+  AuthenticatedRevenueIndexRoute: typeof AuthenticatedRevenueIndexRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedStrategicIndexRoute: typeof AuthenticatedStrategicIndexRoute
   AuthenticatedWorkforceIndexRoute: typeof AuthenticatedWorkforceIndexRoute
-  AuthenticatedWorkforceDhgGapAnalysisRoute: typeof AuthenticatedWorkforceDhgGapAnalysisRoute
-  AuthenticatedWorkforceDhgPlanningRoute: typeof AuthenticatedWorkforceDhgPlanningRoute
-  AuthenticatedWorkforceDhgRequirementsRoute: typeof AuthenticatedWorkforceDhgRequirementsRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
@@ -1185,66 +1270,63 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedAdminHistoricalImportRoute:
     AuthenticatedAdminHistoricalImportRoute,
-  AuthenticatedAnalysisDashboardsRoute: AuthenticatedAnalysisDashboardsRoute,
-  AuthenticatedAnalysisKpisRoute: AuthenticatedAnalysisKpisRoute,
-  AuthenticatedAnalysisVarianceRoute: AuthenticatedAnalysisVarianceRoute,
-  AuthenticatedConfigurationClassSizesRoute:
-    AuthenticatedConfigurationClassSizesRoute,
-  AuthenticatedConfigurationFeesRoute: AuthenticatedConfigurationFeesRoute,
-  AuthenticatedConfigurationSubjectHoursRoute:
-    AuthenticatedConfigurationSubjectHoursRoute,
-  AuthenticatedConfigurationSystemRoute: AuthenticatedConfigurationSystemRoute,
-  AuthenticatedConfigurationTeacherCostsRoute:
-    AuthenticatedConfigurationTeacherCostsRoute,
-  AuthenticatedConfigurationTimetableRoute:
-    AuthenticatedConfigurationTimetableRoute,
-  AuthenticatedConfigurationUploadsRoute:
-    AuthenticatedConfigurationUploadsRoute,
-  AuthenticatedConfigurationVersionsRoute:
-    AuthenticatedConfigurationVersionsRoute,
-  AuthenticatedConsolidationBudgetRoute: AuthenticatedConsolidationBudgetRoute,
+  AuthenticatedAdminUploadsRoute: AuthenticatedAdminUploadsRoute,
   AuthenticatedConsolidationChecklistRoute:
     AuthenticatedConsolidationChecklistRoute,
+  AuthenticatedConsolidationExportsRoute:
+    AuthenticatedConsolidationExportsRoute,
+  AuthenticatedConsolidationRollupRoute: AuthenticatedConsolidationRollupRoute,
   AuthenticatedConsolidationStatementsRoute:
     AuthenticatedConsolidationStatementsRoute,
+  AuthenticatedCostsOperatingRoute: AuthenticatedCostsOperatingRoute,
+  AuthenticatedCostsOverheadRoute: AuthenticatedCostsOverheadRoute,
+  AuthenticatedCostsPersonnelRoute: AuthenticatedCostsPersonnelRoute,
+  AuthenticatedCostsSettingsRoute: AuthenticatedCostsSettingsRoute,
   AuthenticatedEnrollmentClassStructureRoute:
     AuthenticatedEnrollmentClassStructureRoute,
-  AuthenticatedEnrollmentPlanningRoute: AuthenticatedEnrollmentPlanningRoute,
+  AuthenticatedEnrollmentProjectionsRoute:
+    AuthenticatedEnrollmentProjectionsRoute,
   AuthenticatedEnrollmentSettingsRoute: AuthenticatedEnrollmentSettingsRoute,
   AuthenticatedEnrollmentValidationRoute:
     AuthenticatedEnrollmentValidationRoute,
-  AuthenticatedFinanceCapexRoute: AuthenticatedFinanceCapexRoute,
-  AuthenticatedFinanceConsolidationRoute:
-    AuthenticatedFinanceConsolidationRoute,
-  AuthenticatedFinanceCostsRoute: AuthenticatedFinanceCostsRoute,
-  AuthenticatedFinanceRevenueRoute: AuthenticatedFinanceRevenueRoute,
-  AuthenticatedFinanceSettingsRoute: AuthenticatedFinanceSettingsRoute,
-  AuthenticatedFinanceStatementsRoute: AuthenticatedFinanceStatementsRoute,
-  AuthenticatedPlanningCapexRoute: AuthenticatedPlanningCapexRoute,
-  AuthenticatedPlanningClassesRoute: AuthenticatedPlanningClassesRoute,
-  AuthenticatedPlanningCostsRoute: AuthenticatedPlanningCostsRoute,
-  AuthenticatedPlanningDhgRoute: AuthenticatedPlanningDhgRoute,
-  AuthenticatedPlanningEnrollmentRoute: AuthenticatedPlanningEnrollmentRoute,
-  AuthenticatedPlanningGuideRoute: AuthenticatedPlanningGuideRoute,
-  AuthenticatedPlanningRevenueRoute: AuthenticatedPlanningRevenueRoute,
+  AuthenticatedInsightsDashboardsRoute: AuthenticatedInsightsDashboardsRoute,
+  AuthenticatedInsightsKpisRoute: AuthenticatedInsightsKpisRoute,
+  AuthenticatedInsightsReportsRoute: AuthenticatedInsightsReportsRoute,
+  AuthenticatedInsightsTrendsRoute: AuthenticatedInsightsTrendsRoute,
+  AuthenticatedInsightsVarianceRoute: AuthenticatedInsightsVarianceRoute,
+  AuthenticatedInvestmentsCapexRoute: AuthenticatedInvestmentsCapexRoute,
+  AuthenticatedInvestmentsCashflowRoute: AuthenticatedInvestmentsCashflowRoute,
+  AuthenticatedInvestmentsProjectsRoute: AuthenticatedInvestmentsProjectsRoute,
+  AuthenticatedInvestmentsSettingsRoute: AuthenticatedInvestmentsSettingsRoute,
+  AuthenticatedRevenueOtherRoute: AuthenticatedRevenueOtherRoute,
+  AuthenticatedRevenueSettingsRoute: AuthenticatedRevenueSettingsRoute,
+  AuthenticatedRevenueSubsidiesRoute: AuthenticatedRevenueSubsidiesRoute,
+  AuthenticatedRevenueTuitionRoute: AuthenticatedRevenueTuitionRoute,
+  AuthenticatedSettingsSystemRoute: AuthenticatedSettingsSystemRoute,
+  AuthenticatedSettingsVersionsRoute: AuthenticatedSettingsVersionsRoute,
+  AuthenticatedStrategicLongTermRoute: AuthenticatedStrategicLongTermRoute,
+  AuthenticatedStrategicScenariosRoute: AuthenticatedStrategicScenariosRoute,
+  AuthenticatedStrategicTargetsRoute: AuthenticatedStrategicTargetsRoute,
   AuthenticatedWorkforceAefePositionsRoute:
     AuthenticatedWorkforceAefePositionsRoute,
+  AuthenticatedWorkforceDhgRoute: AuthenticatedWorkforceDhgRoute,
   AuthenticatedWorkforceEmployeesRoute: AuthenticatedWorkforceEmployeesRoute,
+  AuthenticatedWorkforceGapAnalysisRoute:
+    AuthenticatedWorkforceGapAnalysisRoute,
+  AuthenticatedWorkforceRequirementsRoute:
+    AuthenticatedWorkforceRequirementsRoute,
   AuthenticatedWorkforceSalariesRoute: AuthenticatedWorkforceSalariesRoute,
   AuthenticatedWorkforceSettingsRoute:
     AuthenticatedWorkforceSettingsRouteWithChildren,
-  AuthenticatedAnalysisIndexRoute: AuthenticatedAnalysisIndexRoute,
-  AuthenticatedConfigurationIndexRoute: AuthenticatedConfigurationIndexRoute,
+  AuthenticatedConsolidationIndexRoute: AuthenticatedConsolidationIndexRoute,
+  AuthenticatedCostsIndexRoute: AuthenticatedCostsIndexRoute,
   AuthenticatedEnrollmentIndexRoute: AuthenticatedEnrollmentIndexRoute,
-  AuthenticatedFinanceIndexRoute: AuthenticatedFinanceIndexRoute,
+  AuthenticatedInsightsIndexRoute: AuthenticatedInsightsIndexRoute,
+  AuthenticatedInvestmentsIndexRoute: AuthenticatedInvestmentsIndexRoute,
+  AuthenticatedRevenueIndexRoute: AuthenticatedRevenueIndexRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedStrategicIndexRoute: AuthenticatedStrategicIndexRoute,
   AuthenticatedWorkforceIndexRoute: AuthenticatedWorkforceIndexRoute,
-  AuthenticatedWorkforceDhgGapAnalysisRoute:
-    AuthenticatedWorkforceDhgGapAnalysisRoute,
-  AuthenticatedWorkforceDhgPlanningRoute:
-    AuthenticatedWorkforceDhgPlanningRoute,
-  AuthenticatedWorkforceDhgRequirementsRoute:
-    AuthenticatedWorkforceDhgRequirementsRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

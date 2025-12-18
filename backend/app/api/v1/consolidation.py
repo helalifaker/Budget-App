@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.cache import CacheInvalidator
 from app.database import get_db
 from app.dependencies.auth import ManagerDep, UserDep
-from app.models.consolidation import ConsolidationCategory, StatementFormat, StatementType
+from app.models import ConsolidationCategory, StatementFormat, StatementType
 from app.schemas.consolidation import (
     ApprovebudgetRequest,
     BalanceSheetResponse,
@@ -35,15 +35,15 @@ from app.schemas.consolidation import (
     SubmitForApprovalRequest,
     WorkflowActionResponse,
 )
-from app.services.consolidation_service import ConsolidationService
+from app.services.consolidation.consolidation_service import ConsolidationService
+from app.services.consolidation.financial_statements_service import FinancialStatementsService
 from app.services.exceptions import (
     BusinessRuleError,
     NotFoundError,
     ValidationError,
 )
-from app.services.financial_statements_service import FinancialStatementsService
 
-router = APIRouter(prefix="/api/v1/consolidation", tags=["consolidation"])
+router = APIRouter(prefix="/consolidation", tags=["consolidation"])
 
 
 def get_consolidation_service(
@@ -187,7 +187,7 @@ def _normalize_income_statement(
 
     return IncomeStatementResponse(
         id=_to_uuid(getter("id", None), uuid.uuid4()),
-        budget_version_id=_to_uuid(getter("budget_version_id", None), version_id),
+        version_id=_to_uuid(getter("version_id", None), version_id),
         statement_type=statement_type,
         statement_format=fmt,
         statement_name=statement_name,
@@ -231,11 +231,11 @@ async def get_consolidation_status(
     """
     try:
         # Verify budget version exists
-        budget_version = await consolidation_service.budget_version_service.get_by_id(
+        version = await consolidation_service.version_service.get_by_id(
             version_id
         )
 
-        if not budget_version:
+        if not version:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Budget version {version_id} not found",
@@ -256,7 +256,7 @@ async def get_consolidation_status(
         )
 
         return ConsolidationStatusResponse(
-            budget_version_id=version_id,
+            version_id=version_id,
             is_complete=validation.get("is_complete", False),
             modules_complete=modules_complete,
         )
@@ -291,11 +291,11 @@ async def get_consolidated_budget(
         consolidations = await consolidation_service.get_consolidation(version_id)
 
         # Get budget version info
-        budget_version = await consolidation_service.budget_version_service.get_by_id(
+        version = await consolidation_service.version_service.get_by_id(
             version_id
         )
 
-        if not budget_version:
+        if not version:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Budget version {version_id} not found",
@@ -318,13 +318,13 @@ async def get_consolidated_budget(
             if item.is_revenue:
                 revenue_items.append(item_response)
                 total_revenue += item.amount_sar
-            elif item.source_table == "personnel_cost_plans":
+            elif item.source_table == "finance_personnel_cost_plans":
                 personnel_items.append(item_response)
                 total_personnel += item.amount_sar
-            elif item.source_table == "operating_cost_plans":
+            elif item.source_table == "finance_operating_cost_plans":
                 operating_items.append(item_response)
                 total_operating += item.amount_sar
-            elif item.source_table == "capex_plans":
+            elif item.source_table == "finance_capex_plans":
                 capex_items.append(item_response)
                 total_capex += item.amount_sar
 
@@ -333,11 +333,11 @@ async def get_consolidated_budget(
         net_result = operating_result  # Simplified - CapEx not expensed directly
 
         return BudgetConsolidationResponse(
-            budget_version_id=version_id,
-            budget_version_name=budget_version.name,
-            fiscal_year=budget_version.fiscal_year,
-            academic_year=budget_version.academic_year,
-            status=budget_version.status,
+            version_id=version_id,
+            version_name=version.name,
+            fiscal_year=version.fiscal_year,
+            academic_year=version.academic_year,
+            status=version.status,
             revenue_items=revenue_items,
             personnel_items=personnel_items,
             operating_items=operating_items,
@@ -433,17 +433,17 @@ async def submit_for_approval(
     """
     try:
         # Get current status
-        budget_version = await consolidation_service.budget_version_service.get_by_id(
+        version = await consolidation_service.version_service.get_by_id(
             version_id
         )
 
-        if not budget_version:
+        if not version:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Budget version {version_id} not found",
             )
 
-        previous_status = budget_version.status
+        previous_status = version.status
 
         # Submit for approval
         updated = await consolidation_service.submit_for_approval(
@@ -451,7 +451,7 @@ async def submit_for_approval(
         )
 
         return WorkflowActionResponse(
-            budget_version_id=version_id,
+            version_id=version_id,
             previous_status=previous_status,
             new_status=updated.status,
             action_by=user.user_id,
@@ -502,17 +502,17 @@ async def approve_budget(
     """
     try:
         # Get current status
-        budget_version = await consolidation_service.budget_version_service.get_by_id(
+        version = await consolidation_service.version_service.get_by_id(
             version_id
         )
 
-        if not budget_version:
+        if not version:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Budget version {version_id} not found",
             )
 
-        previous_status = budget_version.status
+        previous_status = version.status
 
         # Approve budget
         updated = await consolidation_service.approve_budget(
@@ -520,7 +520,7 @@ async def approve_budget(
         )
 
         return WorkflowActionResponse(
-            budget_version_id=version_id,
+            version_id=version_id,
             previous_status=previous_status,
             new_status=updated.status,
             action_by=manager.user_id,
@@ -606,21 +606,21 @@ async def get_consolidation_summary(
         )
 
         # Get budget version
-        budget_version = await consolidation_service.budget_version_service.get_by_id(
+        version = await consolidation_service.version_service.get_by_id(
             version_id
         )
 
-        if not budget_version:
+        if not version:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Budget version {version_id} not found",
             )
 
         return ConsolidationSummary(
-            budget_version_id=version_id,
-            budget_version_name=budget_version.name,
-            fiscal_year=budget_version.fiscal_year,
-            status=budget_version.status,
+            version_id=version_id,
+            version_name=version.name,
+            fiscal_year=version.fiscal_year,
+            status=version.status,
             total_revenue=full_response.total_revenue,
             total_expenses=full_response.total_personnel_costs
             + full_response.total_operating_costs,
@@ -631,7 +631,7 @@ async def get_consolidation_summary(
             expense_count=len(full_response.personnel_items)
             + len(full_response.operating_items),
             capex_count=len(full_response.capex_items),
-            last_consolidated_at=budget_version.updated_at,
+            last_consolidated_at=version.updated_at,
         )
 
     except NotFoundError as e:
@@ -730,11 +730,11 @@ async def get_balance_sheet(
         is_balanced = assets_total == liabilities_total
 
         # Get budget version for fiscal year
-        budget_version = await statements_service.budget_version_service.get_by_id(
+        version = await statements_service.version_service.get_by_id(
             version_id
         )
 
-        if not budget_version:
+        if not version:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Budget version {version_id} not found",
@@ -752,8 +752,8 @@ async def get_balance_sheet(
         )
 
         return BalanceSheetResponse(
-            budget_version_id=version_id,
-            fiscal_year=budget_version.fiscal_year,
+            version_id=version_id,
+            fiscal_year=version.fiscal_year,
             assets=assets_stmt,
             liabilities=liabilities_stmt,
             is_balanced=is_balanced,
@@ -801,7 +801,7 @@ async def get_period_totals(
             totals = await statements_service.get_period_totals(version_id, period)
             period_totals.append(
                 FinancialPeriodTotals(
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     period=period,
                     total_revenue=totals["total_revenue"],
                     total_expenses=totals["total_expenses"],
@@ -853,7 +853,7 @@ async def get_period_total(
     try:
         totals = await statements_service.get_period_totals(version_id, period)
         return FinancialPeriodTotals(
-            budget_version_id=version_id,
+            version_id=version_id,
             period=period,
             total_revenue=totals["total_revenue"],
             total_expenses=totals["total_expenses"],
@@ -945,11 +945,11 @@ async def get_financial_statement(
             is_balanced = assets_total == liabilities_total
 
             # Get budget version for fiscal year
-            budget_version = await statements_service.budget_version_service.get_by_id(
+            version = await statements_service.version_service.get_by_id(
                 version_id
             )
 
-            if not budget_version:
+            if not version:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=f"Budget version {version_id} not found",
@@ -967,8 +967,8 @@ async def get_financial_statement(
             )
 
             return BalanceSheetResponse(
-                budget_version_id=version_id,
-                fiscal_year=budget_version.fiscal_year,
+                version_id=version_id,
+                fiscal_year=version.fiscal_year,
                 assets=assets_stmt,
                 liabilities=liabilities_stmt,
                 is_balanced=is_balanced,

@@ -4,7 +4,7 @@ import { withServiceErrorHandling } from './utils'
 // Types matching backend schemas
 interface DHGSubjectHours {
   id: string
-  budget_version_id: string
+  version_id: string
   subject_id: string
   level_id: string
   class_count: number
@@ -19,7 +19,7 @@ interface DHGSubjectHours {
 
 interface DHGTeacherRequirement {
   id: string
-  budget_version_id: string
+  version_id: string
   subject_id: string
   cycle_id: string
   required_hours: number
@@ -32,7 +32,7 @@ interface DHGTeacherRequirement {
 
 interface TeacherAllocation {
   id: string
-  budget_version_id: string
+  version_id: string
   subject_id: string
   cycle_id: string
   category_id: string
@@ -65,7 +65,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<DHGSubjectHours[]>({
         method: 'GET',
-        url: `/planning/dhg/subject-hours/${versionId}`,
+        url: `/dhg/subject-hours/${versionId}`,
       }),
       'dhg: get subject hours'
     )
@@ -75,7 +75,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<DHGSubjectHours[]>({
         method: 'POST',
-        url: `/planning/dhg/subject-hours/${versionId}/calculate`,
+        url: `/dhg/subject-hours/${versionId}/calculate`,
         data: { recalculate_all: recalculateAll },
       }),
       'dhg: calculate subject hours'
@@ -87,7 +87,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<DHGTeacherRequirement[]>({
         method: 'GET',
-        url: `/planning/dhg/teacher-requirements/${versionId}`,
+        url: `/dhg/teacher-requirements/${versionId}`,
       }),
       'dhg: get teacher requirements'
     )
@@ -97,7 +97,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<DHGTeacherRequirement[]>({
         method: 'POST',
-        url: `/planning/dhg/teacher-requirements/${versionId}/calculate`,
+        url: `/dhg/teacher-requirements/${versionId}/calculate`,
         data: { recalculate_all: recalculateAll },
       }),
       'dhg: calculate teacher requirements'
@@ -109,7 +109,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<TeacherAllocation[]>({
         method: 'GET',
-        url: `/planning/dhg/allocations/${versionId}`,
+        url: `/dhg/allocations/${versionId}`,
       }),
       'dhg: get allocations'
     )
@@ -128,7 +128,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<TeacherAllocation>({
         method: 'POST',
-        url: `/planning/dhg/allocations/${versionId}`,
+        url: `/dhg/allocations/${versionId}`,
         data,
       }),
       'dhg: create allocation'
@@ -145,7 +145,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<TeacherAllocation>({
         method: 'PUT',
-        url: `/planning/dhg/allocations/${allocationId}`,
+        url: `/dhg/allocations/${allocationId}`,
         data,
       }),
       'dhg: update allocation'
@@ -156,7 +156,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<void>({
         method: 'DELETE',
-        url: `/planning/dhg/allocations/${allocationId}`,
+        url: `/dhg/allocations/${allocationId}`,
       }),
       'dhg: delete allocation'
     )
@@ -175,7 +175,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<TeacherAllocation[]>({
         method: 'POST',
-        url: `/planning/dhg/allocations/${versionId}/bulk`,
+        url: `/dhg/allocations/${versionId}/bulk`,
         data: { allocations },
       }),
       'dhg: bulk update allocations'
@@ -188,7 +188,7 @@ export const dhgApi = {
     try {
       return await apiRequest<TRMDGapAnalysis>({
         method: 'GET',
-        url: `/planning/dhg/trmd/${versionId}`,
+        url: `/dhg/trmd/${versionId}`,
       })
     } catch (error) {
       // Silently handle 422 validation errors (expected when prerequisites missing)
@@ -224,7 +224,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<TeacherAllocation[]>({
         method: 'POST',
-        url: `/planning/dhg/${versionId}/draft`,
+        url: `/dhg/${versionId}/draft`,
         data: { allocations },
       }),
       'dhg: save draft'
@@ -248,7 +248,7 @@ export const dhgApi = {
     return withServiceErrorHandling(
       apiRequest<TRMDGapAnalysis>({
         method: 'POST',
-        url: `/planning/dhg/${versionId}/apply`,
+        url: `/dhg/${versionId}/apply`,
         data: allocations ? { allocations } : {},
       }),
       'dhg: apply and calculate'

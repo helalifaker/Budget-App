@@ -2,14 +2,14 @@
 
 **Version**: 1.0
 **Last Updated**: 2025-12-05
-**Authority**: documentation-training-agent + efir-master-agent
+**Authority**: documentation-training-agent
 **Enforcement**: All AI agents must follow these standards
 
 ---
 
 ## Purpose
 
-This document defines exactly where and how each of the 14 specialized agents should create documentation. These standards prevent documentation chaos and ensure consistency across all agent-generated work products.
+This document defines exactly where and how each of the 9 specialized agents should create documentation. These standards prevent documentation chaos and ensure consistency across all agent-generated work products.
 
 **Critical Rule**: All agents MUST follow these standards. Deviations will be corrected immediately.
 
@@ -19,33 +19,23 @@ This document defines exactly where and how each of the 14 specialized agents sh
 
 | Agent | Creates What | Where | Naming Pattern | Archive After |
 |-------|--------------|-------|----------------|---------------|
+| product-architect-agent | Module spec updates | docs/modules/ | MODULE_{NN}_{NAME}.md (update existing) | Old version to archive |
+| product-architect-agent | Requirements updates | foundation/ | {REQUIREMENT_DOC}_v{version}.md | Old version to archive |
+| Plan | Architecture decisions | docs/technical-decisions/ | ADR-{NN}_{DECISION}.md | Never (reference doc) |
+| Plan | Implementation plans | docs/planning/ | {PLAN_NAME}.md | Never (reference doc) |
+| Explore | N/A (read-only agent) | N/A | N/A | N/A |
+| frontend-ui-agent | Implementation reports | docs/agent-work/ | YYYY-MM-DD_frontend-ui_{implementation}.md | 30 days after validation |
+| frontend-ui-agent | Component documentation | Update existing docs | frontend/README.md, component comments | Never |
+| performance-agent | Performance reports | docs/agent-work/ | YYYY-MM-DD_performance_{scope}.md | 30 days after optimization |
+| performance-agent | Optimization guides | docs/developer-guides/ | Update PERFORMANCE_OPTIMIZATIONS.md | Never (living doc) |
 | qa-validation-agent | Coverage reports | docs/agent-work/ | YYYY-MM-DD_agent-{N}_coverage-{scope}.md | 30 days if superseded |
 | qa-validation-agent | Phase summaries | Create in docs/agent-work/, then archive | YYYY-MM-DD_phase-{N}-{description}.md | Immediate upon completion |
 | qa-validation-agent | Coverage strategy updates | docs/testing/ | TEST_COVERAGE_STRATEGY.md (update existing) | Never (living doc) |
 | documentation-training-agent | User guides | docs/user-guides/ | {NAME}_GUIDE.md | Never (reference doc) |
 | documentation-training-agent | Developer guides | docs/developer-guides/ | {NAME}_GUIDE.md | Never (reference doc) |
 | documentation-training-agent | API documentation | docs/developer-guides/ | API_DOCUMENTATION.md (update existing) | Never (living reference) |
-| efir-master-agent | Coordination reports | docs/agent-work/ | YYYY-MM-DD_master-agent_{purpose}.md | 30 days after completion |
-| efir-master-agent | Strategic planning | docs/roadmaps/ | {ROADMAP_NAME}.md | Never (reference doc) |
-| backend-api-specialist | Implementation reports | docs/agent-work/ | YYYY-MM-DD_backend-api_{implementation}.md | 30 days after validation |
-| backend-api-specialist | Tech decisions | docs/technical-decisions/ | {DECISION}_ADR.md | Never (reference doc) |
-| backend-engine-agent | Implementation reports | docs/agent-work/ | YYYY-MM-DD_backend-engine_{implementation}.md | 30 days after validation |
-| backend-engine-agent | Calculation documentation | Update module specs | docs/MODULES/MODULE_{NN}_*.md | Never (reference doc) |
-| frontend-ui-agent | Implementation reports | docs/agent-work/ | YYYY-MM-DD_frontend-ui_{implementation}.md | 30 days after validation |
-| frontend-ui-agent | Component documentation | Update existing docs | frontend/README.md, component comments | Never |
-| database-supabase-agent | Schema changes | docs/database/ | Update schema_design.md | Never (living reference) |
-| database-supabase-agent | Migration reports | docs/agent-work/ | YYYY-MM-DD_database_{migration}.md | 30 days after migration |
-| system-architect-agent | ADRs | docs/technical-decisions/ | ADR-{NN}_{DECISION}.md | Never (reference doc) |
-| system-architect-agent | Integration guides | docs/developer-guides/ | {NAME}_INTEGRATION_GUIDE.md | Never (reference doc) |
-| product-architect-agent | Module spec updates | docs/MODULES/ | MODULE_{NN}_{NAME}.md (update existing) | Old version to archive |
-| product-architect-agent | Requirements updates | foundation/ | {REQUIREMENT_DOC}_v{version}.md | Old version to archive |
-| security-rls-agent | Security implementations | docs/agent-work/ | YYYY-MM-DD_security_{implementation}.md | 30 days after validation |
-| security-rls-agent | Security guides | docs/developer-guides/ | SECURITY_GUIDE.md | Never (reference doc) |
-| governance-versioning-agent | Workflow reports | docs/agent-work/ | YYYY-MM-DD_governance_{topic}.md | 30 days after implementation |
-| reporting-statements-agent | Statement reports | docs/agent-work/ | YYYY-MM-DD_reporting_{topic}.md | 30 days after validation |
-| data-migration-agent | Migration reports | docs/agent-work/ | YYYY-MM-DD_migration_{source}.md | 30 days after migration |
-| performance-agent | Performance reports | docs/agent-work/ | YYYY-MM-DD_performance_{scope}.md | 30 days after optimization |
-| performance-agent | Optimization guides | docs/developer-guides/ | Update PERFORMANCE_OPTIMIZATIONS.md | Never (living doc) |
+| general-purpose | Research reports | docs/agent-work/ | YYYY-MM-DD_research_{topic}.md | 30 days after completion |
+| claude-code-guide | N/A (guidance only) | N/A | N/A | N/A |
 
 ---
 
@@ -113,54 +103,44 @@ This document defines exactly where and how each of the 14 specialized agents sh
 
 ---
 
-### efir-master-agent
+### Plan
 
-**Primary Responsibility**: Multi-agent coordination and strategic planning
-
-**Creates**:
-1. **Coordination Reports** (Snapshot)
-   - **Location**: `docs/agent-work/`
-   - **Naming**: `YYYY-MM-DD_master-agent_{purpose}.md`
-   - **Template**: Use Implementation Report template
-   - **Frequency**: After multi-agent tasks
-   - **Archive**: 30 days after task completion
-
-2. **Strategic Planning Documents** (Reference)
-   - **Location**: `docs/roadmaps/`
-   - **Naming**: `{ROADMAP_NAME}.md`
-   - **Frequency**: Quarterly or on major pivots
-   - **Archive**: Old roadmaps only when fully superseded
-
-**Examples**:
-- ✅ `docs/agent-work/2025-12-05_master-agent_module-integration.md`
-- ✅ `docs/roadmaps/PRODUCTION_READINESS_ROADMAP.md`
-
----
-
-### Backend Agents (backend-api-specialist, backend-engine-agent, database-supabase-agent)
-
-**Primary Responsibility**: Backend implementation and technical reports
+**Primary Responsibility**: Architecture decisions and implementation planning
 
 **Creates**:
-1. **Implementation Reports** (Snapshot)
-   - **Location**: `docs/agent-work/`
-   - **Naming**: `YYYY-MM-DD_{agent-name}_{implementation}.md`
-   - **Template**: Use Implementation Report template
-   - **Frequency**: After significant implementations
-   - **Archive**: 30 days after validation
-
-2. **Technical Decisions** (Reference)
+1. **Architecture Decision Records (ADRs)** (Reference)
    - **Location**: `docs/technical-decisions/`
-   - **Naming**: `{DECISION}_ADR.md` or `ADR-{NN}_{DECISION}.md`
-   - **Template**: Use Technical Decision Record (ADR) template
-   - **Frequency**: When making architectural decisions
+   - **Naming**: `ADR-{NN}_{DECISION}.md` (sequential numbering)
+   - **Template**: Use Technical Decision Record template
+   - **Frequency**: For all significant architectural decisions
+   - **Archive**: Never (historical record)
+
+2. **Implementation Plans** (Reference)
+   - **Location**: `docs/planning/`
+   - **Naming**: `{PLAN_NAME}.md`
+   - **Frequency**: When planning major features
    - **Archive**: Never (reference docs)
 
 **Examples**:
-- ✅ `docs/agent-work/2025-12-03_backend-api_planning-endpoints.md`
-- ✅ `docs/agent-work/2025-12-02_backend-engine_dhg-calculation.md`
-- ✅ `docs/agent-work/2025-12-03_database_schema-fix.md`
-- ✅ `docs/technical-decisions/ADR-001_FASTAPI_OVER_FLASK.md`
+- ✅ `docs/technical-decisions/ADR-001_MODULE_ARCHITECTURE.md`
+- ✅ `docs/planning/REFACTORING_MASTER_PLAN.md`
+
+---
+
+### general-purpose
+
+**Primary Responsibility**: Complex multi-step tasks, research, and code search
+
+**Creates**:
+1. **Research Reports** (Snapshot)
+   - **Location**: `docs/agent-work/`
+   - **Naming**: `YYYY-MM-DD_research_{topic}.md`
+   - **Template**: Use Implementation Report template
+   - **Frequency**: After research tasks
+   - **Archive**: 30 days after completion
+
+**Examples**:
+- ✅ `docs/agent-work/2025-12-05_research_dependency-analysis.md`
 
 ---
 
@@ -187,38 +167,13 @@ This document defines exactly where and how each of the 14 specialized agents sh
 
 ---
 
-### system-architect-agent
-
-**Primary Responsibility**: Architecture decisions and integration guides
-
-**Creates**:
-1. **Architecture Decision Records (ADRs)** (Reference)
-   - **Location**: `docs/technical-decisions/`
-   - **Naming**: `ADR-{NN}_{DECISION}.md` (sequential numbering)
-   - **Template**: Use Technical Decision Record template
-   - **Frequency**: For all significant architectural decisions
-   - **Archive**: Never (historical record)
-
-2. **Integration Guides** (Reference)
-   - **Location**: `docs/developer-guides/`
-   - **Naming**: `{NAME}_INTEGRATION_GUIDE.md`
-   - **Frequency**: When establishing new integration patterns
-   - **Archive**: Never (reference docs)
-
-**Examples**:
-- ✅ `docs/technical-decisions/ADR-001_MODULE_ARCHITECTURE.md`
-- ✅ `docs/technical-decisions/ADR-002_API_VERSIONING_STRATEGY.md`
-- ✅ `docs/developer-guides/ODOO_INTEGRATION_GUIDE.md`
-
----
-
 ### product-architect-agent
 
 **Primary Responsibility**: Business requirements and module specifications
 
 **Creates**:
 1. **Module Specification Updates** (Reference)
-   - **Location**: `docs/MODULES/`
+   - **Location**: `docs/modules/`
    - **File**: `MODULE_{NN}_{NAME}.md` (update existing)
    - **Frequency**: When business rules change
    - **Archive**: Create versioned copy before major changes
@@ -231,7 +186,7 @@ This document defines exactly where and how each of the 14 specialized agents sh
    - **Archive**: Old versions to archive/
 
 **Examples**:
-- ✅ Update `docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md`
+- ✅ Update `docs/modules/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md`
 - ✅ Archive old version, create `foundation/EFIR_Budget_App_PRD_v1.3.md`
 
 ---
@@ -313,9 +268,9 @@ All templates are in `docs/templates/`:
 |----------|---------|--------|
 | Agent Coverage Report | Test coverage reports | qa-validation-agent |
 | Living Status Document | Frequently updated status | Any agent updating status docs |
-| Phase Completion Summary | Phase completion reports | qa-validation-agent, efir-master-agent |
-| Implementation Report | Technical implementation docs | All backend/frontend agents |
-| Technical Decision Record | Architecture decisions | system-architect-agent, backend-api-specialist |
+| Phase Completion Summary | Phase completion reports | qa-validation-agent |
+| Implementation Report | Technical implementation docs | frontend-ui-agent, performance-agent, general-purpose |
+| Technical Decision Record | Architecture decisions | Plan |
 
 ### Template Compliance
 
@@ -347,35 +302,35 @@ All templates are in `docs/templates/`:
 
 **Filename**: `docs/agent-work/2025-12-05_agent-13_final-coverage-analysis.md`
 
-### Example: backend-api-specialist Creates Implementation Report
+### Example: frontend-ui-agent Creates Implementation Report
 
 ```markdown
-# Planning API Endpoints - Implementation Report
+# Enrollment Dashboard - Implementation Report
 
 **Date**: 2025-12-03
-**Agent**: backend-api-specialist
-**Scope**: Implement all planning module API endpoints
+**Agent**: frontend-ui-agent
+**Scope**: Implement enrollment dashboard UI
 **Status**: ✅ Complete
 
 ## Overview
 
-**Objective**: Create FastAPI endpoints for enrollment, class structure, and DHG planning
-**Approach**: RESTful API with Pydantic schemas and async handlers
+**Objective**: Create React components for enrollment planning dashboard
+**Approach**: TanStack Table with shadcn/ui components
 **Duration**: 2 days
 
 [... rest of report following template ...]
 ```
 
-**Filename**: `docs/agent-work/2025-12-03_backend-api_planning-endpoints.md`
+**Filename**: `docs/agent-work/2025-12-03_frontend-ui_enrollment-dashboard.md`
 
-### Example: system-architect-agent Creates ADR
+### Example: Plan Creates ADR
 
 ```markdown
 # ADR-001: Module-Based Architecture
 
 **Date**: 2025-11-01
 **Status**: Accepted
-**Deciders**: system-architect-agent + tech lead
+**Deciders**: Plan agent + tech lead
 **Context**: Need to organize 18 modules into coherent structure
 
 ## Decision

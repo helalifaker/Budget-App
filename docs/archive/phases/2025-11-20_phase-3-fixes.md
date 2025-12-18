@@ -260,7 +260,7 @@ cd /Users/fakerhelali/Coding/Budget\ App/backend
 alembic upgrade head
 
 # Apply RLS policies (if not already applied)
-psql $DATABASE_URL -f ../docs/DATABASE/sql/rls_policies.sql
+psql $DATABASE_URL -f ../docs/database/sql/rls_policies.sql
 ```
 
 **Expected migration sequence**:

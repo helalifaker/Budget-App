@@ -19,9 +19,7 @@ import { cn } from '@/lib/utils'
 import {
   Users,
   GraduationCap,
-  Wallet,
   BarChart3,
-  Target,
   TrendingUp,
   TrendingDown,
   ChevronRight,
@@ -60,21 +58,6 @@ const mockModuleMetrics: Record<ModuleId, ModuleMetrics> = {
     primaryMetric: { label: 'Overview', value: 'Active' },
     attentionCount: 0,
   },
-  workforce: {
-    status: 'attention',
-    progress: 75,
-    primaryMetric: {
-      label: 'Total Staff',
-      value: '123',
-      trend: 'up',
-      trendValue: '+5',
-    },
-    secondaryMetrics: [
-      { label: 'AEFE Filled', value: '22/28' },
-      { label: 'Teachers', value: '98 FTE' },
-    ],
-    attentionCount: 2,
-  },
   enrollment: {
     status: 'healthy',
     progress: 100,
@@ -90,9 +73,68 @@ const mockModuleMetrics: Record<ModuleId, ModuleMetrics> = {
     ],
     attentionCount: 0,
   },
-  finance: {
+  workforce: {
+    status: 'attention',
+    progress: 75,
+    primaryMetric: {
+      label: 'Total Staff',
+      value: '123',
+      trend: 'up',
+      trendValue: '+5',
+    },
+    secondaryMetrics: [
+      { label: 'AEFE Filled', value: '22/28' },
+      { label: 'Teachers', value: '98 FTE' },
+    ],
+    attentionCount: 2,
+  },
+  revenue: {
+    status: 'healthy',
+    progress: 85,
+    primaryMetric: {
+      label: 'Total Revenue',
+      value: '45.2M',
+      trend: 'up',
+      trendValue: '+2.1%',
+    },
+    secondaryMetrics: [
+      { label: 'Tuition', value: '42.8M' },
+      { label: 'Other', value: '2.4M' },
+    ],
+    attentionCount: 0,
+  },
+  costs: {
     status: 'warning',
     progress: 60,
+    primaryMetric: {
+      label: 'Total Costs',
+      value: '45.3M',
+      trend: 'up',
+      trendValue: '+3.5%',
+    },
+    secondaryMetrics: [
+      { label: 'Personnel', value: '38.2M' },
+      { label: 'Operating', value: '7.1M' },
+    ],
+    attentionCount: 2,
+  },
+  investments: {
+    status: 'healthy',
+    progress: 70,
+    primaryMetric: {
+      label: 'CapEx',
+      value: '2.5M',
+      trend: 'neutral',
+    },
+    secondaryMetrics: [
+      { label: 'Projects', value: '5' },
+      { label: 'Approved', value: '3' },
+    ],
+    attentionCount: 0,
+  },
+  consolidation: {
+    status: 'warning',
+    progress: 50,
     primaryMetric: {
       label: 'Budget Balance',
       value: '-120K',
@@ -105,7 +147,7 @@ const mockModuleMetrics: Record<ModuleId, ModuleMetrics> = {
     ],
     attentionCount: 3,
   },
-  analysis: {
+  insights: {
     status: 'healthy',
     progress: 100,
     primaryMetric: {
@@ -120,28 +162,42 @@ const mockModuleMetrics: Record<ModuleId, ModuleMetrics> = {
     attentionCount: 0,
   },
   strategic: {
-    status: 'inactive',
+    status: 'healthy',
     progress: 40,
     primaryMetric: {
-      label: 'Year Progress',
-      value: '2/5',
+      label: 'Scenarios',
+      value: '3',
+      trend: 'neutral',
     },
     secondaryMetrics: [
-      { label: '5Y Growth', value: '+15%' },
-      { label: 'Target', value: '1,500' },
+      { label: 'Active', value: '1' },
+      { label: 'Draft', value: '2' },
     ],
     attentionCount: 0,
   },
-  configuration: {
+  settings: {
     status: 'healthy',
     progress: 100,
     primaryMetric: {
-      label: 'Settings',
+      label: 'Configuration',
       value: 'Active',
     },
     secondaryMetrics: [
       { label: 'Versions', value: '3' },
       { label: 'Updated', value: 'Today' },
+    ],
+    attentionCount: 0,
+  },
+  admin: {
+    status: 'healthy',
+    progress: 100,
+    primaryMetric: {
+      label: 'System',
+      value: 'Healthy',
+    },
+    secondaryMetrics: [
+      { label: 'Users', value: '5' },
+      { label: 'Imports', value: '0 pending' },
     ],
     attentionCount: 0,
   },
@@ -264,14 +320,8 @@ function CompactModuleCard({ moduleId }: { moduleId: ModuleId }) {
   const metrics = mockModuleMetrics[moduleId]
   const colors = getStatusColor(metrics.status)
 
-  const moduleIconMap: Record<string, typeof Users> = {
-    workforce: Users,
-    enrollment: GraduationCap,
-    finance: Wallet,
-    analysis: BarChart3,
-    strategic: Target,
-  }
-  const Icon = moduleIconMap[moduleId] || module.icon
+  // Use module icons directly from the MODULES definition
+  const Icon = module.icon
 
   return (
     <motion.div
@@ -486,22 +536,22 @@ function CommandCenterPage() {
           <QuickActionButton
             icon={GraduationCap}
             label="Update Enrollment"
-            onClick={() => navigate({ to: '/enrollment/planning' })}
+            onClick={() => navigate({ to: '/enrollment/projections' })}
           />
           <QuickActionButton
             icon={RefreshCw}
             label="Run DHG"
-            onClick={() => navigate({ to: '/planning/dhg' })}
+            onClick={() => navigate({ to: '/workforce/dhg' })}
           />
           <QuickActionButton
             icon={FileText}
             label="View Reports"
-            onClick={() => navigate({ to: '/finance/statements' })}
+            onClick={() => navigate({ to: '/consolidation/statements' })}
           />
           <QuickActionButton
             icon={BarChart3}
             label="KPI Dashboard"
-            onClick={() => navigate({ to: '/analysis/kpis' })}
+            onClick={() => navigate({ to: '/insights/kpis' })}
           />
         </div>
       </section>

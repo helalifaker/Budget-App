@@ -16,10 +16,9 @@ class TestModelImports:
 
     def test_import_configuration_models(self):
         """Test that Configuration Layer models import successfully."""
-        from app.models.configuration import (
+        from app.models import (
             AcademicCycle,
             AcademicLevel,
-            BudgetVersion,
             ClassSizeParam,
             FeeCategory,
             FeeStructure,
@@ -30,12 +29,13 @@ class TestModelImports:
             TeacherCategory,
             TeacherCostParam,
             TimetableConstraint,
+            Version,
         )
 
         # If imports succeed, no mapper errors occurred
         assert AcademicCycle is not None
         assert AcademicLevel is not None
-        assert BudgetVersion is not None
+        assert Version is not None  # Renamed from BudgetVersion
         assert ClassSizeParam is not None
         assert FeeCategory is not None
         assert FeeStructure is not None
@@ -49,7 +49,7 @@ class TestModelImports:
 
     def test_import_planning_models(self):
         """Test that Planning Layer models import successfully."""
-        from app.models.planning import (
+        from app.models import (
             CapExPlan,
             ClassStructure,
             DHGSubjectHours,
@@ -73,7 +73,7 @@ class TestModelImports:
 
     def test_import_consolidation_models(self):
         """Test that Consolidation Layer models import successfully."""
-        from app.models.consolidation import (
+        from app.models import (
             BudgetConsolidation,
             FinancialStatement,
             FinancialStatementLine,
@@ -133,11 +133,11 @@ class TestAuditTrail:
 
     def test_audit_fields_are_nullable(self):
         """Test that created_by_id and updated_by_id are nullable (CRITICAL-3 fix)."""
-        from app.models.configuration import BudgetVersion
+        from app.models import Version
 
-        # Get the column definitions
-        created_by_col = BudgetVersion.__table__.c.created_by_id
-        updated_by_col = BudgetVersion.__table__.c.updated_by_id
+        # Get the column definitions (Version is the renamed BudgetVersion)
+        created_by_col = Version.__table__.c.created_by_id
+        updated_by_col = Version.__table__.c.updated_by_id
 
         # Verify they are nullable
         assert created_by_col.nullable is True
@@ -152,9 +152,9 @@ class TestVersionedMixin:
         Test that VersionedMixin doesn't use back_populates (CRITICAL-1 fix).
 
         This verifies that the relationship doesn't try to back-populate
-        to non-existent attributes on BudgetVersion.
+        to non-existent attributes on Version (formerly BudgetVersion).
         """
-        from app.models.planning import EnrollmentPlan
+        from app.models import EnrollmentPlan
 
         # Get the budget_version relationship
         budget_version_rel = EnrollmentPlan.budget_version
@@ -169,17 +169,17 @@ class TestVersionedMixin:
 class TestModelRelationships:
     """Test that model relationships work correctly."""
 
-    def test_budget_version_parent_child_relationship(self):
-        """Test BudgetVersion self-referential relationship."""
-        from app.models.configuration import BudgetVersion
+    def test_version_parent_child_relationship(self):
+        """Test Version (formerly BudgetVersion) self-referential relationship."""
+        from app.models import Version
 
         # Check that parent_version and child_versions relationships exist
-        assert hasattr(BudgetVersion, "parent_version")
-        assert hasattr(BudgetVersion, "child_versions")
+        assert hasattr(Version, "parent_version")
+        assert hasattr(Version, "child_versions")
 
     def test_enrollment_plan_relationships(self):
         """Test EnrollmentPlan relationships."""
-        from app.models.planning import EnrollmentPlan
+        from app.models import EnrollmentPlan
 
         # Check that relationships exist
         assert hasattr(EnrollmentPlan, "budget_version")
@@ -188,7 +188,7 @@ class TestModelRelationships:
 
     def test_financial_statement_cascade(self):
         """Test FinancialStatement cascade to lines."""
-        from app.models.consolidation import FinancialStatement
+        from app.models import FinancialStatement
 
         # Check that lines relationship exists
         assert hasattr(FinancialStatement, "lines")

@@ -8,28 +8,30 @@ without database I/O.
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.engine.dhg import calculate_dhg_hours, validate_dhg_input
 from app.engine.enrollment import calculate_enrollment_projection
-from app.engine.kpi import calculate_all_kpis, validate_kpi_input
+from app.engine.insights.kpi import calculate_all_kpis, validate_kpi_input
 from app.engine.revenue import calculate_total_student_revenue, validate_tuition_input
-from app.schemas.dhg import (
-    DHGCalculationRequest,
-    DHGCalculationResponse,
-)
+from app.engine.workforce.dhg import calculate_dhg_hours, validate_dhg_input
 from app.schemas.enrollment import (
     EnrollmentProjectionRequest,
     EnrollmentProjectionResponse,
 )
-from app.schemas.kpi import (
-    KPICalculationRequest,
-    KPICalculationResponse,
+from app.schemas.insights import (
+    KPIEngineRequest as KPICalculationRequest,
+)
+from app.schemas.insights import (
+    KPIEngineResponse as KPICalculationResponse,
 )
 from app.schemas.revenue import (
     RevenueCalculationRequest,
     RevenueCalculationResponse,
 )
+from app.schemas.workforce import (
+    DHGCalculationRequest,
+    DHGCalculationResponse,
+)
 
-router = APIRouter(prefix="/api/v1/calculations", tags=["calculations"])
+router = APIRouter(prefix="/calculations", tags=["calculations"])
 
 
 @router.post(

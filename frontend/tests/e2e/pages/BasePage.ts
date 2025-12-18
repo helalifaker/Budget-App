@@ -39,7 +39,7 @@ export class BasePage {
    */
   getVersionSelector(): Locator {
     return this.page.locator(
-      '[data-testid="version-selector"], select[name="version"], select[name="budget_version_id"]'
+      '[data-testid="version-selector"], select[name="version"], select[name="version_id"]'
     )
   }
 

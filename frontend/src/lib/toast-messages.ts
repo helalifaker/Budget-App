@@ -33,7 +33,9 @@ export const toastMessages = {
     calculated: () => toast.success('Calcul terminé avec succès'),
     submitted: () => toast.success('Soumis avec succès'),
     approved: () => toast.success('Approuvé avec succès'),
+    unlocked: () => toast.success('Déverrouillé avec succès'),
     cloned: () => toast.success('Copie créée avec succès'),
+    superseded: () => toast.success('Archivé avec succès'),
     custom: (message: string) => toast.success(message),
   },
 

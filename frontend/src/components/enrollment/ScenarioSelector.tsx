@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Check, TrendingDown, TrendingUp, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { EnrollmentScenario } from '@/types/enrollmentProjection'
+import type { EnrollmentScenario } from '@/types/enrollment-projection'
 
 interface ScenarioSelectorProps {
   scenarios: EnrollmentScenario[]

@@ -13,17 +13,22 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import BudgetVersion, BudgetVersionStatus
-from app.models.planning import (
+from app.models import (
     ClassStructure,
     EnrollmentPlan,
     OperatingCostPlan,
     PersonnelCostPlan,
     RevenuePlan,
+    Version,
+    VersionStatus,
 )
-from app.services.consolidation_service import ConsolidationService
+from app.services.consolidation.consolidation_service import ConsolidationService
 from app.services.exceptions import BusinessRuleError, NotFoundError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility aliases
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
 
 
 class TestConsolidationServiceGetConsolidation:
@@ -33,12 +38,12 @@ class TestConsolidationServiceGetConsolidation:
     async def test_get_consolidation_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving empty consolidation."""
         service = ConsolidationService(db_session)
 
-        result = await service.get_consolidation(test_budget_version.id)
+        result = await service.get_consolidation(test_version.id)
 
         assert result == []
 
@@ -61,14 +66,14 @@ class TestConsolidationServiceConsolidate:
     async def test_consolidate_budget_with_revenue(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test consolidating budget with revenue entries."""
         # Create revenue entries
         revenue1 = RevenuePlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             description="Tuition T1",
             category="tuition",
@@ -78,7 +83,7 @@ class TestConsolidationServiceConsolidate:
         )
         revenue2 = RevenuePlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70120",
             description="Tuition T2",
             category="tuition",
@@ -91,7 +96,7 @@ class TestConsolidationServiceConsolidate:
 
         service = ConsolidationService(db_session)
         result = await service.consolidate_budget(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 
@@ -103,14 +108,14 @@ class TestConsolidationServiceConsolidate:
     async def test_consolidate_budget_with_personnel_costs(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test consolidating budget with personnel cost entries."""
         # Create personnel cost entries
         cost1 = PersonnelCostPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64110",
             description="Teaching Staff",
             fte_count=Decimal("20"),
@@ -123,7 +128,7 @@ class TestConsolidationServiceConsolidate:
 
         service = ConsolidationService(db_session)
         result = await service.consolidate_budget(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 
@@ -134,14 +139,14 @@ class TestConsolidationServiceConsolidate:
     async def test_consolidate_budget_replaces_existing(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test that consolidation replaces existing entries."""
         # Create initial revenue
         revenue = RevenuePlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             description="Tuition",
             category="tuition",
@@ -155,7 +160,7 @@ class TestConsolidationServiceConsolidate:
 
         # First consolidation
         await service.consolidate_budget(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 
@@ -164,12 +169,12 @@ class TestConsolidationServiceConsolidate:
         await db_session.flush()
 
         await service.consolidate_budget(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 
         # Should have replaced, not duplicated
-        all_entries = await service.get_consolidation(test_budget_version.id)
+        all_entries = await service.get_consolidation(test_version.id)
         tuition_entries = [e for e in all_entries if e.account_code == "70110"]
         assert len(tuition_entries) == 1
 
@@ -181,7 +186,7 @@ class TestConsolidationServiceApprovalWorkflow:
     async def test_submit_for_approval_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_class_structure: list[ClassStructure],
         test_user_id: uuid.UUID,
@@ -190,7 +195,7 @@ class TestConsolidationServiceApprovalWorkflow:
         service = ConsolidationService(db_session)
 
         result = await service.submit_for_approval(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 
@@ -202,7 +207,7 @@ class TestConsolidationServiceApprovalWorkflow:
     async def test_submit_for_approval_wrong_status(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_class_structure: list[ClassStructure],
         test_user_id: uuid.UUID,
@@ -212,14 +217,14 @@ class TestConsolidationServiceApprovalWorkflow:
 
         # First submit
         await service.submit_for_approval(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 
         # Try to submit again (now SUBMITTED)
         with pytest.raises(BusinessRuleError) as exc_info:
             await service.submit_for_approval(
-                test_budget_version.id,
+                test_version.id,
                 user_id=test_user_id,
             )
 
@@ -230,7 +235,7 @@ class TestConsolidationServiceApprovalWorkflow:
     async def test_submit_for_approval_incomplete(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test cannot submit incomplete budget."""
@@ -239,7 +244,7 @@ class TestConsolidationServiceApprovalWorkflow:
         # No enrollment or class structure
         with pytest.raises(BusinessRuleError) as exc_info:
             await service.submit_for_approval(
-                test_budget_version.id,
+                test_version.id,
                 user_id=test_user_id,
             )
 
@@ -250,7 +255,7 @@ class TestConsolidationServiceApprovalWorkflow:
     async def test_approve_budget_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_class_structure: list[ClassStructure],
         test_user_id: uuid.UUID,
@@ -260,13 +265,13 @@ class TestConsolidationServiceApprovalWorkflow:
 
         # First submit
         await service.submit_for_approval(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 
         # Then approve
         result = await service.approve_budget(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 
@@ -279,7 +284,7 @@ class TestConsolidationServiceApprovalWorkflow:
     async def test_approve_budget_wrong_status(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test cannot approve if not SUBMITTED status."""
@@ -288,7 +293,7 @@ class TestConsolidationServiceApprovalWorkflow:
         # Try to approve WORKING budget
         with pytest.raises(BusinessRuleError) as exc_info:
             await service.approve_budget(
-                test_budget_version.id,
+                test_version.id,
                 user_id=test_user_id,
             )
 
@@ -323,7 +328,7 @@ class TestConsolidationServiceApprovalWorkflow:
         # Add enrollment and class structure for version1
         enrollment1 = EnrollmentPlan(
             id=uuid.uuid4(),
-            budget_version_id=version1.id,
+            version_id=version1.id,
             level_id=test_enrollment_data[0].level_id,
             nationality_type_id=test_enrollment_data[0].nationality_type_id,
             student_count=50,
@@ -331,7 +336,7 @@ class TestConsolidationServiceApprovalWorkflow:
         )
         class1 = ClassStructure(
             id=uuid.uuid4(),
-            budget_version_id=version1.id,
+            version_id=version1.id,
             level_id=test_enrollment_data[0].level_id,
             total_students=50,
             number_of_classes=2,
@@ -361,7 +366,7 @@ class TestConsolidationServiceApprovalWorkflow:
         # Add enrollment and class structure for version2
         enrollment2 = EnrollmentPlan(
             id=uuid.uuid4(),
-            budget_version_id=version2.id,
+            version_id=version2.id,
             level_id=test_enrollment_data[0].level_id,
             nationality_type_id=test_enrollment_data[0].nationality_type_id,
             student_count=60,
@@ -369,7 +374,7 @@ class TestConsolidationServiceApprovalWorkflow:
         )
         class2 = ClassStructure(
             id=uuid.uuid4(),
-            budget_version_id=version2.id,
+            version_id=version2.id,
             level_id=test_enrollment_data[0].level_id,
             total_students=60,
             number_of_classes=2,
@@ -398,12 +403,12 @@ class TestConsolidationServiceValidation:
     async def test_validate_completeness_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test validation with no planning data."""
         service = ConsolidationService(db_session)
 
-        result = await service.validate_completeness(test_budget_version.id)
+        result = await service.validate_completeness(test_version.id)
 
         assert result["is_complete"] is False
         assert "enrollment" in result["missing_modules"]
@@ -413,13 +418,13 @@ class TestConsolidationServiceValidation:
     async def test_validate_completeness_with_enrollment(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
     ):
         """Test validation with enrollment only."""
         service = ConsolidationService(db_session)
 
-        result = await service.validate_completeness(test_budget_version.id)
+        result = await service.validate_completeness(test_version.id)
 
         assert "enrollment" not in result["missing_modules"]
         assert "class_structure" in result["missing_modules"]
@@ -429,14 +434,14 @@ class TestConsolidationServiceValidation:
     async def test_validate_completeness_complete(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_class_structure: list[ClassStructure],
     ):
         """Test validation with complete required modules."""
         service = ConsolidationService(db_session)
 
-        result = await service.validate_completeness(test_budget_version.id)
+        result = await service.validate_completeness(test_version.id)
 
         assert result["is_complete"] is True
         assert result["missing_modules"] == []
@@ -447,14 +452,14 @@ class TestConsolidationServiceValidation:
     async def test_validate_completeness_warnings(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_class_structure: list[ClassStructure],
     ):
         """Test validation returns warnings for optional missing data."""
         service = ConsolidationService(db_session)
 
-        result = await service.validate_completeness(test_budget_version.id)
+        result = await service.validate_completeness(test_version.id)
 
         # Should have warnings for missing revenue, costs (optional but warned)
         assert len(result["warnings"]) > 0
@@ -469,7 +474,7 @@ class TestConsolidationServiceLineItems:
     async def test_calculate_line_items_revenue(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test revenue line item calculation."""
@@ -477,7 +482,7 @@ class TestConsolidationServiceLineItems:
         revenues = [
             RevenuePlan(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="70110",
                 description="Tuition T1",
                 category="tuition",
@@ -486,7 +491,7 @@ class TestConsolidationServiceLineItems:
             ),
             RevenuePlan(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="70120",
                 description="Tuition T2",
                 category="tuition",
@@ -495,7 +500,7 @@ class TestConsolidationServiceLineItems:
             ),
             RevenuePlan(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="70200",
                 description="DAI",
                 category="fees",
@@ -507,7 +512,7 @@ class TestConsolidationServiceLineItems:
         await db_session.flush()
 
         service = ConsolidationService(db_session)
-        line_items = await service.calculate_line_items(test_budget_version.id)
+        line_items = await service.calculate_line_items(test_version.id)
 
         revenue_items = [item for item in line_items if item["is_revenue"]]
         assert len(revenue_items) == 3
@@ -519,14 +524,14 @@ class TestConsolidationServiceLineItems:
     async def test_calculate_line_items_costs(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test cost line item calculation."""
         # Create cost entries
         personnel = PersonnelCostPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64110",
             description="Teaching Staff",
             fte_count=Decimal("10"),
@@ -536,7 +541,7 @@ class TestConsolidationServiceLineItems:
         )
         operating = OperatingCostPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="60610",
             description="Supplies",
             category="supplies",
@@ -547,7 +552,7 @@ class TestConsolidationServiceLineItems:
         await db_session.flush()
 
         service = ConsolidationService(db_session)
-        line_items = await service.calculate_line_items(test_budget_version.id)
+        line_items = await service.calculate_line_items(test_version.id)
 
         cost_items = [item for item in line_items if not item["is_revenue"]]
         assert len(cost_items) == 2
@@ -563,7 +568,7 @@ class TestConsolidationServiceRealEFIRData:
     async def test_full_budget_consolidation(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_enrollment_data: list[EnrollmentPlan],
         test_class_structure: list[ClassStructure],
         test_user_id: uuid.UUID,
@@ -573,7 +578,7 @@ class TestConsolidationServiceRealEFIRData:
         for trimester, pct in [(1, "0.40"), (2, "0.30"), (3, "0.30")]:
             revenue = RevenuePlan(
                 id=uuid.uuid4(),
-                budget_version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code=f"7011{trimester}",
                 description=f"Scolarité T{trimester}",
                 category="tuition",
@@ -586,7 +591,7 @@ class TestConsolidationServiceRealEFIRData:
         # DAI revenue (5.4M SAR)
         dai = RevenuePlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70200",
             description="DAI",
             category="fees",
@@ -598,7 +603,7 @@ class TestConsolidationServiceRealEFIRData:
         # Personnel costs (30M SAR)
         personnel = PersonnelCostPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64110",
             description="Teaching Staff",
             fte_count=Decimal("100"),
@@ -611,7 +616,7 @@ class TestConsolidationServiceRealEFIRData:
         # Operating costs (5M SAR)
         operating = OperatingCostPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="60610",
             description="Operating Expenses",
             category="supplies",
@@ -624,7 +629,7 @@ class TestConsolidationServiceRealEFIRData:
 
         service = ConsolidationService(db_session)
         result = await service.consolidate_budget(
-            test_budget_version.id,
+            test_version.id,
             user_id=test_user_id,
         )
 

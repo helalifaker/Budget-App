@@ -101,7 +101,7 @@ class TestRevenueEndpoints:
             mock_service = AsyncMock()
             mock_service.create_revenue_entry.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 account_code="70210",
                 description="DAI Fees",
                 category="fees",
@@ -168,7 +168,7 @@ class TestPersonnelCostEndpoints:
             mock_service.get_personnel_costs.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     account_code="64110",
                     description="Teaching Salaries - Secondary",
                     fte_count=Decimal("45.5"),
@@ -230,7 +230,7 @@ class TestPersonnelCostEndpoints:
             mock_service = AsyncMock()
             mock_service.create_personnel_cost_entry.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 account_code="64110",
                 description="Math Teacher",
                 fte_count=Decimal("1.0"),
@@ -278,7 +278,7 @@ class TestOperatingCostEndpoints:
             mock_service.get_operating_costs.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     account_code="60110",
                     description="Educational Supplies",
                     category="supplies",
@@ -322,7 +322,7 @@ class TestOperatingCostEndpoints:
             mock_service = AsyncMock()
             mock_service.create_operating_cost_entry.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 account_code="61100",
                 description="External Services",
                 category="services",
@@ -371,7 +371,7 @@ class TestCapExEndpoints:
             mock_service.get_capex_plan.return_value = [
                 MagicMock(
                     id=uuid.uuid4(),
-                    budget_version_id=version_id,
+                    version_id=version_id,
                     account_code="21500",
                     description="IT Equipment",
                     category="equipment",
@@ -395,7 +395,7 @@ class TestCapExEndpoints:
             mock_service = AsyncMock()
             mock_service.create_capex_entry.return_value = MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
+                version_id=version_id,
                 account_code="21500",
                 description="New Computers",
                 category="equipment",
@@ -420,7 +420,7 @@ class TestCapExEndpoints:
             mock_service = AsyncMock()
             mock_service.update_capex_entry.return_value = MagicMock(
                 id=capex_id,
-                budget_version_id=version_id,
+                version_id=version_id,
                 account_code="21500",
                 description="Updated Computers",
                 quantity=25,

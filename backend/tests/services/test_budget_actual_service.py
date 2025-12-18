@@ -13,17 +13,21 @@ from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from app.models.analysis import (
+from app.models import (
     ActualData,
     ActualDataSource,
+    BudgetConsolidation,
     BudgetVsActual,
+    ConsolidationCategory,
     VarianceStatus,
+    Version,
 )
-from app.models.configuration import BudgetVersion
-from app.models.consolidation import BudgetConsolidation, ConsolidationCategory
-from app.services.budget_actual_service import BudgetActualService
 from app.services.exceptions import NotFoundError, ValidationError
+from app.services.insights.budget_actual_service import BudgetActualService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility alias
+BudgetVersion = Version
 
 
 class TestImportActuals:
@@ -33,7 +37,7 @@ class TestImportActuals:
     async def test_import_actuals_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful import of actual data."""
         service = BudgetActualService(db_session)
@@ -55,7 +59,7 @@ class TestImportActuals:
             },
         ]
 
-        result = await service.import_actuals(test_budget_version.id, odoo_data)
+        result = await service.import_actuals(test_version.id, odoo_data)
 
         assert result["records_imported"] == 2
         assert result["fiscal_year"] == 2025
@@ -67,7 +71,7 @@ class TestImportActuals:
     async def test_import_actuals_with_batch_id(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test import with custom batch ID."""
         service = BudgetActualService(db_session)
@@ -82,7 +86,7 @@ class TestImportActuals:
         ]
 
         result = await service.import_actuals(
-            test_budget_version.id,
+            test_version.id,
             odoo_data,
             import_batch_id=custom_batch_id,
         )
@@ -112,7 +116,7 @@ class TestImportActuals:
     async def test_import_actuals_missing_fields(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test import with missing required fields."""
         service = BudgetActualService(db_session)
@@ -124,13 +128,13 @@ class TestImportActuals:
         ]
 
         with pytest.raises(ValidationError):
-            await service.import_actuals(test_budget_version.id, odoo_data)
+            await service.import_actuals(test_version.id, odoo_data)
 
     @pytest.mark.asyncio
     async def test_import_actuals_multiple_periods(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test import covering multiple periods."""
         service = BudgetActualService(db_session)
@@ -155,7 +159,7 @@ class TestImportActuals:
             },
         ]
 
-        result = await service.import_actuals(test_budget_version.id, odoo_data)
+        result = await service.import_actuals(test_version.id, odoo_data)
 
         assert result["records_imported"] == 3
         assert sorted(result["periods_covered"]) == [1, 2, 3]
@@ -164,7 +168,7 @@ class TestImportActuals:
     async def test_import_actuals_triggers_variance_calculation(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         monkeypatch: pytest.MonkeyPatch,
     ):
         """Import should trigger variance calculation for covered periods."""
@@ -186,7 +190,7 @@ class TestImportActuals:
 
         monkeypatch.setattr(service, "calculate_variance", mock_calc_variance)
 
-        await service.import_actuals(test_budget_version.id, odoo_data)
+        await service.import_actuals(test_version.id, odoo_data)
 
         assert called_periods == [4]
 
@@ -194,12 +198,12 @@ class TestImportActuals:
     async def test_import_actuals_empty_list(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test import with empty data list."""
         service = BudgetActualService(db_session)
 
-        result = await service.import_actuals(test_budget_version.id, [])
+        result = await service.import_actuals(test_version.id, [])
 
         assert result["records_imported"] == 0
         assert result["total_amount_sar"] == 0.0
@@ -212,12 +216,12 @@ class TestCalculateVariance:
     async def test_calculate_variance_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful variance calculation."""
         # Create actual data first
         actual = ActualData(
-            fiscal_year=test_budget_version.fiscal_year,
+            fiscal_year=test_version.fiscal_year,
             period=1,
             account_code="70110",
             account_name="Tuition T1",
@@ -231,7 +235,7 @@ class TestCalculateVariance:
         await db_session.flush()
 
         service = BudgetActualService(db_session)
-        result = await service.calculate_variance(test_budget_version.id, period=1)
+        result = await service.calculate_variance(test_version.id, period=1)
 
         assert len(result) > 0
         assert all(isinstance(v, BudgetVsActual) for v in result)
@@ -251,12 +255,12 @@ class TestCalculateVariance:
     async def test_calculate_variance_specific_account(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test variance calculation for specific account."""
         # Create actual data
         actual = ActualData(
-            fiscal_year=test_budget_version.fiscal_year,
+            fiscal_year=test_version.fiscal_year,
             period=2,
             account_code="64110",
             account_name="Salaries",
@@ -271,7 +275,7 @@ class TestCalculateVariance:
 
         service = BudgetActualService(db_session)
         result = await service.calculate_variance(
-            test_budget_version.id,
+            test_version.id,
             period=2,
             account_code="64110",
         )
@@ -283,12 +287,12 @@ class TestCalculateVariance:
     async def test_calculate_variance_updates_existing(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test that variance calculation updates existing records."""
         # Create actual data
         actual = ActualData(
-            fiscal_year=test_budget_version.fiscal_year,
+            fiscal_year=test_version.fiscal_year,
             period=3,
             account_code="70110",
             amount_sar=Decimal("100000.00"),
@@ -303,10 +307,10 @@ class TestCalculateVariance:
         service = BudgetActualService(db_session)
 
         # Calculate first time
-        result1 = await service.calculate_variance(test_budget_version.id, period=3)
+        result1 = await service.calculate_variance(test_version.id, period=3)
 
         # Calculate again - should update
-        result2 = await service.calculate_variance(test_budget_version.id, period=3)
+        result2 = await service.calculate_variance(test_version.id, period=3)
 
         # Should update existing, not create new
         assert len(result1) == len(result2)
@@ -315,18 +319,18 @@ class TestCalculateVariance:
     async def test_calculate_variance_uses_consolidation_and_ytd(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Variance uses consolidated budget and aggregates YTD actuals."""
         # Annual budget 1.2M => monthly 100k
         consolidation = BudgetConsolidation(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             account_name="Tuition",
             consolidation_category=ConsolidationCategory.REVENUE_TUITION,
             is_revenue=True,
             amount_sar=Decimal("1200000.00"),
-            source_table="revenue_plans",
+            source_table="finance_revenue_plans",
             source_count=12,
             is_calculated=True,
         )
@@ -334,7 +338,7 @@ class TestCalculateVariance:
 
         # Actuals for periods 1 and 2
         actual_p1 = ActualData(
-            fiscal_year=test_budget_version.fiscal_year,
+            fiscal_year=test_version.fiscal_year,
             period=1,
             account_code="70110",
             account_name="Tuition T1",
@@ -345,7 +349,7 @@ class TestCalculateVariance:
             import_date=datetime.utcnow(),
         )
         actual_p2 = ActualData(
-            fiscal_year=test_budget_version.fiscal_year,
+            fiscal_year=test_version.fiscal_year,
             period=2,
             account_code="70110",
             account_name="Tuition T2",
@@ -360,7 +364,7 @@ class TestCalculateVariance:
 
         service = BudgetActualService(db_session)
         result = await service.calculate_variance(
-            test_budget_version.id,
+            test_version.id,
             period=2,
             account_code="70110",
         )
@@ -382,12 +386,12 @@ class TestGetVarianceReport:
     async def test_get_variance_report_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful variance report generation."""
         # Create variance records
         variance = BudgetVsActual(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             period=1,
             budget_amount_sar=Decimal("1000000.00"),
@@ -404,7 +408,7 @@ class TestGetVarianceReport:
         await db_session.flush()
 
         service = BudgetActualService(db_session)
-        result = await service.get_variance_report(test_budget_version.id)
+        result = await service.get_variance_report(test_version.id)
 
         assert "summary" in result or "variances" in result
 
@@ -423,12 +427,12 @@ class TestGetVarianceReport:
     async def test_get_variance_report_filter_by_period(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test variance report filtered by period."""
         # Create variances for different periods
         variance1 = BudgetVsActual(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             period=1,
             budget_amount_sar=Decimal("100000.00"),
@@ -442,7 +446,7 @@ class TestGetVarianceReport:
             is_material=False,
         )
         variance2 = BudgetVsActual(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             period=2,
             budget_amount_sar=Decimal("200000.00"),
@@ -460,7 +464,7 @@ class TestGetVarianceReport:
 
         service = BudgetActualService(db_session)
         result = await service.get_variance_report(
-            test_budget_version.id,
+            test_version.id,
             period=1,
         )
 
@@ -470,12 +474,12 @@ class TestGetVarianceReport:
     async def test_get_variance_report_filter_by_account_pattern(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test variance report filtered by account code pattern."""
         # Create variances for different account types
         revenue = BudgetVsActual(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             period=1,
             budget_amount_sar=Decimal("100000.00"),
@@ -489,7 +493,7 @@ class TestGetVarianceReport:
             is_material=False,
         )
         expense = BudgetVsActual(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="64110",
             period=1,
             budget_amount_sar=Decimal("50000.00"),
@@ -507,7 +511,7 @@ class TestGetVarianceReport:
 
         service = BudgetActualService(db_session)
         result = await service.get_variance_report(
-            test_budget_version.id,
+            test_version.id,
             account_code_pattern="64%",
         )
 
@@ -517,12 +521,12 @@ class TestGetVarianceReport:
     async def test_get_variance_report_material_only(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test variance report with material variances only."""
         # Create material and non-material variances
         material = BudgetVsActual(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70110",
             period=1,
             budget_amount_sar=Decimal("1000000.00"),
@@ -536,7 +540,7 @@ class TestGetVarianceReport:
             is_material=True,
         )
         non_material = BudgetVsActual(
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="70120",
             period=1,
             budget_amount_sar=Decimal("100000.00"),
@@ -554,7 +558,7 @@ class TestGetVarianceReport:
 
         service = BudgetActualService(db_session)
         result = await service.get_variance_report(
-            test_budget_version.id,
+            test_version.id,
             material_only=True,
         )
 

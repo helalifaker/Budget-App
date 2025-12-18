@@ -14,7 +14,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.configuration import AcademicLevel, ClassSizeParam
+from app.models import AcademicLevel, ClassSizeParam
 from app.services.exceptions import ValidationError
 
 

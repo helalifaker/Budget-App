@@ -4,7 +4,7 @@ import { withServiceErrorHandling } from './utils'
 // Types matching backend schemas
 interface ClassStructure {
   id: string
-  budget_version_id: string
+  version_id: string
   level_id: string
   total_students: number
   number_of_classes: number
@@ -22,7 +22,7 @@ export const classStructureApi = {
     return withServiceErrorHandling(
       apiRequest<ClassStructure[]>({
         method: 'GET',
-        url: `/planning/class-structure/${versionId}`,
+        url: `/class-structure/${versionId}`,
       }),
       'class-structure: get all'
     )
@@ -38,7 +38,7 @@ export const classStructureApi = {
     return withServiceErrorHandling(
       apiRequest<ClassStructure[]>({
         method: 'POST',
-        url: `/planning/class-structure/${versionId}/calculate`,
+        url: `/class-structure/${versionId}/calculate`,
         data,
       }),
       'class-structure: calculate'
@@ -60,10 +60,33 @@ export const classStructureApi = {
     return withServiceErrorHandling(
       apiRequest<ClassStructure>({
         method: 'PUT',
-        url: `/planning/class-structure/${classStructureId}`,
+        url: `/class-structure/${classStructureId}`,
         data,
       }),
       'class-structure: update'
+    )
+  },
+
+  updateBulk: async (
+    versionId: string,
+    updates: Array<{
+      id: string
+      total_students?: number
+      number_of_classes?: number
+      avg_class_size?: number
+      requires_atsem?: boolean
+      atsem_count?: number
+      calculation_method?: string
+      notes?: string | null
+    }>
+  ) => {
+    return withServiceErrorHandling(
+      apiRequest<ClassStructure[]>({
+        method: 'PUT',
+        url: `/class-structure/${versionId}/bulk`,
+        data: { updates },
+      }),
+      'class-structure: bulk update'
     )
   },
 }

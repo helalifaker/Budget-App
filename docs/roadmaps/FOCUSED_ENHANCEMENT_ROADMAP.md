@@ -5,6 +5,9 @@
 **Date:** December 2025
 **Status:** Ready for Implementation
 
+> **Schema naming (Phase 3+)**: Use `version_id` (not `budget_version_id`) and `settings_versions` (not `budget_versions`).
+> Tables are prefixed under the single `efir_budget` schema (`ref_*`, `settings_*`, `students_*`, `teachers_*`, `finance_*`, `insights_*`, `admin_*`).
+
 ---
 
 ## Executive Summary
@@ -275,13 +278,13 @@ from typing import Any
 cache.setup("redis://localhost:6379/0")
 
 # Caching decorators
-@cache(ttl="1h", key="dhg:{budget_version_id}:{level_id}")
-async def get_dhg_calculation(budget_version_id: str, level_id: str):
+@cache(ttl="1h", key="dhg:{version_id}:{level_id}")
+async def get_dhg_calculation(version_id: str, level_id: str):
     """Cache DHG calculations for 1 hour"""
     pass
 
-@cache(ttl="5m", key="kpi:dashboard:{budget_version_id}")
-async def get_dashboard_kpis(budget_version_id: str):
+@cache(ttl="5m", key="kpi:dashboard:{version_id}")
+async def get_dashboard_kpis(version_id: str):
     """Cache dashboard KPIs for 5 minutes"""
     pass
 ```
@@ -315,18 +318,18 @@ class CacheInvalidator:
     }
 
     @classmethod
-    async def invalidate(cls, budget_version_id: str, entity: str):
+    async def invalidate(cls, version_id: str, entity: str):
         """Invalidate entity and all dependents"""
         redis_client = await redis.from_url("redis://localhost:6379")
 
         # Invalidate this entity
-        pattern = f"*:{budget_version_id}:*{entity}*"
+        pattern = f"*:{version_id}:*{entity}*"
         async for key in redis_client.scan_iter(match=pattern):
             await redis_client.delete(key)
 
         # Recursively invalidate dependents
         for dependent in cls.DEPENDENCY_GRAPH.get(entity, []):
-            await cls.invalidate(budget_version_id, dependent)
+            await cls.invalidate(version_id, dependent)
 
         await redis_client.close()
 
@@ -338,7 +341,7 @@ async def update_enrollment(id: str, data: EnrollmentUpdate):
 
     # Invalidate caches
     await CacheInvalidator.invalidate(
-        enrollment.budget_version_id,
+        enrollment.version_id,
         "enrollment"
     )
 
@@ -351,56 +354,31 @@ async def update_enrollment(id: str, data: EnrollmentUpdate):
 -- KPI Dashboard Summary
 CREATE MATERIALIZED VIEW efir_budget.mv_kpi_dashboard AS
 SELECT
-    bv.id as budget_version_id,
-    bv.fiscal_year,
-    bv.status,
-    bv.name,
+    v.id as version_id,
+    v.fiscal_year,
+    v.status,
+    v.name,
 
-    -- Enrollment metrics
-    COUNT(DISTINCT ed.id) FILTER (WHERE ed.nationality = 'French') as french_students,
-    COUNT(DISTINCT ed.id) FILTER (WHERE ed.nationality = 'Saudi') as saudi_students,
-    COUNT(DISTINCT ed.id) FILTER (WHERE ed.nationality = 'Other') as other_students,
-    COUNT(DISTINCT ed.id) as total_students,
+    -- Enrollment (Phase 4A unified)
+    SUM(sd.student_count) as total_students,
 
-    -- DHG metrics
-    SUM(dhg.total_hours) as total_dhg_hours,
-    SUM(dhg.fte_required) as total_fte_required,
-    SUM(dhg.aefe_positions) as aefe_positions,
-    SUM(dhg.local_positions) as local_positions,
-
-    -- Financial metrics (SAR)
-    SUM(rv.amount_sar) FILTER (WHERE rv.account_code LIKE '70%') as total_revenue,
-    SUM(pc.amount_sar) FILTER (WHERE pc.account_code LIKE '64%') as personnel_costs,
-    SUM(oc.amount_sar) FILTER (WHERE oc.account_code LIKE '60%' OR oc.account_code LIKE '61%') as operational_costs,
-
-    -- Calculated KPIs
-    CASE
-        WHEN COUNT(DISTINCT ed.id) > 0
-        THEN SUM(rv.amount_sar) / COUNT(DISTINCT ed.id)
-        ELSE 0
-    END as revenue_per_student,
-
-    CASE
-        WHEN SUM(dhg.total_hours) > 0
-        THEN COUNT(DISTINCT ed.id) / SUM(dhg.total_hours)
-        ELSE 0
-    END as students_per_teaching_hour,
+    -- Finance (Phase 4C unified)
+    SUM(fd.amount_sar) FILTER (WHERE fd.data_type = 'revenue') as total_revenue,
+    SUM(fd.amount_sar) FILTER (WHERE fd.data_type = 'personnel_cost') as personnel_costs,
+    SUM(fd.amount_sar) FILTER (WHERE fd.data_type = 'operating_cost') as operational_costs,
 
     -- Timestamps
-    MAX(bv.updated_at) as last_updated
+    MAX(v.updated_at) as last_updated
 
-FROM efir_budget.budget_versions bv
-LEFT JOIN efir_budget.enrollment_data ed ON ed.budget_version_id = bv.id
-LEFT JOIN efir_budget.dhg_calculations dhg ON dhg.budget_version_id = bv.id
-LEFT JOIN efir_budget.revenue_projections rv ON rv.budget_version_id = bv.id
-LEFT JOIN efir_budget.personnel_costs pc ON pc.budget_version_id = bv.id
-LEFT JOIN efir_budget.operational_costs oc ON oc.budget_version_id = bv.id
+FROM efir_budget.settings_versions v
+LEFT JOIN efir_budget.students_data sd ON sd.version_id = v.id AND sd.deleted_at IS NULL
+LEFT JOIN efir_budget.finance_data fd ON fd.version_id = v.id AND fd.deleted_at IS NULL
 
-GROUP BY bv.id, bv.fiscal_year, bv.status, bv.name
+GROUP BY v.id, v.fiscal_year, v.status, v.name
 WITH DATA;
 
 -- Indexes
-CREATE UNIQUE INDEX ON efir_budget.mv_kpi_dashboard(budget_version_id);
+CREATE UNIQUE INDEX ON efir_budget.mv_kpi_dashboard(version_id);
 CREATE INDEX ON efir_budget.mv_kpi_dashboard(fiscal_year, status);
 
 -- Refresh strategy: After any budget data change
@@ -515,7 +493,7 @@ export default defineConfig({
 -- Stores all user-editable budget values
 CREATE TABLE efir_budget.planning_cells (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    budget_version_id UUID NOT NULL REFERENCES budget_versions(id) ON DELETE CASCADE,
+    version_id UUID NOT NULL REFERENCES settings_versions(id) ON DELETE CASCADE,
 
     -- Cell location (no JSONB - fixed schema for EFIR)
     module_code VARCHAR(50) NOT NULL,
@@ -550,11 +528,11 @@ CREATE TABLE efir_budget.planning_cells (
     version INT DEFAULT 1,
 
     -- Unique constraint
-    UNIQUE(budget_version_id, module_code, entity_id, field_name, period_code)
+    UNIQUE(version_id, module_code, entity_id, field_name, period_code)
 );
 
 -- Indexes
-CREATE INDEX ix_planning_cells_version ON efir_budget.planning_cells(budget_version_id);
+CREATE INDEX ix_admin_planning_cells_version ON efir_budget.admin_planning_cells(version_id);
 CREATE INDEX ix_planning_cells_module ON efir_budget.planning_cells(module_code, entity_id);
 CREATE INDEX ix_planning_cells_period ON efir_budget.planning_cells(period_code) WHERE period_code IS NOT NULL;
 
@@ -567,8 +545,8 @@ ALTER TABLE efir_budget.planning_cells ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view cells in their organization"
 ON efir_budget.planning_cells FOR SELECT
 USING (
-    budget_version_id IN (
-        SELECT id FROM efir_budget.budget_versions
+    version_id IN (
+        SELECT id FROM efir_budget.settings_versions
         WHERE organization_id = (SELECT organization_id FROM auth.users WHERE id = auth.uid())
     )
 );
@@ -577,8 +555,8 @@ CREATE POLICY "Users can edit unlocked cells if budget is draft/submitted"
 ON efir_budget.planning_cells FOR UPDATE
 USING (
     NOT is_locked
-    AND budget_version_id IN (
-        SELECT id FROM efir_budget.budget_versions
+    AND version_id IN (
+        SELECT id FROM efir_budget.settings_versions
         WHERE organization_id = (SELECT organization_id FROM auth.users WHERE id = auth.uid())
         AND status IN ('draft', 'submitted')
     )
@@ -592,7 +570,7 @@ USING (
 CREATE TABLE efir_budget.cell_changes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     cell_id UUID REFERENCES planning_cells(id) ON DELETE SET NULL,
-    budget_version_id UUID NOT NULL REFERENCES budget_versions(id),
+    version_id UUID NOT NULL REFERENCES settings_versions(id),
 
     -- Change details
     module_code VARCHAR(50) NOT NULL,
@@ -621,7 +599,7 @@ CREATE TABLE efir_budget.cell_changes (
 -- Indexes
 CREATE INDEX ix_cell_changes_cell ON efir_budget.cell_changes(cell_id);
 CREATE INDEX ix_cell_changes_session ON efir_budget.cell_changes(session_id, sequence_number);
-CREATE INDEX ix_cell_changes_version ON efir_budget.cell_changes(budget_version_id);
+CREATE INDEX ix_admin_cell_changes_version ON efir_budget.admin_cell_changes(version_id);
 
 -- RLS
 ALTER TABLE efir_budget.cell_changes ENABLE ROW LEVEL SECURITY;
@@ -629,8 +607,8 @@ ALTER TABLE efir_budget.cell_changes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view changes in their organization"
 ON efir_budget.cell_changes FOR SELECT
 USING (
-    budget_version_id IN (
-        SELECT id FROM efir_budget.budget_versions
+    version_id IN (
+        SELECT id FROM efir_budget.settings_versions
         WHERE organization_id = (SELECT organization_id FROM auth.users WHERE id = auth.uid())
     )
 );
@@ -669,8 +647,8 @@ ON efir_budget.cell_comments FOR ALL
 USING (
     cell_id IN (
         SELECT id FROM efir_budget.planning_cells
-        WHERE budget_version_id IN (
-            SELECT id FROM efir_budget.budget_versions
+        WHERE version_id IN (
+            SELECT id FROM efir_budget.settings_versions
             WHERE organization_id = (SELECT organization_id FROM auth.users WHERE id = auth.uid())
         )
     )
@@ -723,7 +701,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
       const { data, error } = await supabase
         .from('planning_cells')
         .upsert({
-          budget_version_id: update.budgetVersionId,
+          version_id: update.versionId,
           module_code: update.moduleCode,
           entity_id: update.entityId,
           field_name: update.fieldName,
@@ -732,7 +710,7 @@ export function usePlanningWriteback(budgetVersionId: string) {
           value_type: 'input',
           modified_at: new Date().toISOString(),
         }, {
-          onConflict: 'budget_version_id,module_code,entity_id,field_name,period_code'
+          onConflict: 'version_id,module_code,entity_id,field_name,period_code'
         })
         .select()
         .single();
@@ -853,7 +831,7 @@ export function useRealtimeSync(budgetVersionId: string) {
           event: '*',
           schema: 'efir_budget',
           table: 'planning_cells',
-          filter: `budget_version_id=eq.${budgetVersionId}`,
+          filter: `version_id=eq.${versionId}`,
         },
         (payload) => {
           console.log('Realtime update:', payload);
@@ -1182,7 +1160,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
 async def export_financial_statements_excel(
-    budget_version_id: str,
+    version_id: str,
     format: str = "PCG"  # "PCG" or "IFRS"
 ) -> bytes:
     """
@@ -1205,10 +1183,10 @@ async def export_financial_statements_excel(
             account_name,
             SUM(amount_sar) as total
         FROM pg.efir_budget.revenue_projections
-        WHERE budget_version_id = ?
+        WHERE version_id = ?
         GROUP BY account_code, account_name
         ORDER BY account_code
-    """, [budget_version_id]).df()
+    """, [version_id]).df()
 
     balance_sheet = con.execute("""
         SELECT
@@ -1216,10 +1194,10 @@ async def export_financial_statements_excel(
             account_name,
             SUM(amount_sar) as total
         FROM pg.efir_budget.balance_sheet_items
-        WHERE budget_version_id = ?
+        WHERE version_id = ?
         GROUP BY account_code, account_name
         ORDER BY account_code
-    """, [budget_version_id]).df()
+    """, [version_id]).df()
 
     # Create Excel with openpyxl
     wb = Workbook()
@@ -1261,7 +1239,7 @@ async def export_financial_statements_excel(
 # app/services/odoo_integration.py
 import polars as pl
 
-async def transform_for_odoo_import(budget_version_id: str) -> bytes:
+async def transform_for_odoo_import(version_id: str) -> bytes:
     """
     Transform EFIR budget data to Odoo import format
     Uses Polars for 10-100x faster transformations than Pandas
@@ -1275,11 +1253,11 @@ async def transform_for_odoo_import(budget_version_id: str) -> bytes:
             amount_sar,
             account_type
         FROM efir_budget.consolidated_budget
-        WHERE budget_version_id = ?
+        WHERE version_id = ?
     """
 
     # Read with Polars (much faster than Pandas)
-    df = pl.read_database(query, connection_uri, parameters=[budget_version_id])
+    df = pl.read_database(query, connection_uri, parameters=[version_id])
 
     # Transform to Odoo format
     odoo_format = df.select([

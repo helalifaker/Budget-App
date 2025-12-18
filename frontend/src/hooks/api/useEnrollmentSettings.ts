@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { enrollmentSettingsApi } from '@/services/enrollmentSettings'
+import { enrollmentSettingsApi } from '@/services/enrollment-settings'
 import { handleAPIErrorToast, toastMessages } from '@/lib/toast-messages'
 import type {
   CalibrationRequest,
   ParameterOverrideUpdate,
   ScenarioMultiplierUpdate,
-} from '@/types/enrollmentSettings'
+} from '@/types/enrollment-settings'
 
 export const settingsKeys = {
   all: ['enrollment-settings'] as const,

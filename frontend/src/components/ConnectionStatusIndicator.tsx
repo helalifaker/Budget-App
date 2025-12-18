@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react'
-import { useBackendConnection } from '@/contexts/BackendConnectionProvider'
+import { useBackendConnection } from '@/contexts/useBackendConnection'
 import { cn } from '@/lib/utils'
 import { RefreshCw, Server, Clock, Zap, Terminal } from 'lucide-react'
 

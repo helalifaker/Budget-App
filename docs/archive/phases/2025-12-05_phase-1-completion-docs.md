@@ -16,7 +16,7 @@ Phase 1 focused on establishing the complete database infrastructure for the EFI
 
 ### ✅ 1. Database Schema Design Documentation
 
-**File**: `/docs/DATABASE/schema_design.md`
+**File**: `/docs/database/schema_design.md`
 
 Comprehensive schema documentation covering all 18 modules across 5 layers:
 - **Configuration Layer** (Modules 1-6): 13 tables
@@ -107,7 +107,7 @@ Comprehensive schema documentation covering all 18 modules across 5 layers:
 
 ### ✅ 5. Row Level Security (RLS) Policies
 
-**File**: `/docs/DATABASE/sql/rls_policies.sql`
+**File**: `/docs/database/sql/rls_policies.sql`
 
 **User Roles**:
 - **Admin**: Full access to all data
@@ -136,7 +136,7 @@ Comprehensive schema documentation covering all 18 modules across 5 layers:
 
 ### ✅ 7. Comprehensive Documentation
 
-**Setup Guide**: `/docs/DATABASE/setup_guide.md`
+**Setup Guide**: `/docs/database/setup_guide.md`
 
 Complete deployment guide including:
 - Prerequisites and tools
@@ -355,7 +355,7 @@ pydantic==2.12.0         ✅ Installed
 
 ### For Database Administrator
 - Run migration: `alembic upgrade head`
-- Apply RLS: Execute `docs/DATABASE/sql/rls_policies.sql`
+- Apply RLS: Execute `docs/database/sql/rls_policies.sql`
 - Seed data: Run scripts in setup guide
 - Verify: Check all tables and policies created
 
@@ -398,12 +398,12 @@ pydantic==2.12.0         ✅ Installed
 
 All deliverables are committed and organized:
 
-- **Documentation**: `/docs/DATABASE/`
+- **Documentation**: `/docs/database/`
 - **Models**: `/backend/app/models/`
 - **Migration**: `/backend/alembic/versions/`
-- **SQL Scripts**: `/docs/DATABASE/sql/`
-- **Setup Guide**: `/docs/DATABASE/setup_guide.md`
-- **Schema Design**: `/docs/DATABASE/schema_design.md`
+- **SQL Scripts**: `/docs/database/sql/`
+- **Setup Guide**: `/docs/database/setup_guide.md`
+- **Schema Design**: `/docs/database/schema_design.md`
 
 **Total Files Created**: 8 core files + supporting documentation
 

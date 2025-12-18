@@ -19,8 +19,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.main import app
-from app.models.configuration import BudgetVersion, BudgetVersionStatus
+from app.models import Version, VersionStatus
 from fastapi.testclient import TestClient
+
+# Backward compatibility aliases
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
 
 
 @pytest.fixture(scope="module")
@@ -75,7 +79,7 @@ def mock_user():
 
 
 @pytest.fixture
-def mock_budget_version():
+def mock_version():
     """Create mock budget version."""
     version = MagicMock(spec=BudgetVersion)
     version.id = uuid.uuid4()
@@ -95,8 +99,8 @@ def mock_consolidation_items():
     return [
         MagicMock(
             id=uuid.uuid4(),
-            budget_version_id=uuid.uuid4(),
-            source_table="revenue_plans",
+            version_id=uuid.uuid4(),
+            source_table="finance_revenue_plans",
             account_code="70110",
             description="Tuition T1",
             amount_sar=Decimal("25000000"),
@@ -104,8 +108,8 @@ def mock_consolidation_items():
         ),
         MagicMock(
             id=uuid.uuid4(),
-            budget_version_id=uuid.uuid4(),
-            source_table="personnel_cost_plans",
+            version_id=uuid.uuid4(),
+            source_table="finance_personnel_cost_plans",
             account_code="64110",
             description="Teaching Salaries",
             amount_sar=Decimal("15000000"),
@@ -113,8 +117,8 @@ def mock_consolidation_items():
         ),
         MagicMock(
             id=uuid.uuid4(),
-            budget_version_id=uuid.uuid4(),
-            source_table="operating_cost_plans",
+            version_id=uuid.uuid4(),
+            source_table="finance_operating_cost_plans",
             account_code="60110",
             description="Supplies",
             amount_sar=Decimal("2000000"),
@@ -132,15 +136,15 @@ class TestGetConsolidatedBudget:
     """Tests for GET /api/v1/consolidation/{version_id}."""
 
     def test_get_consolidated_budget_success(
-        self, client, mock_user, mock_budget_version, mock_consolidation_items
+        self, client, mock_user, mock_version, mock_consolidation_items
     ):
         """Test successful retrieval of consolidated budget."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.get_consolidation.return_value = mock_consolidation_items
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -149,7 +153,7 @@ class TestGetConsolidatedBudget:
                 assert response.status_code == 200
                 data = response.json()
                 assert isinstance(data, dict)  # Response is object, not list
-                assert data["budget_version_id"] == str(version_id)
+                assert data["version_id"] == str(version_id)
                 assert "revenue_items" in data
                 assert "personnel_items" in data
                 assert len(data["revenue_items"]) == 1  # 1 revenue item from mock
@@ -173,14 +177,14 @@ class TestGetConsolidatedBudget:
                 assert response.status_code == 404
                 assert "not found" in response.json()["detail"].lower()
 
-    def test_get_consolidated_budget_empty(self, client, mock_user, mock_budget_version):
+    def test_get_consolidated_budget_empty(self, client, mock_user, mock_version):
         """Test retrieval when no consolidation data exists."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.get_consolidation.return_value = []
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -203,16 +207,16 @@ class TestConsolidateBudget:
     """Tests for POST /api/v1/consolidation/{version_id}/consolidate."""
 
     def test_consolidate_budget_success(
-        self, client, mock_user, mock_budget_version, mock_consolidation_items
+        self, client, mock_user, mock_version, mock_consolidation_items
     ):
         """Test successful budget consolidation."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.consolidate_budget.return_value = mock_consolidation_items
             mock_service.get_consolidation.return_value = mock_consolidation_items
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -223,7 +227,7 @@ class TestConsolidateBudget:
                     assert response.status_code == 200
                     data = response.json()
                     assert isinstance(data, dict)  # Response is object, not list
-                    assert data["budget_version_id"] == str(version_id)
+                    assert data["version_id"] == str(version_id)
                     assert "revenue_items" in data
                     mock_cache.assert_called_once()
 
@@ -255,20 +259,20 @@ class TestConsolidateBudget:
 class TestSubmitForApproval:
     """Tests for POST /api/v1/consolidation/{version_id}/submit."""
 
-    def test_submit_success(self, client, mock_user, mock_budget_version):
+    def test_submit_success(self, client, mock_user, mock_version):
         """Test successful budget submission."""
-        version_id = mock_budget_version.id
-        mock_budget_version.status = BudgetVersionStatus.WORKING
+        version_id = mock_version.id
+        mock_version.status = BudgetVersionStatus.WORKING
 
         submitted_version = MagicMock(spec=BudgetVersion)
         submitted_version.id = version_id
-        submitted_version.name = mock_budget_version.name
+        submitted_version.name = mock_version.name
         submitted_version.status = BudgetVersionStatus.SUBMITTED
         submitted_version.submitted_at = datetime.utcnow()
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_service.submit_for_approval.return_value = submitted_version
             mock_svc.return_value = mock_service
 
@@ -281,16 +285,16 @@ class TestSubmitForApproval:
                 assert "action_at" in data  # WorkflowActionResponse uses 'action_at'
                 assert "message" in data
 
-    def test_submit_wrong_status(self, client, mock_user, mock_budget_version):
+    def test_submit_wrong_status(self, client, mock_user, mock_version):
         """Test submission fails when budget is not in WORKING status."""
-        version_id = mock_budget_version.id
-        mock_budget_version.status = BudgetVersionStatus.SUBMITTED  # Already submitted
+        version_id = mock_version.id
+        mock_version.status = BudgetVersionStatus.SUBMITTED  # Already submitted
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             from app.services.exceptions import BusinessRuleError
 
             mock_service = AsyncMock()
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_service.submit_for_approval.side_effect = BusinessRuleError(
                 "INVALID_STATUS",
                 "Budget must be in WORKING status to submit",
@@ -306,15 +310,15 @@ class TestSubmitForApproval:
                 assert isinstance(detail, dict)  # BusinessRuleError returns dict
                 assert "status" in detail["message"].lower() or "SUBMITTED" in str(detail)
 
-    def test_submit_incomplete_budget(self, client, mock_user, mock_budget_version):
+    def test_submit_incomplete_budget(self, client, mock_user, mock_version):
         """Test submission fails when budget is incomplete."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             from app.services.exceptions import BusinessRuleError
 
             mock_service = AsyncMock()
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_service.submit_for_approval.side_effect = BusinessRuleError(
                 "INCOMPLETE_BUDGET",
                 "Budget is missing required data: enrollment, revenue",
@@ -339,14 +343,14 @@ class TestSubmitForApproval:
 class TestApproveBudget:
     """Tests for POST /api/v1/consolidation/{version_id}/approve."""
 
-    def test_approve_success(self, client, mock_budget_version):
+    def test_approve_success(self, client, mock_version):
         """Test successful budget approval."""
-        version_id = mock_budget_version.id
-        mock_budget_version.status = BudgetVersionStatus.SUBMITTED
+        version_id = mock_version.id
+        mock_version.status = BudgetVersionStatus.SUBMITTED
 
         approved_version = MagicMock(spec=BudgetVersion)
         approved_version.id = version_id
-        approved_version.name = mock_budget_version.name
+        approved_version.name = mock_version.name
         approved_version.status = BudgetVersionStatus.APPROVED
         approved_version.approved_at = datetime.utcnow()
 
@@ -357,7 +361,7 @@ class TestApproveBudget:
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_service.approve_budget.return_value = approved_version
             mock_svc.return_value = mock_service
 
@@ -370,10 +374,10 @@ class TestApproveBudget:
                 assert "action_at" in data  # WorkflowActionResponse uses 'action_at'
                 assert "message" in data
 
-    def test_approve_wrong_status(self, client, mock_budget_version):
+    def test_approve_wrong_status(self, client, mock_version):
         """Test approval fails when budget is not in SUBMITTED status."""
-        version_id = mock_budget_version.id
-        mock_budget_version.status = BudgetVersionStatus.WORKING  # Not submitted yet
+        version_id = mock_version.id
+        mock_version.status = BudgetVersionStatus.WORKING  # Not submitted yet
 
         mock_manager = MagicMock()
         mock_manager.id = uuid.uuid4()
@@ -383,7 +387,7 @@ class TestApproveBudget:
             from app.services.exceptions import BusinessRuleError
 
             mock_service = AsyncMock()
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_service.approve_budget.side_effect = BusinessRuleError(
                 "INVALID_STATUS",
                 "Budget must be in SUBMITTED status to approve",
@@ -415,9 +419,9 @@ class TestApproveBudget:
 class TestValidateBudget:
     """Tests for GET /api/v1/consolidation/{version_id}/validation."""
 
-    def test_validation_success_complete(self, client, mock_user, mock_budget_version):
+    def test_validation_success_complete(self, client, mock_user, mock_version):
         """Test validation when budget is complete."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         validation_result = {
             "is_complete": True,
@@ -438,9 +442,9 @@ class TestValidateBudget:
                 assert data["is_complete"] is True
                 assert len(data["missing_modules"]) == 0
 
-    def test_validation_success_incomplete(self, client, mock_user, mock_budget_version):
+    def test_validation_success_incomplete(self, client, mock_user, mock_version):
         """Test validation when budget is incomplete."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         validation_result = {
             "is_complete": False,
@@ -471,9 +475,9 @@ class TestValidateBudget:
 class TestFinancialStatements:
     """Tests for financial statement endpoints."""
 
-    def test_get_income_statement_pcg(self, client, mock_user, mock_budget_version):
+    def test_get_income_statement_pcg(self, client, mock_user, mock_version):
         """Test getting income statement in PCG format."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
             from datetime import datetime
@@ -481,11 +485,11 @@ class TestFinancialStatements:
             mock_service = AsyncMock()
             mock_service.get_income_statement.return_value = {
                 "id": uuid.uuid4(),
-                "budget_version_id": version_id,
+                "version_id": version_id,
                 "statement_type": "income_statement",
                 "statement_format": "french_pcg",  # Must be "french_pcg" or "ifrs" (enum)
                 "statement_name": "Income Statement PCG",
-                "fiscal_year": mock_budget_version.fiscal_year,
+                "fiscal_year": mock_version.fiscal_year,
                 "total_amount_sar": Decimal("5000000"),
                 "is_calculated": True,
                 "notes": None,
@@ -506,9 +510,9 @@ class TestFinancialStatements:
                 assert data["statement_format"] in ("pcg", "french_pcg")
                 assert "total_amount_sar" in data
 
-    def test_get_income_statement_ifrs(self, client, mock_user, mock_budget_version):
+    def test_get_income_statement_ifrs(self, client, mock_user, mock_version):
         """Test getting income statement in IFRS format."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
             from datetime import datetime
@@ -516,11 +520,11 @@ class TestFinancialStatements:
             mock_service = AsyncMock()
             mock_service.get_income_statement.return_value = {
                 "id": uuid.uuid4(),
-                "budget_version_id": version_id,
+                "version_id": version_id,
                 "statement_type": "income_statement",
                 "statement_format": "ifrs",
                 "statement_name": "Income Statement IFRS",
-                "fiscal_year": mock_budget_version.fiscal_year,
+                "fiscal_year": mock_version.fiscal_year,
                 "total_amount_sar": Decimal("5000000"),
                 "is_calculated": True,
                 "notes": None,
@@ -539,19 +543,19 @@ class TestFinancialStatements:
                 data = response.json()
                 assert data["statement_format"] == "ifrs"
 
-    def test_get_balance_sheet(self, client, mock_user, mock_budget_version):
+    def test_get_balance_sheet(self, client, mock_user, mock_version):
         """Test getting balance sheet."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         from datetime import datetime
 
         assets_statement = {
             "id": uuid.uuid4(),
-            "budget_version_id": version_id,
+            "version_id": version_id,
             "statement_type": "balance_sheet",
             "statement_format": "pcg",
             "statement_name": "Assets",
-            "fiscal_year": mock_budget_version.fiscal_year,
+            "fiscal_year": mock_version.fiscal_year,
             "total_amount_sar": Decimal("100000000"),
             "is_calculated": True,
             "notes": None,
@@ -562,11 +566,11 @@ class TestFinancialStatements:
 
         liabilities_statement = {
             "id": uuid.uuid4(),
-            "budget_version_id": version_id,
+            "version_id": version_id,
             "statement_type": "balance_sheet",
             "statement_format": "pcg",
             "statement_name": "Liabilities",
-            "fiscal_year": mock_budget_version.fiscal_year,
+            "fiscal_year": mock_version.fiscal_year,
             "total_amount_sar": Decimal("100000000"),
             "is_calculated": True,
             "notes": None,
@@ -590,7 +594,7 @@ class TestFinancialStatements:
                 "assets": assets_mock,
                 "liabilities": liabilities_mock,
             }
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -611,9 +615,9 @@ class TestFinancialStatements:
 class TestPeriodTotals:
     """Tests for period totals endpoints."""
 
-    def test_get_all_period_totals(self, client, mock_user, mock_budget_version):
+    def test_get_all_period_totals(self, client, mock_user, mock_version):
         """Test getting totals for all periods."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
             mock_service = AsyncMock()
@@ -635,9 +639,9 @@ class TestPeriodTotals:
                 assert data[0]["total_revenue"] == "20000000"
                 assert all("net_result" in period for period in data)
 
-    def test_get_specific_period_total(self, client, mock_user, mock_budget_version):
+    def test_get_specific_period_total(self, client, mock_user, mock_version):
         """Test getting totals for a specific period."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
         period = "p1"
 
         with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
@@ -659,9 +663,9 @@ class TestPeriodTotals:
                 data = response.json()
                 assert "total_revenue" in data
 
-    def test_get_period_total_invalid_period(self, client, mock_user, mock_budget_version):
+    def test_get_period_total_invalid_period(self, client, mock_user, mock_version):
         """Test getting totals for an invalid period."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
         period = "invalid"
 
         with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
@@ -691,15 +695,15 @@ class TestConsolidationSummary:
     """Tests for GET /api/v1/consolidation/{version_id}/summary."""
 
     def test_get_summary_success(
-        self, client, mock_user, mock_budget_version, mock_consolidation_items
+        self, client, mock_user, mock_version, mock_consolidation_items
     ):
         """Test successful retrieval of consolidation summary."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.get_consolidation.return_value = mock_consolidation_items
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -720,16 +724,16 @@ class TestConsolidationEdgeCases:
     """Tests edge cases to achieve 80%+ coverage."""
 
     def test_get_consolidated_budget_with_malformed_source_count(
-        self, client, mock_user, mock_budget_version
+        self, client, mock_user, mock_version
     ):
         """Test consolidation with malformed source_count field (triggers line 112-113)."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         # Create mock item with non-numeric source_count
         malformed_item = MagicMock(
             id=uuid.uuid4(),
-            budget_version_id=version_id,
-            source_table="revenue_plans",
+            version_id=version_id,
+            source_table="finance_revenue_plans",
             account_code="70110",
             description="Tuition",
             amount_sar=Decimal("1000000"),
@@ -741,7 +745,7 @@ class TestConsolidationEdgeCases:
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.get_consolidation.return_value = [malformed_item]
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -752,16 +756,16 @@ class TestConsolidationEdgeCases:
                 assert "revenue_items" in data
 
     def test_get_consolidated_budget_with_non_string_notes(
-        self, client, mock_user, mock_budget_version
+        self, client, mock_user, mock_version
     ):
         """Test consolidation with non-string notes field (triggers line 156 in helpers)."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         # Create mock item with non-string notes (e.g., dict or int)
         item_with_dict_notes = MagicMock(
             id=uuid.uuid4(),
-            budget_version_id=version_id,
-            source_table="operating_cost_plans",
+            version_id=version_id,
+            source_table="finance_operating_cost_plans",
             account_code="60110",
             description="Supplies",
             amount_sar=Decimal("500000"),
@@ -773,7 +777,7 @@ class TestConsolidationEdgeCases:
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.get_consolidation.return_value = [item_with_dict_notes]
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -784,16 +788,16 @@ class TestConsolidationEdgeCases:
                 assert "operating_items" in data
 
     def test_get_consolidated_budget_with_missing_optional_fields(
-        self, client, mock_user, mock_budget_version
+        self, client, mock_user, mock_version
     ):
         """Test consolidation with items missing optional fields."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         # Create minimal mock item (missing source_count, notes, etc.)
         minimal_item = MagicMock(spec=[])  # Empty spec means getattr returns default
         minimal_item.id = uuid.uuid4()
-        minimal_item.budget_version_id = version_id
-        minimal_item.source_table = "capex_plans"
+        minimal_item.version_id = version_id
+        minimal_item.source_table = "finance_capex_plans"
         minimal_item.account_code = "21000"
         minimal_item.description = "Equipment"
         minimal_item.amount_sar = Decimal("750000")
@@ -805,7 +809,7 @@ class TestConsolidationEdgeCases:
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.get_consolidation.return_value = [minimal_item]
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -817,10 +821,10 @@ class TestConsolidationEdgeCases:
                 assert isinstance(data, dict)
 
     def test_get_consolidated_budget_service_exception(
-        self, client, mock_user, mock_budget_version
+        self, client, mock_user, mock_version
     ):
         """Test GET consolidation with unexpected service exception (triggers line 269-270)."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
@@ -835,10 +839,10 @@ class TestConsolidationEdgeCases:
                 assert "Failed to get consolidated budget" in response.json()["detail"]
 
     def test_consolidate_budget_generic_exception(
-        self, client, mock_user, mock_budget_version
+        self, client, mock_user, mock_version
     ):
         """Test POST consolidate with generic exception (triggers line 316-317)."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
@@ -853,10 +857,10 @@ class TestConsolidationEdgeCases:
                 assert "Failed to consolidate budget" in response.json()["detail"]
 
     def test_submit_for_approval_generic_exception(
-        self, client, mock_user, mock_budget_version
+        self, client, mock_user, mock_version
     ):
         """Test POST submit with generic exception (triggers exception handler)."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
@@ -884,9 +888,9 @@ class TestConsolidationEdgeCases:
 class TestConsolidationAdditionalCoverage:
     """Additional tests to achieve 95% coverage."""
 
-    def test_approve_budget_generic_exception(self, client, mock_budget_version):
+    def test_approve_budget_generic_exception(self, client, mock_version):
         """Test approve budget with generic exception."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         mock_manager = MagicMock()
         mock_manager.id = uuid.uuid4()
@@ -1069,16 +1073,17 @@ class TestConsolidationAdditionalCoverage:
                 assert response.status_code == 404
                 assert "not found" in response.json()["detail"].lower()
 
-    def test_get_consolidation_with_large_dataset(self, client, mock_user, mock_budget_version):
+    def test_get_consolidation_with_large_dataset(self, client, mock_user, mock_version):
         """Test GET consolidation with large number of line items."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         # Create large dataset
+        # Note: Table names use finance_ prefix per Phase 3B refactoring
         large_items = [
             MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
-                source_table="revenue_plans" if i % 2 == 0 else "personnel_cost_plans",
+                version_id=version_id,
+                source_table="finance_revenue_plans" if i % 2 == 0 else "finance_personnel_cost_plans",
                 account_code=f"7{i:04d}" if i % 2 == 0 else f"6{i:04d}",
                 description=f"Item {i}",
                 amount_sar=Decimal(str(i * 1000)),
@@ -1092,7 +1097,7 @@ class TestConsolidationAdditionalCoverage:
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.get_consolidation.return_value = large_items
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -1103,15 +1108,15 @@ class TestConsolidationAdditionalCoverage:
                 # Should have categorized the items
                 assert len(data["revenue_items"]) + len(data["personnel_items"]) >= 100
 
-    def test_get_balance_sheet_unbalanced(self, client, mock_user, mock_budget_version):
+    def test_get_balance_sheet_unbalanced(self, client, mock_user, mock_version):
         """Test balance sheet when assets != liabilities (unbalanced)."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         from datetime import datetime
 
         assets_statement = {
             "id": uuid.uuid4(),
-            "budget_version_id": version_id,
+            "version_id": version_id,
             "statement_type": "balance_sheet",
             "statement_format": "pcg",
             "statement_name": "Assets",
@@ -1126,7 +1131,7 @@ class TestConsolidationAdditionalCoverage:
 
         liabilities_statement = {
             "id": uuid.uuid4(),
-            "budget_version_id": version_id,
+            "version_id": version_id,
             "statement_type": "balance_sheet",
             "statement_format": "pcg",
             "statement_name": "Liabilities",
@@ -1153,7 +1158,7 @@ class TestConsolidationAdditionalCoverage:
                 "assets": assets_mock,
                 "liabilities": liabilities_mock,
             }
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -1165,9 +1170,9 @@ class TestConsolidationAdditionalCoverage:
                 assert "liabilities" in data
                 assert data["is_balanced"] is False  # Unbalanced!
 
-    def test_get_all_period_totals_with_data(self, client, mock_user, mock_budget_version):
+    def test_get_all_period_totals_with_data(self, client, mock_user, mock_version):
         """Test getting period totals with actual data returned."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         with patch("app.api.v1.consolidation.get_financial_statements_service") as mock_svc:
             mock_service = AsyncMock()
@@ -1189,15 +1194,15 @@ class TestConsolidationAdditionalCoverage:
                 assert isinstance(data, list)
                 assert len(data) == 4  # p1, summer, p2, annual
 
-    def test_consolidation_with_zero_amounts(self, client, mock_user, mock_budget_version):
+    def test_consolidation_with_zero_amounts(self, client, mock_user, mock_version):
         """Test consolidation with all zero amounts."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         zero_items = [
             MagicMock(
                 id=uuid.uuid4(),
-                budget_version_id=version_id,
-                source_table="revenue_plans",
+                version_id=version_id,
+                source_table="finance_revenue_plans",
                 account_code="70110",
                 description="Zero Revenue",
                 amount_sar=Decimal("0"),
@@ -1210,7 +1215,7 @@ class TestConsolidationAdditionalCoverage:
         with patch("app.api.v1.consolidation.get_consolidation_service") as mock_svc:
             mock_service = AsyncMock()
             mock_service.get_consolidation.return_value = zero_items
-            mock_service.budget_version_service.get_by_id.return_value = mock_budget_version
+            mock_service.version_service.get_by_id.return_value = mock_version
             mock_svc.return_value = mock_service
 
             with patch("app.dependencies.auth.get_current_user", return_value=mock_user):
@@ -1239,9 +1244,9 @@ class TestConsolidationAdditionalCoverage:
 
         assert response.status_code == 422
 
-    def test_get_income_statement_ifrs_format(self, client, mock_user, mock_budget_version):
+    def test_get_income_statement_ifrs_format(self, client, mock_user, mock_version):
         """Test income statement with IFRS format explicitly specified."""
-        version_id = mock_budget_version.id
+        version_id = mock_version.id
 
         from datetime import datetime
 
@@ -1249,7 +1254,7 @@ class TestConsolidationAdditionalCoverage:
             mock_service = AsyncMock()
             mock_service.get_income_statement.return_value = {
                 "id": uuid.uuid4(),
-                "budget_version_id": version_id,
+                "version_id": version_id,
                 "statement_type": "income_statement",
                 "statement_format": "ifrs",
                 "statement_name": "Income Statement IFRS",

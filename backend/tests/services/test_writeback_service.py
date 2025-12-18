@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from app.schemas.writeback import (
+from app.schemas.admin import (
     BatchUpdateRequest,
     CellCreateRequest,
     CellUpdate,
@@ -27,14 +27,14 @@ from app.schemas.writeback import (
     UndoRequest,
     UnlockRequest,
 )
+from app.services.admin.writeback_service import (
+    MODULE_TO_CACHE_ENTITY,
+    WritebackService,
+)
 from app.services.exceptions import (
     CellLockedError,
     NotFoundError,
     VersionConflictError,
-)
-from app.services.writeback_service import (
-    MODULE_TO_CACHE_ENTITY,
-    WritebackService,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,7 +99,7 @@ class TestGetCellById:
         mock_row = MagicMock()
         mock_row._mapping = {
             "id": uuid4(),
-            "budget_version_id": uuid4(),
+            "version_id": uuid4(),
             "module_code": "enrollment",
             "entity_id": uuid4(),
             "field_name": "student_count",
@@ -169,7 +169,7 @@ class TestCellUpdateValidation:
         cell_id = uuid4()
         locked_cell = {
             "id": cell_id,
-            "budget_version_id": uuid4(),
+            "version_id": uuid4(),
             "module_code": "enrollment",
             "entity_id": uuid4(),
             "field_name": "student_count",
@@ -204,7 +204,7 @@ class TestCellUpdateValidation:
         cell_id = uuid4()
         cell_data = {
             "id": cell_id,
-            "budget_version_id": uuid4(),
+            "version_id": uuid4(),
             "module_code": "enrollment",
             "entity_id": uuid4(),
             "field_name": "student_count",
@@ -237,7 +237,7 @@ class TestSchemaValidation:
     def test_cell_create_request(self):
         """Test CellCreateRequest schema validation."""
         data = CellCreateRequest(
-            budget_version_id=uuid4(),
+            version_id=uuid4(),
             module_code="enrollment",
             entity_id=uuid4(),
             field_name="student_count",
@@ -379,13 +379,13 @@ class TestCreateCell:
         mock_row = MagicMock()
 
         cell_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
         entity_id = uuid4()
         user_id = uuid4()
 
         mock_row._mapping = {
             "id": cell_id,
-            "budget_version_id": budget_version_id,
+            "version_id": version_id,
             "module_code": "enrollment",
             "entity_id": entity_id,
             "field_name": "student_count",
@@ -410,7 +410,7 @@ class TestCreateCell:
 
         service = WritebackService(mock_session)
         data = CellCreateRequest(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             module_code="enrollment",
             entity_id=entity_id,
             field_name="student_count",
@@ -434,13 +434,13 @@ class TestCreateCell:
         mock_row = MagicMock()
 
         cell_id = uuid4()
-        budget_version_id = uuid4()
+        version_id = uuid4()
         entity_id = uuid4()
         user_id = uuid4()
 
         mock_row._mapping = {
             "id": cell_id,
-            "budget_version_id": budget_version_id,
+            "version_id": version_id,
             "module_code": "consolidation",
             "entity_id": entity_id,
             "field_name": "notes",
@@ -465,7 +465,7 @@ class TestCreateCell:
 
         service = WritebackService(mock_session)
         data = CellCreateRequest(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             module_code="consolidation",
             entity_id=entity_id,
             field_name="notes",

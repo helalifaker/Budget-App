@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate } from '@tanstack/react-router'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
+import { colors } from '@/lib/theme.constants'
 
 export const Route = createFileRoute('/')({
   component: IndexRedirect,
@@ -12,10 +13,18 @@ function IndexRedirect() {
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: `linear-gradient(to bottom right, ${colors.bg.canvas}, ${colors.bg.subtle})`,
+        }}
+      >
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <Loader2
+            className="w-8 h-8 animate-spin mx-auto mb-4"
+            style={{ color: colors.accent.gold.DEFAULT }}
+          />
+          <p style={{ color: colors.text.secondary }}>Loading...</p>
         </div>
       </div>
     )

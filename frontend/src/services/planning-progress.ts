@@ -9,16 +9,16 @@ import { withServiceErrorHandling } from './utils'
  */
 export const planningProgressApi = {
   /**
-   * Get comprehensive planning progress for a budget version
+   * Get comprehensive planning progress for a version
    *
-   * @param versionId - Budget version UUID
+   * @param versionId - Version UUID
    * @returns Planning progress with validation for all 6 steps
    */
   getProgress: async (versionId: string): Promise<PlanningProgressResponse> => {
     return withServiceErrorHandling(
       apiRequest<PlanningProgressResponse>({
         method: 'GET',
-        url: `/planning/progress/${versionId}`,
+        url: `/orchestration/progress/${versionId}`,
       }),
       'planning progress: get progress'
     )

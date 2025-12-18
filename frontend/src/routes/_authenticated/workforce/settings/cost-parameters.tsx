@@ -8,7 +8,7 @@
  * - Administrative: Average salary by role
  * - Support Staff: Average salary by role
  *
- * @module /workforce/settings/cost-parameters
+ * @module /teachers/settings/cost-parameters
  */
 
 import { createFileRoute } from '@tanstack/react-router'

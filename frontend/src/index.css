@@ -91,6 +91,38 @@
   --color-wine-lighter: #FBF5F7; /* Opaque wine-50 */
 
   /* -------------------------------------------------------------------------
+     COLORS - Accent Orange (Costs module) - NEW
+     ------------------------------------------------------------------------- */
+  --color-orange: #F97316;
+  --color-orange-hover: #EA580C;
+  --color-orange-light: #FFEDD5;   /* Opaque orange-100 */
+  --color-orange-lighter: #FFF7ED; /* Opaque orange-50 */
+
+  /* -------------------------------------------------------------------------
+     COLORS - Accent Teal (Investments module) - NEW
+     ------------------------------------------------------------------------- */
+  --color-teal: #14B8A6;
+  --color-teal-hover: #0D9488;
+  --color-teal-light: #CCFBF1;   /* Opaque teal-100 */
+  --color-teal-lighter: #F0FDFA; /* Opaque teal-50 */
+
+  /* -------------------------------------------------------------------------
+     COLORS - Accent Blue (Consolidation module) - NEW
+     ------------------------------------------------------------------------- */
+  --color-blue: #3B82F6;
+  --color-blue-hover: #2563EB;
+  --color-blue-light: #DBEAFE;   /* Opaque blue-100 */
+  --color-blue-lighter: #EFF6FF; /* Opaque blue-50 */
+
+  /* -------------------------------------------------------------------------
+     COLORS - Accent Purple (Strategic module) - NEW
+     ------------------------------------------------------------------------- */
+  --color-purple: #A855F7;
+  --color-purple-hover: #9333EA;
+  --color-purple-light: #F3E8FF;   /* Opaque purple-100 */
+  --color-purple-lighter: #FAF5FF; /* Opaque purple-50 */
+
+  /* -------------------------------------------------------------------------
      COLORS - Status
      ------------------------------------------------------------------------- */
   --color-status-success: #7D9082;
@@ -295,6 +327,30 @@
   --efir-accent-wine-light: var(--color-wine-light);
   --efir-accent-wine-lighter: var(--color-wine-lighter);
 
+  /* Accent color aliases - Orange (Costs) - NEW */
+  --efir-accent-orange: var(--color-orange);
+  --efir-accent-orange-hover: var(--color-orange-hover);
+  --efir-accent-orange-light: var(--color-orange-light);
+  --efir-accent-orange-lighter: var(--color-orange-lighter);
+
+  /* Accent color aliases - Teal (Investments) - NEW */
+  --efir-accent-teal: var(--color-teal);
+  --efir-accent-teal-hover: var(--color-teal-hover);
+  --efir-accent-teal-light: var(--color-teal-light);
+  --efir-accent-teal-lighter: var(--color-teal-lighter);
+
+  /* Accent color aliases - Blue (Consolidation) - NEW */
+  --efir-accent-blue: var(--color-blue);
+  --efir-accent-blue-hover: var(--color-blue-hover);
+  --efir-accent-blue-light: var(--color-blue-light);
+  --efir-accent-blue-lighter: var(--color-blue-lighter);
+
+  /* Accent color aliases - Purple (Strategic) - NEW */
+  --efir-accent-purple: var(--color-purple);
+  --efir-accent-purple-hover: var(--color-purple-hover);
+  --efir-accent-purple-light: var(--color-purple-light);
+  --efir-accent-purple-lighter: var(--color-purple-lighter);
+
   /* Shadow depth levels */
   --shadow-depth-1: var(--shadow-xs);
   --shadow-depth-2: var(--shadow-sm);
@@ -393,6 +449,38 @@
   --color-wine-lighter: rgba(161, 124, 139, 0.10);
 
   /* -------------------------------------------------------------------------
+     DARK MODE - Accent Orange (Costs module) - NEW
+     ------------------------------------------------------------------------- */
+  --color-orange: #FB923C;
+  --color-orange-hover: #FDBA74;
+  --color-orange-light: rgba(251, 146, 60, 0.18);
+  --color-orange-lighter: rgba(251, 146, 60, 0.10);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Accent Teal (Investments module) - NEW
+     ------------------------------------------------------------------------- */
+  --color-teal: #2DD4BF;
+  --color-teal-hover: #5EEAD4;
+  --color-teal-light: rgba(45, 212, 191, 0.18);
+  --color-teal-lighter: rgba(45, 212, 191, 0.10);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Accent Blue (Consolidation module) - NEW
+     ------------------------------------------------------------------------- */
+  --color-blue: #60A5FA;
+  --color-blue-hover: #93C5FD;
+  --color-blue-light: rgba(96, 165, 250, 0.18);
+  --color-blue-lighter: rgba(96, 165, 250, 0.10);
+
+  /* -------------------------------------------------------------------------
+     DARK MODE - Accent Purple (Strategic module) - NEW
+     ------------------------------------------------------------------------- */
+  --color-purple: #C084FC;
+  --color-purple-hover: #D8B4FE;
+  --color-purple-light: rgba(192, 132, 252, 0.18);
+  --color-purple-lighter: rgba(192, 132, 252, 0.10);
+
+  /* -------------------------------------------------------------------------
      DARK MODE - Status Colors
      ------------------------------------------------------------------------- */
   --color-status-success: #93A898;
@@ -438,6 +526,10 @@
   --efir-accent-terracotta: var(--color-terracotta);
   --efir-accent-slate: var(--color-slate);
   --efir-accent-wine: var(--color-wine);
+  --efir-accent-orange: var(--color-orange);
+  --efir-accent-teal: var(--color-teal);
+  --efir-accent-blue: var(--color-blue);
+  --efir-accent-purple: var(--color-purple);
 }
 
 /* ============================================================================
@@ -1058,69 +1150,6 @@
     0% { transform: scale(0.95); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
   }
-}
-
-/* ============================================================================
-   AG GRID THEME CUSTOMIZATION
-   ============================================================================ */
-
-.ag-theme-quartz {
-  --ag-header-background-color: var(--color-subtle);
-  --ag-odd-row-background-color: var(--color-paper);
-  --ag-row-hover-color: var(--color-warm);
-  --ag-selected-row-background-color: var(--color-gold-lighter);
-  --ag-border-color: var(--color-border-light);
-  --ag-header-foreground-color: var(--color-text-primary);
-  --ag-data-color: var(--color-text-secondary);
-  --ag-font-family: var(--font-body);
-}
-
-/* AG Grid Cell States */
-.ag-theme-quartz .cell-locked {
-  background-color: var(--color-status-error-bg) !important;
-  cursor: not-allowed !important;
-  opacity: 0.8;
-}
-
-.ag-theme-quartz .cell-saving {
-  background-color: var(--color-status-warning-bg) !important;
-  opacity: 0.7;
-  transition: opacity 0.3s ease;
-}
-
-.ag-theme-quartz .cell-conflict {
-  background-color: var(--color-terracotta-light) !important;
-  border: 2px solid var(--color-terracotta) !important;
-}
-
-.ag-theme-quartz .ag-cell-focus {
-  border: 2px solid var(--color-gold) !important;
-  outline: none;
-}
-
-.ag-theme-quartz .ag-cell-inline-editing {
-  background-color: var(--color-paper) !important;
-  border: 2px solid var(--color-gold) !important;
-  box-shadow: var(--shadow-focus);
-}
-
-/* Excel-like mode */
-.ag-theme-quartz.excel-mode {
-  --ag-row-border-color: var(--color-border-light);
-  --ag-cell-horizontal-border: solid var(--color-border-light);
-}
-
-.ag-theme-quartz.excel-mode .ag-header {
-  background: linear-gradient(180deg, var(--color-subtle) 0%, var(--color-muted) 100%);
-  border-bottom: 2px solid var(--color-border-medium);
-}
-
-.ag-theme-quartz.excel-mode .ag-row:hover {
-  background-color: var(--color-gold-lighter) !important;
-}
-
-.ag-theme-quartz.excel-mode .ag-row-selected {
-  background-color: var(--color-gold-light) !important;
 }
 
 /* ============================================================================

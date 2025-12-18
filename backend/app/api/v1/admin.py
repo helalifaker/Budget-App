@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies.auth import UserDep
-from app.services.historical_import_service import (
+from app.services.admin.historical_import_service import (
     HistoricalImportService,
     ImportModule,
     ImportPreviewResult,
@@ -25,7 +25,7 @@ from app.services.historical_import_service import (
     generate_template,
 )
 
-router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 def get_import_service(db: AsyncSession = Depends(get_db)) -> HistoricalImportService:

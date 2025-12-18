@@ -1,12 +1,12 @@
 """Add missing audit columns to enrollment derived parameter tables.
 
 This migration adds the missing audit columns (created_by_id, updated_by_id, deleted_at)
-to the enrollment tables created in migration 018. These columns are expected by the
+to the enrollment tables created in migration 019. These columns are expected by the
 BaseModel class which EnrollmentDerivedParameter, EnrollmentParameterOverride, and
 EnrollmentScenarioMultiplier inherit from.
 
-Revision ID: 019_audit_columns_enrollment
-Revises: 018_enrollment_derived_parameters
+Revision ID: 020_audit_columns_enrollment
+Revises: 019_enrollment_derived_parameters
 Create Date: 2025-12-12
 """
 
@@ -17,8 +17,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = "019_audit_columns_enrollment"
-down_revision = "018_enrollment_derived_parameters"
+revision = "020_audit_columns_enrollment"
+down_revision = "019_enrollment_derived_parameters"
 branch_labels = None
 depends_on = None
 

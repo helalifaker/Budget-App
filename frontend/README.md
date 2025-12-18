@@ -8,18 +8,25 @@ React 19 + Vite + TypeScript 5.9 frontend for the EFIR Budget Planning Applicati
 
 **⚠️ CRITICAL: If you are an AI agent working on frontend code, read this section FIRST.**
 
-### Relevant Agent for Frontend
+### Agent System (9 Agents)
 
-| Agent | Responsibility | Boundaries |
-|-------|---------------|------------|
-| `frontend-ui-agent` | **All React components, pages, client-side logic, UI/UX** | ✅ CAN: Build React components, pages, hooks, UI logic<br>❌ CANNOT: Implement backend logic, modify database, create APIs, define business rules |
+This codebase uses a 9-agent orchestration system. For frontend work:
+
+| Agent | Use For | Key Rules |
+|-------|---------|-----------|
+| `product-architect-agent` | Business rules (SOURCE OF TRUTH) | Consult before implementing any display logic |
+| `frontend-ui-agent` | React components, pages, UI/UX | Primary agent for all frontend work |
+| `Plan` | Architecture decisions | Use for major component architecture |
+| `Explore` | Fast codebase exploration | Find components, patterns, existing implementations |
+| `performance-agent` | UI optimization | Bundle analysis, rendering optimization |
+| `qa-validation-agent` | Tests (Vitest, Playwright) | 80%+ coverage requirement |
 
 ### Agent Boundary Rules
 
 **CRITICAL ENFORCEMENT:**
 
 1. **`frontend-ui-agent` MUST:**
-   - Call backend APIs (via `backend-api-specialist`) for all data operations
+   - Call backend APIs for all data operations
    - NEVER implement calculation logic in client-side code
    - NEVER modify database schema or create migrations
    - NEVER create FastAPI endpoints
@@ -64,8 +71,8 @@ React 19 + Vite + TypeScript 5.9 frontend for the EFIR Budget Planning Applicati
 **Example 1: Building Enrollment Planning UI**
 ```
 1. product-architect-agent → Provides enrollment business rules
-2. backend-api-specialist → Creates /api/v1/planning/enrollment endpoint
-3. frontend-ui-agent → Builds React component with AG Grid
+2. Backend creates /api/v1/planning/enrollment endpoint
+3. frontend-ui-agent → Builds React component with TanStack Table
 4. frontend-ui-agent → Uses TanStack Query to fetch data from API
 5. qa-validation-agent → Writes E2E tests with Playwright
 ```
@@ -95,12 +102,12 @@ All frontend agents MUST follow:
 
 **Data Flow Pattern:**
 ```
-User Action → React Component → TanStack Query Hook → API Client → 
-Backend API (backend-api-specialist) → Backend Engine (backend-engine-agent) → 
-Database (database-supabase-agent) → Response → Frontend → UI Update
+User Action → React Component → TanStack Query Hook → API Client →
+Backend API → Backend Engine (pure calculations) →
+Database → Response → Frontend → UI Update
 ```
 
-**CRITICAL**: Frontend NEVER implements calculation logic. All calculations happen in `backend-engine-agent` and are exposed via `backend-api-specialist`.
+**CRITICAL**: Frontend NEVER implements calculation logic. All calculations happen in backend engines and are exposed via API endpoints.
 
 ---
 
@@ -464,41 +471,42 @@ if (version.status === 'working') { /* ... */ }
 items.sort((a, b) => a.sort_order - b.sort_order)
 ```
 
-## AG Grid Integration
+## TanStack Table Integration
 
-> **📖 See [Table Component Selection Guide](../docs/developer-guides/TABLE_COMPONENT_SELECTION_GUIDE.md)** for choosing between shadcn Table, DataTable, EnhancedDataTable, and ExcelDataTable.
+> **📖 See [Table Component Selection Guide](../docs/developer-guides/TABLE_COMPONENT_SELECTION_GUIDE.md)** for choosing between shadcn Table, `TanStackDataTable`, `EditableTable`, and `ExcelEditableTable`.
 
-AG Grid Community 34.3.1 provides enterprise-grade spreadsheet functionality:
+TanStack Table powers the app’s data grid experience (headless + our EFIR UI layer):
 
 ```tsx
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef } from 'ag-grid-community';
+import type { ColumnDef } from '@tanstack/react-table'
+import { TanStackDataTable } from '@/components/grid/tanstack'
 
-const columnDefs: ColDef[] = [
-  { field: 'level', headerName: 'Level', sortable: true, filter: true },
-  { field: 'enrollment', headerName: 'Enrollment', editable: true },
-  { field: 'classes', headerName: 'Classes', valueGetter: calculateClasses },
-];
+type Row = { id: string; level: string; enrollment: number; classes: number }
 
-function EnrollmentGrid({ data }) {
+const columnDefs: ColumnDef<Row, unknown>[] = [
+  { accessorKey: 'level', header: 'Level' },
+  { accessorKey: 'enrollment', header: 'Enrollment' },
+  { accessorKey: 'classes', header: 'Classes' },
+]
+
+function EnrollmentGrid({ data }: { data: Row[] }) {
   return (
-    <div className="ag-theme-quartz h-[600px]">
-      <AgGridReact
-        rowData={data}
-        columnDefs={columnDefs}
-        defaultColDef={{ flex: 1, minWidth: 100 }}
-      />
-    </div>
+    <TanStackDataTable
+      rowData={data}
+      columnDefs={columnDefs}
+      getRowId={(row) => row.id}
+      height={600}
+      enableRowSelection
+    />
   );
 }
 ```
 
-### AG Grid Features Used
+### TanStack Table Features Used
 
 - **Sorting & Filtering**: Built-in column sorting and filtering
 - **Cell Editing**: Inline editing for budget data entry
 - **Custom Renderers**: Custom cell components for status, actions
-- **Theme**: `ag-theme-quartz` for modern styling
 - **Virtualization**: Efficient rendering for large datasets
 
 ## React Query Setup
@@ -510,8 +518,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Fetch enrollment data
 const { data, isLoading } = useQuery({
-  queryKey: ['enrollment', budgetVersionId],
-  queryFn: () => fetchEnrollment(budgetVersionId),
+  queryKey: ['enrollment', versionId],
+  queryFn: () => fetchEnrollment(versionId),
 });
 
 // Update enrollment

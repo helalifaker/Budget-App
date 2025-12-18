@@ -12,41 +12,14 @@
  * - Tracks whether user has dismissed the error banner
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import {
   checkBackendHealth,
   getBackendUrl,
   getStartBackendCommand,
   type HealthCheckResult,
 } from '@/services/health'
-
-/** Connection state exposed by the context */
-export interface BackendConnectionState {
-  /** Whether the backend is currently connected */
-  isConnected: boolean
-  /** Whether a health check is currently in progress */
-  isChecking: boolean
-  /** The last error message (null if connected) */
-  lastError: string | null
-  /** Timestamp of the last successful connection */
-  lastConnectedAt: Date | null
-  /** Timestamp of the last health check */
-  lastCheckedAt: Date | null
-  /** Response latency in ms (only when connected) */
-  latency: number | null
-  /** Backend URL for display */
-  backendUrl: string
-  /** Command to start the backend */
-  startCommand: string
-  /** Whether the user has dismissed the banner for this session */
-  bannerDismissed: boolean
-  /** Manually trigger a health check */
-  retry: () => void
-  /** Dismiss the connection error banner */
-  dismissBanner: () => void
-}
-
-const BackendConnectionContext = createContext<BackendConnectionState | null>(null)
+import { BackendConnectionContext, type BackendConnectionState } from './backendConnectionContext'
 
 /** localStorage key for banner dismissal */
 const BANNER_DISMISSED_KEY = 'efir-backend-banner-dismissed'
@@ -249,18 +222,4 @@ export function BackendConnectionProvider({ children }: { children: React.ReactN
   return (
     <BackendConnectionContext.Provider value={value}>{children}</BackendConnectionContext.Provider>
   )
-}
-
-/**
- * Hook to access backend connection state.
- * Must be used within a BackendConnectionProvider.
- */
-export function useBackendConnection(): BackendConnectionState {
-  const context = useContext(BackendConnectionContext)
-
-  if (!context) {
-    throw new Error('useBackendConnection must be used within a BackendConnectionProvider')
-  }
-
-  return context
 }

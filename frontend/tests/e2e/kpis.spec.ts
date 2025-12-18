@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 import {
-  setupBudgetVersionMocks,
+  setupVersionMocks,
   setupKPIMocks,
   setupVarianceMocks,
   resetMockData,
@@ -22,7 +22,7 @@ async function waitForPageLoad(page: Page): Promise<void> {
 test.describe('KPI Dashboard', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupKPIMocks(page)
 
     // Login
@@ -34,7 +34,7 @@ test.describe('KPI Dashboard', () => {
   })
 
   test('view KPI dashboard page loads', async ({ page }) => {
-    await page.goto('/analysis/kpis')
+    await page.goto('/insights/kpis')
     await waitForPageLoad(page)
 
     // Verify KPI dashboard page loaded - check for title text in heading or breadcrumb
@@ -52,7 +52,7 @@ test.describe('KPI Dashboard', () => {
   })
 
   test('KPI page displays heading element', async ({ page }) => {
-    await page.goto('/analysis/kpis')
+    await page.goto('/insights/kpis')
     await waitForPageLoad(page)
 
     // Should have at least one heading element on the page
@@ -63,7 +63,7 @@ test.describe('KPI Dashboard', () => {
   })
 
   test('KPI page shows content area', async ({ page }) => {
-    await page.goto('/analysis/kpis')
+    await page.goto('/insights/kpis')
     await waitForPageLoad(page)
 
     // Page should have a content area (either with data or empty state)
@@ -76,11 +76,11 @@ test.describe('KPI Dashboard', () => {
   })
 
   test('navigation to KPI page works', async ({ page }) => {
-    await page.goto('/analysis/kpis')
+    await page.goto('/insights/kpis')
     await waitForPageLoad(page)
 
     // Check URL is correct
-    expect(page.url()).toContain('/analysis/kpis')
+    expect(page.url()).toContain('/insights/kpis')
   })
 
   test('KPI page renders without errors', async ({ page }) => {
@@ -92,7 +92,7 @@ test.describe('KPI Dashboard', () => {
       }
     })
 
-    await page.goto('/analysis/kpis')
+    await page.goto('/insights/kpis')
     await waitForPageLoad(page)
 
     // Should not have critical render errors
@@ -111,7 +111,7 @@ test.describe('KPI Dashboard', () => {
   })
 
   test('KPI page has accessible structure', async ({ page }) => {
-    await page.goto('/analysis/kpis')
+    await page.goto('/insights/kpis')
     await waitForPageLoad(page)
 
     // Page should have either a main element or content structure
@@ -125,7 +125,7 @@ test.describe('KPI Dashboard', () => {
   })
 
   test('KPI page renders cards or content area', async ({ page }) => {
-    await page.goto('/analysis/kpis')
+    await page.goto('/insights/kpis')
     await waitForPageLoad(page)
 
     // Check for cards, grid, or any content container
@@ -141,7 +141,7 @@ test.describe('KPI Dashboard', () => {
   })
 
   test('KPI page has navigation elements', async ({ page }) => {
-    await page.goto('/analysis/kpis')
+    await page.goto('/insights/kpis')
     await waitForPageLoad(page)
 
     // Page should have navigation (sidebar or header links)
@@ -155,7 +155,7 @@ test.describe('KPI Dashboard', () => {
 test.describe('Variance Analysis', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupVarianceMocks(page)
 
     await page.goto('/login')
@@ -166,7 +166,7 @@ test.describe('Variance Analysis', () => {
   })
 
   test('variance analysis page loads', async ({ page }) => {
-    await page.goto('/analysis/variance')
+    await page.goto('/insights/variance')
     await waitForPageLoad(page)
 
     // Verify page loaded - check heading or layout
@@ -180,14 +180,14 @@ test.describe('Variance Analysis', () => {
   })
 
   test('variance page URL is correct', async ({ page }) => {
-    await page.goto('/analysis/variance')
+    await page.goto('/insights/variance')
     await waitForPageLoad(page)
 
-    expect(page.url()).toContain('/analysis/variance')
+    expect(page.url()).toContain('/insights/variance')
   })
 
   test('variance page displays heading', async ({ page }) => {
-    await page.goto('/analysis/variance')
+    await page.goto('/insights/variance')
     await waitForPageLoad(page)
 
     // Should have a heading element
@@ -198,7 +198,7 @@ test.describe('Variance Analysis', () => {
   })
 
   test('variance page has content structure', async ({ page }) => {
-    await page.goto('/analysis/variance')
+    await page.goto('/insights/variance')
     await waitForPageLoad(page)
 
     // Page should have content structure
@@ -209,7 +209,7 @@ test.describe('Variance Analysis', () => {
   })
 
   test('variance page shows controls or content', async ({ page }) => {
-    await page.goto('/analysis/variance')
+    await page.goto('/insights/variance')
     await waitForPageLoad(page)
 
     // Check for any buttons, selects, or interactive elements
@@ -230,7 +230,7 @@ test.describe('Variance Analysis', () => {
       }
     })
 
-    await page.goto('/analysis/variance')
+    await page.goto('/insights/variance')
     await waitForPageLoad(page)
 
     // Page body should be visible
@@ -242,7 +242,7 @@ test.describe('Variance Analysis', () => {
   })
 
   test('variance page has navigation', async ({ page }) => {
-    await page.goto('/analysis/variance')
+    await page.goto('/insights/variance')
     await waitForPageLoad(page)
 
     // Should have navigation elements

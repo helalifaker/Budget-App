@@ -1,10 +1,14 @@
 import { memo, useMemo, useCallback } from 'react'
-import { ColDef, CellValueChangedEvent } from 'ag-grid-community'
-import { DataTableLazy } from '@/components/DataTableLazy'
+import type { ColumnDef } from '@tanstack/react-table'
+import {
+  EditableTable,
+  type CellValueChangedEvent,
+  type EditableColumnMeta,
+} from '@/components/grid/tanstack'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { HelpTooltip } from '@/components/ui/HelpTooltip'
 import { ENROLLMENT_FIELDS } from '@/constants/enrollment-field-definitions'
-import type { GradeOverride } from '@/types/enrollmentProjection'
+import type { GradeOverride } from '@/types/enrollment-projection'
 
 interface LevelLike {
   id: string
@@ -25,7 +29,7 @@ interface GradeOverridesGridProps {
 /**
  * GradeOverridesGrid - Grade-specific enrollment adjustments
  *
- * AG Grid for editing per-grade overrides:
+ * TanStack Table for editing per-grade overrides:
  * - Retention Rate: % of students progressing to next grade
  * - Lateral Entry: Expected transfer students
  * - Max Divisions: Maximum class sections (A, B, C...)
@@ -59,56 +63,92 @@ export const GradeOverridesGrid = memo(function GradeOverridesGrid({
     [levels, overrides]
   )
 
-  const columnDefs: ColDef<GradeOverride>[] = useMemo(
+  const columnDefs: ColumnDef<GradeOverride, unknown>[] = useMemo(
     () => [
       {
-        field: 'level_code',
-        headerName: 'Grade',
-        width: 110,
-        headerTooltip: 'Grade level code (e.g., PS, CP, 6ème)',
+        accessorKey: 'level_code',
+        header: 'Grade',
+        size: 110,
+        meta: {
+          editable: false,
+        } satisfies EditableColumnMeta,
       },
       {
-        field: 'level_name',
-        headerName: 'Name',
-        flex: 1,
-        headerTooltip: 'Full name of the grade level',
+        accessorKey: 'level_name',
+        header: 'Name',
+        size: 180,
+        meta: {
+          editable: false,
+        } satisfies EditableColumnMeta,
       },
       {
-        field: 'retention_rate',
-        headerName: 'Retention',
-        width: 120,
-        editable: !disabled,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 0.85, max: 1.0, step: 0.01, precision: 2 },
-        valueFormatter: (p) => (p.value == null ? '-' : `${(p.value * 100).toFixed(1)}%`),
-        headerTooltip: 'Percentage of students who continue to the next grade (85% - 100%)',
+        accessorKey: 'retention_rate',
+        header: 'Retention',
+        size: 120,
+        cell: ({ getValue }) => {
+          const value = getValue() as number | null
+          return value == null ? '-' : `${(value * 100).toFixed(1)}%`
+        },
+        meta: {
+          editable: !disabled,
+          editorType: 'number',
+          min: 0.85,
+          max: 1.0,
+          step: 0.01,
+          precision: 2,
+          align: 'right',
+        } satisfies EditableColumnMeta,
       },
       {
-        field: 'lateral_entry',
-        headerName: 'Transfers',
-        width: 120,
-        editable: !disabled,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 0, max: 50, step: 1 },
-        headerTooltip: 'Expected number of transfer students joining this grade mid-year',
+        accessorKey: 'lateral_entry',
+        header: 'Transfers',
+        size: 120,
+        cell: ({ getValue }) => {
+          const value = getValue() as number | null
+          return value == null ? '-' : String(value)
+        },
+        meta: {
+          editable: !disabled,
+          editorType: 'number',
+          min: 0,
+          max: 50,
+          precision: 0,
+          align: 'right',
+        } satisfies EditableColumnMeta,
       },
       {
-        field: 'max_divisions',
-        headerName: 'Max Classes',
-        width: 120,
-        editable: !disabled,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 2, max: 8, step: 1 },
-        headerTooltip: 'Maximum number of class sections allowed (e.g., A, B, C, D)',
+        accessorKey: 'max_divisions',
+        header: 'Max Classes',
+        size: 120,
+        cell: ({ getValue }) => {
+          const value = getValue() as number | null
+          return value == null ? '-' : String(value)
+        },
+        meta: {
+          editable: !disabled,
+          editorType: 'number',
+          min: 2,
+          max: 8,
+          precision: 0,
+          align: 'right',
+        } satisfies EditableColumnMeta,
       },
       {
-        field: 'class_size_ceiling',
-        headerName: 'Max Size',
-        width: 110,
-        editable: !disabled,
-        cellEditor: 'agNumberCellEditor',
-        cellEditorParams: { min: 20, max: 30, step: 1 },
-        headerTooltip: 'Maximum number of students allowed per class section',
+        accessorKey: 'class_size_ceiling',
+        header: 'Max Size',
+        size: 110,
+        cell: ({ getValue }) => {
+          const value = getValue() as number | null
+          return value == null ? '-' : String(value)
+        },
+        meta: {
+          editable: !disabled,
+          editorType: 'number',
+          min: 20,
+          max: 30,
+          precision: 0,
+          align: 'right',
+        } satisfies EditableColumnMeta,
       },
     ],
     [disabled]
@@ -116,9 +156,8 @@ export const GradeOverridesGrid = memo(function GradeOverridesGrid({
 
   const onCellValueChanged = useCallback(
     (event: CellValueChangedEvent<GradeOverride>) => {
-      const { data, colDef, newValue } = event
-      if (!data || !colDef.field) return
-      const field = colDef.field
+      const { data, field, newValue } = event
+      if (!data || !field) return
       const parsed = newValue === '' || newValue == null ? null : Number(newValue)
 
       const updated = rows.map((r) => {
@@ -175,18 +214,12 @@ export const GradeOverridesGrid = memo(function GradeOverridesGrid({
         </div>
 
         <div className="w-full">
-          <DataTableLazy
+          <EditableTable<GradeOverride>
             rowData={rows}
             columnDefs={columnDefs}
             onCellValueChanged={onCellValueChanged}
-            domLayout="autoHeight"
-            pagination={false}
-            defaultColDef={{
-              resizable: true,
-              sortable: false,
-            }}
-            getRowId={(p) => p.data.level_id}
-            tooltipShowDelay={200}
+            getRowId={(row) => row.level_id}
+            height={400}
           />
         </div>
       </CardContent>

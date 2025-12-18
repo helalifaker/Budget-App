@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import type { YearProjection } from '@/types/enrollmentProjection'
+import type { YearProjection } from '@/types/enrollment-projection'
 
 interface ProjectionSummaryCardProps {
   /** Projection results by year */

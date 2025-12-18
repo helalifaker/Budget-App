@@ -1,8 +1,8 @@
 /**
  * GlobalVersionSelector
  *
- * A prominent, luxuriously styled budget version selector for the header.
- * Uses the global BudgetVersionContext to persist selection across the app.
+ * A prominent, luxuriously styled version selector for the header.
+ * Uses the global VersionContext to persist selection across the app.
  *
  * Features:
  * - Gold accent styling for premium feel
@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import type { BudgetVersion } from '@/types/api'
 import { cn } from '@/lib/utils'
 
@@ -75,7 +75,7 @@ function groupVersionsByStatus(versions: BudgetVersion[]) {
 
 export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps) {
   const { selectedVersionId, selectedVersion, setSelectedVersionId, versions, isLoading } =
-    useBudgetVersion()
+    useVersion()
 
   // Group versions for organized display
   const groupedVersions = groupVersionsByStatus(versions)
@@ -108,7 +108,7 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
         )}
       >
         <FileCheck className="w-4 h-4 text-text-secondary" />
-        <span className="text-sm text-text-secondary">No budget versions</span>
+        <span className="text-sm text-text-secondary">No versions</span>
       </div>
     )
   }
@@ -137,7 +137,7 @@ export function GlobalVersionSelector({ className }: GlobalVersionSelectorProps)
       >
         <div className="flex items-center gap-2 w-full">
           <FileCheck className="w-4 h-4 text-gold-600 shrink-0" />
-          <SelectValue placeholder="Select budget version">
+          <SelectValue placeholder="Select version">
             {selectedVersion && (
               <div className="flex items-center gap-2 truncate">
                 <span className="truncate">{selectedVersion.name}</span>

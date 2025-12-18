@@ -93,14 +93,14 @@ const attentionItems: AttentionItem[] = [
     title: '2 classes over max capacity',
     description: 'CE2-A and CM1-B exceed 28 students',
     severity: 'warning',
-    link: '/enrollment/class-structure',
+    link: '/students/class-structure',
   },
   {
     id: 'under-min',
     title: '1 class under minimum',
     description: 'Terminale S has only 12 students (min: 15)',
     severity: 'info',
-    link: '/enrollment/class-structure',
+    link: '/students/class-structure',
   },
 ]
 
@@ -110,21 +110,21 @@ const quickActions: QuickAction[] = [
     label: 'Update Projections',
     icon: TrendingUp,
     variant: 'primary',
-    link: '/enrollment/planning',
+    link: '/students/planning',
   },
   {
     id: 'form-classes',
     label: 'Form Classes',
     icon: LayoutGrid,
     variant: 'secondary',
-    link: '/enrollment/class-structure',
+    link: '/students/class-structure',
   },
   {
     id: 'settings',
     label: 'Class Settings',
     icon: Settings,
     variant: 'outline',
-    link: '/configuration/class-sizes',
+    link: '/settings/class-sizes',
   },
   {
     id: 'export',

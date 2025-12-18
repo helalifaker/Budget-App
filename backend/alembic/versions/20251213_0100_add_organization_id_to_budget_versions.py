@@ -15,8 +15,8 @@ Migration Strategy:
 4. Add foreign key constraint
 5. Create index for query performance
 
-Revision ID: 020_add_organization_id_to_budget_versions
-Revises: 019_audit_columns_enrollment
+Revision ID: 021_add_organization_id_to_budget_versions
+Revises: 020_audit_columns_enrollment
 Create Date: 2025-12-13
 """
 
@@ -29,8 +29,8 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "020_add_organization_id_to_budget_versions"
-down_revision: str | None = "019_audit_columns_enrollment"
+revision: str = "021_add_organization_id_to_budget_versions"
+down_revision: str | None = "020_audit_columns_enrollment"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

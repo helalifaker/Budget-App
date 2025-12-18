@@ -163,7 +163,7 @@ The codebase demonstrates **exceptional engineering quality** with all 18 module
 ### Strengths ✅
 
 1. **Module Documentation**
-   - ✅ All 18 modules documented in `docs/MODULES/`
+   - ✅ All 18 modules documented in `docs/modules/`
    - ✅ Formulas with mathematical notation
    - ✅ Business rules clearly enumerated
    - ✅ Real EFIR data examples

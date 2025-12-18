@@ -344,7 +344,7 @@ Annual Depreciation = Asset Cost ÷ Useful Life
 #### Clarifying DHG Calculation Formula
 ```
 1. Use `memory` MCP: "Recall DHG hours calculation for Mathématiques in Collège"
-2. Use `filesystem` MCP: Read docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md
+2. Use `filesystem` MCP: Read docs/modules/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md
 3. Provide explicit formula with worked example
 4. Use `memory` MCP: "Store: DHG formula verified - Total Hours = Σ(Classes × Subject Hours), FTE = Total Hours ÷ 18"
 ```

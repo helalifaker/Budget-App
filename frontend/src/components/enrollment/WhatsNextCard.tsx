@@ -18,14 +18,14 @@ const ENROLLMENT_NEXT_STEPS: NextStep[] = [
     description:
       'Review how students are grouped into classes (auto-calculated based on your projections)',
     icon: Users,
-    href: '/enrollment/class-structure',
+    href: '/students/class-structure',
   },
   {
     number: 2,
     title: 'Teacher Planning (DHG)',
     description: 'Calculate required teaching hours and staffing needs',
     icon: Calculator,
-    href: '/planning/dhg',
+    href: '/teachers/dhg/planning',
   },
   {
     number: 3,

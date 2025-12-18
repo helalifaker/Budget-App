@@ -1,6 +1,6 @@
 import { test, expect, Page } from '@playwright/test'
 import {
-  setupBudgetVersionMocks,
+  setupVersionMocks,
   setupDHGMocks,
   setupSubjectHoursMocks,
   resetMockData,
@@ -24,7 +24,7 @@ async function selectVersion(page: Page): Promise<void> {
 test.describe('DHG Workforce Planning', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupDHGMocks(page)
 
     // Login
@@ -36,7 +36,7 @@ test.describe('DHG Workforce Planning', () => {
   })
 
   test('view DHG page with summary metrics', async ({ page }) => {
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Page should show title
@@ -57,7 +57,7 @@ test.describe('DHG Workforce Planning', () => {
   })
 
   test('subject hours tab shows matrix', async ({ page }) => {
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Click subject hours tab
@@ -73,7 +73,7 @@ test.describe('DHG Workforce Planning', () => {
   })
 
   test('teacher FTE tab shows requirements', async ({ page }) => {
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Click FTE tab
@@ -94,7 +94,7 @@ test.describe('DHG Workforce Planning', () => {
   })
 
   test('TRMD gap analysis tab displays deficit info', async ({ page }) => {
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Click TRMD tab
@@ -117,7 +117,7 @@ test.describe('DHG Workforce Planning', () => {
   })
 
   test('HSA planning tab shows overtime options', async ({ page }) => {
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Click HSA tab
@@ -138,7 +138,7 @@ test.describe('DHG Workforce Planning', () => {
   })
 
   test('calculate FTE button triggers recalculation', async ({ page }) => {
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Find calculate button
@@ -168,7 +168,7 @@ test.describe('DHG Workforce Planning', () => {
   })
 
   test('primary vs secondary standard hours displayed', async ({ page }) => {
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Click FTE tab to see standard hours info
@@ -193,7 +193,7 @@ test.describe('DHG Workforce Planning', () => {
 test.describe('DHG Integration with Other Modules', () => {
   test.beforeEach(async ({ page }) => {
     resetMockData()
-    await setupBudgetVersionMocks(page)
+    await setupVersionMocks(page)
     await setupDHGMocks(page)
     await setupSubjectHoursMocks(page)
 
@@ -206,14 +206,14 @@ test.describe('DHG Integration with Other Modules', () => {
 
   test('class structure drives DHG hours calculation', async ({ page }) => {
     // Navigate to class structure
-    await page.goto('/planning/classes')
+    await page.goto('/enrollment/class-structure')
     await selectVersion(page)
 
     // Verify page loaded
     await expect(page.locator('text=/class/i').first()).toBeVisible({ timeout: 5000 })
 
     // Navigate to DHG
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Verify DHG page loaded - should show content or select version message
@@ -227,7 +227,7 @@ test.describe('DHG Integration with Other Modules', () => {
   })
 
   test('H/E ratio validation (hours per student)', async ({ page }) => {
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Look for H/E ratio in summary cards or tabs
@@ -242,7 +242,7 @@ test.describe('DHG Integration with Other Modules', () => {
   })
 
   test('subject hours by level configuration', async ({ page }) => {
-    await page.goto('/configuration/subject-hours')
+    await page.goto('/workforce/settings/subject-hours')
 
     // Verify subject hours page loaded
     await expect(page.locator('text=/subject.*hours/i').first()).toBeVisible({ timeout: 5000 })
@@ -279,7 +279,7 @@ test.describe('DHG Integration with Other Modules', () => {
     expect(contentVisible || titleVisible).toBe(true)
 
     // Navigate to DHG
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Verify DHG page is accessible
@@ -288,7 +288,7 @@ test.describe('DHG Integration with Other Modules', () => {
 
   test('DHG costs flow to budget consolidation', async ({ page }) => {
     // Navigate to DHG
-    await page.goto('/planning/dhg')
+    await page.goto('/workforce/dhg')
     await selectVersion(page)
 
     // Navigate to consolidation

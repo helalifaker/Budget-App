@@ -6,7 +6,7 @@
  * - HSA hourly rates by category
  * - HSA usage strategy (before/after hiring)
  *
- * @module /workforce/settings/hsa-rates
+ * @module /teachers/settings/hsa-rates
  */
 
 import { createFileRoute } from '@tanstack/react-router'

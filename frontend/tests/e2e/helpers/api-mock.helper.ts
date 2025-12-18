@@ -7,8 +7,8 @@
 
 import { Page, Route } from '@playwright/test'
 
-// Store for created budget versions during tests
-let mockBudgetVersions: BudgetVersion[] = [
+// Store for created versions during tests
+let mockVersions: BudgetVersion[] = [
   {
     id: 'existing-version-1',
     name: 'Budget 2024-2025',
@@ -43,9 +43,9 @@ interface BudgetVersion {
 }
 
 /**
- * Setup API mocking for budget version endpoints
+ * Setup API mocking for version endpoints
  */
-export async function setupBudgetVersionMocks(page: Page): Promise<void> {
+export async function setupVersionMocks(page: Page): Promise<void> {
   const apiBaseUrl = 'http://localhost:8000/api/v1'
 
   // Mock GET /budget-versions - list all versions
@@ -55,8 +55,8 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          items: mockBudgetVersions,
-          total: mockBudgetVersions.length,
+          items: mockVersions,
+          total: mockVersions.length,
           page: 1,
           page_size: 50,
           pages: 1,
@@ -81,7 +81,7 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      mockBudgetVersions.push(newVersion)
+      mockVersions.push(newVersion)
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
@@ -100,18 +100,18 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
     if (method === 'PUT' || method === 'PATCH') {
       const id = url.split('/').pop()?.split('?')[0]
       const requestBody = route.request().postDataJSON()
-      const versionIndex = mockBudgetVersions.findIndex((v) => v.id === id)
+      const versionIndex = mockVersions.findIndex((v) => v.id === id)
 
       if (versionIndex >= 0) {
-        mockBudgetVersions[versionIndex] = {
-          ...mockBudgetVersions[versionIndex],
+        mockVersions[versionIndex] = {
+          ...mockVersions[versionIndex],
           ...requestBody,
           updated_at: new Date().toISOString(),
         }
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: JSON.stringify(mockBudgetVersions[versionIndex]),
+          body: JSON.stringify(mockVersions[versionIndex]),
         })
       } else {
         await route.fulfill({
@@ -122,14 +122,14 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
       }
     } else if (method === 'DELETE') {
       const id = url.split('/').pop()?.split('?')[0]
-      mockBudgetVersions = mockBudgetVersions.filter((v) => v.id !== id)
+      mockVersions = mockVersions.filter((v) => v.id !== id)
       await route.fulfill({
         status: 204,
       })
     } else if (method === 'GET') {
       // Single version fetch
       const id = url.split('/').pop()?.split('?')[0]
-      const version = mockBudgetVersions.find((v) => v.id === id)
+      const version = mockVersions.find((v) => v.id === id)
       if (version) {
         await route.fulfill({
           status: 200,
@@ -152,15 +152,15 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
   await page.route(`${apiBaseUrl}/budget-versions/*/submit`, async (route: Route) => {
     const url = route.request().url()
     const id = url.split('/').slice(-2)[0]
-    const versionIndex = mockBudgetVersions.findIndex((v) => v.id === id)
+    const versionIndex = mockVersions.findIndex((v) => v.id === id)
 
     if (versionIndex >= 0) {
-      mockBudgetVersions[versionIndex].status = 'submitted'
-      mockBudgetVersions[versionIndex].updated_at = new Date().toISOString()
+      mockVersions[versionIndex].status = 'submitted'
+      mockVersions[versionIndex].updated_at = new Date().toISOString()
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(mockBudgetVersions[versionIndex]),
+        body: JSON.stringify(mockVersions[versionIndex]),
       })
     } else {
       await route.fulfill({
@@ -175,15 +175,15 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
   await page.route(`${apiBaseUrl}/budget-versions/*/approve`, async (route: Route) => {
     const url = route.request().url()
     const id = url.split('/').slice(-2)[0]
-    const versionIndex = mockBudgetVersions.findIndex((v) => v.id === id)
+    const versionIndex = mockVersions.findIndex((v) => v.id === id)
 
     if (versionIndex >= 0) {
-      mockBudgetVersions[versionIndex].status = 'approved'
-      mockBudgetVersions[versionIndex].updated_at = new Date().toISOString()
+      mockVersions[versionIndex].status = 'approved'
+      mockVersions[versionIndex].updated_at = new Date().toISOString()
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(mockBudgetVersions[versionIndex]),
+        body: JSON.stringify(mockVersions[versionIndex]),
       })
     } else {
       await route.fulfill({
@@ -199,7 +199,7 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
     const url = route.request().url()
     const id = url.split('/').slice(-2)[0]
     const requestBody = route.request().postDataJSON()
-    const sourceVersion = mockBudgetVersions.find((v) => v.id === id)
+    const sourceVersion = mockVersions.find((v) => v.id === id)
 
     if (sourceVersion) {
       const clonedVersion: BudgetVersion = {
@@ -212,7 +212,7 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
-      mockBudgetVersions.push(clonedVersion)
+      mockVersions.push(clonedVersion)
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
@@ -232,7 +232,7 @@ export async function setupBudgetVersionMocks(page: Page): Promise<void> {
  * Reset mock data between tests
  */
 export function resetMockData(): void {
-  mockBudgetVersions = [
+  mockVersions = [
     {
       id: 'existing-version-1',
       name: 'Budget 2024-2025',
@@ -257,10 +257,10 @@ export function resetMockData(): void {
 }
 
 /**
- * Get current mock budget versions (for assertions)
+ * Get current mock versions (for assertions)
  */
-export function getMockBudgetVersions(): BudgetVersion[] {
-  return [...mockBudgetVersions]
+export function getMockVersions(): BudgetVersion[] {
+  return [...mockVersions]
 }
 
 /**
@@ -1474,7 +1474,7 @@ export async function setupHistoricalComparisonMocks(page: Page): Promise<void> 
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        budget_version_id: 'test-version',
+        version_id: 'test-version',
         fiscal_year: 2024,
         current_fiscal_year: 2024,
         rows: [
@@ -1504,7 +1504,7 @@ export async function setupHistoricalComparisonMocks(page: Page): Promise<void> 
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        budget_version_id: 'test-version',
+        version_id: 'test-version',
         fiscal_year: 2024,
         current_fiscal_year: 2024,
         rows: [
@@ -1530,7 +1530,7 @@ export async function setupHistoricalComparisonMocks(page: Page): Promise<void> 
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        budget_version_id: 'test-version',
+        version_id: 'test-version',
         fiscal_year: 2024,
         current_fiscal_year: 2024,
         rows: [

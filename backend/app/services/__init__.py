@@ -1,36 +1,44 @@
 """
-Service layer for EFIR Budget Planning Application.
+EFIR Budget Services Layer
 
-Services provide business logic and database operations for API endpoints.
-All services use async/await patterns with SQLAlchemy AsyncSession.
+Domain Modules (aligned with canonical 10 modules):
+- enrollment: Projections, class structure, capacity
+- workforce: DHG, employees, AEFE positions
+- revenue: Tuition, subsidies, other revenue
+- costs: Personnel costs, operating expenses
+- investments: CapEx, projects
+- consolidation: Budget rollup, financial statements
+- insights: KPIs, dashboards, analytics
+- settings: Configuration, versions, parameters
+- admin: Writeback, imports, cascade operations
+
+Shared:
+- base: BaseService ORM abstraction
+- exceptions: Service exception hierarchy
 """
 
 from app.services.base import BaseService
-from app.services.class_size_service import ClassSizeService
 from app.services.exceptions import (
     BusinessRuleError,
+    CellLockedError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
     ServiceException,
     UnauthorizedError,
     ValidationError,
+    VersionConflictError,
 )
-from app.services.fee_structure_service import FeeStructureService
-from app.services.reference_data_service import ReferenceDataService
-from app.services.timetable_constraints_service import TimetableConstraintsService
 
 __all__ = [
     "BaseService",
     "BusinessRuleError",
-    "ClassSizeService",
+    "CellLockedError",
     "ConflictError",
-    "FeeStructureService",
     "ForbiddenError",
     "NotFoundError",
-    "ReferenceDataService",
     "ServiceException",
-    "TimetableConstraintsService",
     "UnauthorizedError",
     "ValidationError",
+    "VersionConflictError",
 ]

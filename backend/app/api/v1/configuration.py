@@ -13,13 +13,14 @@ Provides REST API for managing system configuration and budget parameters:
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import PaginatedResponse
 from app.database import get_db
 from app.dependencies.auth import ManagerDep, UserDep
-from app.models.configuration import BudgetVersionStatus
-from app.schemas.configuration import (
+from app.models import Organization, ScenarioType, VersionStatus
+from app.schemas.settings import (
     AcademicCycleResponse,
     AcademicLevelResponse,
     ApplyTemplateRequest,
@@ -28,6 +29,8 @@ from app.schemas.configuration import (
     BudgetVersionCreate,
     BudgetVersionResponse,
     BudgetVersionUpdate,
+    ClassSizeParamBatchRequest,
+    ClassSizeParamBatchResponse,
     ClassSizeParamCreate,
     ClassSizeParamResponse,
     FeeCategoryResponse,
@@ -50,15 +53,18 @@ from app.schemas.configuration import (
     TimetableConstraintCreate,
     TimetableConstraintResponse,
 )
-from app.services.configuration_service import ConfigurationService
 from app.services.exceptions import (
     BusinessRuleError,
     ConflictError,
     NotFoundError,
     ValidationError,
 )
+from app.services.settings.configuration_service import ConfigurationService
 
-router = APIRouter(prefix="/api/v1", tags=["configuration"])
+# Backward compatibility alias
+BudgetVersionStatus = VersionStatus
+
+router = APIRouter(prefix="", tags=["configuration"])
 
 
 @router.get("/debug-token")
@@ -184,88 +190,93 @@ async def upsert_system_config(
 
 
 # ==============================================================================
-# Budget Version Endpoints
+# Version Endpoints
 # ==============================================================================
 
 
 @router.get("/budget-versions", response_model=PaginatedResponse[BudgetVersionResponse])
-async def get_budget_versions(
+async def get_versions(
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(50, ge=1, le=100, description="Number of items per page"),
     fiscal_year: int | None = Query(None, description="Filter by fiscal year"),
     status: BudgetVersionStatus | None = Query(None, description="Filter by status"),
+    scenario_type: ScenarioType | None = Query(None, description="Filter by scenario type"),
     config_service: ConfigurationService = Depends(get_config_service),
     user: UserDep = ...,
 ):
     """
-    Get paginated budget versions.
+    Get paginated versions.
 
     Args:
         page: Page number (1-indexed)
         page_size: Number of items per page (max 100)
         fiscal_year: Optional fiscal year filter
         status: Optional status filter
+        scenario_type: Optional scenario type filter
         config_service: Configuration service
         user: Current authenticated user
 
     Returns:
-        Paginated response with budget versions
+        Paginated response with versions
     """
-    result = await config_service.get_budget_versions_paginated(
+    result = await config_service.get_versions_paginated(
         page=page,
         page_size=page_size,
         fiscal_year=fiscal_year,
         status=status,
+        scenario_type=scenario_type,
     )
     return result
 
 
 @router.get("/budget-versions/{version_id}", response_model=BudgetVersionResponse)
-async def get_budget_version(
+async def get_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
     user: UserDep = ...,
 ):
     """
-    Get budget version by ID.
+    Get version by ID.
 
     Args:
-        version_id: Budget version UUID
+        version_id: Version UUID
         config_service: Configuration service
         user: Current authenticated user
 
     Returns:
-        Budget version
+        Version
 
     Raises:
         HTTPException: 404 if version not found
     """
     try:
-        version = await config_service.get_budget_version(version_id)
+        version = await config_service.get_version(version_id)
         return version
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.post("/budget-versions", response_model=BudgetVersionResponse, status_code=status.HTTP_201_CREATED)
-async def create_budget_version(
+async def create_version(
     version_data: BudgetVersionCreate,
     request: Request,  # Get request to access state
+    db: AsyncSession = Depends(get_db),
     config_service: ConfigurationService = Depends(get_config_service),
 ):
     """
-    Create a new budget version.
+    Create a new version.
 
     Args:
-        version_data: Budget version data
+        version_data: Version data
+        db: Database session for organization lookup
         config_service: Configuration service
-        user: Current authenticated user
 
     Returns:
-        Created budget version
+        Created version
 
     Raises:
         HTTPException: 409 if a working version already exists for the fiscal year
+        HTTPException: 400 if no organization is available
     """
     try:
         # Get user_id from request state if available (set by AuthenticationMiddleware)
@@ -275,11 +286,29 @@ async def create_budget_version(
         except (ValueError, AttributeError):
             user_id = None
 
-        version = await config_service.create_budget_version(
+        # Resolve organization_id if not provided
+        organization_id = version_data.organization_id
+        if organization_id is None:
+            # For single-tenant deployment: get the default (first active) organization
+            result = await db.execute(
+                select(Organization)
+                .where(Organization.is_active == True)  # noqa: E712
+                .limit(1)
+            )
+            org = result.scalar_one_or_none()
+            if org is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No active organization found. Please create an organization first.",
+                )
+            organization_id = org.id
+
+        version = await config_service.create_version(
             name=version_data.name,
             fiscal_year=version_data.fiscal_year,
             academic_year=version_data.academic_year,
-            organization_id=version_data.organization_id,
+            organization_id=organization_id,
+            scenario_type=version_data.scenario_type,
             notes=version_data.notes,
             parent_version_id=version_data.parent_version_id,
             user_id=user_id,
@@ -287,36 +316,40 @@ async def create_budget_version(
         return version
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     except ValidationError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create BudgetVersion: {e!s}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to create version: {e!s}")
 
 
 @router.put("/budget-versions/{version_id}", response_model=BudgetVersionResponse)
-async def update_budget_version(
+async def update_version(
     version_id: uuid.UUID,
     version_data: BudgetVersionUpdate,
     config_service: ConfigurationService = Depends(get_config_service),
     user: UserDep = ...,
 ):
     """
-    Update budget version metadata.
+    Update version metadata.
 
     Args:
-        version_id: Budget version UUID
+        version_id: Version UUID
         version_data: Updated version data
         config_service: Configuration service
         user: Current authenticated user
 
     Returns:
-        Updated budget version
+        Updated version
 
     Raises:
         HTTPException: 404 if version not found
     """
     try:
-        version = await config_service.budget_version_base_service.update(
+        version = await config_service.version_service.update(
             version_id,
             version_data.model_dump(exclude_unset=True),
             user_id=user.user_id,
@@ -329,27 +362,27 @@ async def update_budget_version(
 
 
 @router.put("/budget-versions/{version_id}/submit", response_model=BudgetVersionResponse)
-async def submit_budget_version(
+async def submit_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
     user: UserDep = ...,
 ):
     """
-    Submit budget version for approval.
+    Submit version for approval.
 
     Args:
-        version_id: Budget version UUID
+        version_id: Version UUID
         config_service: Configuration service
         user: Current authenticated user
 
     Returns:
-        Submitted budget version
+        Submitted version
 
     Raises:
         HTTPException: 422 if version cannot be submitted
     """
     try:
-        version = await config_service.submit_budget_version(version_id, user.user_id)
+        version = await config_service.submit_version(version_id, user.user_id)
         return version
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -358,27 +391,65 @@ async def submit_budget_version(
 
 
 @router.put("/budget-versions/{version_id}/approve", response_model=BudgetVersionResponse)
-async def approve_budget_version(
+async def approve_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
     user: ManagerDep = ...,
 ):
     """
-    Approve budget version (manager/admin only).
+    Approve version (manager/admin only).
 
     Args:
-        version_id: Budget version UUID
+        version_id: Version UUID
         config_service: Configuration service
         user: Current authenticated user (must be manager or admin)
 
     Returns:
-        Approved budget version
+        Approved version
 
     Raises:
         HTTPException: 422 if version cannot be approved
     """
     try:
-        version = await config_service.approve_budget_version(version_id, user.user_id)
+        version = await config_service.approve_version(version_id, user.user_id)
+        return version
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.put("/budget-versions/{version_id}/reject", response_model=BudgetVersionResponse)
+async def reject_version(
+    version_id: uuid.UUID,
+    reason: str | None = Query(None, description="Reason for rejecting the version"),
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: ManagerDep = ...,
+):
+    """
+    Reject a submitted version (manager/admin only).
+
+    This returns the version to WORKING status, allowing the submitter
+    to make corrections. The rejection reason is stored in the notes field
+    for audit trail purposes.
+
+    Args:
+        version_id: Version UUID
+        reason: Optional reason for rejection (stored in notes)
+        config_service: Configuration service
+        user: Current authenticated user (must be manager or admin)
+
+    Returns:
+        Rejected version (now in WORKING status)
+
+    Raises:
+        HTTPException: 404 if version not found
+        HTTPException: 422 if version cannot be rejected (wrong status)
+    """
+    try:
+        version = await config_service.reject_version(
+            version_id, user.user_id, reason=reason
+        )
         return version
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -387,46 +458,46 @@ async def approve_budget_version(
 
 
 @router.put("/budget-versions/{version_id}/supersede", response_model=BudgetVersionResponse)
-async def supersede_budget_version(
+async def supersede_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
     user: UserDep = ...,
 ):
     """
-    Mark budget version as superseded.
+    Mark version as superseded.
 
     Args:
-        version_id: Budget version UUID
+        version_id: Version UUID
         config_service: Configuration service
         user: Current authenticated user
 
     Returns:
-        Superseded budget version
+        Superseded version
 
     Raises:
         HTTPException: 404 if version not found
     """
     try:
-        version = await config_service.supersede_budget_version(version_id, user.user_id)
+        version = await config_service.supersede_version(version_id, user.user_id)
         return version
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 @router.delete("/budget-versions/{version_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_budget_version(
+async def delete_version(
     version_id: uuid.UUID,
     config_service: ConfigurationService = Depends(get_config_service),
     user: UserDep = ...,
 ):
     """
-    Delete (soft delete) a budget version.
+    Delete (soft delete) a version.
 
-    Business Rule: Cannot delete approved budget versions. Approved versions must be
+    Business Rule: Cannot delete approved versions. Approved versions must be
     superseded instead to maintain audit trail.
 
     Args:
-        version_id: Budget version UUID
+        version_id: Version UUID
         config_service: Configuration service
         user: Current authenticated user
 
@@ -438,7 +509,7 @@ async def delete_budget_version(
         HTTPException: 422 if version is approved (cannot delete approved budgets)
     """
     try:
-        await config_service.delete_budget_version(version_id, user.user_id)
+        await config_service.delete_version(version_id, user.user_id)
         return None  # 204 No Content
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -454,14 +525,14 @@ async def delete_budget_version(
     response_model=BudgetVersionResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def clone_budget_version(
+async def clone_version(
     version_id: uuid.UUID,
     clone_data: BudgetVersionClone,
     config_service: ConfigurationService = Depends(get_config_service),
     user: UserDep = ...,
 ):
     """
-    Clone a budget version to create a new baseline for the next fiscal year.
+    Clone a version to create a new baseline for the next fiscal year.
 
     This is the recommended approach for creating next year's budget based on current
     year's configuration. Optionally clones all configuration data (class sizes, subject
@@ -474,24 +545,25 @@ async def clone_budget_version(
     - Does NOT include planning data (enrollment, classes, DHG, etc.) - recalculated
 
     Args:
-        version_id: Source budget version UUID to clone
+        version_id: Source version UUID to clone
         clone_data: Clone parameters (name, fiscal_year, academic_year, clone_configuration)
         config_service: Configuration service
         user: Current authenticated user
 
     Returns:
-        Newly created budget version
+        Newly created version
 
     Raises:
         HTTPException: 404 if source version not found
         HTTPException: 409 if working version exists for target fiscal year
     """
     try:
-        new_version = await config_service.clone_budget_version(
+        new_version = await config_service.clone_version(
             source_version_id=version_id,
             name=clone_data.name,
             fiscal_year=clone_data.fiscal_year,
             academic_year=clone_data.academic_year,
+            scenario_type=clone_data.scenario_type,
             clone_configuration=clone_data.clone_configuration,
             user_id=user.user_id,
         )
@@ -500,6 +572,8 @@ async def clone_budget_version(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ConflictError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
+    except BusinessRuleError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
 
 
 # ==============================================================================
@@ -595,7 +669,7 @@ async def upsert_class_size_param(
     """
     try:
         param = await config_service.upsert_class_size_param(
-            version_id=param_data.budget_version_id,
+            version_id=param_data.version_id,
             level_id=param_data.level_id,
             cycle_id=param_data.cycle_id,
             min_class_size=param_data.min_class_size,
@@ -634,6 +708,47 @@ async def delete_class_size_param(
         return None
     except NotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/class-size-params/batch", response_model=ClassSizeParamBatchResponse)
+async def batch_upsert_class_size_params(
+    batch_data: ClassSizeParamBatchRequest,
+    config_service: ConfigurationService = Depends(get_config_service),
+    user: UserDep = ...,
+):
+    """
+    Batch create/update class size parameters with optimistic locking.
+
+    Efficiently saves multiple class size params in a single transaction.
+    Uses updated_at for optimistic locking to prevent lost updates from
+    concurrent modifications.
+
+    Args:
+        batch_data: Batch request with version_id and entries list
+        config_service: Configuration service
+        user: Current authenticated user
+
+    Returns:
+        ClassSizeParamBatchResponse with per-entry results:
+        - created_count: Number of new records created
+        - updated_count: Number of existing records updated
+        - conflict_count: Number of records with optimistic locking conflicts
+        - entries: Per-entry status (created/updated/conflict)
+
+    Notes:
+        - Max 50 entries per request
+        - Each entry can include updated_at for optimistic locking
+        - Conflicts return the current updated_at for client refresh
+    """
+    try:
+        result = await config_service.batch_upsert_class_size_params(
+            version_id=batch_data.version_id,
+            entries=batch_data.entries,
+            user_id=user.user_id,
+        )
+        return result
+    except ValidationError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 # ==============================================================================
@@ -703,7 +818,7 @@ async def upsert_subject_hours(
     """
     try:
         hours = await config_service.upsert_subject_hours(
-            version_id=hours_data.budget_version_id,
+            version_id=hours_data.version_id,
             subject_id=hours_data.subject_id,
             level_id=hours_data.level_id,
             hours_per_week=hours_data.hours_per_week,
@@ -772,7 +887,7 @@ async def batch_save_subject_hours(
     Max 200 entries per request to prevent timeout.
 
     Args:
-        batch_data: Batch request with budget_version_id and entries list
+        batch_data: Batch request with version_id and entries list
         config_service: Configuration service
         user: Current authenticated user
 
@@ -785,7 +900,7 @@ async def batch_save_subject_hours(
     """
     try:
         result = await config_service.batch_upsert_subject_hours(
-            version_id=batch_data.budget_version_id,
+            version_id=batch_data.version_id,
             entries=batch_data.entries,
             user_id=user.user_id,
         )
@@ -844,7 +959,7 @@ async def apply_curriculum_template(
     """
     try:
         result = await config_service.apply_curriculum_template(
-            version_id=request.budget_version_id,
+            version_id=request.version_id,
             template_code=request.template_code,
             cycle_codes=request.cycle_codes,
             overwrite_existing=request.overwrite_existing,
@@ -965,7 +1080,7 @@ async def upsert_teacher_cost_param(
     """
     try:
         param = await config_service.upsert_teacher_cost_param(
-            version_id=param_data.budget_version_id,
+            version_id=param_data.version_id,
             category_id=param_data.category_id,
             cycle_id=param_data.cycle_id,
             prrd_contribution_eur=param_data.prrd_contribution_eur,
@@ -1068,7 +1183,7 @@ async def upsert_fee_structure(
     """
     try:
         fee = await config_service.upsert_fee_structure(
-            version_id=fee_data.budget_version_id,
+            version_id=fee_data.version_id,
             level_id=fee_data.level_id,
             nationality_type_id=fee_data.nationality_type_id,
             fee_category_id=fee_data.fee_category_id,
@@ -1137,7 +1252,7 @@ async def upsert_timetable_constraint(
     """
     try:
         constraint = await config_service.upsert_timetable_constraint(
-            version_id=constraint_data.budget_version_id,
+            version_id=constraint_data.version_id,
             level_id=constraint_data.level_id,
             total_hours_per_week=constraint_data.total_hours_per_week,
             max_hours_per_day=constraint_data.max_hours_per_day,

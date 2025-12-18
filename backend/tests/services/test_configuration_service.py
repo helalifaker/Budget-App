@@ -6,8 +6,11 @@ import uuid
 from decimal import Decimal
 from unittest.mock import MagicMock
 
-from app.models.configuration import BudgetVersionStatus
-from app.services.configuration_service import ConfigurationService
+from app.models import VersionStatus
+from app.services.settings.configuration_service import ConfigurationService
+
+# Backward compatibility alias
+BudgetVersionStatus = VersionStatus
 
 
 class TestConfigurationServiceInitialization:
@@ -34,7 +37,7 @@ class TestConfigurationServiceInitialization:
         assert service._fee_structure is not None
         assert service._timetable_constraints is not None
         assert service._teacher_cost is not None
-        assert service._budget_version is not None
+        assert service._version is not None
 
 
 class TestBudgetVersionStatus:

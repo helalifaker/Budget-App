@@ -29,9 +29,9 @@ Following the comprehensive review documented in `PHASE_0-3_CRITICAL_REVIEW.md` 
 **Actual Status**: This claim was incorrect - the issue was already fixed.
 
 **Evidence**:
-- `docs/DATABASE/sql/rls_policies.sql:209-216` - Viewers restricted to `status = 'approved'` only
-- `docs/DATABASE/sql/rls_policies.sql:468-517` - All Planning Layer policies include `deleted_at IS NULL`
-- `docs/DATABASE/sql/rls_policies.sql:548-595` - All Consolidation Layer policies include `deleted_at IS NULL`
+- `docs/database/sql/rls_policies.sql:209-216` - Viewers restricted to `status = 'approved'` only
+- `docs/database/sql/rls_policies.sql:468-517` - All Planning Layer policies include `deleted_at IS NULL`
+- `docs/database/sql/rls_policies.sql:548-595` - All Consolidation Layer policies include `deleted_at IS NULL`
 - Pattern consistent across all 23 tables with RLS enabled
 
 **Verification Quote** (from rls_policies.sql:210-212):
@@ -105,7 +105,7 @@ await validate_class_structure(
 - ✅ Models: `backend/app/models/consolidation.py` (BudgetConsolidation, FinancialStatement, FinancialStatementLine)
 - ✅ Migrations: `backend/alembic/versions/20251201_0030_consolidation_layer.py`
 - ✅ Database schema: Tables created with proper relationships and constraints
-- ✅ RLS policies: `docs/DATABASE/sql/rls_policies.sql:548-595`
+- ✅ RLS policies: `docs/database/sql/rls_policies.sql:548-595`
 
 **What's Missing** (Business Logic - Phase 4 Work):
 - ❌ Service layer architecture
@@ -378,7 +378,7 @@ Added `UniqueConstraint` to `__table_args__` for all 5 models to match migration
 
 3. **Apply RLS Policies**:
    ```bash
-   psql $DATABASE_URL -f docs/DATABASE/sql/rls_policies.sql
+   psql $DATABASE_URL -f docs/database/sql/rls_policies.sql
    ```
 
 ### Phase 4 Preparation:

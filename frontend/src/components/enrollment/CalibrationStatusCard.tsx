@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { RefreshCw, CheckCircle2, AlertTriangle, XCircle, Star, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { CalibrationStatus } from '@/types/enrollmentSettings'
+import type { CalibrationStatus } from '@/types/enrollment-settings'
 
 interface CalibrationStatusCardProps {
   status: CalibrationStatus
@@ -18,20 +18,20 @@ const CONFIDENCE_CONFIG: Record<
 > = {
   high: {
     icon: CheckCircle2,
-    color: 'text-green-600',
-    bgColor: 'bg-green-50',
+    color: 'text-sage-600',
+    bgColor: 'bg-sage-50',
     label: 'High Confidence',
   },
   medium: {
     icon: AlertTriangle,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-50',
+    color: 'text-terracotta-600',
+    bgColor: 'bg-terracotta-50',
     label: 'Medium Confidence',
   },
   low: {
     icon: XCircle,
-    color: 'text-red-600',
-    bgColor: 'bg-red-50',
+    color: 'text-terracotta-700',
+    bgColor: 'bg-terracotta-100',
     label: 'Low Confidence',
   },
 }
@@ -94,7 +94,7 @@ export const CalibrationStatusCard = memo(function CalibrationStatusCard({
                 key={i}
                 className={cn(
                   'h-4 w-4',
-                  i < status.data_quality_score ? 'fill-amber-400 text-amber-400' : 'text-gray-300'
+                  i < status.data_quality_score ? 'fill-gold text-gold' : 'text-border-light'
                 )}
               />
             ))}
@@ -132,11 +132,11 @@ export const CalibrationStatusCard = memo(function CalibrationStatusCard({
 
         {/* Data Sufficiency Warning */}
         {!status.has_sufficient_data && (
-          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5" />
-            <div className="text-sm text-amber-800">
+          <div className="flex items-start gap-2 p-3 bg-terracotta-50 border border-terracotta-200 rounded-lg">
+            <AlertTriangle className="h-4 w-4 text-terracotta-600 mt-0.5" />
+            <div className="text-sm text-terracotta-800">
               <p className="font-medium">Insufficient Historical Data</p>
-              <p className="text-amber-700">
+              <p className="text-terracotta-700">
                 At least 2 years of enrollment data are needed for reliable calibration. Using
                 document defaults instead.
               </p>

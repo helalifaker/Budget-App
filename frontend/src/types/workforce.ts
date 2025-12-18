@@ -68,7 +68,7 @@ export const EmployeeBaseSchema = z.object({
 export type EmployeeBase = z.infer<typeof EmployeeBaseSchema>
 
 export const EmployeeCreateSchema = EmployeeBaseSchema.extend({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
 })
 export type EmployeeCreate = z.infer<typeof EmployeeCreateSchema>
 
@@ -94,7 +94,7 @@ export type EmployeeUpdate = z.infer<typeof EmployeeUpdateSchema>
 export const EmployeeResponseSchema = EmployeeBaseSchema.extend({
   id: z.string().uuid(),
   employee_code: z.string(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   termination_date: z.string().nullable().optional(),
   termination_type: TerminationTypeSchema.nullable().optional(),
   created_at: z.string(),
@@ -115,7 +115,7 @@ export type EmployeeBulkResponse = z.infer<typeof EmployeeBulkResponseSchema>
 // ==============================================================================
 
 export const PlaceholderEmployeeCreateSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   category: EmployeeCategorySchema.default('LOCAL_TEACHER'),
   cycle_id: z.string().uuid().nullable().optional(),
   subject_id: z.string().uuid().nullable().optional(),
@@ -147,7 +147,7 @@ export const EmployeeSalaryBaseSchema = z.object({
 export type EmployeeSalaryBase = z.infer<typeof EmployeeSalaryBaseSchema>
 
 export const EmployeeSalaryCreateSchema = EmployeeSalaryBaseSchema.extend({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   employee_id: z.string().uuid(),
 })
 export type EmployeeSalaryCreate = z.infer<typeof EmployeeSalaryCreateSchema>
@@ -164,7 +164,7 @@ export type EmployeeSalaryUpdate = z.infer<typeof EmployeeSalaryUpdateSchema>
 
 export const EmployeeSalaryResponseSchema = EmployeeSalaryBaseSchema.extend({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   employee_id: z.string().uuid(),
   gross_salary_sar: z.number(),
   gosi_employer_rate: z.number(),
@@ -198,7 +198,7 @@ export type SalaryBreakdown = z.infer<typeof SalaryBreakdownResponseSchema>
 
 export const EOSProvisionResponseSchema = z.object({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   employee_id: z.string().uuid(),
   as_of_date: z.string(),
   years_of_service: z.number().int(),
@@ -237,7 +237,7 @@ export const EOSCalculationResponseSchema = z.object({
 export type EOSCalculation = z.infer<typeof EOSCalculationResponseSchema>
 
 export const EOSSummaryResponseSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   as_of_date: z.string(),
   total_employees: z.number().int(),
   total_provision_sar: z.number(),
@@ -263,7 +263,7 @@ export const AEFEPositionBaseSchema = z.object({
 export type AEFEPositionBase = z.infer<typeof AEFEPositionBaseSchema>
 
 export const AEFEPositionCreateSchema = AEFEPositionBaseSchema.extend({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   employee_id: z.string().uuid().nullable().optional(),
 })
 export type AEFEPositionCreate = z.infer<typeof AEFEPositionCreateSchema>
@@ -281,7 +281,7 @@ export type AEFEPositionUpdate = z.infer<typeof AEFEPositionUpdateSchema>
 
 export const AEFEPositionResponseSchema = AEFEPositionBaseSchema.extend({
   id: z.string().uuid(),
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   employee_id: z.string().uuid().nullable().optional(),
   prrd_amount_sar: z.number(),
   is_filled: z.boolean(),
@@ -292,7 +292,7 @@ export const AEFEPositionResponseSchema = AEFEPositionBaseSchema.extend({
 export type AEFEPosition = z.infer<typeof AEFEPositionResponseSchema>
 
 export const AEFEPositionSummaryResponseSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   total_positions: z.number().int().default(28),
   detached_positions: z.number().int().default(24),
   funded_positions: z.number().int().default(4),
@@ -305,7 +305,7 @@ export const AEFEPositionSummaryResponseSchema = z.object({
 export type AEFEPositionSummary = z.infer<typeof AEFEPositionSummaryResponseSchema>
 
 export const InitializeAEFEPositionsRequestSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   academic_year: z.string().max(20),
   prrd_amount_eur: z.number().positive().default(41863.0),
   exchange_rate_eur_sar: z.number().positive().default(4.05),
@@ -317,7 +317,7 @@ export type InitializeAEFEPositionsRequest = z.infer<typeof InitializeAEFEPositi
 // ==============================================================================
 
 export const WorkforceSummaryResponseSchema = z.object({
-  budget_version_id: z.string().uuid(),
+  version_id: z.string().uuid(),
   total_employees: z.number().int(),
   active_employees: z.number().int(),
   base_100_count: z.number().int(),

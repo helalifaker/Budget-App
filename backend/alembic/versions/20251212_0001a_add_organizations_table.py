@@ -1,10 +1,10 @@
 """Add organizations and user_organizations tables.
 
-Revision ID: 017a_organizations
+Revision ID: 018_add_organizations
 Revises: 017_enrollment_projection_tables
 Create Date: 2025-12-12 15:00:00.000000
 
-This migration must run BEFORE 018_enrollment_derived_parameters because
+This migration must run BEFORE 019_enrollment_derived_parameters because
 that migration has FKs and RLS policies referencing these tables.
 """
 
@@ -15,7 +15,7 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "017a_organizations"
+revision: str = "018_add_organizations"
 down_revision: str | None = "017_enrollment_projection_tables"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

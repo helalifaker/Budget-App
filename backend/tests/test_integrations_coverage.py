@@ -4,8 +4,8 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-from app.models.integrations import IntegrationLog, IntegrationSettings
-from app.schemas import integrations as schemas
+from app.models import IntegrationLog, IntegrationSettings
+from app.schemas.admin import integrations as schemas
 
 
 def test_integration_schemas_construction_and_validation():
@@ -19,7 +19,7 @@ def test_integration_schemas_construction_and_validation():
     assert connection.url.startswith("https://")
 
     actuals_req = schemas.OdooImportActualsRequest(
-        budget_version_id=uuid4(),
+        version_id=uuid4(),
         period="T1",
         fiscal_year=2025,
     )
@@ -115,7 +115,7 @@ def test_aefe_position_record_validation():
             category="Detached",
             cycle="Secondary",
             prrd_rate=-1,
-            is_aefe_funded=False,
+            is_aefe=False,
         )
 
 

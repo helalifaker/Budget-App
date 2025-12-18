@@ -16,9 +16,9 @@ A comprehensive, driver-based budget planning system for École Française Inter
    - **Read this before making any code changes**
 
 2. **[.claude/AGENT_ORCHESTRATION.md](./.claude/AGENT_ORCHESTRATION.md)** - Agent System Guide
-   - 14 specialized agents and their boundaries
-   - Agent dependencies and orchestration rules
-   - Multi-agent workflow patterns
+   - 9 specialized agents and their boundaries
+   - Agent dependencies and routing rules
+   - Workflow patterns
 
 3. **[.claude/agents/](./.claude/agents/)** - Individual Agent Configurations
    - Your specific agent configuration file
@@ -26,38 +26,33 @@ A comprehensive, driver-based budget planning system for École Française Inter
 
 ### Agent System Overview
 
-This codebase uses a **14-agent orchestration system**:
+This codebase uses a **9-agent orchestration system**:
 
 | Agent | Responsibility |
 |-------|---------------|
-| `efir-master-agent` | Orchestrator - routes multi-domain tasks |
 | `product-architect-agent` | Business rules, formulas, requirements (SOURCE OF TRUTH) |
-| `system-architect-agent` | Architecture, API contracts, module boundaries |
-| `database-supabase-agent` | PostgreSQL schema, RLS policies, migrations |
-| `backend-engine-agent` | Calculation engines (DHG, enrollment, revenue, costs) |
-| `backend-api-specialist` | FastAPI endpoints and API layer |
-| `frontend-ui-agent` | React UI, components, all 18 modules |
-| `governance-versioning-agent` | Budget lifecycle and workflow management |
-| `reporting-statements-agent` | PCG/IFRS statements and board reports |
-| `security-rls-agent` | Authentication, MFA, RLS policies |
-| `data-migration-agent` | ETL and data import from legacy systems |
+| `Plan` | Design implementation strategies, architectural decisions |
+| `Explore` | Fast codebase exploration, find files/patterns/keywords |
+| `frontend-ui-agent` | React UI, components, all modules |
 | `performance-agent` | Profiling, optimization, load testing |
 | `qa-validation-agent` | Test coverage and quality assurance |
 | `documentation-training-agent` | Documentation and training materials |
+| `general-purpose` | Complex multi-step tasks, research, code search |
+| `claude-code-guide` | Claude Code CLI features, Agent SDK guidance |
 
 ### Quick Agent Routing Reference
 
 **Route requests to the correct agent:**
 
 - **Business Rules/Formulas/Requirements** → `product-architect-agent` (SOURCE OF TRUTH)
-- **Database/Schema/RLS/Migrations** → `database-supabase-agent`
-- **Calculation Logic (DHG, FTE, Revenue, Costs)** → `backend-engine-agent`
-- **FastAPI Routes/Endpoints** → `backend-api-specialist`
+- **Architecture/Planning** → `Plan`
+- **Code Exploration/Search** → `Explore`
 - **React Components/UI** → `frontend-ui-agent`
-- **Architecture/Interfaces** → `system-architect-agent`
-- **Security/Auth/RLS** → `security-rls-agent`
+- **Performance Issues** → `performance-agent`
 - **Tests/QA** → `qa-validation-agent`
-- **Multi-domain tasks** → `efir-master-agent` (orchestrator)
+- **Documentation** → `documentation-training-agent`
+- **General Research/Multi-step** → `general-purpose`
+- **Claude Code Questions** → `claude-code-guide`
 
 **See [Agent Orchestration Guide](./.claude/AGENT_ORCHESTRATION.md) for complete routing logic and boundaries.**
 
@@ -77,8 +72,8 @@ All agents MUST follow the **EFIR Development Standards System** (4 Non-Negotiab
 **CRITICAL RULES:**
 - ❌ **NEVER** cross agent boundaries (e.g., frontend-ui-agent cannot modify database)
 - ✅ **ALWAYS** consult `product-architect-agent` for business rules
-- ✅ **ALWAYS** follow `system-architect-agent` for architecture patterns
-- ✅ **ALWAYS** route multi-domain tasks through `efir-master-agent`
+- ✅ **ALWAYS** use `Plan` agent for architecture decisions before major feature work
+- ✅ **ALWAYS** use `Explore` agent for codebase exploration and search
 
 **See [Agent Orchestration Guide](./.claude/AGENT_ORCHESTRATION.md) "Agent Boundary Enforcement" section for complete rules.**
 
@@ -150,7 +145,7 @@ This application provides integrated workforce planning through annual budget an
 │   ├── archive/           # Historical documentation
 │   └── database/          # Database design and setup guides
 ├── .claude/               # Agent configuration
-│   └── agents/            # 14 specialized agents
+│   └── agents/            # 9 specialized agents
 ├── .github/
 │   └── workflows/         # CI/CD workflows
 ├── CLAUDE.md              # Primary agent reference
@@ -242,7 +237,7 @@ GitHub Actions automatically runs on push/PR:
 
 ### For AI Agents
 - **[CLAUDE.md](./CLAUDE.md)**: **PRIMARY AGENT REFERENCE** - Complete development guidelines, architecture, standards (1000+ lines)
-- **[.claude/AGENT_ORCHESTRATION.md](./.claude/AGENT_ORCHESTRATION.md)**: 14-agent system, orchestration rules, boundaries
+- **[.claude/AGENT_ORCHESTRATION.md](./.claude/AGENT_ORCHESTRATION.md)**: 9-agent system, orchestration rules, boundaries
 - **[.claude/agents/](./.claude/agents/)**: Individual agent configuration files
 - **[docs/AGENT_DOCUMENTATION_STANDARDS.md](./docs/AGENT_DOCUMENTATION_STANDARDS.md)**: Where agents create documentation
 
@@ -257,7 +252,7 @@ GitHub Actions automatically runs on push/PR:
 ### User & Developer Guides
 - **[User Guides](./docs/user-guides/)**: End-user documentation
 - **[Developer Guides](./docs/developer-guides/)**: Developer setup, API docs, integration guides
-- **[Module Specifications](./docs/MODULES/)**: All 18 modules across 5 layers
+- **[Module Specifications](./docs/modules/)**: All 18 modules across 5 layers
 
 ## Key Concepts
 

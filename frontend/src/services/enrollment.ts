@@ -7,7 +7,7 @@ export const enrollmentApi = {
     return withServiceErrorHandling(
       apiRequest<Enrollment[]>({
         method: 'GET',
-        url: `/planning/enrollment/${versionId}`,
+        url: `/enrollment/${versionId}`,
         params,
       }),
       'enrollment: get all'
@@ -15,7 +15,7 @@ export const enrollmentApi = {
   },
 
   create: async (data: {
-    budget_version_id: string
+    version_id: string
     level_id: string
     nationality_type_id: string
     student_count: number
@@ -23,7 +23,7 @@ export const enrollmentApi = {
     return withServiceErrorHandling(
       apiRequest<Enrollment>({
         method: 'POST',
-        url: `/planning/enrollment/${data.budget_version_id}`,
+        url: `/enrollment/${data.version_id}`,
         data,
       }),
       'enrollment: create'
@@ -34,7 +34,7 @@ export const enrollmentApi = {
     return withServiceErrorHandling(
       apiRequest<Enrollment>({
         method: 'PUT',
-        url: `/planning/enrollment/${id}`,
+        url: `/enrollment/${id}`,
         data,
       }),
       'enrollment: update'
@@ -45,7 +45,7 @@ export const enrollmentApi = {
     return withServiceErrorHandling(
       apiRequest<void>({
         method: 'DELETE',
-        url: `/planning/enrollment/${id}`,
+        url: `/enrollment/${id}`,
       }),
       'enrollment: delete'
     )
@@ -59,7 +59,7 @@ export const enrollmentApi = {
         by_nationality: Record<string, number>
       }>({
         method: 'GET',
-        url: `/planning/enrollment/${versionId}/summary`,
+        url: `/enrollment/${versionId}/summary`,
       }),
       'enrollment: get summary'
     )
@@ -76,7 +76,7 @@ export const enrollmentApi = {
     return withServiceErrorHandling(
       apiRequest<Array<{ year: number; projected_enrollment: number }>>({
         method: 'POST',
-        url: `/planning/enrollment/${versionId}/project`,
+        url: `/enrollment/${versionId}/project`,
         data,
       }),
       'enrollment: project'
@@ -94,7 +94,7 @@ export const enrollmentApi = {
     return withServiceErrorHandling(
       apiRequest<EnrollmentWithDistribution>({
         method: 'GET',
-        url: `/planning/enrollment/${versionId}/with-distribution`,
+        url: `/enrollment/${versionId}/with-distribution`,
       }),
       'enrollment: get with distribution'
     )
@@ -111,7 +111,7 @@ export const enrollmentApi = {
     return withServiceErrorHandling(
       apiRequest<Enrollment[]>({
         method: 'PUT',
-        url: `/planning/enrollment/${versionId}/bulk`,
+        url: `/enrollment/${versionId}/bulk`,
         data: { totals },
       }),
       'enrollment: bulk upsert totals'
@@ -123,13 +123,13 @@ export const enrollmentApi = {
   // ============================================================================
 
   /**
-   * Get nationality distributions for all levels in a budget version
+   * Get nationality distributions for all levels in a version
    */
   getDistributions: async (versionId: string) => {
     return withServiceErrorHandling(
       apiRequest<NationalityDistribution[]>({
         method: 'GET',
-        url: `/planning/distributions/${versionId}`,
+        url: `/distributions/${versionId}`,
       }),
       'enrollment: get distributions'
     )
@@ -151,7 +151,7 @@ export const enrollmentApi = {
     return withServiceErrorHandling(
       apiRequest<NationalityDistribution[]>({
         method: 'PUT',
-        url: `/planning/distributions/${versionId}`,
+        url: `/distributions/${versionId}`,
         data: { distributions },
       }),
       'enrollment: bulk upsert distributions'

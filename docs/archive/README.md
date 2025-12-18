@@ -111,7 +111,7 @@ For **current** (non-archived) documentation, see:
 |------|----------|
 | **Current status** | [docs/status/](../status/) - Living documents updated frequently |
 | **Recent agent reports** | [docs/agent-work/](../agent-work/) - Reports <30 days old |
-| **Module specifications** | [docs/MODULES/](../MODULES/) - Living reference documents |
+| **Module specifications** | [docs/modules/](../MODULES/) - Living reference documents |
 | **User/Developer guides** | [docs/user-guides/](../user-guides/), [docs/developer-guides/](../developer-guides/) |
 | **Testing documentation** | [docs/testing/](../testing/) |
 | **Roadmaps** | [docs/roadmaps/](../roadmaps/) |

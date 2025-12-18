@@ -14,7 +14,7 @@ vi.mock('@/hooks/api/useChangeHistory', () => ({
     changes: [
       {
         id: '1',
-        budget_version_id: 'budget-1',
+        version_id: 'budget-1',
         entity_type: 'enrollment',
         entity_id: 'cell-1',
         field_name: 'student_count',
@@ -27,7 +27,7 @@ vi.mock('@/hooks/api/useChangeHistory', () => ({
       },
       {
         id: '2',
-        budget_version_id: 'budget-1',
+        version_id: 'budget-1',
         entity_type: 'enrollment',
         entity_id: 'cell-1',
         field_name: 'student_count',
@@ -66,7 +66,7 @@ describe('CellHistoryDialog', () => {
       <QueryClientProvider client={queryClient}>
         <CellHistoryDialog
           cellId="cell-1"
-          budgetVersionId="budget-1"
+          versionId="budget-1"
           open={true}
           onOpenChange={() => {}}
         />
@@ -81,7 +81,7 @@ describe('CellHistoryDialog', () => {
       <QueryClientProvider client={queryClient}>
         <CellHistoryDialog
           cellId="cell-1"
-          budgetVersionId="budget-1"
+          versionId="budget-1"
           open={true}
           onOpenChange={() => {}}
         />
@@ -98,15 +98,15 @@ describe('CellHistoryDialog', () => {
       <QueryClientProvider client={queryClient}>
         <CellHistoryDialog
           cellId="cell-1"
-          budgetVersionId="budget-1"
+          versionId="budget-1"
           open={true}
           onOpenChange={() => {}}
         />
       </QueryClientProvider>
     )
 
-    expect(screen.getByText('Modification')).toBeInTheDocument()
-    expect(screen.getByText('Création')).toBeInTheDocument()
+    expect(screen.getByText('Modified')).toBeInTheDocument()
+    expect(screen.getByText('Created')).toBeInTheDocument()
   })
 
   it('displays user and timestamp', () => {
@@ -114,7 +114,7 @@ describe('CellHistoryDialog', () => {
       <QueryClientProvider client={queryClient}>
         <CellHistoryDialog
           cellId="cell-1"
-          budgetVersionId="budget-1"
+          versionId="budget-1"
           open={true}
           onOpenChange={() => {}}
         />
@@ -138,13 +138,13 @@ describe('CellHistoryDialog', () => {
       <QueryClientProvider client={queryClient}>
         <CellHistoryDialog
           cellId="cell-1"
-          budgetVersionId="budget-1"
+          versionId="budget-1"
           open={true}
           onOpenChange={() => {}}
         />
       </QueryClientProvider>
     )
 
-    expect(screen.getByText('Aucune modification enregistrée')).toBeInTheDocument()
+    expect(screen.getByText('No changes recorded')).toBeInTheDocument()
   })
 })

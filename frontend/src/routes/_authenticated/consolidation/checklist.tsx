@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { usePlanningProgress } from '@/hooks/api/usePlanningProgress'
 import { useConsolidationSummary, useSubmitForApproval } from '@/hooks/api/useConsolidation'
-import { useBudgetVersion } from '@/contexts/BudgetVersionContext'
+import { useVersion } from '@/contexts/VersionContext'
 import { STEP_METADATA, type StepProgress } from '@/types/planning-progress'
 import {
   CheckCircle2,
@@ -122,7 +122,7 @@ function formatCompact(value: number): string {
 }
 
 function ChecklistPage() {
-  const { selectedVersionId } = useBudgetVersion()
+  const { selectedVersionId } = useVersion()
 
   const { data: progress, isLoading: progressLoading } = usePlanningProgress(selectedVersionId)
   const { data: summary, isLoading: summaryLoading } = useConsolidationSummary(selectedVersionId)
@@ -466,14 +466,14 @@ function ChecklistPage() {
 
             {/* Action Buttons */}
             <div className="flex justify-between items-center p-4 bg-subtle rounded-lg border border-border-light">
-              <Link to="/enrollment/planning">
+              <Link to="/enrollment/projections">
                 <Button variant="outline">
                   <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
                   Back to Planning
                 </Button>
               </Link>
               <div className="flex gap-3">
-                <Link to="/finance/consolidation">
+                <Link to="/consolidation/rollup">
                   <Button variant="outline">View Consolidated Budget</Button>
                 </Link>
                 <Button onClick={handleFinalize} disabled={!isReady || submitMutation.isPending}>
@@ -486,7 +486,7 @@ function ChecklistPage() {
           </>
         ) : (
           <div className="text-center py-12 text-text-secondary">
-            Please select a budget version to view the consolidation checklist
+            Please select a version to view the consolidation checklist
           </div>
         )}
       </div>

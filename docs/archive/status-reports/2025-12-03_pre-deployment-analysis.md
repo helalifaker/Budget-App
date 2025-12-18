@@ -314,13 +314,13 @@ dist/assets/index-CT1M6Zjk.js: 1,907.23 kB
 | Database Schema | Yes | ✅ Exists |
 
 **Documentation Files** (75+ files):
-- `docs/MODULES/MODULE_01-18*.md` - All 18 modules documented
+- `docs/modules/MODULE_01-18*.md` - All 18 modules documented
 - `docs/API_DOCUMENTATION.md`
 - `docs/DEVELOPER_GUIDE.md`
 - `docs/USER_GUIDE.md`
 - `docs/INTEGRATION_GUIDE.md`
-- `docs/DATABASE/schema_design.md`
-- `docs/DATABASE/setup_guide.md`
+- `docs/database/schema_design.md`
+- `docs/database/setup_guide.md`
 - Multiple phase completion summaries
 
 ### 5.2 Documentation Issues

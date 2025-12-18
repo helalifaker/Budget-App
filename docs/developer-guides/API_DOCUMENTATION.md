@@ -56,11 +56,11 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ## Configuration Endpoints
 
-### Budget Versions
+### Versions (formerly Budget Versions)
 
-#### List Budget Versions
+#### List Versions
 ```http
-GET /configuration/budget-versions
+GET /configuration/versions
 ```
 
 **Response** (200 OK):
@@ -82,9 +82,9 @@ GET /configuration/budget-versions
 ]
 ```
 
-#### Create Budget Version
+#### Create Version
 ```http
-POST /configuration/budget-versions
+POST /configuration/versions
 Content-Type: application/json
 
 {
@@ -108,9 +108,9 @@ Content-Type: application/json
 }
 ```
 
-#### Submit Budget Version for Approval
+#### Submit Version for Approval
 ```http
-PATCH /configuration/budget-versions/{version_id}/submit
+PATCH /configuration/versions/{version_id}/submit
 ```
 
 **Response** (200 OK):
@@ -122,9 +122,9 @@ PATCH /configuration/budget-versions/{version_id}/submit
 }
 ```
 
-#### Approve Budget Version
+#### Approve Version
 ```http
-PATCH /configuration/budget-versions/{version_id}/approve
+PATCH /configuration/versions/{version_id}/approve
 ```
 
 **Response** (200 OK):
@@ -215,13 +215,13 @@ GET /planning/enrollment/{version_id}
 
 **Response** (200 OK):
 ```json
-[
-  {
-    "id": "enrollment-uuid",
-    "budget_version_id": "version-uuid",
-    "level_id": "6eme",
-    "level_name": "6ème",
-    "nationality": "French",
+  [
+	  {
+	    "id": "enrollment-uuid",
+	    "version_id": "version-uuid",
+	    "level_id": "6eme",
+	    "level_name": "6ème",
+	    "nationality": "French",
     "student_count": 120,
     "period": "P2",
     "created_at": "2024-12-01T10:00:00Z",
@@ -232,16 +232,16 @@ GET /planning/enrollment/{version_id}
 
 #### Create Enrollment Plan
 ```http
-POST /planning/enrollment
-Content-Type: application/json
+ POST /planning/enrollment
+ Content-Type: application/json
 
-{
-  "budget_version_id": "version-uuid",
-  "level_id": "6eme",
-  "nationality": "French",
-  "student_count": 120,
-  "period": "P2"
-}
+ {
+	  "version_id": "version-uuid",
+	  "level_id": "6eme",
+	  "nationality": "French",
+	  "student_count": 120,
+	  "period": "P2"
+ }
 ```
 
 **Response** (201 Created): Returns created enrollment plan
@@ -443,7 +443,7 @@ POST /planning/costs
 Content-Type: application/json
 
 {
-  "budget_version_id": "version-uuid",
+  "version_id": "version-uuid",
   "account_code": "61110",
   "description": "Educational Supplies",
   "amount_p1": 150000.0,
@@ -853,7 +853,7 @@ const channel = supabase.channel('budget-updates')
   .on('postgres_changes', {
     event: '*',
     schema: 'public',
-    table: 'budget_versions',
+    table: 'settings_versions',
     filter: `id=eq.${versionId}`
   }, (payload) => {
     console.log('Budget updated:', payload);

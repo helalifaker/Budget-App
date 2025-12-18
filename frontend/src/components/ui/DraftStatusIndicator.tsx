@@ -1,6 +1,6 @@
 import { Check, Cloud, CloudOff, Loader2, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { DraftStatus } from '@/hooks/useDraft'
+import type { DraftStatus } from '@/hooks/state/useDraft'
 
 interface DraftStatusIndicatorProps {
   /**

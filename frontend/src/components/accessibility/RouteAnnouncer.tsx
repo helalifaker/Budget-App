@@ -21,40 +21,48 @@ const ROUTE_NAMES: Record<string, string> = {
   '/': 'Home',
   '/login': 'Login',
   '/dashboard': 'Dashboard',
-  // Enrollment module (new structure)
-  '/enrollment/planning': 'Enrollment Planning',
-  '/enrollment/class-structure': 'Class Structure',
-  // Workforce module
-  '/planning/dhg': 'DHG Workforce Planning',
-  '/planning/guide': 'Planning Guide',
-  // Finance module (new structure)
+  // Students module (enrollment)
+  '/students': 'Students',
+  '/students/planning': 'Enrollment Planning',
+  '/students/class-structure': 'Class Structure',
+  '/students/validation': 'Enrollment Validation',
+  '/students/settings': 'Enrollment Settings',
+  // Teachers module (workforce)
+  '/teachers': 'Teachers',
+  '/teachers/employees': 'Employee Registry',
+  '/teachers/salaries': 'Salaries & EOS',
+  '/teachers/aefe-positions': 'AEFE Positions',
+  '/teachers/dhg/planning': 'DHG Workforce Planning',
+  '/teachers/dhg/requirements': 'FTE Requirements',
+  '/teachers/dhg/gap-analysis': 'Gap Analysis (TRMD)',
+  '/teachers/settings': 'Workforce Settings',
+  // Finance module
+  '/finance': 'Finance',
   '/finance/revenue': 'Revenue Planning',
   '/finance/costs': 'Cost Planning',
   '/finance/capex': 'Capital Expenditure Planning',
   '/finance/consolidation': 'Budget Consolidation',
   '/finance/statements': 'Financial Statements',
-  // Analysis module
-  '/analysis/kpis': 'Key Performance Indicators',
-  '/analysis/dashboards': 'Dashboards',
-  '/analysis/variance': 'Variance Analysis',
-  // Configuration
-  '/configuration/versions': 'Budget Versions',
-  '/configuration/class-sizes': 'Class Size Parameters',
-  '/configuration/subject-hours': 'Subject Hours',
-  '/configuration/teacher-costs': 'Teacher Costs',
-  '/configuration/fees': 'Fee Structure',
-  '/configuration/timetable': 'Timetable',
-  '/configuration/system': 'System Configuration',
+  '/finance/settings': 'Finance Settings',
+  // Insights module (analysis)
+  '/insights': 'Insights',
+  '/insights/kpis': 'Key Performance Indicators',
+  '/insights/dashboards': 'Dashboards',
+  '/insights/variance': 'Variance Analysis',
+  // Settings module (configuration)
+  '/settings': 'Settings',
+  '/settings/versions': 'Budget Versions',
+  '/settings/class-sizes': 'Class Size Parameters',
+  '/settings/subject-hours': 'Subject Hours',
+  '/settings/teacher-costs': 'Teacher Costs',
+  '/settings/fees': 'Fee Structure',
+  '/settings/timetable': 'Timetable',
+  '/settings/system': 'System Configuration',
+  '/settings/uploads': 'Data Uploads',
   // Strategic
   '/strategic': '5-Year Strategic Planning',
   // Legacy routes (redirects handle these)
-  '/planning/enrollment': 'Enrollment Planning',
-  '/planning/classes': 'Class Structure',
-  '/planning/costs': 'Cost Planning',
-  '/planning/revenue': 'Revenue Planning',
-  '/planning/capex': 'Capital Expenditure Planning',
-  '/consolidation/budget': 'Budget Consolidation',
-  '/consolidation/statements': 'Financial Statements',
+  '/planning/guide': 'Planning Guide',
 }
 
 /**

@@ -12,18 +12,19 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import BudgetVersion
-from app.models.consolidation import (
+from app.models import (
     BudgetConsolidation,
     ConsolidationCategory,
-)
-from app.models.strategic import (
     ProjectionCategory,
     ScenarioType,
+    Version,
 )
+from app.services.admin.strategic_service import StrategicService
 from app.services.exceptions import BusinessRuleError, NotFoundError, ValidationError
-from app.services.strategic_service import StrategicService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility alias
+BudgetVersion = Version
 
 
 class TestCreateStrategicPlan:
@@ -33,12 +34,12 @@ class TestCreateStrategicPlan:
     async def test_create_strategic_plan_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful strategic plan creation."""
         service = StrategicService(db_session)
         result = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="EFIR 5-Year Plan 2025-2030",
             description="Strategic growth plan",
             years=5,
@@ -46,18 +47,18 @@ class TestCreateStrategicPlan:
 
         assert result is not None
         assert result.name == "EFIR 5-Year Plan 2025-2030"
-        assert result.base_year == test_budget_version.fiscal_year
+        assert result.base_year == test_version.fiscal_year
 
     @pytest.mark.asyncio
     async def test_create_strategic_plan_without_scenarios(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test creating plan without default scenarios."""
         service = StrategicService(db_session)
         result = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Basic Plan",
             create_default_scenarios=False,
         )
@@ -82,14 +83,14 @@ class TestCreateStrategicPlan:
     async def test_create_strategic_plan_invalid_years(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test creating plan with invalid year range."""
         service = StrategicService(db_session)
 
         with pytest.raises(ValidationError):
             await service.create_strategic_plan(
-                base_version_id=test_budget_version.id,
+                base_version_id=test_version.id,
                 plan_name="Invalid Plan",
                 years=10,  # Invalid - max is 5
             )
@@ -98,21 +99,21 @@ class TestCreateStrategicPlan:
     async def test_create_strategic_plan_duplicate_name(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test creating plan with duplicate name."""
         service = StrategicService(db_session)
 
         # Create first plan
         await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Duplicate Plan",
         )
 
         # Try to create duplicate
         with pytest.raises(BusinessRuleError):
             await service.create_strategic_plan(
-                base_version_id=test_budget_version.id,
+                base_version_id=test_version.id,
                 plan_name="Duplicate Plan",
             )
 
@@ -124,14 +125,14 @@ class TestGetStrategicPlan:
     async def test_get_strategic_plan_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful plan retrieval."""
         service = StrategicService(db_session)
 
         # Create plan
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Test Retrieval Plan",
         )
 
@@ -194,16 +195,16 @@ class TestCreateScenario:
     async def test_create_scenario_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful scenario creation."""
-        from app.models.strategic import ScenarioType
+        from app.models import ScenarioType
 
         service = StrategicService(db_session)
 
         # Create plan without default scenarios
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Create Scenario Test Plan",
             create_default_scenarios=False,
         )
@@ -229,16 +230,16 @@ class TestCreateScenario:
     async def test_create_scenario_duplicate_type(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test creating duplicate scenario type fails."""
-        from app.models.strategic import ScenarioType
+        from app.models import ScenarioType
 
         service = StrategicService(db_session)
 
         # Create plan with default scenarios (includes BASE_CASE)
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Duplicate Scenario Test Plan",
         )
 
@@ -258,14 +259,14 @@ class TestGetScenarios:
     async def test_get_scenarios_for_plan(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving scenarios for a plan."""
         service = StrategicService(db_session)
 
         # Create plan with default scenarios
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Get Scenarios Test Plan",
         )
 
@@ -298,14 +299,14 @@ class TestProjectionCalculation:
     async def test_get_year_projections_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving year projections."""
         service = StrategicService(db_session)
 
         # Create plan with default scenarios
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Projection Test Plan",
         )
 
@@ -326,7 +327,7 @@ class TestProjectionCalculation:
     async def test_recalculate_projections_uses_base_version_totals(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Recalculation should use base budget version aggregates and reflect new growth."""
         revenue_amount = Decimal("100000.00")
@@ -337,37 +338,37 @@ class TestProjectionCalculation:
             [
                 BudgetConsolidation(
                     id=uuid.uuid4(),
-                    budget_version_id=test_budget_version.id,
+                    version_id=test_version.id,
                     account_code="70110",
                     account_name="Tuition",
                     consolidation_category=ConsolidationCategory.REVENUE_TUITION,
                     is_revenue=True,
                     amount_sar=revenue_amount,
-                    source_table="revenue_plans",
+                    source_table="finance_revenue_plans",
                     source_count=1,
                     is_calculated=True,
                 ),
                 BudgetConsolidation(
                     id=uuid.uuid4(),
-                    budget_version_id=test_budget_version.id,
+                    version_id=test_version.id,
                     account_code="64110",
                     account_name="Teaching Salaries",
                     consolidation_category=ConsolidationCategory.PERSONNEL_TEACHING,
                     is_revenue=False,
                     amount_sar=personnel_amount,
-                    source_table="personnel_cost_plans",
+                    source_table="finance_personnel_cost_plans",
                     source_count=1,
                     is_calculated=True,
                 ),
                 BudgetConsolidation(
                     id=uuid.uuid4(),
-                    budget_version_id=test_budget_version.id,
+                    version_id=test_version.id,
                     account_code="60610",
                     account_name="Supplies",
                     consolidation_category=ConsolidationCategory.OPERATING_SUPPLIES,
                     is_revenue=False,
                     amount_sar=operating_amount,
-                    source_table="operating_cost_plans",
+                    source_table="finance_operating_cost_plans",
                     source_count=1,
                     is_calculated=True,
                 ),
@@ -377,7 +378,7 @@ class TestProjectionCalculation:
 
         service = StrategicService(db_session)
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Recalc Test Plan",
         )
 
@@ -442,14 +443,14 @@ class TestStrategicInitiatives:
     async def test_add_initiative_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test successful initiative creation using add_initiative."""
         service = StrategicService(db_session)
 
         # Create plan
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Initiative Test Plan",
         )
 
@@ -473,14 +474,14 @@ class TestGetInitiatives:
     async def test_get_initiatives_for_plan(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving initiatives for a plan."""
         service = StrategicService(db_session)
 
         # Create plan
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Get Initiatives Test Plan",
         )
 
@@ -528,16 +529,16 @@ class TestUpdateInitiativeStatus:
     async def test_update_initiative_status(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test updating initiative status."""
-        from app.models.strategic import InitiativeStatus
+        from app.models import InitiativeStatus
 
         service = StrategicService(db_session)
 
         # Create plan and initiative
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Update Status Test Plan",
         )
         initiative = await service.add_initiative(
@@ -573,7 +574,7 @@ class TestUpdateInitiativeStatus:
         db_session: AsyncSession,
     ):
         """Test updating status for non-existent initiative."""
-        from app.models.strategic import InitiativeStatus
+        from app.models import InitiativeStatus
 
         service = StrategicService(db_session)
 
@@ -591,14 +592,14 @@ class TestScenarioComparison:
     async def test_compare_scenarios(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test comparing scenarios."""
         service = StrategicService(db_session)
 
         # Create plan with scenarios
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Comparison Plan",
         )
 
@@ -615,14 +616,14 @@ class TestPlanSummary:
     async def test_get_plan_summary(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test getting plan summary."""
         service = StrategicService(db_session)
 
         # Create plan with scenarios and initiative
         plan = await service.create_strategic_plan(
-            base_version_id=test_budget_version.id,
+            base_version_id=test_version.id,
             plan_name="Summary Test Plan",
         )
         await service.add_initiative(

@@ -51,7 +51,7 @@ export const BUDGET_VERSION_STATUSES = [
 export type BudgetVersionStatus = (typeof BUDGET_VERSION_STATUSES)[number]
 
 /**
- * Check if a string is a valid budget version status
+ * Check if a string is a valid version status
  * Useful for runtime validation when receiving data from external sources
  */
 export function isValidBudgetVersionStatus(status: string): status is BudgetVersionStatus {

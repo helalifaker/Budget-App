@@ -371,5 +371,5 @@ During migration, we maintain backward compatibility:
 ## Related Documents
 
 - [Implementation Plan](/Users/fakerhelali/.claude/plans/delegated-moseying-anchor.md)
-- [Module 08: DHG Workforce Planning](docs/MODULES/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md)
-- [Module 11: Cost Planning](docs/MODULES/MODULE_11_COST_PLANNING.md)
+- [Module 08: DHG Workforce Planning](docs/modules/MODULE_08_TEACHER_WORKFORCE_PLANNING_DHG.md)
+- [Module 11: Cost Planning](docs/modules/MODULE_11_COST_PLANNING.md)

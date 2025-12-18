@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Edit2, X, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { IncidentalLateral, ParameterOverrideUpdate } from '@/types/enrollmentSettings'
+import type { IncidentalLateral, ParameterOverrideUpdate } from '@/types/enrollment-settings'
 
 interface IncidentalLateralTableProps {
   entries: IncidentalLateral[]

@@ -6,14 +6,13 @@ Tests all CRUD operations, validation, and business logic for subject hours matr
 
 import uuid
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.configuration import AcademicCycle, AcademicLevel, Subject, SubjectHoursMatrix
+from app.models import SubjectHoursMatrix
 from app.services.exceptions import ValidationError
-from app.services.subject_hours_service import SubjectHoursService
+from app.services.settings.subject_hours_service import SubjectHoursService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class TestSubjectHoursServiceInitialization:
@@ -37,21 +36,21 @@ class TestGetSubjectHoursMatrix:
 
     @pytest.mark.asyncio
     async def test_get_subject_hours_matrix_success(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test retrieving subject hours matrix."""
         service = SubjectHoursService(db_session)
 
         # Create some entries
         await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("4.5"),
             user_id=test_user_id,
         )
 
-        matrix = await service.get_subject_hours_matrix(test_budget_version.id)
+        matrix = await service.get_subject_hours_matrix(test_version.id)
         assert len(matrix) >= 1
 
         # Check eager loading
@@ -62,11 +61,11 @@ class TestGetSubjectHoursMatrix:
 
     @pytest.mark.asyncio
     async def test_get_subject_hours_matrix_empty(
-        self, db_session: AsyncSession, test_budget_version
+        self, db_session: AsyncSession, test_version
     ):
         """Test retrieving empty matrix returns empty list."""
         service = SubjectHoursService(db_session)
-        matrix = await service.get_subject_hours_matrix(test_budget_version.id)
+        matrix = await service.get_subject_hours_matrix(test_version.id)
         # May have entries from other tests, just verify it's a list
         assert isinstance(matrix, list)
 
@@ -76,13 +75,13 @@ class TestUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_create(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test creating new subject hours entry."""
         service = SubjectHoursService(db_session)
 
         entry = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["FRENCH"].id,
             level_id=academic_levels["5EME"].id,
             hours_per_week=Decimal("5.0"),
@@ -98,14 +97,14 @@ class TestUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_update(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test updating existing subject hours entry."""
         service = SubjectHoursService(db_session)
 
         # Create first
         entry1 = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("4.0"),
@@ -114,7 +113,7 @@ class TestUpsertSubjectHours:
 
         # Update same entry
         entry2 = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("4.5"),
@@ -128,14 +127,14 @@ class TestUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_invalid_zero_hours(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test zero hours fails validation."""
         service = SubjectHoursService(db_session)
 
         with pytest.raises(ValidationError, match="between 0 and 12"):
             await service.upsert_subject_hours(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 subject_id=subjects["MATH"].id,
                 level_id=academic_levels["6EME"].id,
                 hours_per_week=Decimal("0"),
@@ -144,14 +143,14 @@ class TestUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_invalid_negative_hours(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test negative hours fails validation."""
         service = SubjectHoursService(db_session)
 
         with pytest.raises(ValidationError, match="between 0 and 12"):
             await service.upsert_subject_hours(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 subject_id=subjects["MATH"].id,
                 level_id=academic_levels["6EME"].id,
                 hours_per_week=Decimal("-1"),
@@ -160,14 +159,14 @@ class TestUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_invalid_excessive_hours(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test hours exceeding 12 fails validation."""
         service = SubjectHoursService(db_session)
 
         with pytest.raises(ValidationError, match="between 0 and 12"):
             await service.upsert_subject_hours(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 subject_id=subjects["MATH"].id,
                 level_id=academic_levels["6EME"].id,
                 hours_per_week=Decimal("15"),
@@ -176,14 +175,14 @@ class TestUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_valid_boundary_hours(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test valid boundary hours (0.5 and 12)."""
         service = SubjectHoursService(db_session)
 
         # Test minimum valid hours
         entry1 = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("0.5"),
@@ -193,7 +192,7 @@ class TestUpsertSubjectHours:
 
         # Test maximum valid hours
         entry2 = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("12"),
@@ -203,14 +202,14 @@ class TestUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_upsert_subject_hours_with_split(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test creating entry with split flag (half-size groups)."""
         service = SubjectHoursService(db_session)
 
         # Use SVT (Sciences de la Vie et de la Terre) for science lab work
         entry = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["SVT"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("2.0"),
@@ -228,10 +227,10 @@ class TestBatchUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_batch_upsert_create_multiple(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test batch creating multiple entries."""
-        from app.schemas.configuration import SubjectHoursEntry
+        from app.schemas.settings import SubjectHoursEntry
 
         service = SubjectHoursService(db_session)
 
@@ -253,7 +252,7 @@ class TestBatchUpsertSubjectHours:
         ]
 
         result = await service.batch_upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             entries=entries,
             user_id=test_user_id,
         )
@@ -266,16 +265,16 @@ class TestBatchUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_batch_upsert_with_deletion(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test batch operation with deletion (hours_per_week=None)."""
-        from app.schemas.configuration import SubjectHoursEntry
+        from app.schemas.settings import SubjectHoursEntry
 
         service = SubjectHoursService(db_session)
 
         # First create an entry
         await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["HISTORY"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("3.0"),
@@ -294,7 +293,7 @@ class TestBatchUpsertSubjectHours:
         ]
 
         result = await service.batch_upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             entries=entries,
             user_id=test_user_id,
         )
@@ -303,12 +302,11 @@ class TestBatchUpsertSubjectHours:
 
     @pytest.mark.asyncio
     async def test_batch_upsert_invalid_hours_error(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test batch operation with invalid hours is rejected by Pydantic schema."""
+        from app.schemas.settings import SubjectHoursEntry
         from pydantic import ValidationError as PydanticValidationError
-
-        from app.schemas.configuration import SubjectHoursEntry
 
         # Pydantic schema validates hours_per_week at instantiation (ge=0, le=12)
         # So invalid hours are rejected before reaching the service
@@ -331,13 +329,13 @@ class TestGetSubjectHoursMatrixByCycle:
 
     @pytest.mark.asyncio
     async def test_get_matrix_by_cycle_all(
-        self, db_session: AsyncSession, test_budget_version, academic_cycles
+        self, db_session: AsyncSession, test_version, academic_cycles
     ):
         """Test retrieving matrix for all cycles."""
         service = SubjectHoursService(db_session)
 
         result = await service.get_subject_hours_matrix_by_cycle(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             cycle_code=None,
         )
 
@@ -347,13 +345,13 @@ class TestGetSubjectHoursMatrixByCycle:
 
     @pytest.mark.asyncio
     async def test_get_matrix_by_cycle_filtered(
-        self, db_session: AsyncSession, test_budget_version, academic_cycles
+        self, db_session: AsyncSession, test_version, academic_cycles
     ):
         """Test retrieving matrix filtered by specific cycle."""
         service = SubjectHoursService(db_session)
 
         result = await service.get_subject_hours_matrix_by_cycle(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             cycle_code="COLL",
         )
 
@@ -368,14 +366,14 @@ class TestDeleteSubjectHours:
 
     @pytest.mark.asyncio
     async def test_delete_subject_hours_success(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test soft deleting a subject hours entry."""
         service = SubjectHoursService(db_session)
 
         # Create entry - use HISTORY (History-Geography)
         entry = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["HISTORY"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("2.0"),
@@ -386,7 +384,7 @@ class TestDeleteSubjectHours:
         await service.delete_subject_hours(entry.id, user_id=test_user_id)
 
         # Verify it's not in the matrix anymore
-        matrix = await service.get_subject_hours_matrix(test_budget_version.id)
+        matrix = await service.get_subject_hours_matrix(test_version.id)
         entry_ids = [e.id for e in matrix]
         assert entry.id not in entry_ids
 
@@ -396,28 +394,28 @@ class TestGetTotalHoursByLevel:
 
     @pytest.mark.asyncio
     async def test_get_total_hours_by_level(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test calculating total weekly hours for a level."""
         service = SubjectHoursService(db_session)
 
         # Create entries for the same level
         await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["MATH"].id,
             level_id=academic_levels["5EME"].id,
             hours_per_week=Decimal("4.0"),
             user_id=test_user_id,
         )
         await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["FRENCH"].id,
             level_id=academic_levels["5EME"].id,
             hours_per_week=Decimal("5.0"),
             user_id=test_user_id,
         )
         await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["SVT"].id,
             level_id=academic_levels["5EME"].id,
             hours_per_week=Decimal("3.5"),
@@ -425,7 +423,7 @@ class TestGetTotalHoursByLevel:
         )
 
         total = await service.get_total_hours_by_level(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["5EME"].id,
         )
 
@@ -434,14 +432,14 @@ class TestGetTotalHoursByLevel:
 
     @pytest.mark.asyncio
     async def test_get_total_hours_empty_level(
-        self, db_session: AsyncSession, test_budget_version, academic_levels
+        self, db_session: AsyncSession, test_version, academic_levels
     ):
         """Test total hours for level with no entries."""
         service = SubjectHoursService(db_session)
 
         # Use a level that might not have entries
         total = await service.get_total_hours_by_level(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             level_id=academic_levels["PS"].id,  # Maternelle level - unlikely to have secondary subject hours
         )
 
@@ -483,14 +481,14 @@ class TestSplitClassBehavior:
 
     @pytest.mark.asyncio
     async def test_split_class_doubles_teaching_hours(
-        self, db_session: AsyncSession, test_budget_version, subjects, academic_levels, test_user_id
+        self, db_session: AsyncSession, test_version, subjects, academic_levels, test_user_id
     ):
         """Test that split classes are properly flagged."""
         service = SubjectHoursService(db_session)
 
         # Physics-Chemistry lab with split classes (half-size groups)
         entry = await service.upsert_subject_hours(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             subject_id=subjects["PHYS"].id,
             level_id=academic_levels["6EME"].id,
             hours_per_week=Decimal("2.0"),

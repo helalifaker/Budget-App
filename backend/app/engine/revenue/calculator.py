@@ -27,7 +27,7 @@ Total Revenue:
 
 from decimal import Decimal
 
-from app.engine.revenue.models import (
+from .models import (
     FeeCategory,
     SiblingDiscount,
     StudentRevenueResult,

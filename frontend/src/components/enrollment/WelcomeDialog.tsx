@@ -108,7 +108,7 @@ export function WelcomeDialog({
           </div>
 
           {/* What enrollment projections drive */}
-          <div className="bg-sage-lighter rounded-lg p-4 space-y-3">
+          <div className="bg-sage-50 rounded-lg p-4 space-y-3">
             <h4 className="text-sm font-semibold text-sage uppercase tracking-wider">
               Your Enrollment Projections Drive
             </h4>
@@ -157,7 +157,7 @@ export function WelcomeDialog({
                     key={step.number}
                     className={cn(
                       'flex items-start gap-3 p-3 rounded-lg',
-                      'border border-border-light hover:border-sage-light',
+                      'border border-border-light hover:border-sage-200',
                       'transition-colors duration-200'
                     )}
                   >
@@ -187,7 +187,7 @@ export function WelcomeDialog({
           <Button
             type="button"
             onClick={handleGetStarted}
-            className="gap-2 bg-sage hover:bg-sage-hover"
+            className="gap-2 bg-sage hover:bg-sage-600"
           >
             Get Started
             <ArrowRight className="h-4 w-4" />

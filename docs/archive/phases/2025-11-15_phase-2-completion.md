@@ -100,7 +100,7 @@ Implemented 9 model classes across 6 modules:
 
 ### ✅ 3. Row Level Security (RLS) Policies
 
-**File**: `/docs/DATABASE/sql/rls_policies.sql` (updated)
+**File**: `/docs/database/sql/rls_policies.sql` (updated)
 
 **Policy Coverage**:
 - All 9 Planning Layer tables

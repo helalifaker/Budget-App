@@ -68,10 +68,8 @@ describe('ErrorBoundary', () => {
       )
 
       // Should display error UI
-      expect(screen.getByText('Une erreur est survenue')).toBeInTheDocument()
-      expect(
-        screen.getByText(/Nous sommes désolés, mais quelque chose s'est mal passé/)
-      ).toBeInTheDocument()
+      expect(screen.getByText('An error occurred')).toBeInTheDocument()
+      expect(screen.getByText(/We're sorry, but something went wrong/)).toBeInTheDocument()
 
       // Should not display child component
       expect(screen.queryByText('Child component')).not.toBeInTheDocument()
@@ -144,7 +142,7 @@ describe('ErrorBoundary', () => {
         </ErrorBoundary>
       )
 
-      const details = screen.getByText('Détails techniques')
+      const details = screen.getByText('Technical details')
       expect(details).toBeInTheDocument()
 
       // Technical details should be in a <details> element
@@ -160,7 +158,7 @@ describe('ErrorBoundary', () => {
       )
 
       // Expand technical details
-      const summary = screen.getByText('Détails techniques')
+      const summary = screen.getByText('Technical details')
       fireEvent.click(summary)
 
       // Should show error message
@@ -221,7 +219,7 @@ describe('ErrorBoundary', () => {
       )
 
       expect(screen.getByText('Custom error message')).toBeInTheDocument()
-      expect(screen.queryByText('Une erreur est survenue')).not.toBeInTheDocument()
+      expect(screen.queryByText('An error occurred')).not.toBeInTheDocument()
     })
 
     it('should not render custom fallback when no error', () => {
@@ -247,7 +245,7 @@ describe('ErrorBoundary', () => {
       )
 
       // Error UI should be visible
-      expect(screen.getByText('Une erreur est survenue')).toBeInTheDocument()
+      expect(screen.getByText('An error occurred')).toBeInTheDocument()
 
       // Rerender with non-throwing component
       rerender(
@@ -257,7 +255,7 @@ describe('ErrorBoundary', () => {
       )
 
       // Error UI should still be visible (error state persists)
-      expect(screen.getByText('Une erreur est survenue')).toBeInTheDocument()
+      expect(screen.getByText('An error occurred')).toBeInTheDocument()
       expect(screen.queryByText('Child component')).not.toBeInTheDocument()
     })
   })
@@ -277,7 +275,7 @@ describe('ErrorBoundary', () => {
         </ErrorBoundary>
       )
 
-      expect(screen.getByText('Une erreur est survenue')).toBeInTheDocument()
+      expect(screen.getByText('An error occurred')).toBeInTheDocument()
       expect(Sentry.captureException).toHaveBeenCalled()
     })
 
@@ -292,21 +290,21 @@ describe('ErrorBoundary', () => {
         </ErrorBoundary>
       )
 
-      expect(screen.getByText('Une erreur est survenue')).toBeInTheDocument()
+      expect(screen.getByText('An error occurred')).toBeInTheDocument()
     })
 
     it('should handle null children', () => {
       render(<ErrorBoundary>{null}</ErrorBoundary>)
 
       // Should render nothing but not crash
-      expect(screen.queryByText('Une erreur est survenue')).not.toBeInTheDocument()
+      expect(screen.queryByText('An error occurred')).not.toBeInTheDocument()
     })
 
     it('should handle undefined children', () => {
       render(<ErrorBoundary>{undefined}</ErrorBoundary>)
 
       // Should render nothing but not crash
-      expect(screen.queryByText('Une erreur est survenue')).not.toBeInTheDocument()
+      expect(screen.queryByText('An error occurred')).not.toBeInTheDocument()
     })
   })
 
@@ -333,7 +331,7 @@ describe('ErrorBoundary', () => {
         </ErrorBoundary>
       )
 
-      const summary = screen.getByText('Détails techniques')
+      const summary = screen.getByText('Technical details')
       expect(summary.closest('details')).toBeInTheDocument()
 
       // Details/summary is natively keyboard accessible

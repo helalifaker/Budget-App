@@ -7,7 +7,11 @@ Provides user context from authenticated requests.
 import uuid
 from typing import Annotated
 
+import structlog
 from fastapi import Depends, HTTPException, Request, status
+
+# Module-level structured logger
+logger = structlog.get_logger(__name__)
 
 
 class CurrentUser:
@@ -80,28 +84,24 @@ async def get_current_user(request: Request) -> CurrentUser:
             detail="Not authenticated",
         )
 
-    # Log the actual user_id value for debugging
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.debug(f"Attempting to convert user_id to UUID: {user_id} (type: {type(user_id)})")
-
     try:
         # Ensure user_id is a string before UUID conversion
         user_id_str = str(user_id).strip()
         user_uuid = uuid.UUID(user_id_str)
     except (ValueError, AttributeError, TypeError) as e:
-        logger.error(
-            f"Failed to convert user_id to UUID: {user_id} (type: {type(user_id)}), error: {e}"
-        )
+        logger.error("user_id_uuid_conversion_failed", user_id=str(user_id), error=str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid user ID format: {user_id}",
         )
 
+    role = getattr(request.state, "user_role", "viewer")
+    logger.debug("creating_current_user", role=role)
+
     return CurrentUser(
         user_id=user_uuid,
         email=getattr(request.state, "user_email", ""),
-        role=getattr(request.state, "user_role", "viewer"),
+        role=role,
         metadata=getattr(request.state, "user_metadata", {}),
     )
 
@@ -154,10 +154,12 @@ async def require_manager(user: CurrentUser = Depends(get_current_user)) -> Curr
         HTTPException: If user is not manager or admin
     """
     if not user.is_manager():
+        logger.warning("permission_denied", role=user.role, required="manager_or_admin")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Manager or admin access required",
         )
+    logger.debug("permission_granted", role=user.role, required="manager_or_admin")
     return user
 
 

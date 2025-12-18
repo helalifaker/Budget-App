@@ -10,11 +10,11 @@ export const planningProgressKeys = {
 }
 
 /**
- * Hook to fetch planning progress for a budget version
+ * Hook to fetch planning progress for a version
  *
  * Automatically refreshes every 30 seconds to show real-time progress updates.
  *
- * @param versionId - Budget version UUID (optional)
+ * @param versionId - Version UUID (optional)
  * @returns Query result with planning progress data
  */
 export function usePlanningProgress(versionId: string | undefined) {

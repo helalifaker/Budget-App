@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.schemas.historical import (
+from app.schemas.admin import (
     CapExWithHistoryResponse,
     ClassStructureWithHistoryResponse,
     CostsWithHistoryResponse,
@@ -21,9 +21,9 @@ from app.schemas.historical import (
     EnrollmentWithHistoryResponse,
     RevenueWithHistoryResponse,
 )
-from app.services.historical_comparison_service import HistoricalComparisonService
+from app.services.insights.historical_comparison_service import HistoricalComparisonService
 
-router = APIRouter(prefix="/api/v1/historical", tags=["Historical Comparison"])
+router = APIRouter(prefix="/historical", tags=["Historical Comparison"])
 
 
 # =============================================================================
@@ -32,7 +32,7 @@ router = APIRouter(prefix="/api/v1/historical", tags=["Historical Comparison"])
 
 
 @router.get(
-    "/enrollment/{budget_version_id}",
+    "/enrollment/{version_id}",
     response_model=EnrollmentWithHistoryResponse,
     summary="Get enrollment with historical comparison",
     description=(
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/api/v1/historical", tags=["Historical Comparison"])
     ),
 )
 async def get_enrollment_with_history(
-    budget_version_id: UUID,
+    version_id: UUID,
     history_years: int = Query(2, ge=1, le=5, description="Number of historical years"),
     db: AsyncSession = Depends(get_db),
 ) -> EnrollmentWithHistoryResponse:
@@ -50,7 +50,7 @@ async def get_enrollment_with_history(
 
     try:
         data = await service.get_enrollment_with_history(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             history_years=history_years,
         )
         return EnrollmentWithHistoryResponse(**data)
@@ -67,7 +67,7 @@ async def get_enrollment_with_history(
 
 
 @router.get(
-    "/classes/{budget_version_id}",
+    "/classes/{version_id}",
     response_model=ClassStructureWithHistoryResponse,
     summary="Get class structure with historical comparison",
     description=(
@@ -76,7 +76,7 @@ async def get_enrollment_with_history(
     ),
 )
 async def get_classes_with_history(
-    budget_version_id: UUID,
+    version_id: UUID,
     history_years: int = Query(2, ge=1, le=5, description="Number of historical years"),
     db: AsyncSession = Depends(get_db),
 ) -> ClassStructureWithHistoryResponse:
@@ -88,12 +88,12 @@ async def get_classes_with_history(
     try:
         # For now, return a stub response
         # In full implementation, would query ClassStructure model
-        fiscal_year = await service.get_budget_version_fiscal_year(budget_version_id)
+        fiscal_year = await service.get_version_fiscal_year(version_id)
         if not fiscal_year:
-            raise ValueError(f"Budget version {budget_version_id} not found")
+            raise ValueError(f"Version {version_id} not found")
 
         return ClassStructureWithHistoryResponse(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             fiscal_year=fiscal_year,
             current_fiscal_year=fiscal_year,
             rows=[],
@@ -112,7 +112,7 @@ async def get_classes_with_history(
 
 
 @router.get(
-    "/dhg/{budget_version_id}",
+    "/dhg/{version_id}",
     response_model=DHGWithHistoryResponse,
     summary="Get DHG with historical comparison",
     description=(
@@ -121,7 +121,7 @@ async def get_classes_with_history(
     ),
 )
 async def get_dhg_with_history(
-    budget_version_id: UUID,
+    version_id: UUID,
     history_years: int = Query(2, ge=1, le=5, description="Number of historical years"),
     db: AsyncSession = Depends(get_db),
 ) -> DHGWithHistoryResponse:
@@ -130,7 +130,7 @@ async def get_dhg_with_history(
 
     try:
         data = await service.get_dhg_with_history(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             history_years=history_years,
         )
         return DHGWithHistoryResponse(**data)
@@ -147,7 +147,7 @@ async def get_dhg_with_history(
 
 
 @router.get(
-    "/revenue/{budget_version_id}",
+    "/revenue/{version_id}",
     response_model=RevenueWithHistoryResponse,
     summary="Get revenue with historical comparison",
     description=(
@@ -156,7 +156,7 @@ async def get_dhg_with_history(
     ),
 )
 async def get_revenue_with_history(
-    budget_version_id: UUID,
+    version_id: UUID,
     history_years: int = Query(2, ge=1, le=5, description="Number of historical years"),
     db: AsyncSession = Depends(get_db),
 ) -> RevenueWithHistoryResponse:
@@ -165,7 +165,7 @@ async def get_revenue_with_history(
 
     try:
         data = await service.get_revenue_with_history(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             history_years=history_years,
         )
         return RevenueWithHistoryResponse(**data)
@@ -182,7 +182,7 @@ async def get_revenue_with_history(
 
 
 @router.get(
-    "/costs/{budget_version_id}",
+    "/costs/{version_id}",
     response_model=CostsWithHistoryResponse,
     summary="Get costs with historical comparison",
     description=(
@@ -191,7 +191,7 @@ async def get_revenue_with_history(
     ),
 )
 async def get_costs_with_history(
-    budget_version_id: UUID,
+    version_id: UUID,
     history_years: int = Query(2, ge=1, le=5, description="Number of historical years"),
     db: AsyncSession = Depends(get_db),
 ) -> CostsWithHistoryResponse:
@@ -200,7 +200,7 @@ async def get_costs_with_history(
 
     try:
         data = await service.get_costs_with_history(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             history_years=history_years,
         )
         return CostsWithHistoryResponse(**data)
@@ -217,7 +217,7 @@ async def get_costs_with_history(
 
 
 @router.get(
-    "/capex/{budget_version_id}",
+    "/capex/{version_id}",
     response_model=CapExWithHistoryResponse,
     summary="Get CapEx with historical comparison",
     description=(
@@ -226,7 +226,7 @@ async def get_costs_with_history(
     ),
 )
 async def get_capex_with_history(
-    budget_version_id: UUID,
+    version_id: UUID,
     history_years: int = Query(2, ge=1, le=5, description="Number of historical years"),
     db: AsyncSession = Depends(get_db),
 ) -> CapExWithHistoryResponse:
@@ -235,7 +235,7 @@ async def get_capex_with_history(
 
     try:
         data = await service.get_capex_with_history(
-            budget_version_id=budget_version_id,
+            version_id=version_id,
             history_years=history_years,
         )
         return CapExWithHistoryResponse(**data)

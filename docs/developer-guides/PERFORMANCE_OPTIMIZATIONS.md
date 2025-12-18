@@ -8,38 +8,42 @@
 ### Indexes
 
 ```sql
--- Budget Versions
-CREATE INDEX idx_budget_versions_status ON budget_versions(status);
-CREATE INDEX idx_budget_versions_fiscal_year ON budget_versions(fiscal_year);
-CREATE INDEX idx_budget_versions_created_by ON budget_versions(created_by);
+-- NOTE: Authoritative indexes live in Alembic migrations (backend/alembic/versions/).
+-- The statements below illustrate the CURRENT schema naming and common access patterns.
 
--- Enrollment Plans
-CREATE INDEX idx_enrollment_version ON enrollment_plans(budget_version_id);
-CREATE INDEX idx_enrollment_level ON enrollment_plans(level_id);
-CREATE INDEX idx_enrollment_composite ON enrollment_plans(budget_version_id, level_id, nationality);
+-- Settings versions
+CREATE INDEX IF NOT EXISTS idx_settings_versions_status ON efir_budget.settings_versions(status);
+CREATE INDEX IF NOT EXISTS idx_settings_versions_fiscal_year ON efir_budget.settings_versions(fiscal_year);
 
--- Class Structure
-CREATE INDEX idx_class_structure_version ON class_structures(budget_version_id);
-CREATE INDEX idx_class_structure_level ON class_structures(level_id);
+-- Enrollment facts (Phase 4A unified)
+CREATE INDEX IF NOT EXISTS idx_students_data_version ON efir_budget.students_data(version_id);
+CREATE INDEX IF NOT EXISTS idx_students_data_level ON efir_budget.students_data(level_id);
+CREATE INDEX IF NOT EXISTS idx_students_data_version_year_level
+ON efir_budget.students_data(version_id, fiscal_year, level_id);
 
--- DHG Calculations
-CREATE INDEX idx_dhg_version ON dhg_calculations(budget_version_id);
-CREATE INDEX idx_dhg_subject ON dhg_calculations(subject_id);
-CREATE INDEX idx_dhg_composite ON dhg_calculations(budget_version_id, subject_id);
+-- Class structure output (cached)
+CREATE INDEX IF NOT EXISTS idx_students_class_structures_version
+ON efir_budget.students_class_structures(version_id);
+CREATE INDEX IF NOT EXISTS idx_students_class_structures_level
+ON efir_budget.students_class_structures(level_id);
 
--- Revenue Plans
-CREATE INDEX idx_revenue_version ON revenue_plans(budget_version_id);
-CREATE INDEX idx_revenue_account ON revenue_plans(account_code);
-CREATE INDEX idx_revenue_period ON revenue_plans(period);
+-- DHG outputs
+CREATE INDEX IF NOT EXISTS idx_teachers_dhg_subject_hours_version
+ON efir_budget.teachers_dhg_subject_hours(version_id);
+CREATE INDEX IF NOT EXISTS idx_teachers_dhg_subject_hours_subject
+ON efir_budget.teachers_dhg_subject_hours(subject_id);
+CREATE INDEX IF NOT EXISTS idx_teachers_dhg_requirements_version
+ON efir_budget.teachers_dhg_requirements(version_id);
 
--- Cost Plans
-CREATE INDEX idx_cost_version ON cost_plans(budget_version_id);
-CREATE INDEX idx_cost_account ON cost_plans(account_code);
+-- Unified finance fact table (Phase 4C)
+CREATE INDEX IF NOT EXISTS idx_finance_data_version ON efir_budget.finance_data(version_id);
+CREATE INDEX IF NOT EXISTS idx_finance_data_type ON efir_budget.finance_data(data_type);
+CREATE INDEX IF NOT EXISTS idx_finance_data_account ON efir_budget.finance_data(account_code);
+CREATE INDEX IF NOT EXISTS idx_finance_data_version_type ON efir_budget.finance_data(version_id, data_type);
 
--- Budget vs Actual
-CREATE INDEX idx_actuals_version ON actuals(budget_version_id);
-CREATE INDEX idx_actuals_period ON actuals(period);
-CREATE INDEX idx_actuals_account ON actuals(account_code);
+-- Insights (legacy tables may still exist in some environments)
+CREATE INDEX IF NOT EXISTS idx_insights_budget_vs_actual_version
+ON efir_budget.insights_budget_vs_actual(version_id);
 ```
 
 ### Query Optimization
@@ -47,13 +51,13 @@ CREATE INDEX idx_actuals_account ON actuals(account_code);
 **Use SELECT RELATED / PREFETCH RELATED**:
 ```python
 # Bad - N+1 queries
-enrollments = EnrollmentPlan.objects.filter(budget_version_id=version_id)
+enrollments = EnrollmentPlan.objects.filter(version_id=version_id)
 for e in enrollments:
     print(e.level.name)  # N queries
 
 # Good - 2 queries total
 enrollments = EnrollmentPlan.objects.filter(
-    budget_version_id=version_id
+    version_id=version_id
 ).select_related('level', 'budget_version')
 ```
 
@@ -69,7 +73,7 @@ async def get_enrollment(
 ):
     offset = (page - 1) * page_size
     query = db.query(EnrollmentPlan).filter(
-        EnrollmentPlan.budget_version_id == version_id
+        EnrollmentPlan.version_id == version_id
     )
     total = query.count()
     items = query.offset(offset).limit(page_size).all()
@@ -244,7 +248,7 @@ async def get_enrollment(
     db: Session = Depends(get_db)
 ):
     query = db.query(EnrollmentPlan).filter(
-        EnrollmentPlan.budget_version_id == version_id
+        EnrollmentPlan.version_id == version_id
     )
 
     if fields:

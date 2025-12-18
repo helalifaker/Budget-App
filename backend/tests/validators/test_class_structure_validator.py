@@ -4,13 +4,17 @@ import uuid
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import (
+from app.models import (
     AcademicCycle,
     AcademicLevel,
-    BudgetVersion,
-    BudgetVersionStatus,
     ClassSizeParam,
+    Version,
+    VersionStatus,
 )
+
+# Backward compatibility aliases
+BudgetVersion = Version
+BudgetVersionStatus = VersionStatus
 from app.services.exceptions import ValidationError
 from app.validators.class_structure import (
     ClassStructureValidationError,
@@ -159,7 +163,6 @@ class TestClassStructureValidationAsync:
             name_en="Middle School",
             name_fr="Collège",
             sort_order=3,
-            requires_atsem=False
         )
         db_session.add(cycle)
 
@@ -170,7 +173,6 @@ class TestClassStructureValidationAsync:
             name_en="6th Grade",
             name_fr="6ème",
             sort_order=1,
-            is_secondary=True
         )
         db_session.add(level)
         await db_session.flush()
@@ -186,7 +188,7 @@ class TestClassStructureValidationAsync:
 
     @pytest.mark.asyncio
     async def test_validate_class_structure_level_specific_param(
-        self, db_session: AsyncSession, test_user_id
+        self, db_session: AsyncSession, test_user_id, organization_id
     ):
         """Test validation uses level-specific parameters."""
         # Create budget version
@@ -198,6 +200,7 @@ class TestClassStructureValidationAsync:
             status=BudgetVersionStatus.WORKING,
             is_baseline=False,
             notes="Test budget for validator",
+            organization_id=organization_id,
             created_by_id=test_user_id
         )
         db_session.add(budget_version)
@@ -209,7 +212,6 @@ class TestClassStructureValidationAsync:
             name_en="Middle School",
             name_fr="Collège",
             sort_order=3,
-            requires_atsem=False
         )
         db_session.add(cycle)
 
@@ -220,14 +222,13 @@ class TestClassStructureValidationAsync:
             name_en="6th Grade",
             name_fr="6ème",
             sort_order=1,
-            is_secondary=True
         )
         db_session.add(level)
 
         # Level-specific parameter
         param = ClassSizeParam(
             id=uuid.uuid4(),
-            budget_version_id=budget_version.id,
+            version_id=budget_version.id,
             level_id=level.id,
             cycle_id=None,
             min_class_size=18,
@@ -268,7 +269,7 @@ class TestClassStructureValidationAsync:
 
     @pytest.mark.asyncio
     async def test_validate_class_structure_cycle_level_param_fallback(
-        self, db_session: AsyncSession, test_user_id
+        self, db_session: AsyncSession, test_user_id, organization_id
     ):
         """Test validation falls back to cycle-level parameters."""
         # Create budget version
@@ -280,6 +281,7 @@ class TestClassStructureValidationAsync:
             status=BudgetVersionStatus.WORKING,
             is_baseline=False,
             notes="Test budget for validator",
+            organization_id=organization_id,
             created_by_id=test_user_id
         )
         db_session.add(budget_version)
@@ -291,7 +293,6 @@ class TestClassStructureValidationAsync:
             name_en="Middle School",
             name_fr="Collège",
             sort_order=3,
-            requires_atsem=False
         )
         db_session.add(cycle)
 
@@ -302,14 +303,13 @@ class TestClassStructureValidationAsync:
             name_en="7th Grade",
             name_fr="5ème",
             sort_order=2,
-            is_secondary=True
         )
         db_session.add(level)
 
         # Cycle-level parameter (no level_id)
         cycle_param = ClassSizeParam(
             id=uuid.uuid4(),
-            budget_version_id=budget_version.id,
+            version_id=budget_version.id,
             cycle_id=cycle.id,
             level_id=None,  # Cycle-level parameter
             min_class_size=20,

@@ -15,11 +15,13 @@ from datetime import date
 from decimal import Decimal
 
 import pytest
-from app.models.configuration import BudgetVersion
-from app.models.planning import CapExPlan
-from app.services.capex_service import CapExService
+from app.models import CapExPlan, Version
 from app.services.exceptions import NotFoundError, ValidationError
+from app.services.investments.capex_service import CapExService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# Backward compatibility alias
+BudgetVersion = Version
 
 
 class TestGetCapExPlan:
@@ -29,11 +31,11 @@ class TestGetCapExPlan:
     async def test_get_capex_plan_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test retrieving empty CapEx plan."""
         service = CapExService(db_session)
-        result = await service.get_capex_plan(test_budget_version.id)
+        result = await service.get_capex_plan(test_version.id)
 
         assert result == []
 
@@ -41,14 +43,14 @@ class TestGetCapExPlan:
     async def test_get_capex_plan_with_entries(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test retrieving CapEx plan with entries."""
         # Create CapEx entries
         entry1 = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Classroom Computers",
             category="IT",
@@ -61,7 +63,7 @@ class TestGetCapExPlan:
         )
         entry2 = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21800",
             description="Science Lab Equipment",
             category="equipment",
@@ -76,7 +78,7 @@ class TestGetCapExPlan:
         await db_session.flush()
 
         service = CapExService(db_session)
-        result = await service.get_capex_plan(test_budget_version.id)
+        result = await service.get_capex_plan(test_version.id)
 
         assert len(result) == 2
 
@@ -88,13 +90,13 @@ class TestGetCapExById:
     async def test_get_capex_by_id_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test retrieving CapEx entry by ID."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Projectors",
             category="IT",
@@ -133,13 +135,13 @@ class TestCreateCapExEntry:
     async def test_create_capex_entry_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test successful CapEx entry creation."""
         service = CapExService(db_session)
         result = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Interactive Whiteboards",
             category="IT",
@@ -159,7 +161,7 @@ class TestCreateCapExEntry:
     async def test_create_capex_entry_invalid_account_code(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test CapEx creation with invalid account code."""
@@ -167,7 +169,7 @@ class TestCreateCapExEntry:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.create_capex_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="64110",  # Invalid - not 20xxx or 21xxx
                 description="Test",
                 category="IT",
@@ -184,7 +186,7 @@ class TestCreateCapExEntry:
     async def test_create_capex_entry_invalid_quantity(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test CapEx creation with invalid quantity."""
@@ -192,7 +194,7 @@ class TestCreateCapExEntry:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.create_capex_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="21500",
                 description="Test",
                 category="IT",
@@ -209,7 +211,7 @@ class TestCreateCapExEntry:
     async def test_create_capex_entry_invalid_useful_life(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test CapEx creation with invalid useful life."""
@@ -217,7 +219,7 @@ class TestCreateCapExEntry:
 
         with pytest.raises(ValidationError) as exc_info:
             await service.create_capex_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="21500",
                 description="Test",
                 category="IT",
@@ -234,7 +236,7 @@ class TestCreateCapExEntry:
     async def test_create_capex_entry_zero_useful_life(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test CapEx creation with zero useful life."""
@@ -242,7 +244,7 @@ class TestCreateCapExEntry:
 
         with pytest.raises(ValidationError):
             await service.create_capex_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code="21500",
                 description="Test",
                 category="IT",
@@ -257,13 +259,13 @@ class TestCreateCapExEntry:
     async def test_create_capex_entry_calculates_total(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test that total cost is calculated correctly."""
         service = CapExService(db_session)
         result = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="20100",
             description="Building Renovation",
             category="building",
@@ -280,7 +282,7 @@ class TestCreateCapExEntry:
     async def test_create_capex_different_categories(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test creating CapEx entries with different categories."""
@@ -290,7 +292,7 @@ class TestCreateCapExEntry:
 
         for i, category in enumerate(categories):
             result = await service.create_capex_entry(
-                version_id=test_budget_version.id,
+                version_id=test_version.id,
                 account_code=f"215{i:02d}",
                 description=f"Test {category}",
                 category=category,
@@ -311,14 +313,14 @@ class TestUpdateCapExEntry:
     async def test_update_capex_entry_description(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx entry description."""
         # Create entry
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Old Description",
             category="IT",
@@ -344,14 +346,14 @@ class TestUpdateCapExEntry:
     async def test_update_capex_entry_quantity_recalculates_total(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test that updating quantity recalculates total cost."""
         # Create entry
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Laptops",
             category="IT",
@@ -382,14 +384,14 @@ class TestDeleteCapExEntry:
     async def test_delete_capex_entry_success(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test successful CapEx entry deletion."""
         # Create entry
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="To Delete",
             category="IT",
@@ -407,7 +409,7 @@ class TestDeleteCapExEntry:
         await service.delete_capex_entry(entry.id)
 
         # Verify deleted (soft delete)
-        result = await service.get_capex_plan(test_budget_version.id)
+        result = await service.get_capex_plan(test_version.id)
         assert len(result) == 0
 
     @pytest.mark.asyncio
@@ -429,14 +431,14 @@ class TestUpdateCapExValidation:
     async def test_update_capex_invalid_account_code(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx with invalid account code."""
         # Create entry
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -464,13 +466,13 @@ class TestUpdateCapExValidation:
     async def test_update_capex_invalid_quantity(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx with invalid quantity."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -498,13 +500,13 @@ class TestUpdateCapExValidation:
     async def test_update_capex_invalid_useful_life(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx with invalid useful life."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -532,13 +534,13 @@ class TestUpdateCapExValidation:
     async def test_update_capex_change_category(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx category."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -564,13 +566,13 @@ class TestUpdateCapExValidation:
     async def test_update_capex_change_acquisition_date(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx acquisition date."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -597,13 +599,13 @@ class TestUpdateCapExValidation:
     async def test_update_capex_change_unit_cost(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx unit cost recalculates total."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -630,13 +632,13 @@ class TestUpdateCapExValidation:
     async def test_update_capex_change_notes(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx notes."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -663,13 +665,13 @@ class TestUpdateCapExValidation:
     async def test_update_capex_valid_account_code(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx with valid account code (line 185 coverage)."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -695,13 +697,13 @@ class TestUpdateCapExValidation:
     async def test_update_capex_valid_useful_life(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test updating CapEx with valid useful life (line 213 coverage)."""
         entry = CapExPlan(
             id=uuid.uuid4(),
-            budget_version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -731,14 +733,14 @@ class TestDepreciationCalculation:
     async def test_calculate_depreciation_normal_case(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation calculation for year 2 of 5-year life."""
         # EFIR Scenario: IT Equipment SAR 50,000, 5-year life
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Classroom Computers",
             category="IT",
@@ -766,13 +768,13 @@ class TestDepreciationCalculation:
     async def test_calculate_depreciation_acquisition_year(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation in acquisition year (year 0)."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21800",
             description="Science Lab Equipment",
             category="equipment",
@@ -800,13 +802,13 @@ class TestDepreciationCalculation:
     async def test_calculate_depreciation_fully_depreciated(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation when asset is fully depreciated."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Old IT Equipment",
             category="IT",
@@ -834,13 +836,13 @@ class TestDepreciationCalculation:
     async def test_calculate_depreciation_single_year_life(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation with 1-year useful life (edge case)."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21900",
             description="Short-lived Software License",
             category="software",
@@ -867,13 +869,13 @@ class TestDepreciationCalculation:
     async def test_calculate_depreciation_decimal_precision(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation with decimal precision (0.01 SAR)."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset with Odd Numbers",
             category="IT",
@@ -900,13 +902,13 @@ class TestDepreciationCalculation:
     async def test_calculate_depreciation_large_amounts(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation with large amounts (EFIR building improvements)."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="20100",
             description="Building Improvements",
             category="building",
@@ -929,13 +931,13 @@ class TestDepreciationCalculation:
     async def test_calculate_depreciation_before_acquisition(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation calculation fails before acquisition year."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Future Asset",
             category="IT",
@@ -955,13 +957,13 @@ class TestDepreciationCalculation:
     async def test_calculate_depreciation_metadata(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation result includes all metadata."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Test Asset",
             category="IT",
@@ -992,13 +994,13 @@ class TestDepreciationSchedule:
     async def test_get_depreciation_schedule_full_life(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation schedule for entire useful life."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="IT Equipment",
             category="IT",
@@ -1027,13 +1029,13 @@ class TestDepreciationSchedule:
     async def test_get_depreciation_schedule_partial_years(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation schedule stops at useful life."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="IT Equipment",
             category="IT",
@@ -1054,13 +1056,13 @@ class TestDepreciationSchedule:
     async def test_get_depreciation_schedule_single_year(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation schedule for 1-year asset."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21900",
             description="Short-lived Asset",
             category="software",
@@ -1080,13 +1082,13 @@ class TestDepreciationSchedule:
     async def test_get_depreciation_schedule_precision(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test depreciation schedule maintains decimal precision."""
         service = CapExService(db_session)
         capex = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Furniture",
             category="furniture",
@@ -1115,7 +1117,7 @@ class TestCapExSummary:
     async def test_get_capex_summary_by_category(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test CapEx summary grouped by category."""
@@ -1123,7 +1125,7 @@ class TestCapExSummary:
 
         # Create entries in different categories
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Computers",
             category="IT",
@@ -1134,7 +1136,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21510",
             description="Servers",
             category="IT",
@@ -1145,7 +1147,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21700",
             description="Desks",
             category="furniture",
@@ -1156,7 +1158,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
 
-        summary = await service.get_capex_summary(test_budget_version.id)
+        summary = await service.get_capex_summary(test_version.id)
 
         # Total = 50,000 + 50,000 + 100,000 = 200,000
         assert summary["total_capex"] == Decimal("200000.00")
@@ -1175,14 +1177,14 @@ class TestCapExSummary:
     async def test_get_capex_summary_by_account(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test CapEx summary grouped by account code."""
         service = CapExService(db_session)
 
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Item 1",
             category="IT",
@@ -1193,7 +1195,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Item 2",
             category="IT",
@@ -1204,7 +1206,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21600",
             description="Item 3",
             category="equipment",
@@ -1215,7 +1217,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
 
-        summary = await service.get_capex_summary(test_budget_version.id)
+        summary = await service.get_capex_summary(test_version.id)
 
         # Check account breakdown
         assert "21500" in summary["capex_by_account"]
@@ -1228,11 +1230,11 @@ class TestCapExSummary:
     async def test_get_capex_summary_empty(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test CapEx summary with no entries."""
         service = CapExService(db_session)
-        summary = await service.get_capex_summary(test_budget_version.id)
+        summary = await service.get_capex_summary(test_version.id)
 
         assert summary["total_capex"] == Decimal("0")
         assert summary["item_count"] == 0
@@ -1243,7 +1245,7 @@ class TestCapExSummary:
     async def test_get_capex_summary_totals(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test CapEx summary total calculations."""
@@ -1251,7 +1253,7 @@ class TestCapExSummary:
 
         # EFIR realistic scenario
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Classroom Computers",
             category="IT",
@@ -1262,7 +1264,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21800",
             description="Science Lab Equipment",
             category="equipment",
@@ -1273,7 +1275,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="20100",
             description="Building Improvements",
             category="building",
@@ -1284,7 +1286,7 @@ class TestCapExSummary:
             user_id=test_user_id,
         )
 
-        summary = await service.get_capex_summary(test_budget_version.id)
+        summary = await service.get_capex_summary(test_version.id)
 
         # Total = 250,000 + 200,000 + 5,000,000 = 5,450,000
         assert summary["total_capex"] == Decimal("5450000.00")
@@ -1298,13 +1300,13 @@ class TestAnnualDepreciation:
     async def test_get_annual_depreciation_single_asset(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test annual depreciation for single asset."""
         service = CapExService(db_session)
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="IT Equipment",
             category="IT",
@@ -1315,7 +1317,7 @@ class TestAnnualDepreciation:
             user_id=test_user_id,
         )
 
-        result = await service.get_annual_depreciation(test_budget_version.id, 2026)
+        result = await service.get_annual_depreciation(test_version.id, 2026)
 
         # Annual depreciation = 100,000 / 10 = 10,000
         assert result["calculation_year"] == 2026
@@ -1327,7 +1329,7 @@ class TestAnnualDepreciation:
     async def test_get_annual_depreciation_multiple_assets(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test annual depreciation aggregation across assets."""
@@ -1335,7 +1337,7 @@ class TestAnnualDepreciation:
 
         # Asset 1: 50,000 SAR, 5-year life = 10,000/year
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Computers",
             category="IT",
@@ -1348,7 +1350,7 @@ class TestAnnualDepreciation:
 
         # Asset 2: 200,000 SAR, 10-year life = 20,000/year
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21700",
             description="Furniture",
             category="furniture",
@@ -1359,7 +1361,7 @@ class TestAnnualDepreciation:
             user_id=test_user_id,
         )
 
-        result = await service.get_annual_depreciation(test_budget_version.id, 2026)
+        result = await service.get_annual_depreciation(test_version.id, 2026)
 
         # Total = 10,000 + 20,000 = 30,000
         assert result["total_annual_depreciation"] == Decimal("30000.00")
@@ -1368,7 +1370,7 @@ class TestAnnualDepreciation:
     async def test_get_annual_depreciation_by_category(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test annual depreciation grouped by category."""
@@ -1376,7 +1378,7 @@ class TestAnnualDepreciation:
 
         # IT: 50,000 / 5 = 10,000
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="IT Asset 1",
             category="IT",
@@ -1389,7 +1391,7 @@ class TestAnnualDepreciation:
 
         # IT: 30,000 / 3 = 10,000
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21510",
             description="IT Asset 2",
             category="IT",
@@ -1402,7 +1404,7 @@ class TestAnnualDepreciation:
 
         # Furniture: 100,000 / 10 = 10,000
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21700",
             description="Furniture",
             category="furniture",
@@ -1413,7 +1415,7 @@ class TestAnnualDepreciation:
             user_id=test_user_id,
         )
 
-        result = await service.get_annual_depreciation(test_budget_version.id, 2026)
+        result = await service.get_annual_depreciation(test_version.id, 2026)
 
         # IT category: 10,000 + 10,000 = 20,000
         assert result["depreciation_by_category"]["IT"] == Decimal("20000.00")
@@ -1426,11 +1428,11 @@ class TestAnnualDepreciation:
     async def test_get_annual_depreciation_empty_plan(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
     ):
         """Test annual depreciation with no assets."""
         service = CapExService(db_session)
-        result = await service.get_annual_depreciation(test_budget_version.id, 2025)
+        result = await service.get_annual_depreciation(test_version.id, 2025)
 
         assert result["total_annual_depreciation"] == Decimal("0")
         assert result["depreciation_by_category"] == {}
@@ -1439,7 +1441,7 @@ class TestAnnualDepreciation:
     async def test_get_annual_depreciation_future_assets_excluded(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test that future assets are excluded from current year depreciation."""
@@ -1447,7 +1449,7 @@ class TestAnnualDepreciation:
 
         # Asset acquired in 2025
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="2025 Asset",
             category="IT",
@@ -1460,7 +1462,7 @@ class TestAnnualDepreciation:
 
         # Asset acquired in 2027 (future)
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21510",
             description="2027 Asset",
             category="IT",
@@ -1472,7 +1474,7 @@ class TestAnnualDepreciation:
         )
 
         # Calculate for 2026 (before second asset is acquired)
-        result = await service.get_annual_depreciation(test_budget_version.id, 2026)
+        result = await service.get_annual_depreciation(test_version.id, 2026)
 
         # Should only include first asset: 50,000 / 5 = 10,000
         assert result["total_annual_depreciation"] == Decimal("10000.00")
@@ -1485,7 +1487,7 @@ class TestCapExCalculations:
     async def test_total_cost_calculation(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test total cost calculation for multiple entries."""
@@ -1493,7 +1495,7 @@ class TestCapExCalculations:
 
         # Create multiple entries
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Item 1",
             category="IT",
@@ -1504,7 +1506,7 @@ class TestCapExCalculations:
             user_id=test_user_id,
         )
         await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21600",
             description="Item 2",
             category="equipment",
@@ -1515,7 +1517,7 @@ class TestCapExCalculations:
             user_id=test_user_id,
         )
 
-        result = await service.get_capex_plan(test_budget_version.id)
+        result = await service.get_capex_plan(test_version.id)
 
         total = sum(item.total_cost_sar for item in result)
         assert total == Decimal("20000.00")  # (10*1000) + (5*2000)
@@ -1524,14 +1526,14 @@ class TestCapExCalculations:
     async def test_depreciation_eligible_entries(
         self,
         db_session: AsyncSession,
-        test_budget_version: BudgetVersion,
+        test_version: BudgetVersion,
         test_user_id: uuid.UUID,
     ):
         """Test entries are eligible for depreciation."""
         service = CapExService(db_session)
 
         result = await service.create_capex_entry(
-            version_id=test_budget_version.id,
+            version_id=test_version.id,
             account_code="21500",
             description="Depreciable Asset",
             category="IT",

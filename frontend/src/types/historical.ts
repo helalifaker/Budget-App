@@ -57,7 +57,7 @@ export interface EnrollmentWithHistoryRow {
 }
 
 export interface EnrollmentWithHistoryResponse {
-  budget_version_id: string
+  version_id: string
   fiscal_year: number
   current_fiscal_year: number
   rows: EnrollmentWithHistoryRow[]
@@ -78,7 +78,7 @@ export interface ClassStructureWithHistoryRow {
 }
 
 export interface ClassStructureWithHistoryResponse {
-  budget_version_id: string
+  version_id: string
   fiscal_year: number
   current_fiscal_year: number
   rows: ClassStructureWithHistoryRow[]
@@ -100,7 +100,7 @@ export interface DHGWithHistoryRow {
 }
 
 export interface DHGWithHistoryResponse {
-  budget_version_id: string
+  version_id: string
   fiscal_year: number
   current_fiscal_year: number
   rows: DHGWithHistoryRow[]
@@ -121,7 +121,7 @@ export interface RevenueWithHistoryRow {
 }
 
 export interface RevenueWithHistoryResponse {
-  budget_version_id: string
+  version_id: string
   fiscal_year: number
   current_fiscal_year: number
   rows: RevenueWithHistoryRow[]
@@ -141,7 +141,7 @@ export interface CostsWithHistoryRow {
 }
 
 export interface CostsWithHistoryResponse {
-  budget_version_id: string
+  version_id: string
   fiscal_year: number
   current_fiscal_year: number
   rows: CostsWithHistoryRow[]
@@ -163,7 +163,7 @@ export interface CapExWithHistoryRow {
 }
 
 export interface CapExWithHistoryResponse {
-  budget_version_id: string
+  version_id: string
   fiscal_year: number
   current_fiscal_year: number
   rows: CapExWithHistoryRow[]

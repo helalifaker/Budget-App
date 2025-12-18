@@ -1,7 +1,7 @@
 """add_materialized_views_for_kpi_dashboard
 
-Revision ID: bfc62faea07a
-Revises: 007_strategic_layer
+Revision ID: 009_materialized_views_kpi_dashboard
+Revises: 008_performance_indexes
 Create Date: 2025-12-02 23:15:34.387754
 
 Creates materialized views for KPI dashboard performance optimization:
@@ -31,7 +31,7 @@ from collections.abc import Sequence
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "bfc62faea07a"
+revision: str = "009_materialized_views_kpi_dashboard"
 down_revision: str | None = "008_performance_indexes"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
